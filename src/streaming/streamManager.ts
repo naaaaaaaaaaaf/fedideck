@@ -1,70 +1,220 @@
+/**
+ * Stream Manager - centralized control of streaming connections
+ * 
+ * Manages streaming clients per account, handles subscription lifecycle,
+ * and coordinates with the UI through callbacks.
+ */
+
+import type { mastodon } from 'masto';
+import { StreamingClient } from '../api/streamingClient';
 import type { StreamConfig } from './streamTypes';
 
-// Placeholder for streaming functionality
-// The actual masto.js streaming API uses async iterators which require different handling
-// For now, we'll stub this out and rely on REST API polling
+interface AccountConnection {
+    client: StreamingClient;
+    subscribedStreams: Set<string>;
+    instanceUrl: string;
+    accessToken: string;
+}
 
-interface StreamManagerOptions {
-    onUpdate?: (accountId: string, streamKey: string, status: unknown) => void;
-    onDelete?: (accountId: string, streamKey: string, statusId: string) => void;
-    onNotification?: (accountId: string, notification: unknown) => void;
-    onStatusUpdate?: (accountId: string, streamKey: string, status: unknown) => void;
-    onReconnect?: (accountId: string) => void;
+interface StreamManagerCallbacks {
+    onUpdate?: (accountId: string, status: mastodon.v1.Status) => void;
+    onDelete?: (accountId: string, statusId: string) => void;
+    onNotification?: (accountId: string, notification: mastodon.v1.Notification) => void;
+    onStatusUpdate?: (accountId: string, status: mastodon.v1.Status) => void;
+    onConnect?: (accountId: string) => void;
+    onDisconnect?: (accountId: string) => void;
     onError?: (accountId: string, error: Error) => void;
 }
 
-// Manager options (for future use)
-// Manager options stored for future streaming implementation
-export let managerOptions: StreamManagerOptions = {};
+// Global state
+const connections = new Map<string, AccountConnection>();
+let callbacks: StreamManagerCallbacks = {};
+let isPageVisible = true;
 
 /**
- * Initialize the stream manager with event handlers
+ * Initialize stream manager with callbacks
  */
-export function initStreamManager(options: StreamManagerOptions): void {
-    managerOptions = options;
-    // Store for future use
-    void managerOptions;
+export function initStreamManager(options: StreamManagerCallbacks): void {
+    callbacks = options;
+
+    // Setup visibility change listener
+    if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
 }
 
 /**
- * Subscribe to a stream for an account (stub for now)
- * In a full implementation, this would use masto.js async iterators
+ * Get or create a streaming connection for an account
  */
-export async function subscribeToStream(
-    _accountId: string,
-    _instanceUrl: string,
-    _accessToken: string,
-    _config: StreamConfig
-): Promise<void> {
-    // Streaming will be implemented with async iterators in a future update
-    // For now, the app relies on REST API initial loads
-    console.log('Streaming subscription requested (not yet implemented)');
+function getOrCreateConnection(
+    accountId: string,
+    instanceUrl: string,
+    accessToken: string
+): AccountConnection {
+    let connection = connections.get(accountId);
+
+    if (!connection) {
+        const client = new StreamingClient({
+            instanceUrl,
+            accessToken,
+            onUpdate: (status) => callbacks.onUpdate?.(accountId, status),
+            onDelete: (statusId) => callbacks.onDelete?.(accountId, statusId),
+            onNotification: (notification) => callbacks.onNotification?.(accountId, notification),
+            onStatusUpdate: (status) => callbacks.onStatusUpdate?.(accountId, status),
+            onConnect: () => callbacks.onConnect?.(accountId),
+            onDisconnect: () => callbacks.onDisconnect?.(accountId),
+            onError: (error) => callbacks.onError?.(accountId, error),
+        });
+
+        connection = {
+            client,
+            subscribedStreams: new Set(),
+            instanceUrl,
+            accessToken,
+        };
+
+        connections.set(accountId, connection);
+    }
+
+    return connection;
+}
+
+/**
+ * Get stream key from config
+ */
+function getStreamKey(config: StreamConfig): string {
+    switch (config.type) {
+        case 'list':
+            return `list:${config.listId}`;
+        case 'hashtag':
+            return `hashtag:${config.hashtag}`;
+        default:
+            return config.type;
+    }
+}
+
+/**
+ * Subscribe to a stream for an account
+ */
+export function subscribeToStream(
+    accountId: string,
+    instanceUrl: string,
+    accessToken: string,
+    config: StreamConfig
+): void {
+    const connection = getOrCreateConnection(accountId, instanceUrl, accessToken);
+    const streamKey = getStreamKey(config);
+
+    // Already subscribed
+    if (connection.subscribedStreams.has(streamKey)) {
+        return;
+    }
+
+    // Connect if not already connected
+    if (!connection.client.isConnected()) {
+        connection.client.connect();
+    }
+
+    // Subscribe based on stream type
+    switch (config.type) {
+        case 'home':
+        case 'notifications':
+            // User stream covers both home and notifications
+            if (!connection.subscribedStreams.has('user')) {
+                connection.client.subscribeUser();
+                connection.subscribedStreams.add('user');
+            }
+            break;
+        case 'public':
+            connection.client.subscribePublic(false);
+            break;
+        case 'public:local':
+            connection.client.subscribePublic(true);
+            break;
+        case 'list':
+            if (config.listId) {
+                connection.client.subscribeList(config.listId);
+            }
+            break;
+        case 'hashtag':
+            if (config.hashtag) {
+                connection.client.subscribeHashtag(config.hashtag);
+            }
+            break;
+    }
+
+    connection.subscribedStreams.add(streamKey);
 }
 
 /**
  * Unsubscribe from a stream
  */
-export function unsubscribeFromStream(_accountId: string, _config: StreamConfig): void {
-    // No-op for now
+export function unsubscribeFromStream(accountId: string, config: StreamConfig): void {
+    const connection = connections.get(accountId);
+    if (!connection) return;
+
+    const streamKey = getStreamKey(config);
+    connection.subscribedStreams.delete(streamKey);
+
+    // Only unsubscribe from user stream if no home/notifications columns remain
+    if (config.type === 'home' || config.type === 'notifications') {
+        const hasHome = connection.subscribedStreams.has('home');
+        const hasNotifications = connection.subscribedStreams.has('notifications');
+
+        if (!hasHome && !hasNotifications) {
+            connection.client.unsubscribe('user');
+            connection.subscribedStreams.delete('user');
+        }
+    } else {
+        connection.client.unsubscribe(streamKey);
+    }
+
+    // Disconnect if no more subscriptions
+    if (connection.subscribedStreams.size === 0) {
+        disconnectAccount(accountId);
+    }
 }
 
 /**
- * Disconnect all streams for an account
+ * Disconnect an account's streaming connection
  */
-export function disconnectAccount(_accountId: string): void {
-    // No-op for now
+export function disconnectAccount(accountId: string): void {
+    const connection = connections.get(accountId);
+    if (!connection) return;
+
+    connection.client.disconnect();
+    connections.delete(accountId);
 }
 
 /**
- * Disconnect all streams
+ * Disconnect all streaming connections
  */
 export function disconnectAll(): void {
-    // No-op for now
+    for (const [accountId] of connections) {
+        disconnectAccount(accountId);
+    }
 }
 
 /**
- * Handle visibility change (pause/resume streams)
+ * Handle page visibility change
  */
-export function handleVisibilityChange(_isVisible: boolean): void {
-    // No-op for now
+function handleVisibilityChange(): void {
+    const wasVisible = isPageVisible;
+    isPageVisible = document.visibilityState === 'visible';
+
+    if (!wasVisible && isPageVisible) {
+        // Page became visible - reconnect all
+        for (const [, connection] of connections) {
+            if (!connection.client.isConnected()) {
+                connection.client.connect();
+            }
+        }
+    }
+}
+
+/**
+ * Check if streaming is connected for an account
+ */
+export function isStreamingConnected(accountId: string): boolean {
+    return connections.get(accountId)?.client.isConnected() ?? false;
 }
