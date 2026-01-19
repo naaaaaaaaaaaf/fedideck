@@ -196,3 +196,104 @@ components/
 * Notifications のリアルタイム更新
 * ステータス削除イベント反映
 * 再接続時の整合性維持
+
+## Git Policy
+
+### Branch Strategy
+
+* `main`
+
+  * 常に動作する状態を保つ
+  * 直接 push 禁止
+* `develop`
+
+  * 通常の作業ブランチのマージ先
+* `feature/*`
+
+  * 機能追加（例: `feature/streaming-home`）
+* `fix/*`
+
+  * バグ修正
+* `chore/*`
+
+  * 依存更新・設定変更
+
+Agent は **必ず feature / fix ブランチ前提**で作業する。
+
+---
+
+### Commit Rules
+
+* 小さく、意味のある単位で commit
+* 1 commit = 1 意図
+* 破壊的変更は禁止（別途合意がない限り）
+
+推奨フォーマット：
+
+* feat: add home timeline streaming
+* fix: handle reconnect on ws close
+* refactor: extract stream manager
+* test: add oauth oob tests
+* chore: update deps
+
+---
+
+## Testing Policy
+
+### Required
+
+* **ロジックは必ずテスト可能な形で分離する**
+* UI と API ロジックを密結合させない
+
+### Unit Tests
+
+対象：
+
+* OAuth OOB フロー
+* App Registration
+* Streaming reconnect logic
+* Store（accounts / streams）
+
+推奨ツール：
+
+* Vitest
+* Testing Library（UI）
+
+---
+
+### Mocking
+
+* Mastodon API は **実通信しない**
+* msw などを用いて mock する
+* Streaming は Event 単位で mock 可能にする
+
+---
+
+### Test Rules for Agents
+
+* 新しいロジックを追加したら **最低1つはテストを書く**
+* 修正系は **失敗再現テスト → 修正**
+* テストが書けない設計は禁止
+
+---
+
+## CI Expectations
+
+CI が存在する前提でコードを書く。
+
+最低限満たすこと：
+
+* `npm run build` が通る
+* `npm run test` が通る
+* 型エラーがない
+
+
+## Quality Bar
+
+このプロジェクトは以下を満たすこと：
+
+* 読める
+* 壊れにくい
+* テストできる
+* Streaming で暴走しない
+* Deck UI を壊さない
