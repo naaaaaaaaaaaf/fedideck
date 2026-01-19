@@ -5,25 +5,38 @@ interface StatusCardProps {
     isReblog?: boolean;
 }
 
+/**
+ * Format a date string to relative time in Japanese
+ */
+function formatDate(dateStr: string): string {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return '今';
+    if (diffMins < 60) return `${diffMins}分`;
+    if (diffHours < 24) return `${diffHours}時間`;
+    if (diffDays < 7) return `${diffDays}日`;
+    return date.toLocaleDateString('ja-JP');
+}
+
 export function StatusCard({ status, isReblog = false }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
     const reblogger = status.reblog ? status.account : null;
 
-    const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMins / 60);
-        const diffDays = Math.floor(diffHours / 24);
+    // Safely access arrays with fallbacks
+    const mediaAttachments = displayStatus.mediaAttachments ?? [];
+    const poll = displayStatus.poll;
 
-        if (diffMins < 1) return '今';
-        if (diffMins < 60) return `${diffMins}分`;
-        if (diffHours < 24) return `${diffHours}時間`;
-        if (diffDays < 7) return `${diffDays}日`;
-        return date.toLocaleDateString('ja-JP');
-    };
+    // Safely access account
+    const account = displayStatus.account;
+    if (!account) {
+        return null; // Cannot render without account
+    }
 
     return (
         <article className={`p-4 border-b border-slate-700/50 card-hover ${isReblog ? 'animate-fade-in' : ''}`}>
@@ -43,14 +56,14 @@ export function StatusCard({ status, isReblog = false }: StatusCardProps) {
             <div className="flex gap-3">
                 {/* Avatar */}
                 <a
-                    href={displayStatus.account.url}
+                    href={account.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="shrink-0"
                 >
                     <img
-                        src={displayStatus.account.avatar}
-                        alt={displayStatus.account.displayName || displayStatus.account.username}
+                        src={account.avatar}
+                        alt={account.displayName || account.username}
                         className="w-12 h-12 rounded-lg hover:opacity-80 transition-opacity"
                     />
                 </a>
@@ -61,16 +74,16 @@ export function StatusCard({ status, isReblog = false }: StatusCardProps) {
                     <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                             <a
-                                href={displayStatus.account.url}
+                                href={account.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="hover:underline"
                             >
                                 <span className="font-semibold text-slate-100 block truncate">
-                                    {displayStatus.account.displayName || displayStatus.account.username}
+                                    {account.displayName || account.username}
                                 </span>
                                 <span className="text-sm text-slate-400 block truncate">
-                                    @{displayStatus.account.acct}
+                                    @{account.acct}
                                 </span>
                             </a>
                         </div>
@@ -105,13 +118,12 @@ export function StatusCard({ status, isReblog = false }: StatusCardProps) {
                         />
                     )}
 
-                    {/* Media attachments */}
-                    {displayStatus.mediaAttachments.length > 0 && (
-                        <div className={`mt-3 grid gap-1 ${displayStatus.mediaAttachments.length === 1 ? 'grid-cols-1' :
-                            displayStatus.mediaAttachments.length === 2 ? 'grid-cols-2' :
-                                displayStatus.mediaAttachments.length === 3 ? 'grid-cols-2' : 'grid-cols-2'
+                    {/* Media attachments - safely check length */}
+                    {mediaAttachments.length > 0 && (
+                        <div className={`mt-3 grid gap-1 ${mediaAttachments.length === 1 ? 'grid-cols-1' :
+                            mediaAttachments.length >= 2 ? 'grid-cols-2' : 'grid-cols-2'
                             }`}>
-                            {displayStatus.mediaAttachments.slice(0, 4).map((media) => (
+                            {mediaAttachments.slice(0, 4).map((media) => (
                                 <a
                                     key={media.id}
                                     href={media.url ?? '#'}
@@ -149,12 +161,13 @@ export function StatusCard({ status, isReblog = false }: StatusCardProps) {
                         </div>
                     )}
 
-                    {/* Poll */}
-                    {displayStatus.poll && (
+                    {/* Poll - safely check existence and options */}
+                    {poll && poll.options && poll.options.length > 0 && (
                         <div className="mt-3 p-3 bg-slate-800/50 rounded-lg">
-                            {displayStatus.poll.options.map((option, i) => {
-                                const percentage = displayStatus.poll!.votesCount > 0
-                                    ? Math.round((option.votesCount ?? 0) / displayStatus.poll!.votesCount * 100)
+                            {poll.options.map((option, i) => {
+                                const votesCount = poll.votesCount ?? 0;
+                                const percentage = votesCount > 0
+                                    ? Math.round((option.votesCount ?? 0) / votesCount * 100)
                                     : 0;
                                 return (
                                     <div key={i} className="mb-2 last:mb-0">
@@ -172,8 +185,8 @@ export function StatusCard({ status, isReblog = false }: StatusCardProps) {
                                 );
                             })}
                             <div className="text-xs text-slate-400 mt-2">
-                                {displayStatus.poll.votesCount}票
-                                {displayStatus.poll.expired && ' · 終了'}
+                                {poll.votesCount ?? 0}票
+                                {poll.expired && ' · 終了'}
                             </div>
                         </div>
                     )}
@@ -201,3 +214,6 @@ export function StatusCard({ status, isReblog = false }: StatusCardProps) {
         </article>
     );
 }
+
+// Export for testing
+export { formatDate };
