@@ -1,4 +1,19 @@
 import type { mastodon } from 'masto';
+import type { ReactNode } from 'react';
+import {
+    LuMessageCircle,
+    LuRepeat2,
+    LuStar,
+    LuUserPlus,
+    LuUserCheck,
+    LuChartBar,
+    LuFileText,
+    LuPencil,
+    LuPartyPopper,
+    LuCircleAlert,
+    LuBell,
+    LuTriangleAlert
+} from 'react-icons/lu';
 
 interface NotificationCardProps {
     notification: mastodon.v1.Notification;
@@ -20,30 +35,30 @@ export function NotificationCard({ notification }: NotificationCardProps) {
         return date.toLocaleDateString('ja-JP');
     };
 
-    const getNotificationInfo = () => {
+    const getNotificationInfo = (): { icon: ReactNode; label: string; color: string } => {
         switch (notification.type) {
             case 'mention':
-                return { icon: '💬', label: 'メンション', color: 'text-blue-400' };
+                return { icon: <LuMessageCircle />, label: 'メンション', color: 'text-blue-400' };
             case 'reblog':
-                return { icon: '🔁', label: 'ブースト', color: 'text-green-400' };
+                return { icon: <LuRepeat2 />, label: 'ブースト', color: 'text-green-400' };
             case 'favourite':
-                return { icon: '⭐', label: 'お気に入り', color: 'text-amber-400' };
+                return { icon: <LuStar />, label: 'お気に入り', color: 'text-amber-400' };
             case 'follow':
-                return { icon: '👤', label: 'フォロー', color: 'text-purple-400' };
+                return { icon: <LuUserPlus />, label: 'フォロー', color: 'text-purple-400' };
             case 'follow_request':
-                return { icon: '👋', label: 'フォローリクエスト', color: 'text-purple-400' };
+                return { icon: <LuUserCheck />, label: 'フォローリクエスト', color: 'text-purple-400' };
             case 'poll':
-                return { icon: '📊', label: '投票終了', color: 'text-indigo-400' };
+                return { icon: <LuChartBar />, label: '投票終了', color: 'text-indigo-400' };
             case 'status':
-                return { icon: '📝', label: '新規投稿', color: 'text-slate-400' };
+                return { icon: <LuFileText />, label: '新規投稿', color: 'text-slate-400' };
             case 'update':
-                return { icon: '✏️', label: '編集', color: 'text-slate-400' };
+                return { icon: <LuPencil />, label: '編集', color: 'text-slate-400' };
             case 'admin.sign_up':
-                return { icon: '🎉', label: '新規登録', color: 'text-emerald-400' };
+                return { icon: <LuPartyPopper />, label: '新規登録', color: 'text-emerald-400' };
             case 'admin.report':
-                return { icon: '🚨', label: '通報', color: 'text-red-400' };
+                return { icon: <LuCircleAlert />, label: '通報', color: 'text-red-400' };
             default:
-                return { icon: '🔔', label: notification.type, color: 'text-slate-400' };
+                return { icon: <LuBell />, label: notification.type, color: 'text-slate-400' };
         }
     };
 
@@ -129,7 +144,7 @@ export function NotificationCard({ notification }: NotificationCardProps) {
                     {status.spoilerText ? (
                         <details>
                             <summary className="cursor-pointer text-amber-400 text-sm">
-                                ⚠️ {status.spoilerText}
+                                <LuTriangleAlert className="inline mr-1" /> {status.spoilerText}
                             </summary>
                             <div
                                 className="mt-2 text-sm text-slate-300 break-words"

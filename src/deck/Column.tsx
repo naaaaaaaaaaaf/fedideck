@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import type { mastodon } from 'masto';
+import { LuRefreshCw, LuX, LuTriangleAlert, LuInbox } from 'react-icons/lu';
 import { getStreamDisplayName, getStreamIcon, type StreamConfig } from '../streaming/streamTypes';
 import { StatusCard } from '../components/StatusCard';
 import { NotificationCard } from '../components/NotificationCard';
@@ -188,7 +189,7 @@ export function Column({ accountId, stream, onRemove }: ColumnProps) {
                         className="p-1.5 hover:bg-slate-700/50 rounded-lg transition-colors text-slate-400 hover:text-slate-200"
                         title="更新"
                     >
-                        🔄
+                        <LuRefreshCw />
                     </button>
                     {onRemove && (
                         <button
@@ -196,7 +197,7 @@ export function Column({ accountId, stream, onRemove }: ColumnProps) {
                             className="p-1.5 hover:bg-red-900/50 rounded-lg transition-colors text-slate-400 hover:text-red-400"
                             title="カラムを削除"
                         >
-                            ✕
+                            <LuX />
                         </button>
                     )}
                 </div>
@@ -210,7 +211,7 @@ export function Column({ accountId, stream, onRemove }: ColumnProps) {
                 {/* Error state */}
                 {data?.error && (
                     <div className="p-4 text-center">
-                        <div className="text-red-400 mb-2">⚠️ エラー</div>
+                        <div className="text-red-400 mb-2 flex items-center gap-2"><LuTriangleAlert /> エラー</div>
                         <div className="text-sm text-slate-400">{data.error}</div>
                         <button
                             onClick={loadInitialData}
@@ -260,7 +261,7 @@ export function Column({ accountId, stream, onRemove }: ColumnProps) {
                     ((isNotificationColumn && !data?.notifications.length) ||
                         (!isNotificationColumn && !data?.statuses.length)) && (
                         <div className="p-8 text-center text-slate-400">
-                            <div className="text-4xl mb-3">📭</div>
+                            <LuInbox className="text-4xl mb-3" />
                             <div>まだ投稿がありません</div>
                         </div>
                     )}

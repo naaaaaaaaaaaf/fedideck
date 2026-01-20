@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import { LuHouse, LuBell, LuUsers, LuGlobe, LuX } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
 import { useColumnsStore } from '../store/columns';
 import type { StreamType } from '../streaming/streamTypes';
@@ -7,11 +9,11 @@ interface AddColumnModalProps {
     onClose: () => void;
 }
 
-const COLUMN_TYPES: { type: StreamType; icon: string; label: string; description: string }[] = [
-    { type: 'home', icon: '🏠', label: 'ホーム', description: 'フォロー中のユーザーの投稿' },
-    { type: 'notifications', icon: '🔔', label: '通知', description: 'メンション、ブースト、お気に入りなど' },
-    { type: 'public:local', icon: '👥', label: 'ローカル', description: 'このサーバーの投稿' },
-    { type: 'public', icon: '🌐', label: '連合', description: 'すべての連合サーバーの投稿' },
+const COLUMN_TYPES: { type: StreamType; icon: ReactNode; label: string; description: string }[] = [
+    { type: 'home', icon: <LuHouse />, label: 'ホーム', description: 'フォロー中のユーザーの投稿' },
+    { type: 'notifications', icon: <LuBell />, label: '通知', description: 'メンション、ブースト、お気に入りなど' },
+    { type: 'public:local', icon: <LuUsers />, label: 'ローカル', description: 'このサーバーの投稿' },
+    { type: 'public', icon: <LuGlobe />, label: '連合', description: 'すべての連合サーバーの投稿' },
 ];
 
 export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
@@ -44,7 +46,7 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                         onClick={onClose}
                         className="text-slate-400 hover:text-slate-200 transition-colors"
                     >
-                        ✕
+                        <LuX />
                     </button>
                 </div>
 

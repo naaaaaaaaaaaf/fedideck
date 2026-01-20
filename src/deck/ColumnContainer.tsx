@@ -1,4 +1,6 @@
 import { Column } from './Column';
+import { LuPlus, LuList } from 'react-icons/lu';
+import { SiMastodon } from 'react-icons/si';
 import { useColumnsStore } from '../store/columns';
 import { useAccountsStore } from '../store/accounts';
 
@@ -38,7 +40,7 @@ export function ColumnContainer({ onAddColumn }: ColumnContainerProps) {
                         className="w-12 h-12 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600 text-slate-400 hover:text-slate-200 text-2xl transition-all duration-200 hover:scale-105"
                         title="カラムを追加"
                     >
-                        +
+                        <LuPlus />
                     </button>
                 </div>
             )}
@@ -47,7 +49,7 @@ export function ColumnContainer({ onAddColumn }: ColumnContainerProps) {
             {!validColumns.length && !accounts.length && (
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center text-slate-400">
-                        <div className="text-6xl mb-4">🦣</div>
+                        <SiMastodon className="text-6xl mb-4" />
                         <h2 className="text-xl font-semibold text-slate-200 mb-2">FediDeckへようこそ</h2>
                         <p className="mb-4">まずはアカウントを追加してください</p>
                     </div>
@@ -58,7 +60,7 @@ export function ColumnContainer({ onAddColumn }: ColumnContainerProps) {
             {!validColumns.length && accounts.length > 0 && (
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center text-slate-400">
-                        <div className="text-6xl mb-4">📋</div>
+                        <LuList className="text-6xl mb-4" />
                         <h2 className="text-xl font-semibold text-slate-200 mb-2">カラムがありません</h2>
                         <p className="mb-4">+ボタンからカラムを追加してください</p>
                     </div>
