@@ -122,3 +122,33 @@ export async function fetchHashtagTimeline(
     });
     return statuses;
 }
+
+/**
+ * Parameters for creating a new status
+ */
+export interface CreateStatusParams {
+    status: string;
+    visibility?: 'public' | 'unlisted' | 'private' | 'direct';
+    spoilerText?: string;
+    inReplyToId?: string;
+    sensitive?: boolean;
+    language?: string;
+}
+
+/**
+ * Create a new status (post/toot)
+ */
+export async function createStatus(
+    client: MastoClient,
+    params: CreateStatusParams
+): Promise<mastodon.v1.Status> {
+    const status = await client.v1.statuses.create({
+        status: params.status,
+        visibility: params.visibility,
+        spoilerText: params.spoilerText,
+        inReplyToId: params.inReplyToId,
+        sensitive: params.sensitive,
+        language: params.language,
+    });
+    return status;
+}

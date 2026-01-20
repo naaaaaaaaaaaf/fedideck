@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { ColumnContainer } from './deck/ColumnContainer';
 import { LoginModal } from './components/LoginModal';
 import { AddColumnModal } from './components/AddColumnModal';
+import { ComposeModal } from './components/ComposeModal';
 import { useAccountsStore } from './store/accounts';
 import { useColumnsStore } from './store/columns';
 import { useStreamsStore, getStreamKey } from './store/streams';
@@ -12,6 +13,7 @@ import { initStreamManager } from './streaming/streamManager';
 function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
+  const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
 
   const loadFromStorage = useAccountsStore(state => state.loadFromStorage);
   const accounts = useAccountsStore(state => state.accounts);
@@ -75,7 +77,10 @@ function App() {
 
   return (
     <div className="h-screen flex overflow-hidden">
-      <Sidebar onAddAccount={() => setIsLoginModalOpen(true)} />
+      <Sidebar
+        onAddAccount={() => setIsLoginModalOpen(true)}
+        onCompose={() => setIsComposeModalOpen(true)}
+      />
 
       <main className="flex-1 flex overflow-hidden">
         <ColumnContainer onAddColumn={() => setIsAddColumnModalOpen(true)} />
@@ -88,6 +93,10 @@ function App() {
       <AddColumnModal
         isOpen={isAddColumnModalOpen}
         onClose={() => setIsAddColumnModalOpen(false)}
+      />
+      <ComposeModal
+        isOpen={isComposeModalOpen}
+        onClose={() => setIsComposeModalOpen(false)}
       />
     </div>
   );
