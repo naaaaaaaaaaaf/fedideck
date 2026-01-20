@@ -249,4 +249,140 @@ describe('ComposeModal', () => {
             );
         });
     });
+
+    // Poll tests
+    it('shows poll button', () => {
+        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        expect(screen.getByRole('button', { name: /投票/i })).toBeInTheDocument();
+    });
+
+    it('toggles poll UI when clicking poll button', async () => {
+        const user = userEvent.setup();
+        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+
+        // Poll options should not be visible initially
+        expect(screen.queryByPlaceholderText('選択肢 1')).not.toBeInTheDocument();
+
+        // Click poll button
+        const pollButton = screen.getByRole('button', { name: /投票/i });
+        await user.click(pollButton);
+
+        // Poll options should now be visible
+        expect(screen.getByPlaceholderText('選択肢 1')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('選択肢 2')).toBeInTheDocument();
+    });
+
+    it('can add poll options up to 4', async () => {
+        const user = userEvent.setup();
+        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+
+        // Enable poll
+        const pollButton = screen.getByRole('button', { name: /投票/i });
+        await user.click(pollButton);
+
+        // Initially 2 options
+        expect(screen.getByPlaceholderText('選択肢 1')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('選択肢 2')).toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('選択肢 3')).not.toBeInTheDocument();
+
+        // Add option
+        const addButton = screen.getByRole('button', { name: /選択肢を追加/i });
+        await user.click(addButton);
+
+        expect(screen.getByPlaceholderText('選択肢 3')).toBeInTheDocument();
+
+        // Add another option
+        await user.click(addButton);
+        expect(screen.getByPlaceholderText('選択肢 4')).toBeInTheDocument();
+
+        // Add button should be gone now (max 4)
+        expect(screen.queryByRole('button', { name: /選択肢を追加/i })).not.toBeInTheDocument();
+    });
+
+    it('can remove poll options but keeps minimum 2', async () => {
+        const user = userEvent.setup();
+        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+
+        // Enable poll
+        const pollButton = screen.getByRole('button', { name: /投票/i });
+        await user.click(pollButton);
+
+        // Add a third option first
+        const addButton = screen.getByRole('button', { name: /選択肢を追加/i });
+        await user.click(addButton);
+
+        // Should have 3 options now
+        expect(screen.getByPlaceholderText('選択肢 3')).toBeInTheDocument();
+
+        // Remove buttons should be visible (3 options > 2 minimum)
+        const removeButtons = screen.getAllByRole('button').filter(btn =>
+            btn.querySelector('svg')?.classList.contains('lucide-minus') ||
+            btn.textContent === ''
+        );
+
+        // Click the first visible remove button
+        const removeButton = screen.getByPlaceholderText('選択肢 3').parentElement?.querySelector('button');
+        if (removeButton) {
+            await user.click(removeButton);
+        }
+
+        // Should be back to 2 options
+        expect(screen.queryByPlaceholderText('選択肢 3')).not.toBeInTheDocument();
+    });
+
+    it('submits post with poll params', async () => {
+        const user = userEvent.setup();
+        const onClose = vi.fn();
+        const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+        mockCreateStatus.mockResolvedValueOnce({} as any);
+
+        render(<ComposeModal isOpen={true} onClose={onClose} />);
+
+        // Enable poll
+        const pollButton = screen.getByRole('button', { name: /投票/i });
+        await user.click(pollButton);
+
+        // Fill poll options
+        const option1 = screen.getByPlaceholderText('選択肢 1');
+        const option2 = screen.getByPlaceholderText('選択肢 2');
+        await user.type(option1, 'Option A');
+        await user.type(option2, 'Option B');
+
+        // Enter content
+        const textarea = screen.getByPlaceholderText('今なにしてる？');
+        await user.type(textarea, 'Poll question');
+
+        // Submit
+        const submitButton = screen.getByRole('button', { name: '投稿' });
+        await user.click(submitButton);
+
+        await waitFor(() => {
+            expect(mockCreateStatus).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.objectContaining({
+                    status: 'Poll question',
+                    poll: expect.objectContaining({
+                        options: ['Option A', 'Option B'],
+                        expiresIn: 86400,
+                        multiple: false,
+                    }),
+                })
+            );
+        });
+    });
+
+    it('shows expiration selector in poll UI', async () => {
+        const user = userEvent.setup();
+        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+
+        // Enable poll
+        const pollButton = screen.getByRole('button', { name: /投票/i });
+        await user.click(pollButton);
+
+        // Check for expiration selector label
+        expect(screen.getByText('有効期限:')).toBeInTheDocument();
+
+        // Check for multiple choice checkbox
+        expect(screen.getByText('複数選択可')).toBeInTheDocument();
+    });
 });

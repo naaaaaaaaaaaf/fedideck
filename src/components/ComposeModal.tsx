@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { LuX, LuTriangleAlert, LuGlobe, LuLockOpen, LuLock, LuMail, LuLoader, LuImage } from 'react-icons/lu';
+import { LuX, LuTriangleAlert, LuGlobe, LuLockOpen, LuLock, LuMail, LuLoader, LuImage, LuListOrdered, LuPlus, LuMinus } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
 import { getClient, createStatus, uploadMedia, updateMediaDescription, type CreateStatusParams } from '../api/mastoClient';
 
@@ -35,7 +35,19 @@ const VISIBILITY_OPTIONS: VisibilityOption[] = [
 
 const MAX_CHARS = 500;
 const MAX_MEDIA = 4;
+const MAX_POLL_OPTIONS = 4;
+const MIN_POLL_OPTIONS = 2;
 const ACCEPTED_MEDIA_TYPES = 'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm';
+
+const POLL_DURATION_OPTIONS = [
+    { value: 300, label: '5分' },
+    { value: 1800, label: '30分' },
+    { value: 3600, label: '1時間' },
+    { value: 21600, label: '6時間' },
+    { value: 86400, label: '1日' },
+    { value: 259200, label: '3日' },
+    { value: 604800, label: '7日' },
+];
 
 export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
     const [content, setContent] = useState('');
@@ -46,6 +58,12 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
     const [error, setError] = useState<string | null>(null);
     const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
 
+    // Poll state
+    const [showPoll, setShowPoll] = useState(false);
+    const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
+    const [pollExpiresIn, setPollExpiresIn] = useState(86400); // 1 day default
+    const [pollMultiple, setPollMultiple] = useState(false);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const activeAccount = useAccountsStore(state => state.getActiveAccount());
 
@@ -54,7 +72,46 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
     const hasMedia = mediaFiles.length > 0;
     const allMediaUploaded = mediaFiles.every(m => m.uploadedId && !m.uploading);
     const isUploading = mediaFiles.some(m => m.uploading);
-    const canSubmit = (content.trim().length > 0 || hasMedia) && !isOverLimit && !isSubmitting && !isUploading && activeAccount && (!hasMedia || allMediaUploaded);
+
+    // Poll validation
+    const validPollOptions = pollOptions.filter(opt => opt.trim().length > 0);
+    const isPollValid = !showPoll || (validPollOptions.length >= MIN_POLL_OPTIONS);
+
+    const canSubmit = (content.trim().length > 0 || hasMedia || showPoll) &&
+        !isOverLimit && !isSubmitting && !isUploading && activeAccount &&
+        (!hasMedia || allMediaUploaded) && isPollValid;
+
+    // Poll helper functions
+    const togglePoll = () => {
+        if (!showPoll) {
+            // Clear media when enabling poll (they're mutually exclusive)
+            if (hasMedia) {
+                mediaFiles.forEach(m => {
+                    if (m.preview) URL.revokeObjectURL(m.preview);
+                });
+                setMediaFiles([]);
+            }
+        }
+        setShowPoll(!showPoll);
+    };
+
+    const addPollOption = () => {
+        if (pollOptions.length < MAX_POLL_OPTIONS) {
+            setPollOptions([...pollOptions, '']);
+        }
+    };
+
+    const removePollOption = (index: number) => {
+        if (pollOptions.length > MIN_POLL_OPTIONS) {
+            setPollOptions(pollOptions.filter((_, i) => i !== index));
+        }
+    };
+
+    const updatePollOption = (index: number, value: string) => {
+        const newOptions = [...pollOptions];
+        newOptions[index] = value;
+        setPollOptions(newOptions);
+    };
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
@@ -169,6 +226,15 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
                 params.mediaIds = mediaFiles.map(m => m.uploadedId!);
             }
 
+            // Add poll params if poll is enabled
+            if (showPoll && validPollOptions.length >= MIN_POLL_OPTIONS) {
+                params.poll = {
+                    options: validPollOptions,
+                    expiresIn: pollExpiresIn,
+                    multiple: pollMultiple,
+                };
+            }
+
             await createStatus(client, params);
 
             // Clean up previews
@@ -182,6 +248,10 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
             setShowCW(false);
             setVisibility('public');
             setMediaFiles([]);
+            setShowPoll(false);
+            setPollOptions(['', '']);
+            setPollExpiresIn(86400);
+            setPollMultiple(false);
             onClose();
         } catch (err) {
             console.error('Failed to post status:', err);
@@ -243,8 +313,8 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
                         </div>
                     )}
 
-                    {/* CW and Media buttons */}
-                    <div className="mb-3 flex gap-2">
+                    {/* CW, Media, and Poll buttons */}
+                    <div className="mb-3 flex flex-wrap gap-2">
                         <button
                             onClick={() => setShowCW(!showCW)}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${showCW
@@ -258,7 +328,7 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
 
                         <button
                             onClick={() => fileInputRef.current?.click()}
-                            disabled={mediaFiles.length >= MAX_MEDIA || isUploading}
+                            disabled={mediaFiles.length >= MAX_MEDIA || isUploading || showPoll}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${hasMedia
                                 ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
                                 : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
@@ -267,6 +337,18 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
                             <LuImage className="w-4 h-4" />
                             画像/動画
                             {hasMedia && <span className="text-xs">({mediaFiles.length}/{MAX_MEDIA})</span>}
+                        </button>
+
+                        <button
+                            onClick={togglePoll}
+                            disabled={hasMedia}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${showPoll
+                                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                            <LuListOrdered className="w-4 h-4" />
+                            投票
                         </button>
 
                         <input
@@ -287,6 +369,68 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
                             placeholder="警告文を入力..."
                             className="w-full mb-3 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
                         />
+                    )}
+
+                    {/* Poll UI */}
+                    {showPoll && (
+                        <div className="mb-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                            <div className="space-y-2 mb-3">
+                                {pollOptions.map((option, index) => (
+                                    <div key={index} className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={option}
+                                            onChange={(e) => updatePollOption(index, e.target.value)}
+                                            placeholder={`選択肢 ${index + 1}`}
+                                            className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                                        />
+                                        {pollOptions.length > MIN_POLL_OPTIONS && (
+                                            <button
+                                                onClick={() => removePollOption(index)}
+                                                className="p-2 bg-slate-700 hover:bg-red-600/50 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
+                                            >
+                                                <LuMinus className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {pollOptions.length < MAX_POLL_OPTIONS && (
+                                <button
+                                    onClick={addPollOption}
+                                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+                                >
+                                    <LuPlus className="w-4 h-4" />
+                                    選択肢を追加（最大{MAX_POLL_OPTIONS}）
+                                </button>
+                            )}
+
+                            <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-slate-700">
+                                <div className="flex items-center gap-2">
+                                    <label className="text-sm text-slate-400">有効期限:</label>
+                                    <select
+                                        value={pollExpiresIn}
+                                        onChange={(e) => setPollExpiresIn(Number(e.target.value))}
+                                        className="px-2 py-1 bg-slate-900 border border-slate-700 rounded text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                                    >
+                                        {POLL_DURATION_OPTIONS.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={pollMultiple}
+                                        onChange={(e) => setPollMultiple(e.target.checked)}
+                                        className="w-4 h-4 rounded bg-slate-900 border-slate-700"
+                                    />
+                                    複数選択可
+                                </label>
+                            </div>
+                        </div>
                     )}
 
                     {/* Media Preview */}
