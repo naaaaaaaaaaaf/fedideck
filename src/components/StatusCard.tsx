@@ -1,4 +1,5 @@
 import type { mastodon } from 'masto';
+import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert } from 'react-icons/lu';
 
 interface StatusCardProps {
     status: mastodon.v1.Status;
@@ -43,7 +44,7 @@ export function StatusCard({ status, isReblog = false }: StatusCardProps) {
             {/* Reblog indicator */}
             {reblogger && (
                 <div className="flex items-center gap-2 text-sm text-slate-400 mb-2 ml-12">
-                    <span className="text-green-400">🔁</span>
+                    <LuRepeat2 className="text-green-400" />
                     <img
                         src={reblogger.avatar}
                         alt=""
@@ -101,7 +102,7 @@ export function StatusCard({ status, isReblog = false }: StatusCardProps) {
                     {displayStatus.spoilerText && (
                         <details className="mt-2">
                             <summary className="cursor-pointer text-amber-400 text-sm">
-                                ⚠️ {displayStatus.spoilerText}
+                                <LuTriangleAlert className="inline mr-1" /> {displayStatus.spoilerText}
                             </summary>
                             <div
                                 className="mt-2 text-slate-200 break-words status-content"
@@ -194,19 +195,19 @@ export function StatusCard({ status, isReblog = false }: StatusCardProps) {
                     {/* Action bar */}
                     <div className="flex items-center gap-6 mt-3 text-slate-400">
                         <button className="flex items-center gap-1.5 hover:text-blue-400 transition-colors">
-                            <span>💬</span>
+                            <LuMessageCircle />
                             <span className="text-sm">{displayStatus.repliesCount || ''}</span>
                         </button>
                         <button className={`flex items-center gap-1.5 hover:text-green-400 transition-colors ${displayStatus.reblogged ? 'text-green-400' : ''}`}>
-                            <span>🔁</span>
+                            <LuRepeat2 />
                             <span className="text-sm">{displayStatus.reblogsCount || ''}</span>
                         </button>
                         <button className={`flex items-center gap-1.5 hover:text-pink-400 transition-colors ${displayStatus.favourited ? 'text-pink-400' : ''}`}>
-                            <span>⭐</span>
+                            <LuStar />
                             <span className="text-sm">{displayStatus.favouritesCount || ''}</span>
                         </button>
                         <button className="hover:text-indigo-400 transition-colors">
-                            <span>🔗</span>
+                            <LuLink />
                         </button>
                     </div>
                 </div>

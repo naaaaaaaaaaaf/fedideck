@@ -1,3 +1,6 @@
+import type { ReactNode } from 'react';
+import { LuHouse, LuBell, LuGlobe, LuUsers, LuList, LuHash, LuFileText } from 'react-icons/lu';
+
 export type StreamType =
     | 'home'
     | 'notifications'
@@ -41,23 +44,23 @@ export function getStreamDisplayName(config: StreamConfig): string {
 }
 
 /**
- * Get icon class for a stream type
+ * Get icon component for a stream type
  */
-export function getStreamIcon(type: StreamType): string {
+export function getStreamIcon(type: StreamType): ReactNode {
     switch (type) {
         case 'home':
-            return '🏠';
+            return <LuHouse />;
         case 'notifications':
-            return '🔔';
+            return <LuBell />;
         case 'public':
-            return '🌐';
+            return <LuGlobe />;
         case 'public:local':
-            return '👥';
+            return <LuUsers />;
         case 'list':
-            return '📋';
+            return <LuList />;
         case 'hashtag':
-            return '#';
+            return <LuHash />;
         default:
-            return '📄';
+            return <LuFileText />;
     }
 }
