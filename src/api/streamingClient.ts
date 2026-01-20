@@ -6,6 +6,7 @@
  */
 
 import type { mastodon } from 'masto';
+import { convertKeysToCamelCase } from '../utils/snakeToCamel';
 
 export type StreamEventType = 'update' | 'delete' | 'notification' | 'status.update' | 'filters_changed';
 
@@ -125,7 +126,7 @@ export class StreamingClient {
             switch (event.event) {
                 case 'update': {
                     const status = typeof event.payload === 'string'
-                        ? JSON.parse(event.payload) as mastodon.v1.Status
+                        ? convertKeysToCamelCase(JSON.parse(event.payload)) as mastodon.v1.Status
                         : event.payload as mastodon.v1.Status;
                     this.options.onUpdate?.(status);
                     break;
@@ -137,14 +138,14 @@ export class StreamingClient {
                 }
                 case 'notification': {
                     const notification = typeof event.payload === 'string'
-                        ? JSON.parse(event.payload) as mastodon.v1.Notification
+                        ? convertKeysToCamelCase(JSON.parse(event.payload)) as mastodon.v1.Notification
                         : event.payload as mastodon.v1.Notification;
                     this.options.onNotification?.(notification);
                     break;
                 }
                 case 'status.update': {
                     const status = typeof event.payload === 'string'
-                        ? JSON.parse(event.payload) as mastodon.v1.Status
+                        ? convertKeysToCamelCase(JSON.parse(event.payload)) as mastodon.v1.Status
                         : event.payload as mastodon.v1.Status;
                     this.options.onStatusUpdate?.(status);
                     break;
