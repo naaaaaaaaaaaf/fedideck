@@ -124,6 +124,16 @@ export async function fetchHashtagTimeline(
 }
 
 /**
+ * Parameters for creating a poll
+ */
+export interface PollParams {
+    options: string[];
+    expiresIn: number;
+    multiple?: boolean;
+    hideTotals?: boolean;
+}
+
+/**
  * Parameters for creating a new status
  */
 export interface CreateStatusParams {
@@ -134,6 +144,7 @@ export interface CreateStatusParams {
     sensitive?: boolean;
     language?: string;
     mediaIds?: string[];
+    poll?: PollParams;
 }
 
 /**
@@ -143,15 +154,21 @@ export async function createStatus(
     client: MastoClient,
     params: CreateStatusParams
 ): Promise<mastodon.v1.Status> {
-    const status = await client.v1.statuses.create({
+    // Build params conditionally to satisfy masto.js types
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const createParams: any = {
         status: params.status,
-        visibility: params.visibility,
-        spoilerText: params.spoilerText,
-        inReplyToId: params.inReplyToId,
-        sensitive: params.sensitive,
-        language: params.language,
-        mediaIds: params.mediaIds,
-    });
+    };
+
+    if (params.visibility) createParams.visibility = params.visibility;
+    if (params.spoilerText) createParams.spoilerText = params.spoilerText;
+    if (params.inReplyToId) createParams.inReplyToId = params.inReplyToId;
+    if (params.sensitive !== undefined) createParams.sensitive = params.sensitive;
+    if (params.language) createParams.language = params.language;
+    if (params.mediaIds && params.mediaIds.length > 0) createParams.mediaIds = params.mediaIds;
+    if (params.poll) createParams.poll = params.poll;
+
+    const status = await client.v1.statuses.create(createParams);
     return status;
 }
 
