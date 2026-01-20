@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { LuX, LuTriangleAlert, LuGlobe, LuLockOpen, LuLock, LuMail, LuLoader } from 'react-icons/lu';
+import { useState, useRef } from 'react';
+import { LuX, LuTriangleAlert, LuGlobe, LuLockOpen, LuLock, LuMail, LuLoader, LuImage } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
-import { getClient, createStatus, type CreateStatusParams } from '../api/mastoClient';
+import { getClient, createStatus, uploadMedia, type CreateStatusParams } from '../api/mastoClient';
 
 interface ComposeModalProps {
     isOpen: boolean;
@@ -17,6 +17,14 @@ interface VisibilityOption {
     icon: React.ReactNode;
 }
 
+interface MediaFile {
+    file: File;
+    preview: string;
+    uploading: boolean;
+    uploadedId?: string;
+    error?: string;
+}
+
 const VISIBILITY_OPTIONS: VisibilityOption[] = [
     { value: 'public', label: '公開', description: '全員に表示', icon: <LuGlobe /> },
     { value: 'unlisted', label: '未収載', description: '公開タイムラインに表示しない', icon: <LuLockOpen /> },
@@ -25,6 +33,8 @@ const VISIBILITY_OPTIONS: VisibilityOption[] = [
 ];
 
 const MAX_CHARS = 500;
+const MAX_MEDIA = 4;
+const ACCEPTED_MEDIA_TYPES = 'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm';
 
 export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
     const [content, setContent] = useState('');
@@ -33,12 +43,90 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
     const [cwText, setCwText] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const activeAccount = useAccountsStore(state => state.getActiveAccount());
 
     const remainingChars = MAX_CHARS - content.length;
     const isOverLimit = remainingChars < 0;
-    const canSubmit = content.trim().length > 0 && !isOverLimit && !isSubmitting && activeAccount;
+    const hasMedia = mediaFiles.length > 0;
+    const allMediaUploaded = mediaFiles.every(m => m.uploadedId && !m.uploading);
+    const isUploading = mediaFiles.some(m => m.uploading);
+    const canSubmit = (content.trim().length > 0 || hasMedia) && !isOverLimit && !isSubmitting && !isUploading && activeAccount && (!hasMedia || allMediaUploaded);
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || !activeAccount) return;
+
+        const remainingSlots = MAX_MEDIA - mediaFiles.length;
+        const filesToAdd = Array.from(files).slice(0, remainingSlots);
+
+        if (filesToAdd.length === 0) return;
+
+        // Check for video - video can only be alone
+        const hasVideo = mediaFiles.some(m => m.file.type.startsWith('video/'));
+        const newHasVideo = filesToAdd.some(f => f.type.startsWith('video/'));
+
+        if (hasVideo || (newHasVideo && mediaFiles.length > 0)) {
+            setError('動画は他のメディアと同時に添付できません');
+            return;
+        }
+
+        if (newHasVideo && filesToAdd.length > 1) {
+            setError('動画は1つのみ添付できます');
+            return;
+        }
+
+        const client = getClient(activeAccount);
+
+        // Create preview and add to state
+        const newMediaFiles: MediaFile[] = filesToAdd.map(file => ({
+            file,
+            preview: URL.createObjectURL(file),
+            uploading: true,
+        }));
+
+        setMediaFiles(prev => [...prev, ...newMediaFiles]);
+        setError(null);
+
+        // Upload each file
+        for (let i = 0; i < filesToAdd.length; i++) {
+            const file = filesToAdd[i];
+            const mediaIndex = mediaFiles.length + i;
+
+            try {
+                const media = await uploadMedia(client, file);
+                setMediaFiles(prev => prev.map((m, idx) =>
+                    idx === mediaIndex
+                        ? { ...m, uploading: false, uploadedId: media.id }
+                        : m
+                ));
+            } catch (err) {
+                console.error('Failed to upload media:', err);
+                setMediaFiles(prev => prev.map((m, idx) =>
+                    idx === mediaIndex
+                        ? { ...m, uploading: false, error: err instanceof Error ? err.message : 'アップロードに失敗しました' }
+                        : m
+                ));
+            }
+        }
+
+        // Reset file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const removeMedia = (index: number) => {
+        setMediaFiles(prev => {
+            const media = prev[index];
+            if (media.preview) {
+                URL.revokeObjectURL(media.preview);
+            }
+            return prev.filter((_, i) => i !== index);
+        });
+    };
 
     const handleSubmit = async () => {
         if (!canSubmit || !activeAccount) return;
@@ -57,13 +145,23 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
                 params.spoilerText = cwText.trim();
             }
 
+            if (hasMedia && allMediaUploaded) {
+                params.mediaIds = mediaFiles.map(m => m.uploadedId!);
+            }
+
             await createStatus(client, params);
+
+            // Clean up previews
+            mediaFiles.forEach(m => {
+                if (m.preview) URL.revokeObjectURL(m.preview);
+            });
 
             // Reset form and close modal on success
             setContent('');
             setCwText('');
             setShowCW(false);
             setVisibility('public');
+            setMediaFiles([]);
             onClose();
         } catch (err) {
             console.error('Failed to post status:', err);
@@ -74,7 +172,13 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
     };
 
     const handleClose = () => {
-        if (isSubmitting) return;
+        if (isSubmitting || isUploading) return;
+
+        // Clean up previews
+        mediaFiles.forEach(m => {
+            if (m.preview) URL.revokeObjectURL(m.preview);
+        });
+        setMediaFiles([]);
         onClose();
     };
 
@@ -89,13 +193,13 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-lg mx-4 bg-slate-900 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden">
+            <div className="relative w-full max-w-lg mx-4 bg-slate-900 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden max-h-[90vh] flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
                     <h2 className="text-lg font-semibold text-slate-100">新しい投稿</h2>
                     <button
                         onClick={handleClose}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isUploading}
                         className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-slate-200 disabled:opacity-50"
                     >
                         <LuX className="w-5 h-5" />
@@ -103,7 +207,7 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
                 </div>
 
                 {/* Content */}
-                <div className="p-4">
+                <div className="p-4 overflow-y-auto flex-1">
                     {/* Account indicator */}
                     {activeAccount && (
                         <div className="flex items-center gap-2 mb-3">
@@ -119,8 +223,8 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
                         </div>
                     )}
 
-                    {/* CW Toggle and Input */}
-                    <div className="mb-3">
+                    {/* CW and Media buttons */}
+                    <div className="mb-3 flex gap-2">
                         <button
                             onClick={() => setShowCW(!showCW)}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${showCW
@@ -132,16 +236,84 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
                             CW
                         </button>
 
-                        {showCW && (
-                            <input
-                                type="text"
-                                value={cwText}
-                                onChange={(e) => setCwText(e.target.value)}
-                                placeholder="警告文を入力..."
-                                className="w-full mt-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-                            />
-                        )}
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={mediaFiles.length >= MAX_MEDIA || isUploading}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${hasMedia
+                                ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                                : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                            <LuImage className="w-4 h-4" />
+                            画像/動画
+                            {hasMedia && <span className="text-xs">({mediaFiles.length}/{MAX_MEDIA})</span>}
+                        </button>
+
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept={ACCEPTED_MEDIA_TYPES}
+                            multiple
+                            onChange={handleFileSelect}
+                            className="hidden"
+                        />
                     </div>
+
+                    {showCW && (
+                        <input
+                            type="text"
+                            value={cwText}
+                            onChange={(e) => setCwText(e.target.value)}
+                            placeholder="警告文を入力..."
+                            className="w-full mb-3 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                        />
+                    )}
+
+                    {/* Media Preview */}
+                    {hasMedia && (
+                        <div className="mb-3 grid grid-cols-2 gap-2">
+                            {mediaFiles.map((media, index) => (
+                                <div key={index} className="relative aspect-video bg-slate-800 rounded-lg overflow-hidden">
+                                    {media.file.type.startsWith('video/') ? (
+                                        <video
+                                            src={media.preview}
+                                            className="w-full h-full object-cover"
+                                            muted
+                                        />
+                                    ) : (
+                                        <img
+                                            src={media.preview}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                        />
+                                    )}
+
+                                    {/* Upload overlay */}
+                                    {media.uploading && (
+                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                            <LuLoader className="w-6 h-6 text-white animate-spin" />
+                                        </div>
+                                    )}
+
+                                    {/* Error overlay */}
+                                    {media.error && (
+                                        <div className="absolute inset-0 bg-red-900/50 flex items-center justify-center p-2">
+                                            <span className="text-xs text-red-200 text-center">{media.error}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Remove button */}
+                                    <button
+                                        onClick={() => removeMedia(index)}
+                                        disabled={media.uploading}
+                                        className="absolute top-1 right-1 w-6 h-6 bg-black/70 hover:bg-black rounded-full flex items-center justify-center text-white transition-colors disabled:opacity-50"
+                                    >
+                                        <LuX className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Text area */}
                     <textarea
@@ -192,10 +364,10 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-slate-700/50 bg-slate-800/50">
+                <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-slate-700/50 bg-slate-800/50 shrink-0">
                     <button
                         onClick={handleClose}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isUploading}
                         className="px-4 py-2 text-slate-300 hover:text-slate-100 transition-colors disabled:opacity-50"
                     >
                         キャンセル
@@ -205,8 +377,8 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
                         disabled={!canSubmit}
                         className="flex items-center gap-2 px-6 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors"
                     >
-                        {isSubmitting && <LuLoader className="w-4 h-4 animate-spin" />}
-                        {isSubmitting ? '投稿中...' : '投稿'}
+                        {(isSubmitting || isUploading) && <LuLoader className="w-4 h-4 animate-spin" />}
+                        {isSubmitting ? '投稿中...' : isUploading ? 'アップロード中...' : '投稿'}
                     </button>
                 </div>
             </div>

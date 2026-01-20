@@ -133,6 +133,7 @@ export interface CreateStatusParams {
     inReplyToId?: string;
     sensitive?: boolean;
     language?: string;
+    mediaIds?: string[];
 }
 
 /**
@@ -149,6 +150,22 @@ export async function createStatus(
         inReplyToId: params.inReplyToId,
         sensitive: params.sensitive,
         language: params.language,
+        mediaIds: params.mediaIds,
     });
     return status;
+}
+
+/**
+ * Upload a media attachment
+ */
+export async function uploadMedia(
+    client: MastoClient,
+    file: File,
+    description?: string
+): Promise<mastodon.v1.MediaAttachment> {
+    const media = await client.v2.media.create({
+        file,
+        description,
+    });
+    return media;
 }
