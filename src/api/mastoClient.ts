@@ -133,6 +133,7 @@ export interface CreateStatusParams {
     inReplyToId?: string;
     sensitive?: boolean;
     language?: string;
+    mediaIds?: string[];
 }
 
 /**
@@ -149,6 +150,40 @@ export async function createStatus(
         inReplyToId: params.inReplyToId,
         sensitive: params.sensitive,
         language: params.language,
+        mediaIds: params.mediaIds,
     });
     return status;
+}
+
+/**
+ * Upload a media attachment
+ */
+export async function uploadMedia(
+    client: MastoClient,
+    file: File,
+    description?: string
+): Promise<mastodon.v1.MediaAttachment> {
+    const params: { file: File; description?: string } = { file };
+
+    // Only include description if it has a value
+    if (description && description.trim().length > 0) {
+        params.description = description.trim();
+    }
+
+    const media = await client.v2.media.create(params);
+    return media;
+}
+
+/**
+ * Update media attachment description (alt text)
+ */
+export async function updateMediaDescription(
+    client: MastoClient,
+    mediaId: string,
+    description: string
+): Promise<mastodon.v1.MediaAttachment> {
+    const media = await client.v1.media.$select(mediaId).update({
+        description,
+    });
+    return media;
 }
