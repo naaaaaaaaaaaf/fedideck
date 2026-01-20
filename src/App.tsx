@@ -6,6 +6,7 @@ import { LoginModal } from './components/LoginModal';
 import { AddColumnModal } from './components/AddColumnModal';
 import { useAccountsStore } from './store/accounts';
 import { useColumnsStore } from './store/columns';
+import { useStreamsStore, getStreamKey } from './store/streams';
 import { initStreamManager } from './streaming/streamManager';
 
 function App() {
@@ -16,33 +17,50 @@ function App() {
   const accounts = useAccountsStore(state => state.accounts);
   const columns = useColumnsStore(state => state.columns);
   const addColumn = useColumnsStore(state => state.addColumn);
+  const { prependStatus, removeStatus, updateStatus, prependNotification } = useStreamsStore();
 
   // Load accounts from storage on mount
   useEffect(() => {
     loadFromStorage();
   }, []);
 
-  // Initialize stream manager with event handlers (for future use)
+  // Initialize stream manager with real callbacks
   useEffect(() => {
     initStreamManager({
-      onUpdate: () => { /* Streaming not yet implemented */ },
-      onDelete: () => { /* Streaming not yet implemented */ },
-      onNotification: () => { /* Streaming not yet implemented */ },
-      onStatusUpdate: () => { /* Streaming not yet implemented */ },
-      onReconnect: (accountId) => {
-        console.log('Reconnecting stream for:', accountId);
+      onUpdate: (accountId, status) => {
+        // Update home timeline for this account
+        const homeKey = getStreamKey(accountId, 'home');
+        prependStatus(homeKey, status);
+      },
+      onDelete: (accountId, statusId) => {
+        // Remove from all streams for this account
+        const homeKey = getStreamKey(accountId, 'home');
+        removeStatus(homeKey, statusId);
+      },
+      onNotification: (accountId, notification) => {
+        const notifKey = getStreamKey(accountId, 'notifications');
+        prependNotification(notifKey, notification);
+      },
+      onStatusUpdate: (accountId, status) => {
+        const homeKey = getStreamKey(accountId, 'home');
+        updateStatus(homeKey, status);
+      },
+      onConnect: (accountId) => {
+        console.log(`✅ Streaming connected for ${accountId}`);
+      },
+      onDisconnect: (accountId) => {
+        console.log(`❌ Streaming disconnected for ${accountId}`);
       },
       onError: (accountId, error) => {
-        console.error('Stream error for', accountId, ':', error);
+        console.error(`Streaming error for ${accountId}:`, error);
       },
     });
-  }, []);
+  }, [prependStatus, removeStatus, updateStatus, prependNotification]);
 
   // Add default columns for new accounts
   useEffect(() => {
     if (accounts.length > 0 && columns.length === 0) {
       const firstAccount = accounts[0];
-      // Add home and notifications columns by default
       addColumn({ accountId: firstAccount.id, stream: { type: 'home' } });
       addColumn({ accountId: firstAccount.id, stream: { type: 'notifications' } });
     }
@@ -57,15 +75,12 @@ function App() {
 
   return (
     <div className="h-screen flex overflow-hidden">
-      {/* Sidebar */}
       <Sidebar onAddAccount={() => setIsLoginModalOpen(true)} />
 
-      {/* Main content */}
       <main className="flex-1 flex overflow-hidden">
         <ColumnContainer onAddColumn={() => setIsAddColumnModalOpen(true)} />
       </main>
 
-      {/* Modals */}
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
