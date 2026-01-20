@@ -169,3 +169,17 @@ export async function uploadMedia(
     });
     return media;
 }
+
+/**
+ * Update media attachment description (alt text)
+ */
+export async function updateMediaDescription(
+    client: MastoClient,
+    mediaId: string,
+    description: string
+): Promise<mastodon.v1.MediaAttachment> {
+    const media = await client.v1.media.$select(mediaId).update({
+        description,
+    });
+    return media;
+}

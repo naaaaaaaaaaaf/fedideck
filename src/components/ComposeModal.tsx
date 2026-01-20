@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { LuX, LuTriangleAlert, LuGlobe, LuLockOpen, LuLock, LuMail, LuLoader, LuImage } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
-import { getClient, createStatus, uploadMedia, type CreateStatusParams } from '../api/mastoClient';
+import { getClient, createStatus, uploadMedia, updateMediaDescription, type CreateStatusParams } from '../api/mastoClient';
 
 interface ComposeModalProps {
     isOpen: boolean;
@@ -23,6 +23,7 @@ interface MediaFile {
     uploading: boolean;
     uploadedId?: string;
     error?: string;
+    altText: string;
 }
 
 const VISIBILITY_OPTIONS: VisibilityOption[] = [
@@ -85,6 +86,7 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
             file,
             preview: URL.createObjectURL(file),
             uploading: true,
+            altText: '',
         }));
 
         setMediaFiles(prev => [...prev, ...newMediaFiles]);
@@ -128,6 +130,12 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
         });
     };
 
+    const updateAltText = (index: number, altText: string) => {
+        setMediaFiles(prev => prev.map((m, i) =>
+            i === index ? { ...m, altText } : m
+        ));
+    };
+
     const handleSubmit = async () => {
         if (!canSubmit || !activeAccount) return;
 
@@ -146,6 +154,17 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
             }
 
             if (hasMedia && allMediaUploaded) {
+                // Update alt text for media that has it
+                for (const media of mediaFiles) {
+                    if (media.uploadedId && media.altText.trim()) {
+                        try {
+                            await updateMediaDescription(client, media.uploadedId, media.altText.trim());
+                        } catch (err) {
+                            console.warn('Failed to update media description:', err);
+                            // Continue even if alt text update fails
+                        }
+                    }
+                }
                 params.mediaIds = mediaFiles.map(m => m.uploadedId!);
             }
 
@@ -271,45 +290,59 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
 
                     {/* Media Preview */}
                     {hasMedia && (
-                        <div className="mb-3 grid grid-cols-2 gap-2">
+                        <div className="mb-3 space-y-2">
                             {mediaFiles.map((media, index) => (
-                                <div key={index} className="relative aspect-video bg-slate-800 rounded-lg overflow-hidden">
-                                    {media.file.type.startsWith('video/') ? (
-                                        <video
-                                            src={media.preview}
-                                            className="w-full h-full object-cover"
-                                            muted
+                                <div key={index} className="bg-slate-800 rounded-lg overflow-hidden">
+                                    <div className="relative aspect-video">
+                                        {media.file.type.startsWith('video/') ? (
+                                            <video
+                                                src={media.preview}
+                                                className="w-full h-full object-cover"
+                                                muted
+                                            />
+                                        ) : (
+                                            <img
+                                                src={media.preview}
+                                                alt={media.altText || ''}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        )}
+
+                                        {/* Upload overlay */}
+                                        {media.uploading && (
+                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                                <LuLoader className="w-6 h-6 text-white animate-spin" />
+                                            </div>
+                                        )}
+
+                                        {/* Error overlay */}
+                                        {media.error && (
+                                            <div className="absolute inset-0 bg-red-900/50 flex items-center justify-center p-2">
+                                                <span className="text-xs text-red-200 text-center">{media.error}</span>
+                                            </div>
+                                        )}
+
+                                        {/* Remove button */}
+                                        <button
+                                            onClick={() => removeMedia(index)}
+                                            disabled={media.uploading}
+                                            className="absolute top-1 right-1 w-6 h-6 bg-black/70 hover:bg-black rounded-full flex items-center justify-center text-white transition-colors disabled:opacity-50"
+                                        >
+                                            <LuX className="w-4 h-4" />
+                                        </button>
+                                    </div>
+
+                                    {/* Alt text input */}
+                                    <div className="p-2 border-t border-slate-700">
+                                        <input
+                                            type="text"
+                                            value={media.altText}
+                                            onChange={(e) => updateAltText(index, e.target.value)}
+                                            placeholder="代替テキストを追加..."
+                                            disabled={media.uploading}
+                                            className="w-full px-2 py-1 text-sm bg-slate-900 border border-slate-700 rounded text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
                                         />
-                                    ) : (
-                                        <img
-                                            src={media.preview}
-                                            alt=""
-                                            className="w-full h-full object-cover"
-                                        />
-                                    )}
-
-                                    {/* Upload overlay */}
-                                    {media.uploading && (
-                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                            <LuLoader className="w-6 h-6 text-white animate-spin" />
-                                        </div>
-                                    )}
-
-                                    {/* Error overlay */}
-                                    {media.error && (
-                                        <div className="absolute inset-0 bg-red-900/50 flex items-center justify-center p-2">
-                                            <span className="text-xs text-red-200 text-center">{media.error}</span>
-                                        </div>
-                                    )}
-
-                                    {/* Remove button */}
-                                    <button
-                                        onClick={() => removeMedia(index)}
-                                        disabled={media.uploading}
-                                        className="absolute top-1 right-1 w-6 h-6 bg-black/70 hover:bg-black rounded-full flex items-center justify-center text-white transition-colors disabled:opacity-50"
-                                    >
-                                        <LuX className="w-4 h-4" />
-                                    </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
