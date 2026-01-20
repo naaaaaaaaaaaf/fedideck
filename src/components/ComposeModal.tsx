@@ -156,9 +156,10 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
             if (hasMedia && allMediaUploaded) {
                 // Update alt text for media that has it
                 for (const media of mediaFiles) {
-                    if (media.uploadedId && media.altText.trim()) {
+                    const trimmedAlt = media.altText?.trim() ?? '';
+                    if (media.uploadedId && trimmedAlt.length > 0) {
                         try {
-                            await updateMediaDescription(client, media.uploadedId, media.altText.trim());
+                            await updateMediaDescription(client, media.uploadedId, trimmedAlt);
                         } catch (err) {
                             console.warn('Failed to update media description:', err);
                             // Continue even if alt text update fails
