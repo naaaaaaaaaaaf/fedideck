@@ -1,10 +1,12 @@
+import { LuPencil } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
 
 interface SidebarProps {
     onAddAccount: () => void;
+    onCompose: () => void;
 }
 
-export function Sidebar({ onAddAccount }: SidebarProps) {
+export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
     const accounts = useAccountsStore(state => state.accounts);
     const activeAccountId = useAccountsStore(state => state.activeAccountId);
     const setActiveAccount = useAccountsStore(state => state.setActiveAccount);
@@ -13,9 +15,18 @@ export function Sidebar({ onAddAccount }: SidebarProps) {
     return (
         <aside className="w-16 bg-slate-900 border-r border-slate-700/50 flex flex-col items-center py-4 gap-2">
             {/* Logo */}
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl font-bold mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl font-bold mb-2">
                 🦣
             </div>
+
+            {/* Compose button */}
+            <button
+                onClick={onCompose}
+                className="w-10 h-10 rounded-xl bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center text-white mb-4 transition-colors shadow-lg hover:shadow-indigo-500/30"
+                title="新しい投稿"
+            >
+                <LuPencil className="w-5 h-5" />
+            </button>
 
             {/* Account avatars */}
             <div className="flex-1 flex flex-col items-center gap-2 overflow-y-auto">
@@ -24,8 +35,8 @@ export function Sidebar({ onAddAccount }: SidebarProps) {
                         <button
                             onClick={() => setActiveAccount(account.id)}
                             className={`w-10 h-10 rounded-xl overflow-hidden transition-all duration-200 ${activeAccountId === account.id
-                                    ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900'
-                                    : 'opacity-60 hover:opacity-100'
+                                ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900'
+                                : 'opacity-60 hover:opacity-100'
                                 }`}
                             title={`@${account.account.acct}@${new URL(account.instanceUrl).hostname}`}
                         >
