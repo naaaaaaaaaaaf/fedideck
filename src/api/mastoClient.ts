@@ -163,10 +163,14 @@ export async function uploadMedia(
     file: File,
     description?: string
 ): Promise<mastodon.v1.MediaAttachment> {
-    const media = await client.v2.media.create({
-        file,
-        description,
-    });
+    const params: { file: File; description?: string } = { file };
+
+    // Only include description if it has a value
+    if (description && description.trim().length > 0) {
+        params.description = description.trim();
+    }
+
+    const media = await client.v2.media.create(params);
     return media;
 }
 
