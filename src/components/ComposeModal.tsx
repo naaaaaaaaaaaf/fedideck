@@ -57,6 +57,7 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
+    const [isSensitive, setIsSensitive] = useState(false);
 
     // Poll state
     const [showPoll, setShowPoll] = useState(false);
@@ -224,6 +225,9 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
                     }
                 }
                 params.mediaIds = mediaFiles.map(m => m.uploadedId!);
+                if (isSensitive) {
+                    params.sensitive = true;
+                }
             }
 
             // Add poll params if poll is enabled
@@ -248,6 +252,7 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
             setShowCW(false);
             setVisibility('public');
             setMediaFiles([]);
+            setIsSensitive(false);
             setShowPoll(false);
             setPollOptions(['', '']);
             setPollExpiresIn(86400);
@@ -491,6 +496,19 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
                                 </div>
                             ))}
                         </div>
+                    )}
+
+                    {/* NSFW toggle - only shown when media is attached */}
+                    {hasMedia && (
+                        <label className="flex items-center gap-2 mb-3 text-sm text-slate-400 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={isSensitive}
+                                onChange={(e) => setIsSensitive(e.target.checked)}
+                                className="w-4 h-4 rounded bg-slate-900 border-slate-700"
+                            />
+                            閲覧注意 (NSFW)
+                        </label>
                     )}
 
                     {/* Text area */}
