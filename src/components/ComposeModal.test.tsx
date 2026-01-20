@@ -314,12 +314,6 @@ describe('ComposeModal', () => {
         // Should have 3 options now
         expect(screen.getByPlaceholderText('選択肢 3')).toBeInTheDocument();
 
-        // Remove buttons should be visible (3 options > 2 minimum)
-        const removeButtons = screen.getAllByRole('button').filter(btn =>
-            btn.querySelector('svg')?.classList.contains('lucide-minus') ||
-            btn.textContent === ''
-        );
-
         // Click the first visible remove button
         const removeButton = screen.getByPlaceholderText('選択肢 3').parentElement?.querySelector('button');
         if (removeButton) {
@@ -384,5 +378,12 @@ describe('ComposeModal', () => {
 
         // Check for multiple choice checkbox
         expect(screen.getByText('複数選択可')).toBeInTheDocument();
+    });
+
+    // NSFW tests - Note: NSFW toggle only shows when media is attached
+    // Since mocking file uploads is complex, we test the state logic indirectly
+    it('does not show NSFW toggle when no media is attached', () => {
+        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        expect(screen.queryByText('閲覧注意 (NSFW)')).not.toBeInTheDocument();
     });
 });
