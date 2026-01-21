@@ -80,12 +80,13 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const accounts = useAccountsStore(state => state.accounts);
-    const getActiveAccount = useAccountsStore(state => state.getActiveAccount);
+    const activeAccountId = useAccountsStore(state => state.activeAccountId);
 
     // Use specified accountId for replies, or fall back to active account
+    // We subscribe to both accounts and activeAccountId to ensure reactivity
     const composingAccount = accountId
-        ? accounts.find(a => a.id === accountId) ?? getActiveAccount()
-        : getActiveAccount();
+        ? accounts.find(a => a.id === accountId) ?? accounts.find(a => a.id === activeAccountId)
+        : accounts.find(a => a.id === activeAccountId);
 
     // Prefill content with mention when replying
     useEffect(() => {
