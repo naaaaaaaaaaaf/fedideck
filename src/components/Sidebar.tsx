@@ -8,8 +8,6 @@ interface SidebarProps {
 
 export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
     const accounts = useAccountsStore(state => state.accounts);
-    const activeAccountId = useAccountsStore(state => state.activeAccountId);
-    const setActiveAccount = useAccountsStore(state => state.setActiveAccount);
     const removeAccount = useAccountsStore(state => state.removeAccount);
 
     return (
@@ -32,12 +30,8 @@ export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
             <div className="flex-1 flex flex-col items-center gap-2 overflow-y-auto">
                 {accounts.map((account) => (
                     <div key={account.id} className="relative group">
-                        <button
-                            onClick={() => setActiveAccount(account.id)}
-                            className={`w-10 h-10 rounded-xl overflow-hidden transition-all duration-200 ${activeAccountId === account.id
-                                ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900'
-                                : 'opacity-60 hover:opacity-100'
-                                }`}
+                        <div
+                            className="w-10 h-10 rounded-xl overflow-hidden"
                             title={`@${account.account.acct}@${new URL(account.instanceUrl).hostname}`}
                         >
                             <img
@@ -45,7 +39,7 @@ export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
                                 alt={account.account.displayName || account.account.username}
                                 className="w-full h-full object-cover"
                             />
-                        </button>
+                        </div>
 
                         {/* Remove button (on hover) */}
                         <button
