@@ -241,7 +241,6 @@ export function Column({ accountId, stream, onRemove, onReply }: ColumnProps) {
                     <StatusCard
                         key={status.id}
                         status={status}
-                        accountSession={account}
                         onReply={onReply}
                     />
                 ))}

@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import type { mastodon } from 'masto';
 import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert } from 'react-icons/lu';
-import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
+import { type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
+import { useAccountsStore } from '../store/accounts';
 
 interface StatusCardProps {
     status: mastodon.v1.Status;
     isReblog?: boolean;
-    accountSession?: AccountSession;
     onStatusUpdate?: (updatedStatus: mastodon.v1.Status) => void;
     onReply?: (status: mastodon.v1.Status) => void;
 }
@@ -29,7 +29,12 @@ function formatDate(dateStr: string): string {
     return date.toLocaleDateString('ja-JP');
 }
 
-export function StatusCard({ status, isReblog = false, accountSession, onStatusUpdate, onReply }: StatusCardProps) {
+export function StatusCard({ status, isReblog = false, onStatusUpdate, onReply }: StatusCardProps) {
+    // Get active account from store for all actions
+    const accounts = useAccountsStore(state => state.accounts);
+    const activeAccountId = useAccountsStore(state => state.activeAccountId);
+    const activeAccount = accounts.find(a => a.id === activeAccountId);
+
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
     const reblogger = status.reblog ? status.account : null;
@@ -98,7 +103,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
     }
 
     const handleFavourite = async () => {
-        if (!accountSession || isLoading.favourite) return;
+        if (!activeAccount || isLoading.favourite) return;
 
         setIsLoading(prev => ({ ...prev, favourite: true }));
 
@@ -108,7 +113,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
         setLocalFavouritesCount(prev => wasLocalFavourited ? prev - 1 : prev + 1);
 
         try {
-            const client: MastoClient = getClient(accountSession);
+            const client: MastoClient = getClient(activeAccount);
             const updatedStatus = wasLocalFavourited
                 ? await unfavouriteStatus(client, displayStatus.id)
                 : await favouriteStatus(client, displayStatus.id);
@@ -129,7 +134,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
     };
 
     const handleReblog = async () => {
-        if (!accountSession || isLoading.reblog) return;
+        if (!activeAccount || isLoading.reblog) return;
 
         // Don't allow reblogging private or direct messages
         if (displayStatus.visibility === 'private' || displayStatus.visibility === 'direct') {
@@ -144,7 +149,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
         setLocalReblogsCount(prev => wasLocalReblogged ? prev - 1 : prev + 1);
 
         try {
-            const client: MastoClient = getClient(accountSession);
+            const client: MastoClient = getClient(activeAccount);
             const updatedStatus = wasLocalReblogged
                 ? await unreblogStatus(client, displayStatus.id)
                 : await reblogStatus(client, displayStatus.id);
@@ -333,7 +338,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                         </button>
                         <button
                             onClick={handleReblog}
-                            disabled={!accountSession || isLoading.reblog || !canReblog}
+                            disabled={!activeAccount || isLoading.reblog || !canReblog}
                             className={`flex items-center gap-1.5 transition-colors ${!canReblog
                                 ? 'opacity-50 cursor-not-allowed'
                                 : localReblogged
@@ -347,7 +352,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                         </button>
                         <button
                             onClick={handleFavourite}
-                            disabled={!accountSession || isLoading.favourite}
+                            disabled={!activeAccount || isLoading.favourite}
                             className={`flex items-center gap-1.5 transition-colors ${localFavourited
                                 ? 'text-amber-400 hover:text-amber-300'
                                 : 'hover:text-amber-400'
