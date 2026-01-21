@@ -40,10 +40,6 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
     const [localReblogsCount, setLocalReblogsCount] = useState(displayStatus.reblogsCount ?? 0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
-    // Ref to track if we're mutating - used to defer syncs until mutation completes
-    const isLoadingRef = useRef(isLoading);
-    isLoadingRef.current = isLoading;
-
     // Track pending props updates that arrived during loading
     const pendingPropsRef = useRef<{
         favourited: boolean;
@@ -63,7 +59,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
         };
 
         // If currently loading, store the update to apply after completion
-        if (isLoadingRef.current.favourite || isLoadingRef.current.reblog) {
+        if (isLoading.favourite || isLoading.reblog) {
             pendingPropsRef.current = newProps;
         } else {
             // Apply immediately when not loading
@@ -71,8 +67,24 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
             setLocalFavouritesCount(newProps.favouritesCount);
             setLocalReblogged(newProps.reblogged);
             setLocalReblogsCount(newProps.reblogsCount);
+            pendingPropsRef.current = null;
         }
+        // Note: isLoading is intentionally excluded from deps to avoid re-running on loading changes
+        // The second useEffect handles applying pending props when loading completes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [displayStatus.id, displayStatus.favourited, displayStatus.favouritesCount, displayStatus.reblogged, displayStatus.reblogsCount]);
+
+    // Apply pending props when loading completes
+    useEffect(() => {
+        if (!isLoading.favourite && !isLoading.reblog && pendingPropsRef.current) {
+            const pending = pendingPropsRef.current;
+            setLocalFavourited(pending.favourited);
+            setLocalFavouritesCount(pending.favouritesCount);
+            setLocalReblogged(pending.reblogged);
+            setLocalReblogsCount(pending.reblogsCount);
+            pendingPropsRef.current = null;
+        }
+    }, [isLoading.favourite, isLoading.reblog]);
 
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
@@ -111,15 +123,6 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
             console.error('Failed to toggle favourite:', error);
         } finally {
             setIsLoading(prev => ({ ...prev, favourite: false }));
-            // Apply any pending props updates that arrived during loading
-            if (pendingPropsRef.current && !isLoadingRef.current.reblog) {
-                const pending = pendingPropsRef.current;
-                setLocalFavourited(pending.favourited);
-                setLocalFavouritesCount(pending.favouritesCount);
-                setLocalReblogged(pending.reblogged);
-                setLocalReblogsCount(pending.reblogsCount);
-                pendingPropsRef.current = null;
-            }
         }
     };
 
@@ -157,15 +160,6 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
             console.error('Failed to toggle reblog:', error);
         } finally {
             setIsLoading(prev => ({ ...prev, reblog: false }));
-            // Apply any pending props updates that arrived during loading
-            if (pendingPropsRef.current && !isLoadingRef.current.favourite) {
-                const pending = pendingPropsRef.current;
-                setLocalFavourited(pending.favourited);
-                setLocalFavouritesCount(pending.favouritesCount);
-                setLocalReblogged(pending.reblogged);
-                setLocalReblogsCount(pending.reblogsCount);
-                pendingPropsRef.current = null;
-            }
         }
     };
 
