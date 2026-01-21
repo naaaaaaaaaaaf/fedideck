@@ -18,6 +18,7 @@ interface ComposeModalProps {
     isOpen: boolean;
     onClose: () => void;
     replyToStatus?: ReplyToStatus;
+    accountId?: string;  // If provided (reply), lock to this account; otherwise allow switching
 }
 
 type Visibility = 'public' | 'unlisted' | 'private' | 'direct';
@@ -61,7 +62,7 @@ const POLL_DURATION_OPTIONS = [
     { value: 604800, label: '7日' },
 ];
 
-export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalProps) {
+export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: ComposeModalProps) {
     const [content, setContent] = useState('');
     const [visibility, setVisibility] = useState<Visibility>('public');
     const [showCW, setShowCW] = useState(false);
@@ -81,20 +82,26 @@ export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalPro
     const accounts = useAccountsStore(state => state.accounts);
     const activeAccountId = useAccountsStore(state => state.activeAccountId);
 
-    // State for selected account (can be changed by user)
-    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(activeAccountId);
+    // Whether account switching is allowed (disabled for replies)
+    const isAccountLocked = !!accountId;
+
+    // State for selected account (can be changed by user for new posts, but locked for replies)
+    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(accountId ?? activeAccountId);
     const [showAccountSelector, setShowAccountSelector] = useState(false);
 
-    // Get the account to compose from
-    const composingAccount = accounts.find(a => a.id === selectedAccountId) ?? accounts.find(a => a.id === activeAccountId);
+    // Get the account to compose from (for replies, use locked accountId; for new posts, use selected)
+    const composingAccount = isAccountLocked
+        ? accounts.find(a => a.id === accountId)
+        : accounts.find(a => a.id === selectedAccountId) ?? accounts.find(a => a.id === activeAccountId);
 
-    // Reset selected account to active account when modal opens
+    // Reset selected account when modal opens
     useEffect(() => {
         if (isOpen) {
-            setSelectedAccountId(activeAccountId);
+            // For replies, always use the provided accountId; for new posts, use active account
+            setSelectedAccountId(accountId ?? activeAccountId);
             setShowAccountSelector(false);
         }
-    }, [isOpen, activeAccountId]);
+    }, [isOpen, activeAccountId, accountId]);
 
     // Prefill content with mention when replying
     useEffect(() => {
@@ -349,8 +356,10 @@ export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalPro
                     {composingAccount && (
                         <div className="relative mb-3">
                             <button
-                                onClick={() => setShowAccountSelector(!showAccountSelector)}
-                                className="flex items-center gap-2 p-2 -m-2 rounded-lg hover:bg-slate-700/50 transition-colors w-full text-left"
+                                onClick={() => !isAccountLocked && setShowAccountSelector(!showAccountSelector)}
+                                disabled={isAccountLocked}
+                                className={`flex items-center gap-2 p-2 -m-2 rounded-lg transition-colors w-full text-left ${isAccountLocked ? 'cursor-default' : 'hover:bg-slate-700/50'
+                                    }`}
                             >
                                 <img
                                     src={composingAccount.account.avatar}
@@ -361,13 +370,13 @@ export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalPro
                                     <div className="text-slate-200 truncate">{composingAccount.account.displayName || composingAccount.account.username}</div>
                                     <div className="text-slate-400 truncate">@{composingAccount.account.acct}</div>
                                 </div>
-                                {accounts.length > 1 && (
+                                {!isAccountLocked && accounts.length > 1 && (
                                     <LuChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showAccountSelector ? 'rotate-180' : ''}`} />
                                 )}
                             </button>
 
                             {/* Account dropdown */}
-                            {showAccountSelector && accounts.length > 1 && (
+                            {!isAccountLocked && showAccountSelector && accounts.length > 1 && (
                                 <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-10 overflow-hidden">
                                     {accounts.map(acc => (
                                         <button
