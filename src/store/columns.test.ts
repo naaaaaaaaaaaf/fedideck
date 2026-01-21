@@ -3,9 +3,9 @@ import { useColumnsStore } from './columns';
 
 describe('useColumnsStore', () => {
     beforeEach(() => {
+        // Clear localStorage and reset store columns
         localStorage.clear();
-        useColumnsStore.persist.clearStorage();
-        useColumnsStore.setState({ columns: [] }, true);
+        useColumnsStore.setState({ columns: [] });
     });
 
     it('adds and removes columns', () => {

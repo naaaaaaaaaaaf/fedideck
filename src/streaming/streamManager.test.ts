@@ -7,29 +7,32 @@ import {
     unsubscribeFromStream,
 } from './streamManager';
 
-class MockStreamingClient {
-    static instances: MockStreamingClient[] = [];
-    connect = vi.fn(() => {
-        this.connected = true;
-    });
-    disconnect = vi.fn(() => {
-        this.connected = false;
-    });
-    subscribeUser = vi.fn();
-    subscribePublic = vi.fn();
-    subscribeList = vi.fn();
-    subscribeHashtag = vi.fn();
-    unsubscribe = vi.fn();
-    connected = false;
-    options: unknown;
+const { MockStreamingClient } = vi.hoisted(() => {
+    class MockStreamingClient {
+        static instances: MockStreamingClient[] = [];
+        connect = vi.fn(() => {
+            this.connected = true;
+        });
+        disconnect = vi.fn(() => {
+            this.connected = false;
+        });
+        subscribeUser = vi.fn();
+        subscribePublic = vi.fn();
+        subscribeList = vi.fn();
+        subscribeHashtag = vi.fn();
+        unsubscribe = vi.fn();
+        connected = false;
+        options: unknown;
 
-    constructor(options: unknown) {
-        this.options = options;
-        MockStreamingClient.instances.push(this);
+        constructor(options: unknown) {
+            this.options = options;
+            MockStreamingClient.instances.push(this);
+        }
+
+        isConnected = vi.fn(() => this.connected);
     }
-
-    isConnected = vi.fn(() => this.connected);
-}
+    return { MockStreamingClient };
+});
 
 vi.mock('../api/streamingClient', () => ({
     StreamingClient: MockStreamingClient,
