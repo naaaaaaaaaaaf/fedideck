@@ -112,9 +112,10 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                 ? await unfavouriteStatus(client, displayStatus.id)
                 : await favouriteStatus(client, displayStatus.id);
 
-            // Update with server response
+            // Update with server response - this is authoritative, clear any pending stale updates
             setLocalFavourited(updatedStatus.favourited ?? false);
             setLocalFavouritesCount(updatedStatus.favouritesCount ?? 0);
+            pendingPropsRef.current = null;
             onStatusUpdate?.(updatedStatus);
         } catch (error) {
             // Revert on error
@@ -152,6 +153,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
             const actualStatus = updatedStatus.reblog ?? updatedStatus;
             setLocalReblogged(actualStatus.reblogged ?? false);
             setLocalReblogsCount(actualStatus.reblogsCount ?? 0);
+            pendingPropsRef.current = null;
             onStatusUpdate?.(actualStatus);
         } catch (error) {
             // Revert on error
