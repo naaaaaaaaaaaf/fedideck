@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { mastodon } from 'masto';
 import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert } from 'react-icons/lu';
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
@@ -39,6 +39,18 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
     const [localReblogged, setLocalReblogged] = useState(displayStatus.reblogged ?? false);
     const [localReblogsCount, setLocalReblogsCount] = useState(displayStatus.reblogsCount ?? 0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
+
+    // Sync local state with props when displayStatus changes externally
+    // (e.g., from streaming updates or parent re-renders with new data)
+    useEffect(() => {
+        // Only sync when not actively mutating to avoid overwriting optimistic updates
+        if (!isLoading.favourite && !isLoading.reblog) {
+            setLocalFavourited(displayStatus.favourited ?? false);
+            setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
+            setLocalReblogged(displayStatus.reblogged ?? false);
+            setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
+        }
+    }, [displayStatus.id, displayStatus.favourited, displayStatus.favouritesCount, displayStatus.reblogged, displayStatus.reblogsCount]);
 
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
