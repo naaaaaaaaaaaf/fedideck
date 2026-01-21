@@ -30,6 +30,7 @@ interface StreamManagerCallbacks {
 const connections = new Map<string, AccountConnection>();
 let callbacks: StreamManagerCallbacks = {};
 let isPageVisible = true;
+let visibilityListenerBound = false;
 
 /**
  * Initialize stream manager with callbacks
@@ -38,8 +39,9 @@ export function initStreamManager(options: StreamManagerCallbacks): void {
     callbacks = options;
 
     // Setup visibility change listener
-    if (typeof document !== 'undefined') {
+    if (typeof document !== 'undefined' && !visibilityListenerBound) {
         document.addEventListener('visibilitychange', handleVisibilityChange);
+        visibilityListenerBound = true;
     }
 }
 
@@ -132,14 +134,16 @@ export function subscribeToStream(
             connection.client.subscribePublic(true);
             break;
         case 'list':
-            if (config.listId) {
-                connection.client.subscribeList(config.listId);
+            if (!config.listId) {
+                return;
             }
+            connection.client.subscribeList(config.listId);
             break;
         case 'hashtag':
-            if (config.hashtag) {
-                connection.client.subscribeHashtag(config.hashtag);
+            if (!config.hashtag) {
+                return;
             }
+            connection.client.subscribeHashtag(config.hashtag);
             break;
     }
 

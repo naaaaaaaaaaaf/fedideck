@@ -16,6 +16,11 @@ export interface StreamEvent<T = unknown> {
     payload: T;
 }
 
+interface Subscription {
+    stream: string;
+    params?: Record<string, string>;
+}
+
 export interface StreamingClientOptions {
     instanceUrl: string;
     accessToken: string;
@@ -35,7 +40,7 @@ export class StreamingClient {
     private maxReconnectAttempts = 10;
     private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
     private isIntentionallyClosed = false;
-    private subscribedStreams = new Set<string>();
+    private subscribedStreams = new Map<string, Subscription>();
 
     constructor(options: StreamingClientOptions) {
         this.options = options;
@@ -68,8 +73,8 @@ export class StreamingClient {
                 this.options.onConnect?.();
 
                 // Re-subscribe to all streams after reconnect
-                for (const stream of this.subscribedStreams) {
-                    this.sendSubscribe(stream);
+                for (const subscription of this.subscribedStreams.values()) {
+                    this.sendSubscribe(subscription.stream, subscription.params);
                 }
             };
 
@@ -190,7 +195,7 @@ export class StreamingClient {
      * Subscribe to user stream (home + notifications)
      */
     subscribeUser(): void {
-        this.subscribedStreams.add('user');
+        this.subscribedStreams.set('user', { stream: 'user' });
         this.sendSubscribe('user');
     }
 
@@ -199,7 +204,7 @@ export class StreamingClient {
      */
     subscribePublic(local = false): void {
         const stream = local ? 'public:local' : 'public';
-        this.subscribedStreams.add(stream);
+        this.subscribedStreams.set(stream, { stream });
         this.sendSubscribe(stream);
     }
 
@@ -207,8 +212,8 @@ export class StreamingClient {
      * Subscribe to list timeline
      */
     subscribeList(listId: string): void {
-        const stream = `list:${listId}`;
-        this.subscribedStreams.add(stream);
+        const streamKey = `list:${listId}`;
+        this.subscribedStreams.set(streamKey, { stream: 'list', params: { list: listId } });
         this.sendSubscribe('list', { list: listId });
     }
 
@@ -216,8 +221,8 @@ export class StreamingClient {
      * Subscribe to hashtag timeline
      */
     subscribeHashtag(tag: string): void {
-        const stream = `hashtag:${tag}`;
-        this.subscribedStreams.add(stream);
+        const streamKey = `hashtag:${tag}`;
+        this.subscribedStreams.set(streamKey, { stream: 'hashtag', params: { tag } });
         this.sendSubscribe('hashtag', { tag });
     }
 
@@ -233,8 +238,8 @@ export class StreamingClient {
      * Unsubscribe from all streams
      */
     unsubscribeAll(): void {
-        for (const stream of this.subscribedStreams) {
-            this.sendUnsubscribe(stream);
+        for (const streamKey of this.subscribedStreams.keys()) {
+            this.sendUnsubscribe(streamKey);
         }
         this.subscribedStreams.clear();
     }

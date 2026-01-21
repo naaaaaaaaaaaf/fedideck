@@ -17,18 +17,20 @@ export async function exchangeCodeForToken(
     credentials: AppCredentials,
     code: string
 ): Promise<TokenResponse> {
+    const body = new URLSearchParams({
+        client_id: credentials.clientId,
+        client_secret: credentials.clientSecret,
+        redirect_uri: REDIRECT_URI,
+        grant_type: 'authorization_code',
+        code: code.trim(),
+    });
+
     const response = await fetch(`${credentials.instanceUrl}/oauth/token`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify({
-            client_id: credentials.clientId,
-            client_secret: credentials.clientSecret,
-            redirect_uri: REDIRECT_URI,
-            grant_type: 'authorization_code',
-            code: code.trim(),
-        }),
+        body: body.toString(),
     });
 
     if (!response.ok) {
