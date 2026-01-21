@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { LuX, LuTriangleAlert, LuGlobe, LuLockOpen, LuLock, LuMail, LuLoader, LuImage, LuListOrdered, LuPlus, LuMinus, LuCornerUpLeft } from 'react-icons/lu';
+import { LuX, LuTriangleAlert, LuGlobe, LuLockOpen, LuLock, LuMail, LuLoader, LuImage, LuListOrdered, LuPlus, LuMinus, LuCornerUpLeft, LuChevronDown } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
 import { getClient, createStatus, uploadMedia, updateMediaDescription, type CreateStatusParams } from '../api/mastoClient';
 
@@ -81,8 +81,20 @@ export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalPro
     const accounts = useAccountsStore(state => state.accounts);
     const activeAccountId = useAccountsStore(state => state.activeAccountId);
 
-    // Always use active account for composing
-    const composingAccount = accounts.find(a => a.id === activeAccountId);
+    // State for selected account (can be changed by user)
+    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(activeAccountId);
+    const [showAccountSelector, setShowAccountSelector] = useState(false);
+
+    // Get the account to compose from
+    const composingAccount = accounts.find(a => a.id === selectedAccountId) ?? accounts.find(a => a.id === activeAccountId);
+
+    // Reset selected account to active account when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedAccountId(activeAccountId);
+            setShowAccountSelector(false);
+        }
+    }, [isOpen, activeAccountId]);
 
     // Prefill content with mention when replying
     useEffect(() => {
@@ -333,18 +345,56 @@ export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalPro
 
                 {/* Content */}
                 <div className="p-4 overflow-y-auto flex-1">
-                    {/* Account indicator */}
+                    {/* Account selector */}
                     {composingAccount && (
-                        <div className="flex items-center gap-2 mb-3">
-                            <img
-                                src={composingAccount.account.avatar}
-                                alt=""
-                                className="w-8 h-8 rounded-lg"
-                            />
-                            <div className="text-sm">
-                                <div className="text-slate-200">{composingAccount.account.displayName || composingAccount.account.username}</div>
-                                <div className="text-slate-400">@{composingAccount.account.acct}</div>
-                            </div>
+                        <div className="relative mb-3">
+                            <button
+                                onClick={() => setShowAccountSelector(!showAccountSelector)}
+                                className="flex items-center gap-2 p-2 -m-2 rounded-lg hover:bg-slate-700/50 transition-colors w-full text-left"
+                            >
+                                <img
+                                    src={composingAccount.account.avatar}
+                                    alt=""
+                                    className="w-8 h-8 rounded-lg"
+                                />
+                                <div className="text-sm flex-1 min-w-0">
+                                    <div className="text-slate-200 truncate">{composingAccount.account.displayName || composingAccount.account.username}</div>
+                                    <div className="text-slate-400 truncate">@{composingAccount.account.acct}</div>
+                                </div>
+                                {accounts.length > 1 && (
+                                    <LuChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showAccountSelector ? 'rotate-180' : ''}`} />
+                                )}
+                            </button>
+
+                            {/* Account dropdown */}
+                            {showAccountSelector && accounts.length > 1 && (
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-10 overflow-hidden">
+                                    {accounts.map(acc => (
+                                        <button
+                                            key={acc.id}
+                                            onClick={() => {
+                                                setSelectedAccountId(acc.id);
+                                                setShowAccountSelector(false);
+                                            }}
+                                            className={`flex items-center gap-2 p-2 w-full text-left hover:bg-slate-700/50 transition-colors ${acc.id === selectedAccountId ? 'bg-slate-700/30' : ''
+                                                }`}
+                                        >
+                                            <img
+                                                src={acc.account.avatar}
+                                                alt=""
+                                                className="w-8 h-8 rounded-lg"
+                                            />
+                                            <div className="text-sm flex-1 min-w-0">
+                                                <div className="text-slate-200 truncate">{acc.account.displayName || acc.account.username}</div>
+                                                <div className="text-slate-400 truncate">@{acc.account.acct}</div>
+                                            </div>
+                                            {acc.id === selectedAccountId && (
+                                                <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
 
