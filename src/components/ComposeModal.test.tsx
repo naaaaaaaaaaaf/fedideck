@@ -386,4 +386,65 @@ describe('ComposeModal', () => {
         render(<ComposeModal isOpen={true} onClose={() => { }} />);
         expect(screen.queryByText('閲覧注意 (NSFW)')).not.toBeInTheDocument();
     });
+
+    // Reply mode tests
+    const mockReplyToStatus = {
+        id: 'status-123',
+        acct: 'otheruser@example.com',
+        displayName: 'Other User',
+        content: '<p>Original post content</p>',
+        avatar: 'https://example.com/other-avatar.png',
+    };
+
+    it('shows reply header when replyToStatus is provided', () => {
+        render(
+            <ComposeModal isOpen={true} onClose={() => { }} replyToStatus={mockReplyToStatus} />
+        );
+        expect(screen.getByText('返信')).toBeInTheDocument();
+        expect(screen.queryByText('新しい投稿')).not.toBeInTheDocument();
+    });
+
+    it('displays reply indicator with target user info', () => {
+        render(
+            <ComposeModal isOpen={true} onClose={() => { }} replyToStatus={mockReplyToStatus} />
+        );
+        expect(screen.getByText('返信先:')).toBeInTheDocument();
+        // Reply indicator contains the target user info - use getAllByText since text may appear multiple places
+        expect(screen.getAllByText('Other User').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('@otheruser@example.com').length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('prefills content with mention when replying', () => {
+        render(
+            <ComposeModal isOpen={true} onClose={() => { }} replyToStatus={mockReplyToStatus} />
+        );
+        const textarea = screen.getByPlaceholderText('今なにしてる？') as HTMLTextAreaElement;
+        expect(textarea.value).toBe('@otheruser@example.com ');
+    });
+
+    it('includes inReplyToId when submitting a reply', async () => {
+        const user = userEvent.setup();
+        const onClose = vi.fn();
+        const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+        mockCreateStatus.mockResolvedValueOnce({} as any);
+
+        render(
+            <ComposeModal isOpen={true} onClose={onClose} replyToStatus={mockReplyToStatus} />
+        );
+
+        const textarea = screen.getByPlaceholderText('今なにしてる？');
+        await user.type(textarea, 'My reply text');
+
+        const submitButton = screen.getByRole('button', { name: '投稿' });
+        await user.click(submitButton);
+
+        await waitFor(() => {
+            expect(mockCreateStatus).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.objectContaining({
+                    inReplyToId: 'status-123',
+                })
+            );
+        });
+    });
 });

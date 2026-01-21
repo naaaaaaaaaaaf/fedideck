@@ -1,3 +1,4 @@
+import type { mastodon } from 'masto';
 import { Column } from './Column';
 import { LuPlus, LuList } from 'react-icons/lu';
 import { SiMastodon } from 'react-icons/si';
@@ -6,9 +7,10 @@ import { useAccountsStore } from '../store/accounts';
 
 interface ColumnContainerProps {
     onAddColumn?: () => void;
+    onReply?: (status: mastodon.v1.Status) => void;
 }
 
-export function ColumnContainer({ onAddColumn }: ColumnContainerProps) {
+export function ColumnContainer({ onAddColumn, onReply }: ColumnContainerProps) {
     const columns = useColumnsStore(state => state.columns);
     const removeColumn = useColumnsStore(state => state.removeColumn);
     const activeAccountId = useAccountsStore(state => state.activeAccountId);
@@ -29,6 +31,7 @@ export function ColumnContainer({ onAddColumn }: ColumnContainerProps) {
                     accountId={column.accountId}
                     stream={column.stream}
                     onRemove={() => removeColumn(column.id)}
+                    onReply={onReply}
                 />
             ))}
 

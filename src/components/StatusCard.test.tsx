@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { StatusCard, formatDate } from './StatusCard';
 import type { mastodon } from 'masto';
 
@@ -224,6 +225,57 @@ describe('StatusCard', () => {
         it('should return days for dates within a week', () => {
             const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
             expect(formatDate(threeDaysAgo)).toBe('3日');
+        });
+    });
+
+    describe('reply button', () => {
+        it('should call onReply with displayStatus when reply button is clicked', async () => {
+            const user = userEvent.setup();
+            const onReply = vi.fn();
+            const status = createMockStatus({
+                content: '<p>Test post</p>',
+            });
+
+            render(<StatusCard status={status} onReply={onReply} />);
+
+            // Find and click the reply button (first button in action bar)
+            const replyButton = screen.getAllByRole('button')[0];
+            await user.click(replyButton);
+
+            expect(onReply).toHaveBeenCalledTimes(1);
+            expect(onReply).toHaveBeenCalledWith(expect.objectContaining({
+                id: '12345',
+                content: '<p>Test post</p>',
+            }));
+        });
+
+        it('should call onReply with original status when clicking reblog reply button', async () => {
+            const user = userEvent.setup();
+            const onReply = vi.fn();
+            const originalStatus = createMockStatus({
+                id: 'original-123',
+                content: '<p>Original content</p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Original Author',
+                },
+            });
+
+            const reblogStatus = createMockStatus({
+                id: 'reblog-456',
+                reblog: originalStatus,
+            });
+
+            render(<StatusCard status={reblogStatus} onReply={onReply} />);
+
+            const replyButton = screen.getAllByRole('button')[0];
+            await user.click(replyButton);
+
+            // Should reply to original status, not the reblog wrapper
+            expect(onReply).toHaveBeenCalledWith(expect.objectContaining({
+                id: 'original-123',
+                content: '<p>Original content</p>',
+            }));
         });
     });
 });

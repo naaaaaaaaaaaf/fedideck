@@ -8,6 +8,7 @@ interface StatusCardProps {
     isReblog?: boolean;
     accountSession?: AccountSession;
     onStatusUpdate?: (updatedStatus: mastodon.v1.Status) => void;
+    onReply?: (status: mastodon.v1.Status) => void;
 }
 
 /**
@@ -28,7 +29,7 @@ function formatDate(dateStr: string): string {
     return date.toLocaleDateString('ja-JP');
 }
 
-export function StatusCard({ status, isReblog = false, accountSession, onStatusUpdate }: StatusCardProps) {
+export function StatusCard({ status, isReblog = false, accountSession, onStatusUpdate, onReply }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
     const reblogger = status.reblog ? status.account : null;
@@ -323,7 +324,10 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
 
                     {/* Action bar */}
                     <div className="flex items-center gap-6 mt-3 text-slate-400">
-                        <button className="flex items-center gap-1.5 hover:text-blue-400 transition-colors">
+                        <button
+                            onClick={() => onReply?.(displayStatus)}
+                            className="flex items-center gap-1.5 hover:text-blue-400 transition-colors"
+                        >
                             <LuMessageCircle />
                             <span className="text-sm">{displayStatus.repliesCount || ''}</span>
                         </button>

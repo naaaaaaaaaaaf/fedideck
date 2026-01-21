@@ -21,9 +21,10 @@ interface ColumnProps {
     accountId: string;
     stream: StreamConfig;
     onRemove?: () => void;
+    onReply?: (status: mastodon.v1.Status) => void;
 }
 
-export function Column({ accountId, stream, onRemove }: ColumnProps) {
+export function Column({ accountId, stream, onRemove, onReply }: ColumnProps) {
     const account = useAccountsStore(state => state.accounts.find(a => a.id === accountId));
     const streamKey = getStreamKey(accountId, stream.type, stream);
     const data = useStreamsStore(state => state.data[streamKey]);
@@ -237,7 +238,7 @@ export function Column({ accountId, stream, onRemove }: ColumnProps) {
 
                 {/* Statuses */}
                 {!isNotificationColumn && data?.statuses.map((status) => (
-                    <StatusCard key={status.id} status={status} accountSession={account} />
+                    <StatusCard key={status.id} status={status} accountSession={account} onReply={onReply} />
                 ))}
 
                 {/* Load more trigger */}
