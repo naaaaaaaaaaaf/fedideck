@@ -18,7 +18,6 @@ interface ComposeModalProps {
     isOpen: boolean;
     onClose: () => void;
     replyToStatus?: ReplyToStatus;
-    accountId?: string;  // Account to post from (for replies from specific columns)
 }
 
 type Visibility = 'public' | 'unlisted' | 'private' | 'direct';
@@ -62,7 +61,7 @@ const POLL_DURATION_OPTIONS = [
     { value: 604800, label: '7日' },
 ];
 
-export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: ComposeModalProps) {
+export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalProps) {
     const [content, setContent] = useState('');
     const [visibility, setVisibility] = useState<Visibility>('public');
     const [showCW, setShowCW] = useState(false);
@@ -82,11 +81,8 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     const accounts = useAccountsStore(state => state.accounts);
     const activeAccountId = useAccountsStore(state => state.activeAccountId);
 
-    // Use specified accountId for replies, or fall back to active account
-    // We subscribe to both accounts and activeAccountId to ensure reactivity
-    const composingAccount = accountId
-        ? accounts.find(a => a.id === accountId) ?? accounts.find(a => a.id === activeAccountId)
-        : accounts.find(a => a.id === activeAccountId);
+    // Always use active account for composing
+    const composingAccount = accounts.find(a => a.id === activeAccountId);
 
     // Prefill content with mention when replying
     useEffect(() => {

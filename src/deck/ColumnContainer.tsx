@@ -7,7 +7,7 @@ import { useAccountsStore } from '../store/accounts';
 
 interface ColumnContainerProps {
     onAddColumn?: () => void;
-    onReply?: (status: mastodon.v1.Status, accountId: string) => void;
+    onReply?: (status: mastodon.v1.Status) => void;
 }
 
 export function ColumnContainer({ onAddColumn, onReply }: ColumnContainerProps) {
