@@ -204,3 +204,47 @@ export async function updateMediaDescription(
     });
     return media;
 }
+
+/**
+ * Favourite a status (add to favorites)
+ */
+export async function favouriteStatus(
+    client: MastoClient,
+    statusId: string
+): Promise<mastodon.v1.Status> {
+    const status = await client.v1.statuses.$select(statusId).favourite();
+    return status;
+}
+
+/**
+ * Unfavourite a status (remove from favorites)
+ */
+export async function unfavouriteStatus(
+    client: MastoClient,
+    statusId: string
+): Promise<mastodon.v1.Status> {
+    const status = await client.v1.statuses.$select(statusId).unfavourite();
+    return status;
+}
+
+/**
+ * Reblog a status (boost)
+ */
+export async function reblogStatus(
+    client: MastoClient,
+    statusId: string
+): Promise<mastodon.v1.Status> {
+    const status = await client.v1.statuses.$select(statusId).reblog();
+    return status;
+}
+
+/**
+ * Unreblog a status (remove boost)
+ */
+export async function unreblogStatus(
+    client: MastoClient,
+    statusId: string
+): Promise<mastodon.v1.Status> {
+    const status = await client.v1.statuses.$select(statusId).unreblog();
+    return status;
+}

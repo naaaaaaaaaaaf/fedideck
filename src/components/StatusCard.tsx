@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import type { mastodon } from 'masto';
 import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert } from 'react-icons/lu';
+import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
 
 interface StatusCardProps {
     status: mastodon.v1.Status;
     isReblog?: boolean;
+    accountSession?: AccountSession;
+    onStatusUpdate?: (updatedStatus: mastodon.v1.Status) => void;
 }
 
 /**
@@ -24,10 +28,17 @@ function formatDate(dateStr: string): string {
     return date.toLocaleDateString('ja-JP');
 }
 
-export function StatusCard({ status, isReblog = false }: StatusCardProps) {
+export function StatusCard({ status, isReblog = false, accountSession, onStatusUpdate }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
     const reblogger = status.reblog ? status.account : null;
+
+    // Local state for optimistic UI updates
+    const [localFavourited, setLocalFavourited] = useState(displayStatus.favourited ?? false);
+    const [localFavouritesCount, setLocalFavouritesCount] = useState(displayStatus.favouritesCount ?? 0);
+    const [localReblogged, setLocalReblogged] = useState(displayStatus.reblogged ?? false);
+    const [localReblogsCount, setLocalReblogsCount] = useState(displayStatus.reblogsCount ?? 0);
+    const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
@@ -38,6 +49,76 @@ export function StatusCard({ status, isReblog = false }: StatusCardProps) {
     if (!account) {
         return null; // Cannot render without account
     }
+
+    const handleFavourite = async () => {
+        if (!accountSession || isLoading.favourite) return;
+
+        setIsLoading(prev => ({ ...prev, favourite: true }));
+
+        // Optimistic update
+        const wasLocalFavourited = localFavourited;
+        setLocalFavourited(!wasLocalFavourited);
+        setLocalFavouritesCount(prev => wasLocalFavourited ? prev - 1 : prev + 1);
+
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const updatedStatus = wasLocalFavourited
+                ? await unfavouriteStatus(client, displayStatus.id)
+                : await favouriteStatus(client, displayStatus.id);
+
+            // Update with server response
+            setLocalFavourited(updatedStatus.favourited ?? false);
+            setLocalFavouritesCount(updatedStatus.favouritesCount ?? 0);
+            onStatusUpdate?.(updatedStatus);
+        } catch (error) {
+            // Revert on error
+            setLocalFavourited(wasLocalFavourited);
+            setLocalFavouritesCount(prev => wasLocalFavourited ? prev + 1 : prev - 1);
+            console.error('Failed to toggle favourite:', error);
+        } finally {
+            setIsLoading(prev => ({ ...prev, favourite: false }));
+        }
+    };
+
+    const handleReblog = async () => {
+        if (!accountSession || isLoading.reblog) return;
+
+        // Don't allow reblogging private or direct messages
+        if (displayStatus.visibility === 'private' || displayStatus.visibility === 'direct') {
+            return;
+        }
+
+        setIsLoading(prev => ({ ...prev, reblog: true }));
+
+        // Optimistic update
+        const wasLocalReblogged = localReblogged;
+        setLocalReblogged(!wasLocalReblogged);
+        setLocalReblogsCount(prev => wasLocalReblogged ? prev - 1 : prev + 1);
+
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const updatedStatus = wasLocalReblogged
+                ? await unreblogStatus(client, displayStatus.id)
+                : await reblogStatus(client, displayStatus.id);
+
+            // For reblog, the API returns the reblog wrapper status
+            // We need to extract the actual status
+            const actualStatus = updatedStatus.reblog ?? updatedStatus;
+            setLocalReblogged(actualStatus.reblogged ?? false);
+            setLocalReblogsCount(actualStatus.reblogsCount ?? 0);
+            onStatusUpdate?.(actualStatus);
+        } catch (error) {
+            // Revert on error
+            setLocalReblogged(wasLocalReblogged);
+            setLocalReblogsCount(prev => wasLocalReblogged ? prev + 1 : prev - 1);
+            console.error('Failed to toggle reblog:', error);
+        } finally {
+            setIsLoading(prev => ({ ...prev, reblog: false }));
+        }
+    };
+
+    // Check if reblog is allowed (not for private/direct messages)
+    const canReblog = displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
 
     return (
         <article className={`p-4 border-b border-slate-700/50 card-hover ${isReblog ? 'animate-fade-in' : ''}`}>
@@ -198,13 +279,30 @@ export function StatusCard({ status, isReblog = false }: StatusCardProps) {
                             <LuMessageCircle />
                             <span className="text-sm">{displayStatus.repliesCount || ''}</span>
                         </button>
-                        <button className={`flex items-center gap-1.5 hover:text-green-400 transition-colors ${displayStatus.reblogged ? 'text-green-400' : ''}`}>
+                        <button
+                            onClick={handleReblog}
+                            disabled={!accountSession || isLoading.reblog || !canReblog}
+                            className={`flex items-center gap-1.5 transition-colors ${!canReblog
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : localReblogged
+                                        ? 'text-green-400 hover:text-green-300'
+                                        : 'hover:text-green-400'
+                                } ${isLoading.reblog ? 'opacity-50' : ''}`}
+                            title={!canReblog ? 'この投稿はブーストできません' : undefined}
+                        >
                             <LuRepeat2 />
-                            <span className="text-sm">{displayStatus.reblogsCount || ''}</span>
+                            <span className="text-sm">{localReblogsCount || ''}</span>
                         </button>
-                        <button className={`flex items-center gap-1.5 hover:text-pink-400 transition-colors ${displayStatus.favourited ? 'text-pink-400' : ''}`}>
-                            <LuStar />
-                            <span className="text-sm">{displayStatus.favouritesCount || ''}</span>
+                        <button
+                            onClick={handleFavourite}
+                            disabled={!accountSession || isLoading.favourite}
+                            className={`flex items-center gap-1.5 transition-colors ${localFavourited
+                                    ? 'text-pink-400 hover:text-pink-300'
+                                    : 'hover:text-pink-400'
+                                } ${isLoading.favourite ? 'opacity-50' : ''}`}
+                        >
+                            <LuStar className={localFavourited ? 'fill-current' : ''} />
+                            <span className="text-sm">{localFavouritesCount || ''}</span>
                         </button>
                         <button className="hover:text-indigo-400 transition-colors">
                             <LuLink />
@@ -218,3 +316,4 @@ export function StatusCard({ status, isReblog = false }: StatusCardProps) {
 
 // Export for testing
 export { formatDate };
+
