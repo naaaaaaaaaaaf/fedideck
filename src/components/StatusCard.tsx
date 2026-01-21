@@ -283,10 +283,10 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                             onClick={handleReblog}
                             disabled={!accountSession || isLoading.reblog || !canReblog}
                             className={`flex items-center gap-1.5 transition-colors ${!canReblog
-                                    ? 'opacity-50 cursor-not-allowed'
-                                    : localReblogged
-                                        ? 'text-green-400 hover:text-green-300'
-                                        : 'hover:text-green-400'
+                                ? 'opacity-50 cursor-not-allowed'
+                                : localReblogged
+                                    ? 'text-green-400 hover:text-green-300'
+                                    : 'hover:text-green-400'
                                 } ${isLoading.reblog ? 'opacity-50' : ''}`}
                             title={!canReblog ? 'この投稿はブーストできません' : undefined}
                         >
@@ -297,8 +297,8 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                             onClick={handleFavourite}
                             disabled={!accountSession || isLoading.favourite}
                             className={`flex items-center gap-1.5 transition-colors ${localFavourited
-                                    ? 'text-pink-400 hover:text-pink-300'
-                                    : 'hover:text-pink-400'
+                                ? 'text-amber-400 hover:text-amber-300'
+                                : 'hover:text-amber-400'
                                 } ${isLoading.favourite ? 'opacity-50' : ''}`}
                         >
                             <LuStar className={localFavourited ? 'fill-current' : ''} />
