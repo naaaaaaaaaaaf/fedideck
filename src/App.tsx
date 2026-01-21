@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
+import type { mastodon } from 'masto';
 import './index.css';
 import { Sidebar } from './components/Sidebar';
 import { ColumnContainer } from './deck/ColumnContainer';
 import { LoginModal } from './components/LoginModal';
 import { AddColumnModal } from './components/AddColumnModal';
-import { ComposeModal } from './components/ComposeModal';
+import { ComposeModal, type ReplyToStatus } from './components/ComposeModal';
 import { useAccountsStore } from './store/accounts';
 import { useColumnsStore } from './store/columns';
 import { useStreamsStore, getStreamKey } from './store/streams';
@@ -14,6 +15,8 @@ function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
+  const [replyToStatus, setReplyToStatus] = useState<ReplyToStatus | undefined>(undefined);
+  const [replyAccountId, setReplyAccountId] = useState<string | undefined>(undefined);
 
   const loadFromStorage = useAccountsStore(state => state.loadFromStorage);
   const accounts = useAccountsStore(state => state.accounts);
@@ -75,6 +78,25 @@ function App() {
     }
   }, [accounts.length]);
 
+  const handleReply = (status: mastodon.v1.Status, accountId: string) => {
+    const account = status.account;
+    setReplyToStatus({
+      id: status.id,
+      acct: account.acct,
+      displayName: account.displayName || account.username,
+      content: status.content,
+      avatar: account.avatar,
+    });
+    setReplyAccountId(accountId);
+    setIsComposeModalOpen(true);
+  };
+
+  const handleComposeClose = () => {
+    setIsComposeModalOpen(false);
+    setReplyToStatus(undefined);
+    setReplyAccountId(undefined);
+  };
+
   return (
     <div className="h-screen flex overflow-hidden">
       <Sidebar
@@ -83,7 +105,10 @@ function App() {
       />
 
       <main className="flex-1 flex overflow-hidden">
-        <ColumnContainer onAddColumn={() => setIsAddColumnModalOpen(true)} />
+        <ColumnContainer
+          onAddColumn={() => setIsAddColumnModalOpen(true)}
+          onReply={handleReply}
+        />
       </main>
 
       <LoginModal
@@ -96,7 +121,9 @@ function App() {
       />
       <ComposeModal
         isOpen={isComposeModalOpen}
-        onClose={() => setIsComposeModalOpen(false)}
+        onClose={handleComposeClose}
+        replyToStatus={replyToStatus}
+        accountId={replyAccountId}
       />
     </div>
   );

@@ -1,11 +1,24 @@
-import { useState, useRef } from 'react';
-import { LuX, LuTriangleAlert, LuGlobe, LuLockOpen, LuLock, LuMail, LuLoader, LuImage, LuListOrdered, LuPlus, LuMinus } from 'react-icons/lu';
+import { useState, useRef, useEffect } from 'react';
+import { LuX, LuTriangleAlert, LuGlobe, LuLockOpen, LuLock, LuMail, LuLoader, LuImage, LuListOrdered, LuPlus, LuMinus, LuCornerUpLeft } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
 import { getClient, createStatus, uploadMedia, updateMediaDescription, type CreateStatusParams } from '../api/mastoClient';
+
+/**
+ * Reply target status information
+ */
+export interface ReplyToStatus {
+    id: string;
+    acct: string;
+    displayName: string;
+    content: string;
+    avatar: string;
+}
 
 interface ComposeModalProps {
     isOpen: boolean;
     onClose: () => void;
+    replyToStatus?: ReplyToStatus;
+    accountId?: string;  // Account to post from (for replies from specific columns)
 }
 
 type Visibility = 'public' | 'unlisted' | 'private' | 'direct';
@@ -49,7 +62,7 @@ const POLL_DURATION_OPTIONS = [
     { value: 604800, label: '7日' },
 ];
 
-export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
+export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: ComposeModalProps) {
     const [content, setContent] = useState('');
     const [visibility, setVisibility] = useState<Visibility>('public');
     const [showCW, setShowCW] = useState(false);
@@ -66,7 +79,22 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
     const [pollMultiple, setPollMultiple] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const activeAccount = useAccountsStore(state => state.getActiveAccount());
+    const accounts = useAccountsStore(state => state.accounts);
+    const activeAccountId = useAccountsStore(state => state.activeAccountId);
+
+    // Use specified accountId for replies, or fall back to active account
+    // We subscribe to both accounts and activeAccountId to ensure reactivity
+    const composingAccount = accountId
+        ? accounts.find(a => a.id === accountId) ?? accounts.find(a => a.id === activeAccountId)
+        : accounts.find(a => a.id === activeAccountId);
+
+    // Prefill content with mention when replying
+    useEffect(() => {
+        if (replyToStatus && isOpen) {
+            const mention = `@${replyToStatus.acct} `;
+            setContent(mention);
+        }
+    }, [replyToStatus?.id, isOpen]);
 
     const remainingChars = MAX_CHARS - content.length;
     const isOverLimit = remainingChars < 0;
@@ -79,7 +107,7 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
     const isPollValid = !showPoll || (validPollOptions.length >= MIN_POLL_OPTIONS);
 
     const canSubmit = (content.trim().length > 0 || hasMedia || showPoll) &&
-        !isOverLimit && !isSubmitting && !isUploading && activeAccount &&
+        !isOverLimit && !isSubmitting && !isUploading && composingAccount &&
         (!hasMedia || allMediaUploaded) && isPollValid;
 
     // Poll helper functions
@@ -116,7 +144,7 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
-        if (!files || !activeAccount) return;
+        if (!files || !composingAccount) return;
 
         const remainingSlots = MAX_MEDIA - mediaFiles.length;
         const filesToAdd = Array.from(files).slice(0, remainingSlots);
@@ -137,7 +165,7 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
             return;
         }
 
-        const client = getClient(activeAccount);
+        const client = getClient(composingAccount);
 
         // Create preview and add to state
         const newMediaFiles: MediaFile[] = filesToAdd.map(file => ({
@@ -195,13 +223,13 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
     };
 
     const handleSubmit = async () => {
-        if (!canSubmit || !activeAccount) return;
+        if (!canSubmit || !composingAccount) return;
 
         setIsSubmitting(true);
         setError(null);
 
         try {
-            const client = getClient(activeAccount);
+            const client = getClient(composingAccount);
             const params: CreateStatusParams = {
                 status: content,
                 visibility,
@@ -209,6 +237,10 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
 
             if (showCW && cwText.trim()) {
                 params.spoilerText = cwText.trim();
+            }
+
+            if (replyToStatus) {
+                params.inReplyToId = replyToStatus.id;
             }
 
             if (hasMedia && allMediaUploaded) {
@@ -291,7 +323,9 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
             <div className="relative w-full max-w-lg mx-4 bg-slate-900 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden max-h-[90vh] flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
-                    <h2 className="text-lg font-semibold text-slate-100">新しい投稿</h2>
+                    <h2 className="text-lg font-semibold text-slate-100">
+                        {replyToStatus ? '返信' : '新しい投稿'}
+                    </h2>
                     <button
                         onClick={handleClose}
                         disabled={isSubmitting || isUploading}
@@ -304,16 +338,43 @@ export function ComposeModal({ isOpen, onClose }: ComposeModalProps) {
                 {/* Content */}
                 <div className="p-4 overflow-y-auto flex-1">
                     {/* Account indicator */}
-                    {activeAccount && (
+                    {composingAccount && (
                         <div className="flex items-center gap-2 mb-3">
                             <img
-                                src={activeAccount.account.avatar}
+                                src={composingAccount.account.avatar}
                                 alt=""
                                 className="w-8 h-8 rounded-lg"
                             />
                             <div className="text-sm">
-                                <div className="text-slate-200">{activeAccount.account.displayName || activeAccount.account.username}</div>
-                                <div className="text-slate-400">@{activeAccount.account.acct}</div>
+                                <div className="text-slate-200">{composingAccount.account.displayName || composingAccount.account.username}</div>
+                                <div className="text-slate-400">@{composingAccount.account.acct}</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Reply indicator */}
+                    {replyToStatus && (
+                        <div className="mb-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                            <div className="flex items-center gap-2 mb-2 text-sm text-slate-400">
+                                <LuCornerUpLeft className="w-4 h-4" />
+                                <span>返信先:</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <img
+                                    src={replyToStatus.avatar}
+                                    alt=""
+                                    className="w-8 h-8 rounded-lg shrink-0"
+                                />
+                                <div className="min-w-0">
+                                    <div className="text-sm text-slate-200 font-medium truncate">
+                                        {replyToStatus.displayName}
+                                    </div>
+                                    <div className="text-xs text-slate-400 truncate">@{replyToStatus.acct}</div>
+                                    <div
+                                        className="text-sm text-slate-300 mt-1 line-clamp-2 status-content"
+                                        dangerouslySetInnerHTML={{ __html: replyToStatus.content }}
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}
