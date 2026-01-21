@@ -42,6 +42,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
 
     // Sync local state with props when displayStatus changes externally
     // (e.g., from streaming updates or parent re-renders with new data)
+    // Also re-sync when isLoading becomes false after a request completes
     useEffect(() => {
         // Only sync when not actively mutating to avoid overwriting optimistic updates
         if (!isLoading.favourite && !isLoading.reblog) {
@@ -50,7 +51,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
             setLocalReblogged(displayStatus.reblogged ?? false);
             setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
         }
-    }, [displayStatus.id, displayStatus.favourited, displayStatus.favouritesCount, displayStatus.reblogged, displayStatus.reblogsCount]);
+    }, [displayStatus.id, displayStatus.favourited, displayStatus.favouritesCount, displayStatus.reblogged, displayStatus.reblogsCount, isLoading.favourite, isLoading.reblog]);
 
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
