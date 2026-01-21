@@ -7,7 +7,7 @@ const makeNotification = (id: string) => ({ id } as mastodon.v1.Notification);
 
 describe('useStreamsStore', () => {
     beforeEach(() => {
-        useStreamsStore.setState({ data: {} }, true);
+        useStreamsStore.setState({ data: {} });
     });
 
     it('initializes stream data when missing', () => {
