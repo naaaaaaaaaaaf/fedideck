@@ -237,7 +237,7 @@ export function Column({ accountId, stream, onRemove }: ColumnProps) {
 
                 {/* Statuses */}
                 {!isNotificationColumn && data?.statuses.map((status) => (
-                    <StatusCard key={status.id} status={status} />
+                    <StatusCard key={status.id} status={status} accountSession={account} />
                 ))}
 
                 {/* Load more trigger */}

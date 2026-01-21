@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createStatus, type CreateStatusParams, type MastoClient } from './mastoClient';
+import {
+    createStatus,
+    favouriteStatus,
+    unfavouriteStatus,
+    reblogStatus,
+    unreblogStatus,
+    type CreateStatusParams,
+    type MastoClient
+} from './mastoClient';
 
 describe('createStatus', () => {
     let mockClient: MastoClient;
@@ -129,5 +137,105 @@ describe('createStatus', () => {
         };
 
         await expect(createStatus(mockClient, params)).rejects.toThrow('API Error');
+    });
+});
+
+describe('favouriteStatus', () => {
+    it('calls favourite endpoint with correct status ID', async () => {
+        const mockFavourite = vi.fn().mockResolvedValue({
+            id: '123',
+            favourited: true,
+            favouritesCount: 5,
+        });
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        favourite: mockFavourite,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await favouriteStatus(mockClient, '123');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('123');
+        expect(mockFavourite).toHaveBeenCalled();
+        expect(result.favourited).toBe(true);
+    });
+});
+
+describe('unfavouriteStatus', () => {
+    it('calls unfavourite endpoint with correct status ID', async () => {
+        const mockUnfavourite = vi.fn().mockResolvedValue({
+            id: '123',
+            favourited: false,
+            favouritesCount: 4,
+        });
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        unfavourite: mockUnfavourite,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await unfavouriteStatus(mockClient, '123');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('123');
+        expect(mockUnfavourite).toHaveBeenCalled();
+        expect(result.favourited).toBe(false);
+    });
+});
+
+describe('reblogStatus', () => {
+    it('calls reblog endpoint with correct status ID', async () => {
+        const mockReblog = vi.fn().mockResolvedValue({
+            id: '456',
+            reblogged: true,
+            reblogsCount: 10,
+        });
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        reblog: mockReblog,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await reblogStatus(mockClient, '456');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('456');
+        expect(mockReblog).toHaveBeenCalled();
+        expect(result.reblogged).toBe(true);
+    });
+});
+
+describe('unreblogStatus', () => {
+    it('calls unreblog endpoint with correct status ID', async () => {
+        const mockUnreblog = vi.fn().mockResolvedValue({
+            id: '456',
+            reblogged: false,
+            reblogsCount: 9,
+        });
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        unreblog: mockUnreblog,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await unreblogStatus(mockClient, '456');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('456');
+        expect(mockUnreblog).toHaveBeenCalled();
+        expect(result.reblogged).toBe(false);
     });
 });
