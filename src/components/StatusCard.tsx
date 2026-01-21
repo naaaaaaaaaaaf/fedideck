@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { mastodon } from 'masto';
 import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert } from 'react-icons/lu';
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
@@ -40,18 +40,39 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
     const [localReblogsCount, setLocalReblogsCount] = useState(displayStatus.reblogsCount ?? 0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
+    // Ref to track if we're mutating - used to defer syncs until mutation completes
+    const isLoadingRef = useRef(isLoading);
+    isLoadingRef.current = isLoading;
+
+    // Track pending props updates that arrived during loading
+    const pendingPropsRef = useRef<{
+        favourited: boolean;
+        favouritesCount: number;
+        reblogged: boolean;
+        reblogsCount: number;
+    } | null>(null);
+
     // Sync local state with props when displayStatus changes externally
     // (e.g., from streaming updates or parent re-renders with new data)
-    // Also re-sync when isLoading becomes false after a request completes
     useEffect(() => {
-        // Only sync when not actively mutating to avoid overwriting optimistic updates
-        if (!isLoading.favourite && !isLoading.reblog) {
-            setLocalFavourited(displayStatus.favourited ?? false);
-            setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
-            setLocalReblogged(displayStatus.reblogged ?? false);
-            setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
+        const newProps = {
+            favourited: displayStatus.favourited ?? false,
+            favouritesCount: displayStatus.favouritesCount ?? 0,
+            reblogged: displayStatus.reblogged ?? false,
+            reblogsCount: displayStatus.reblogsCount ?? 0,
+        };
+
+        // If currently loading, store the update to apply after completion
+        if (isLoadingRef.current.favourite || isLoadingRef.current.reblog) {
+            pendingPropsRef.current = newProps;
+        } else {
+            // Apply immediately when not loading
+            setLocalFavourited(newProps.favourited);
+            setLocalFavouritesCount(newProps.favouritesCount);
+            setLocalReblogged(newProps.reblogged);
+            setLocalReblogsCount(newProps.reblogsCount);
         }
-    }, [displayStatus.id, displayStatus.favourited, displayStatus.favouritesCount, displayStatus.reblogged, displayStatus.reblogsCount, isLoading.favourite, isLoading.reblog]);
+    }, [displayStatus.id, displayStatus.favourited, displayStatus.favouritesCount, displayStatus.reblogged, displayStatus.reblogsCount]);
 
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
@@ -90,6 +111,15 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
             console.error('Failed to toggle favourite:', error);
         } finally {
             setIsLoading(prev => ({ ...prev, favourite: false }));
+            // Apply any pending props updates that arrived during loading
+            if (pendingPropsRef.current && !isLoadingRef.current.reblog) {
+                const pending = pendingPropsRef.current;
+                setLocalFavourited(pending.favourited);
+                setLocalFavouritesCount(pending.favouritesCount);
+                setLocalReblogged(pending.reblogged);
+                setLocalReblogsCount(pending.reblogsCount);
+                pendingPropsRef.current = null;
+            }
         }
     };
 
@@ -127,6 +157,15 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
             console.error('Failed to toggle reblog:', error);
         } finally {
             setIsLoading(prev => ({ ...prev, reblog: false }));
+            // Apply any pending props updates that arrived during loading
+            if (pendingPropsRef.current && !isLoadingRef.current.favourite) {
+                const pending = pendingPropsRef.current;
+                setLocalFavourited(pending.favourited);
+                setLocalFavouritesCount(pending.favouritesCount);
+                setLocalReblogged(pending.reblogged);
+                setLocalReblogsCount(pending.reblogsCount);
+                pendingPropsRef.current = null;
+            }
         }
     };
 
