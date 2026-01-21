@@ -18,6 +18,7 @@ interface ComposeModalProps {
     isOpen: boolean;
     onClose: () => void;
     replyToStatus?: ReplyToStatus;
+    accountId?: string;  // Account to post from (for replies from specific columns)
 }
 
 type Visibility = 'public' | 'unlisted' | 'private' | 'direct';
@@ -61,7 +62,7 @@ const POLL_DURATION_OPTIONS = [
     { value: 604800, label: '7日' },
 ];
 
-export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalProps) {
+export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: ComposeModalProps) {
     const [content, setContent] = useState('');
     const [visibility, setVisibility] = useState<Visibility>('public');
     const [showCW, setShowCW] = useState(false);
@@ -78,7 +79,13 @@ export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalPro
     const [pollMultiple, setPollMultiple] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const activeAccount = useAccountsStore(state => state.getActiveAccount());
+    const accounts = useAccountsStore(state => state.accounts);
+    const getActiveAccount = useAccountsStore(state => state.getActiveAccount);
+
+    // Use specified accountId for replies, or fall back to active account
+    const composingAccount = accountId
+        ? accounts.find(a => a.id === accountId) ?? getActiveAccount()
+        : getActiveAccount();
 
     // Prefill content with mention when replying
     useEffect(() => {
@@ -99,7 +106,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalPro
     const isPollValid = !showPoll || (validPollOptions.length >= MIN_POLL_OPTIONS);
 
     const canSubmit = (content.trim().length > 0 || hasMedia || showPoll) &&
-        !isOverLimit && !isSubmitting && !isUploading && activeAccount &&
+        !isOverLimit && !isSubmitting && !isUploading && composingAccount &&
         (!hasMedia || allMediaUploaded) && isPollValid;
 
     // Poll helper functions
@@ -136,7 +143,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalPro
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
-        if (!files || !activeAccount) return;
+        if (!files || !composingAccount) return;
 
         const remainingSlots = MAX_MEDIA - mediaFiles.length;
         const filesToAdd = Array.from(files).slice(0, remainingSlots);
@@ -157,7 +164,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalPro
             return;
         }
 
-        const client = getClient(activeAccount);
+        const client = getClient(composingAccount);
 
         // Create preview and add to state
         const newMediaFiles: MediaFile[] = filesToAdd.map(file => ({
@@ -215,13 +222,13 @@ export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalPro
     };
 
     const handleSubmit = async () => {
-        if (!canSubmit || !activeAccount) return;
+        if (!canSubmit || !composingAccount) return;
 
         setIsSubmitting(true);
         setError(null);
 
         try {
-            const client = getClient(activeAccount);
+            const client = getClient(composingAccount);
             const params: CreateStatusParams = {
                 status: content,
                 visibility,
@@ -330,16 +337,16 @@ export function ComposeModal({ isOpen, onClose, replyToStatus }: ComposeModalPro
                 {/* Content */}
                 <div className="p-4 overflow-y-auto flex-1">
                     {/* Account indicator */}
-                    {activeAccount && (
+                    {composingAccount && (
                         <div className="flex items-center gap-2 mb-3">
                             <img
-                                src={activeAccount.account.avatar}
+                                src={composingAccount.account.avatar}
                                 alt=""
                                 className="w-8 h-8 rounded-lg"
                             />
                             <div className="text-sm">
-                                <div className="text-slate-200">{activeAccount.account.displayName || activeAccount.account.username}</div>
-                                <div className="text-slate-400">@{activeAccount.account.acct}</div>
+                                <div className="text-slate-200">{composingAccount.account.displayName || composingAccount.account.username}</div>
+                                <div className="text-slate-400">@{composingAccount.account.acct}</div>
                             </div>
                         </div>
                     )}

@@ -21,7 +21,7 @@ interface ColumnProps {
     accountId: string;
     stream: StreamConfig;
     onRemove?: () => void;
-    onReply?: (status: mastodon.v1.Status) => void;
+    onReply?: (status: mastodon.v1.Status, accountId: string) => void;
 }
 
 export function Column({ accountId, stream, onRemove, onReply }: ColumnProps) {
@@ -238,7 +238,12 @@ export function Column({ accountId, stream, onRemove, onReply }: ColumnProps) {
 
                 {/* Statuses */}
                 {!isNotificationColumn && data?.statuses.map((status) => (
-                    <StatusCard key={status.id} status={status} accountSession={account} onReply={onReply} />
+                    <StatusCard
+                        key={status.id}
+                        status={status}
+                        accountSession={account}
+                        onReply={onReply ? (s) => onReply(s, accountId) : undefined}
+                    />
                 ))}
 
                 {/* Load more trigger */}

@@ -16,6 +16,7 @@ function App() {
   const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
   const [replyToStatus, setReplyToStatus] = useState<ReplyToStatus | undefined>(undefined);
+  const [replyAccountId, setReplyAccountId] = useState<string | undefined>(undefined);
 
   const loadFromStorage = useAccountsStore(state => state.loadFromStorage);
   const accounts = useAccountsStore(state => state.accounts);
@@ -77,7 +78,7 @@ function App() {
     }
   }, [accounts.length]);
 
-  const handleReply = (status: mastodon.v1.Status) => {
+  const handleReply = (status: mastodon.v1.Status, accountId: string) => {
     const account = status.account;
     setReplyToStatus({
       id: status.id,
@@ -86,12 +87,14 @@ function App() {
       content: status.content,
       avatar: account.avatar,
     });
+    setReplyAccountId(accountId);
     setIsComposeModalOpen(true);
   };
 
   const handleComposeClose = () => {
     setIsComposeModalOpen(false);
     setReplyToStatus(undefined);
+    setReplyAccountId(undefined);
   };
 
   return (
@@ -120,6 +123,7 @@ function App() {
         isOpen={isComposeModalOpen}
         onClose={handleComposeClose}
         replyToStatus={replyToStatus}
+        accountId={replyAccountId}
       />
     </div>
   );
