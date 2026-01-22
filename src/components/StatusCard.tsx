@@ -6,7 +6,7 @@ import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfa
 interface StatusCardProps {
     status: mastodon.v1.Status;
     isReblog?: boolean;
-    accountSession?: AccountSession;
+    accountSession?: AccountSession;  // Required for boost/favorite - uses column's account
     onStatusUpdate?: (updatedStatus: mastodon.v1.Status) => void;
     onReply?: (status: mastodon.v1.Status) => void;
 }
