@@ -7,11 +7,12 @@ import { useAccountsStore } from '../store/accounts';
 interface LoginModalProps {
     isOpen: boolean;
     onClose: () => void;
+    canClose?: boolean;
 }
 
 type Step = 'instance' | 'authorize' | 'code';
 
-export function LoginModal({ isOpen, onClose }: LoginModalProps) {
+export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps) {
     const [step, setStep] = useState<Step>('instance');
     const [instanceUrl, setInstanceUrl] = useState('');
     const [authUrl, setAuthUrl] = useState('');
@@ -92,12 +93,14 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                         {step === 'authorize' && '認証'}
                         {step === 'code' && '認証コードを入力'}
                     </h2>
-                    <button
-                        onClick={onClose}
-                        className="text-slate-400 hover:text-slate-200 transition-colors"
-                    >
-                        ✕
-                    </button>
+                    {canClose && (
+                        <button
+                            onClick={onClose}
+                            className="text-slate-400 hover:text-slate-200 transition-colors"
+                        >
+                            ✕
+                        </button>
+                    )}
                 </div>
 
                 {/* Content */}

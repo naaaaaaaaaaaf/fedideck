@@ -139,6 +139,7 @@ function App() {
       <LoginModal
         isOpen={shouldShowLoginModal}
         onClose={() => setIsLoginModalOpen(false)}
+        canClose={accounts.length > 0}
       />
       <AddColumnModal
         key={isAddColumnModalOpen ? 'open' : 'closed'}
