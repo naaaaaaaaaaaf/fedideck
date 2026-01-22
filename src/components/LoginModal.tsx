@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LuX } from 'react-icons/lu';
 import { registerApp, getAuthorizationUrl } from '../auth/appRegistration';
 import { exchangeCodeForToken, verifyCredentials } from '../auth/oauthOob';
 import { createSession } from '../auth/sessions';
@@ -96,9 +97,11 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
                     {canClose && (
                         <button
                             onClick={onClose}
-                            className="text-slate-400 hover:text-slate-200 transition-colors"
+                            className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-slate-200"
+                            aria-label="閉じる"
+                            title="閉じる"
                         >
-                            ✕
+                            <LuX className="w-5 h-5" />
                         </button>
                     )}
                 </div>
