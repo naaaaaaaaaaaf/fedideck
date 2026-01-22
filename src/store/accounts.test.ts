@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import type { mastodon } from 'masto';
 import { useAccountsStore } from '../store/accounts';
 
-// Mock account for testing
+// Mock account for testing - cast to mastodon.v1.Account once
 const mockAccount = {
     id: '12345',
     username: 'testuser',
@@ -23,13 +24,13 @@ const mockAccount = {
     lastStatusAt: '2024-01-01',
     emojis: [],
     fields: [],
-};
+} as unknown as mastodon.v1.Account;
 
 const createMockSession = (id: string, instanceUrl: string) => ({
     id: `${id}@${new URL(instanceUrl).hostname}`,
     instanceUrl,
     accessToken: `token_${id}`,
-    account: { ...mockAccount, id } as any,
+    account: { ...mockAccount, id } as unknown as mastodon.v1.Account,
     createdAt: Date.now(),
 });
 

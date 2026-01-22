@@ -45,26 +45,7 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick }: 
 
     const isNotificationColumn = stream.type === 'notifications';
 
-    // Initialize and load data
-    useEffect(() => {
-        if (!account) return;
-
-        initStream(streamKey);
-        loadInitialData();
-
-        // Subscribe to streaming
-        subscribeToStream(
-            accountId,
-            account.instanceUrl,
-            account.accessToken,
-            stream
-        );
-
-        return () => {
-            unsubscribeFromStream(accountId, stream);
-        };
-    }, [accountId, account?.instanceUrl, stream.type, stream.listId, stream.hashtag]);
-
+    // Define loadInitialData before useEffect that uses it
     const loadInitialData = useCallback(async () => {
         if (!account) return;
 
@@ -107,7 +88,7 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick }: 
             console.error('Failed to load timeline:', error);
             setError(streamKey, (error as Error).message);
         }
-    }, [account, streamKey, stream, isNotificationColumn]);
+    }, [account, streamKey, stream, isNotificationColumn, setLoading, setNotifications, setStatuses, setError]);
 
     const loadMore = useCallback(async () => {
         if (!account || !data || data.isLoading || !data.hasMore) return;
@@ -156,7 +137,27 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick }: 
         } catch (error) {
             console.error('Failed to load more:', error);
         }
-    }, [account, data, streamKey, stream, isNotificationColumn]);
+    }, [account, data, streamKey, stream, isNotificationColumn, setLoading, appendNotifications, appendStatuses]);
+
+    // Initialize and load data
+    useEffect(() => {
+        if (!account) return;
+
+        initStream(streamKey);
+        loadInitialData();
+
+        // Subscribe to streaming
+        subscribeToStream(
+            accountId,
+            account.instanceUrl,
+            account.accessToken,
+            stream
+        );
+
+        return () => {
+            unsubscribeFromStream(accountId, stream);
+        };
+    }, [accountId, account, stream, streamKey, initStream, loadInitialData]);
 
     // Infinite scroll observer
     useEffect(() => {

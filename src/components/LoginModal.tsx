@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LuX } from 'react-icons/lu';
 import { registerApp, getAuthorizationUrl } from '../auth/appRegistration';
 import { exchangeCodeForToken, verifyCredentials } from '../auth/oauthOob';
 import { createSession } from '../auth/sessions';
@@ -7,11 +8,12 @@ import { useAccountsStore } from '../store/accounts';
 interface LoginModalProps {
     isOpen: boolean;
     onClose: () => void;
+    canClose?: boolean;
 }
 
 type Step = 'instance' | 'authorize' | 'code';
 
-export function LoginModal({ isOpen, onClose }: LoginModalProps) {
+export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps) {
     const [step, setStep] = useState<Step>('instance');
     const [instanceUrl, setInstanceUrl] = useState('');
     const [authUrl, setAuthUrl] = useState('');
@@ -92,12 +94,16 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                         {step === 'authorize' && '認証'}
                         {step === 'code' && '認証コードを入力'}
                     </h2>
-                    <button
-                        onClick={onClose}
-                        className="text-slate-400 hover:text-slate-200 transition-colors"
-                    >
-                        ✕
-                    </button>
+                    {canClose && (
+                        <button
+                            onClick={onClose}
+                            className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-slate-200"
+                            aria-label="閉じる"
+                            title="閉じる"
+                        >
+                            <LuX className="w-5 h-5" />
+                        </button>
+                    )}
                 </div>
 
                 {/* Content */}
