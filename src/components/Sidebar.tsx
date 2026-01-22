@@ -13,7 +13,7 @@ export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
     return (
         <aside className="w-16 bg-slate-900 border-r border-slate-700/50 flex flex-col items-center py-4 gap-2">
             {/* Logo */}
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl font-bold mb-2">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl font-bold mb-2">
                 🦣
             </div>
 

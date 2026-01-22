@@ -474,7 +474,7 @@ describe('StatusDetailModal', () => {
 
             const updatedStatus = createMockStatus({ favourited: true, favouritesCount: 6 });
             
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             vi.spyOn(mastoClient, 'favouriteStatus').mockResolvedValue(updatedStatus);
 
             render(
@@ -487,16 +487,10 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            // Find favourite button - it's in the action bar
-            const buttons = screen.getAllByRole('button');
-            // The favourite button should have a star icon (LuStar)
-            const favouriteButton = buttons.find(btn => {
-                const svg = btn.querySelector('svg');
-                return svg && btn.textContent?.includes('5');
-            });
-
+            // Find favourite button by its text label
+            const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
             expect(favouriteButton).toBeDefined();
-            await user.click(favouriteButton!);
+            await user.click(favouriteButton);
 
             await waitFor(() => {
                 expect(mastoClient.favouriteStatus).toHaveBeenCalledWith({}, '12345');
@@ -512,7 +506,7 @@ describe('StatusDetailModal', () => {
 
             const updatedStatus = createMockStatus({ favourited: false, favouritesCount: 9 });
             
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             vi.spyOn(mastoClient, 'unfavouriteStatus').mockResolvedValue(updatedStatus);
 
             render(
@@ -525,14 +519,8 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            const buttons = screen.getAllByRole('button');
-            const favouriteButton = buttons.find(btn => {
-                const svg = btn.querySelector('svg');
-                return svg && btn.textContent?.includes('10');
-            });
-
-            expect(favouriteButton).toBeDefined();
-            await user.click(favouriteButton!);
+            const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
+            await user.click(favouriteButton);
 
             await waitFor(() => {
                 expect(mastoClient.unfavouriteStatus).toHaveBeenCalledWith({}, '12345');
@@ -550,7 +538,7 @@ describe('StatusDetailModal', () => {
                 resolvePromise = resolve;
             });
 
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             vi.spyOn(mastoClient, 'favouriteStatus').mockReturnValue(favouritePromise);
 
             render(
@@ -562,16 +550,19 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            // Initial count should be 5
-            expect(screen.getByText('5')).toBeInTheDocument();
+            // Initial count should be 5 (in stats section)
+            expect(screen.getByText((_content, element) => {
+                return element?.textContent === '5 お気に入り';
+            })).toBeInTheDocument();
 
-            const buttons = screen.getAllByRole('button');
-            const favouriteButton = buttons.find(btn => btn.textContent?.includes('5'));
-            await user.click(favouriteButton!);
+            const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
+            await user.click(favouriteButton);
 
             // Count should optimistically update to 6 before API completes
             await waitFor(() => {
-                expect(screen.getByText('6')).toBeInTheDocument();
+                expect(screen.getByText((_content, element) => {
+                    return element?.textContent === '6 お気に入り';
+                })).toBeInTheDocument();
             });
 
             // Resolve the API call
@@ -584,7 +575,7 @@ describe('StatusDetailModal', () => {
             const accountSession = createMockAccountSession();
             const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             vi.spyOn(mastoClient, 'favouriteStatus').mockRejectedValue(new Error('API Error'));
 
             render(
@@ -596,21 +587,19 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            const buttons = screen.getAllByRole('button');
-            const favouriteButton = buttons.find(btn => btn.textContent?.includes('5'));
-            await user.click(favouriteButton!);
+            const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
+            await user.click(favouriteButton);
 
-            // Should optimistically show 6
+            // Wait for error and revert
             await waitFor(() => {
-                expect(screen.getByText('6')).toBeInTheDocument();
+                expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to toggle favourite:', expect.any(Error));
             });
 
-            // Should revert back to 5 after error
-            await waitFor(() => {
-                expect(screen.getByText('5')).toBeInTheDocument();
-            });
+            // Count should be back to 5
+            expect(screen.getByText((_content, element) => {
+                return element?.textContent === '5 お気に入り';
+            })).toBeInTheDocument();
 
-            expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to toggle favourite:', expect.any(Error));
             consoleErrorSpy.mockRestore();
         });
 
@@ -628,13 +617,9 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            const buttons = screen.getAllByRole('button');
-            const favouriteButton = buttons.find(btn => btn.textContent?.includes('10'));
-            
-            if (favouriteButton) {
-                await user.click(favouriteButton);
-                expect(favouriteSpy).not.toHaveBeenCalled();
-            }
+            const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
+            await user.click(favouriteButton);
+            expect(favouriteSpy).not.toHaveBeenCalled();
         });
 
         it('should prevent multiple simultaneous favourite requests', async () => {
@@ -647,7 +632,7 @@ describe('StatusDetailModal', () => {
                 resolvePromise = resolve;
             });
 
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             const favouriteSpy = vi.spyOn(mastoClient, 'favouriteStatus').mockReturnValue(favouritePromise);
 
             render(
@@ -659,13 +644,12 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            const buttons = screen.getAllByRole('button');
-            const favouriteButton = buttons.find(btn => btn.textContent?.includes('5'));
+            const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
 
             // Click multiple times rapidly
-            await user.click(favouriteButton!);
-            await user.click(favouriteButton!);
-            await user.click(favouriteButton!);
+            await user.click(favouriteButton);
+            await user.click(favouriteButton);
+            await user.click(favouriteButton);
 
             // Should only call the API once
             expect(favouriteSpy).toHaveBeenCalledTimes(1);
@@ -688,7 +672,7 @@ describe('StatusDetailModal', () => {
 
             const updatedStatus = createMockStatus({ reblogged: true, reblogsCount: 4 });
             
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             vi.spyOn(mastoClient, 'reblogStatus').mockResolvedValue(updatedStatus);
 
             render(
@@ -701,12 +685,8 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            const buttons = screen.getAllByRole('button');
-            // Find reblog button by looking for the one with reblog count
-            const reblogButton = buttons.find(btn => btn.textContent?.includes('3'));
-
-            expect(reblogButton).toBeDefined();
-            await user.click(reblogButton!);
+            const reblogButton = screen.getByRole('button', { name: /ブースト/ });
+            await user.click(reblogButton);
 
             await waitFor(() => {
                 expect(mastoClient.reblogStatus).toHaveBeenCalledWith({}, '12345');
@@ -722,7 +702,7 @@ describe('StatusDetailModal', () => {
 
             const updatedStatus = createMockStatus({ reblogged: false, reblogsCount: 7 });
             
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             vi.spyOn(mastoClient, 'unreblogStatus').mockResolvedValue(updatedStatus);
 
             render(
@@ -735,11 +715,8 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            const buttons = screen.getAllByRole('button');
-            const reblogButton = buttons.find(btn => btn.textContent?.includes('8'));
-
-            expect(reblogButton).toBeDefined();
-            await user.click(reblogButton!);
+            const reblogButton = screen.getByRole('button', { name: /ブースト/ });
+            await user.click(reblogButton);
 
             await waitFor(() => {
                 expect(mastoClient.unreblogStatus).toHaveBeenCalledWith({}, '12345');
@@ -762,18 +739,9 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            const buttons = screen.getAllByRole('button');
-            // Try to find and click reblog button
-            const reblogButton = buttons.find(btn => {
-                // Look for repeat icon in button
-                const hasRepeatIcon = btn.querySelector('svg');
-                return hasRepeatIcon && !btn.textContent?.includes('返信');
-            });
-
-            if (reblogButton) {
-                await user.click(reblogButton);
-                expect(reblogSpy).not.toHaveBeenCalled();
-            }
+            const reblogButton = screen.getByRole('button', { name: /ブースト/ });
+            await user.click(reblogButton);
+            expect(reblogSpy).not.toHaveBeenCalled();
         });
 
         it('should not allow reblogging direct messages', async () => {
@@ -791,16 +759,9 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            const buttons = screen.getAllByRole('button');
-            const reblogButton = buttons.find(btn => {
-                const hasRepeatIcon = btn.querySelector('svg');
-                return hasRepeatIcon && !btn.textContent?.includes('返信');
-            });
-
-            if (reblogButton) {
-                await user.click(reblogButton);
-                expect(reblogSpy).not.toHaveBeenCalled();
-            }
+            const reblogButton = screen.getByRole('button', { name: /ブースト/ });
+            await user.click(reblogButton);
+            expect(reblogSpy).not.toHaveBeenCalled();
         });
 
         it('should handle reblog API returning wrapper status', async () => {
@@ -815,7 +776,7 @@ describe('StatusDetailModal', () => {
                 reblog: createMockStatus({ id: '12345', reblogged: true, reblogsCount: 4 }),
             });
             
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             vi.spyOn(mastoClient, 'reblogStatus').mockResolvedValue(wrapperStatus);
 
             render(
@@ -828,10 +789,8 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            const buttons = screen.getAllByRole('button');
-            const reblogButton = buttons.find(btn => btn.textContent?.includes('3'));
-
-            await user.click(reblogButton!);
+            const reblogButton = screen.getByRole('button', { name: /ブースト/ });
+            await user.click(reblogButton);
 
             await waitFor(() => {
                 // Should extract the actual status from the wrapper
@@ -851,7 +810,7 @@ describe('StatusDetailModal', () => {
                 resolvePromise = resolve;
             });
 
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             vi.spyOn(mastoClient, 'reblogStatus').mockReturnValue(reblogPromise);
 
             render(
@@ -863,13 +822,14 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            const buttons = screen.getAllByRole('button');
-            const reblogButton = buttons.find(btn => btn.textContent?.includes('5'));
-            await user.click(reblogButton!);
+            const reblogButton = screen.getByRole('button', { name: /ブースト/ });
+            await user.click(reblogButton);
 
             // Count should optimistically update to 6
             await waitFor(() => {
-                expect(screen.getByText('6')).toBeInTheDocument();
+                expect(screen.getByText((_content, element) => {
+                    return element?.textContent === '6 ブースト';
+                })).toBeInTheDocument();
             });
 
             resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 6 }));
@@ -881,7 +841,7 @@ describe('StatusDetailModal', () => {
             const accountSession = createMockAccountSession();
             const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             vi.spyOn(mastoClient, 'reblogStatus').mockRejectedValue(new Error('Network error'));
 
             render(
@@ -893,13 +853,14 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            const buttons = screen.getAllByRole('button');
-            const reblogButton = buttons.find(btn => btn.textContent?.includes('5'));
-            await user.click(reblogButton!);
+            const reblogButton = screen.getByRole('button', { name: /ブースト/ });
+            await user.click(reblogButton);
 
             // Should revert back to 5 after error
             await waitFor(() => {
-                expect(screen.getByText('5')).toBeInTheDocument();
+                expect(screen.getByText((_content, element) => {
+                    return element?.textContent === '5 ブースト';
+                })).toBeInTheDocument();
             });
 
             expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to toggle reblog:', expect.any(Error));
@@ -920,13 +881,9 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            const buttons = screen.getAllByRole('button');
-            const reblogButton = buttons.find(btn => btn.textContent?.includes('5'));
-            
-            if (reblogButton) {
-                await user.click(reblogButton);
-                expect(reblogSpy).not.toHaveBeenCalled();
-            }
+            const reblogButton = screen.getByRole('button', { name: /ブースト/ });
+            await user.click(reblogButton);
+            expect(reblogSpy).not.toHaveBeenCalled();
         });
 
         it('should prevent multiple simultaneous reblog requests', async () => {
@@ -939,7 +896,7 @@ describe('StatusDetailModal', () => {
                 resolvePromise = resolve;
             });
 
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             const reblogSpy = vi.spyOn(mastoClient, 'reblogStatus').mockReturnValue(reblogPromise);
 
             render(
@@ -951,13 +908,12 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            const buttons = screen.getAllByRole('button');
-            const reblogButton = buttons.find(btn => btn.textContent?.includes('5'));
+            const reblogButton = screen.getByRole('button', { name: /ブースト/ });
 
             // Click multiple times rapidly
-            await user.click(reblogButton!);
-            await user.click(reblogButton!);
-            await user.click(reblogButton!);
+            await user.click(reblogButton);
+            await user.click(reblogButton);
+            await user.click(reblogButton);
 
             // Should only call once
             expect(reblogSpy).toHaveBeenCalledTimes(1);
