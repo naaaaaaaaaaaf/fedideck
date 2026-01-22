@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { mastodon } from 'masto';
 import { LuX, LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert } from 'react-icons/lu';
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
@@ -9,6 +9,7 @@ interface StatusDetailModalProps {
     status: mastodon.v1.Status | null;
     accountSession?: AccountSession;
     onReply?: (status: mastodon.v1.Status) => void;
+    onStatusUpdate?: (status: mastodon.v1.Status) => void;
 }
 
 function formatFullDate(dateStr: string): string {
@@ -22,29 +23,28 @@ function formatFullDate(dateStr: string): string {
     });
 }
 
-export function StatusDetailModal({ isOpen, onClose, status, accountSession, onReply }: StatusDetailModalProps) {
+export function StatusDetailModal({ isOpen, onClose, status, accountSession, onReply, onStatusUpdate }: StatusDetailModalProps) {
     const [localFavourited, setLocalFavourited] = useState(false);
     const [localFavouritesCount, setLocalFavouritesCount] = useState(0);
     const [localReblogged, setLocalReblogged] = useState(false);
     const [localReblogsCount, setLocalReblogsCount] = useState(0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
-    // Sync local state when status changes
-    if (status) {
-        const displayStatus = status.reblog ?? status;
-        if (localFavouritesCount !== (displayStatus.favouritesCount ?? 0) && !isLoading.favourite) {
+    // Get the display status (original if reblog)
+    const displayStatus = status?.reblog ?? status;
+
+    // Sync local state when status changes or modal opens
+    useEffect(() => {
+        if (displayStatus && isOpen) {
             setLocalFavourited(displayStatus.favourited ?? false);
             setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
-        }
-        if (localReblogsCount !== (displayStatus.reblogsCount ?? 0) && !isLoading.reblog) {
             setLocalReblogged(displayStatus.reblogged ?? false);
             setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
         }
-    }
+    }, [displayStatus, isOpen]);
 
-    if (!isOpen || !status) return null;
+    if (!isOpen || !status || !displayStatus) return null;
 
-    const displayStatus = status.reblog ?? status;
     const reblogger = status.reblog ? status.account : null;
     const account = displayStatus.account;
 
@@ -70,6 +70,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
 
             setLocalFavourited(updatedStatus.favourited ?? false);
             setLocalFavouritesCount(updatedStatus.favouritesCount ?? 0);
+            onStatusUpdate?.(updatedStatus);
         } catch (error) {
             setLocalFavourited(wasLocalFavourited);
             setLocalFavouritesCount(prev => wasLocalFavourited ? prev + 1 : prev - 1);
@@ -96,6 +97,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
             const actualStatus = updatedStatus.reblog ?? updatedStatus;
             setLocalReblogged(actualStatus.reblogged ?? false);
             setLocalReblogsCount(actualStatus.reblogsCount ?? 0);
+            onStatusUpdate?.(actualStatus);
         } catch (error) {
             setLocalReblogged(wasLocalReblogged);
             setLocalReblogsCount(prev => wasLocalReblogged ? prev + 1 : prev - 1);

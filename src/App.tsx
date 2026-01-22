@@ -27,7 +27,7 @@ function App() {
   const accounts = useAccountsStore(state => state.accounts);
   const columns = useColumnsStore(state => state.columns);
   const addColumn = useColumnsStore(state => state.addColumn);
-  const { prependStatus, removeStatus, updateStatus, prependNotification } = useStreamsStore();
+  const { prependStatus, removeStatus, updateStatus, updateStatusGlobal, prependNotification } = useStreamsStore();
 
   // Load accounts from storage on mount
   useEffect(() => {
@@ -150,6 +150,7 @@ function App() {
         status={detailStatus}
         accountSession={detailAccountSession}
         onReply={handleStatusDetailReply}
+        onStatusUpdate={updateStatusGlobal}
       />
     </div>
   );

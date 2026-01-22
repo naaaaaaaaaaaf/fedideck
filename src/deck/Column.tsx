@@ -36,7 +36,8 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick }: 
         setNotifications,
         appendStatuses,
         appendNotifications,
-        setError
+        setError,
+        updateStatusGlobal
     } = useStreamsStore();
 
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -243,6 +244,7 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick }: 
                         key={status.id}
                         status={status}
                         accountSession={account}
+                        onStatusUpdate={updateStatusGlobal}
                         onReply={onReply ? (s) => onReply(s, accountId) : undefined}
                         onStatusClick={onStatusClick ? (s) => onStatusClick(s, accountId) : undefined}
                     />

@@ -182,7 +182,15 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
         ) {
             return;
         }
-        onStatusClick?.(displayStatus);
+        // Pass status with current local state for immediate reflection in detail modal
+        const statusWithLocalState = {
+            ...displayStatus,
+            favourited: localFavourited,
+            favouritesCount: localFavouritesCount,
+            reblogged: localReblogged,
+            reblogsCount: localReblogsCount,
+        };
+        onStatusClick?.(statusWithLocalState);
     };
 
     return (
