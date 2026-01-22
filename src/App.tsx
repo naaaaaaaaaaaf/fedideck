@@ -70,7 +70,14 @@ function App() {
     });
   }, [prependStatus, removeStatus, updateStatus, prependNotification]);
 
-  // Add default columns for new accounts (run only once)
+  // Mark as initialized if columns already exist (from storage or manual addition)
+  useEffect(() => {
+    if (columns.length > 0) {
+      hasAddedDefaultColumns.current = true;
+    }
+  }, [columns.length]);
+
+  // Add default columns for new accounts (only if never initialized)
   useEffect(() => {
     if (!hasAddedDefaultColumns.current && accounts.length > 0 && columns.length === 0) {
       hasAddedDefaultColumns.current = true;
