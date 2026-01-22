@@ -9,6 +9,7 @@ interface StatusCardProps {
     accountSession?: AccountSession;  // Required for boost/favorite - uses column's account
     onStatusUpdate?: (updatedStatus: mastodon.v1.Status) => void;
     onReply?: (status: mastodon.v1.Status) => void;
+    onStatusClick?: (status: mastodon.v1.Status) => void;
 }
 
 /**
@@ -29,7 +30,7 @@ function formatDate(dateStr: string): string {
     return date.toLocaleDateString('ja-JP');
 }
 
-export function StatusCard({ status, isReblog = false, accountSession, onStatusUpdate, onReply }: StatusCardProps) {
+export function StatusCard({ status, isReblog = false, accountSession, onStatusUpdate, onReply, onStatusClick }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
     const reblogger = status.reblog ? status.account : null;
@@ -169,8 +170,26 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
     // Check if reblog is allowed (not for private/direct messages)
     const canReblog = displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
 
+    // Handle card click to open detail modal
+    const handleCardClick = (e: React.MouseEvent) => {
+        const target = e.target as HTMLElement;
+        // Ignore clicks on interactive elements
+        if (
+            target.closest('a') ||
+            target.closest('button') ||
+            target.closest('video') ||
+            target.closest('details')
+        ) {
+            return;
+        }
+        onStatusClick?.(displayStatus);
+    };
+
     return (
-        <article className={`p-4 border-b border-slate-700/50 card-hover ${isReblog ? 'animate-fade-in' : ''}`}>
+        <article
+            className={`p-4 border-b border-slate-700/50 card-hover cursor-pointer ${isReblog ? 'animate-fade-in' : ''}`}
+            onClick={handleCardClick}
+        >
             {/* Reblog indicator */}
             {reblogger && (
                 <div className="flex items-center gap-2 text-sm text-slate-400 mb-2 ml-12">

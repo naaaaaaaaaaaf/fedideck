@@ -6,7 +6,9 @@ import { ColumnContainer } from './deck/ColumnContainer';
 import { LoginModal } from './components/LoginModal';
 import { AddColumnModal } from './components/AddColumnModal';
 import { ComposeModal, type ReplyToStatus } from './components/ComposeModal';
+import { StatusDetailModal } from './components/StatusDetailModal';
 import { useAccountsStore } from './store/accounts';
+import type { AccountSession } from './api/mastoClient';
 import { useColumnsStore } from './store/columns';
 import { useStreamsStore, getStreamKey } from './store/streams';
 import { initStreamManager } from './streaming/streamManager';
@@ -17,6 +19,9 @@ function App() {
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
   const [replyToStatus, setReplyToStatus] = useState<ReplyToStatus | undefined>(undefined);
   const [replyAccountId, setReplyAccountId] = useState<string | undefined>(undefined);
+  const [isStatusDetailOpen, setIsStatusDetailOpen] = useState(false);
+  const [detailStatus, setDetailStatus] = useState<mastodon.v1.Status | null>(null);
+  const [detailAccountSession, setDetailAccountSession] = useState<AccountSession | undefined>();
 
   const loadFromStorage = useAccountsStore(state => state.loadFromStorage);
   const accounts = useAccountsStore(state => state.accounts);
@@ -91,6 +96,19 @@ function App() {
     setIsComposeModalOpen(true);
   };
 
+  const handleStatusClick = (status: mastodon.v1.Status, accountId: string) => {
+    const accountSession = accounts.find(a => a.id === accountId);
+    setDetailStatus(status);
+    setDetailAccountSession(accountSession);
+    setIsStatusDetailOpen(true);
+  };
+
+  const handleStatusDetailReply = (status: mastodon.v1.Status) => {
+    if (detailAccountSession) {
+      handleReply(status, detailAccountSession.id);
+    }
+  };
+
   const handleComposeClose = () => {
     setIsComposeModalOpen(false);
     setReplyToStatus(undefined);
@@ -108,6 +126,7 @@ function App() {
         <ColumnContainer
           onAddColumn={() => setIsAddColumnModalOpen(true)}
           onReply={handleReply}
+          onStatusClick={handleStatusClick}
         />
       </main>
 
@@ -124,6 +143,13 @@ function App() {
         onClose={handleComposeClose}
         replyToStatus={replyToStatus}
         accountId={replyAccountId}
+      />
+      <StatusDetailModal
+        isOpen={isStatusDetailOpen}
+        onClose={() => setIsStatusDetailOpen(false)}
+        status={detailStatus}
+        accountSession={detailAccountSession}
+        onReply={handleStatusDetailReply}
       />
     </div>
   );

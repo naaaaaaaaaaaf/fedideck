@@ -78,3 +78,46 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
 }
+
+/* Status content styling */
+.status-content p {
+  margin: 0 0 0.75em 0;
+}
+.status-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* リンク共通 */
+.status-content a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.status-content a:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
+/* メンション */
+.status-content a.mention {
+  color: #60a5fa; /* blue-400 */
+}
+.status-content a.mention:hover {
+  color: #93c5fd; /* blue-300 */
+}
+
+/* ハッシュタグ */
+.status-content a[rel*="tag"] {
+  color: #a78bfa; /* violet-400 */
+}
+.status-content a[rel*="tag"]:hover {
+  color: #c4b5fd; /* violet-300 */
+}
+
+/* Mastodonのリンク短縮用 */
+.status-content .invisible {
+  display: none;
+}
+.status-content .ellipsis::after {
+  content: "...";
+}

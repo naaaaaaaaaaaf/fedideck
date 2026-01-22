@@ -22,9 +22,10 @@ interface ColumnProps {
     stream: StreamConfig;
     onRemove?: () => void;
     onReply?: (status: mastodon.v1.Status, accountId: string) => void;
+    onStatusClick?: (status: mastodon.v1.Status, accountId: string) => void;
 }
 
-export function Column({ accountId, stream, onRemove, onReply }: ColumnProps) {
+export function Column({ accountId, stream, onRemove, onReply, onStatusClick }: ColumnProps) {
     const account = useAccountsStore(state => state.accounts.find(a => a.id === accountId));
     const streamKey = getStreamKey(accountId, stream.type, stream);
     const data = useStreamsStore(state => state.data[streamKey]);
@@ -243,6 +244,7 @@ export function Column({ accountId, stream, onRemove, onReply }: ColumnProps) {
                         status={status}
                         accountSession={account}
                         onReply={onReply ? (s) => onReply(s, accountId) : undefined}
+                        onStatusClick={onStatusClick ? (s) => onStatusClick(s, accountId) : undefined}
                     />
                 ))}
 
