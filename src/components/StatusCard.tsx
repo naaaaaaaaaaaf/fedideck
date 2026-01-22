@@ -364,7 +364,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                 } ${isLoading.reblog ? 'opacity-50' : ''}`}
                             title={!canReblog ? 'この投稿はブーストできません' : undefined}
                             aria-label={localReblogged ? 'ブースト解除' : 'ブースト'}
-                            aria-disabled={!canReblog ? 'true' : undefined}
+                            aria-disabled={!canReblog ? true : undefined}
                         >
                             <LuRepeat2 />
                             <span className="text-sm">{localReblogsCount || ''}</span>
