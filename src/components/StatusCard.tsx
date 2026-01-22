@@ -165,8 +165,18 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
         ) {
             return;
         }
-        // Pass status with current local state for immediate reflection in detail modal
-        const statusWithLocalState = {
+        // Maintain original structure: if status has reblog, update the nested reblog
+        // Otherwise, update the status itself with local state
+        const statusWithLocalState: mastodon.v1.Status = status.reblog ? {
+            ...status,
+            reblog: {
+                ...displayStatus,
+                favourited: localFavourited,
+                favouritesCount: localFavouritesCount,
+                reblogged: localReblogged,
+                reblogsCount: localReblogsCount,
+            }
+        } : {
             ...displayStatus,
             favourited: localFavourited,
             favouritesCount: localFavouritesCount,
@@ -337,6 +347,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                         <button
                             onClick={() => onReply?.(displayStatus)}
                             className="flex items-center gap-1.5 hover:text-blue-400 transition-colors"
+                            aria-label="返信"
                         >
                             <LuMessageCircle />
                             <span className="text-sm">{displayStatus.repliesCount || ''}</span>
@@ -344,6 +355,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                         <button
                             onClick={handleReblog}
                             disabled={!accountSession || isLoading.reblog || !canReblog}
+                            tabIndex={!canReblog ? -1 : undefined}
                             className={`flex items-center gap-1.5 transition-colors ${!canReblog
                                 ? 'opacity-50 cursor-not-allowed'
                                 : localReblogged
@@ -351,6 +363,8 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                     : 'hover:text-green-400'
                                 } ${isLoading.reblog ? 'opacity-50' : ''}`}
                             title={!canReblog ? 'この投稿はブーストできません' : undefined}
+                            aria-label={localReblogged ? 'ブースト解除' : 'ブースト'}
+                            aria-disabled={!canReblog ? 'true' : undefined}
                         >
                             <LuRepeat2 />
                             <span className="text-sm">{localReblogsCount || ''}</span>
@@ -362,11 +376,12 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                 ? 'text-amber-400 hover:text-amber-300'
                                 : 'hover:text-amber-400'
                                 } ${isLoading.favourite ? 'opacity-50' : ''}`}
+                            aria-label={localFavourited ? 'お気に入り解除' : 'お気に入り'}
                         >
                             <LuStar className={localFavourited ? 'fill-current' : ''} />
                             <span className="text-sm">{localFavouritesCount || ''}</span>
                         </button>
-                        <button className="hover:text-indigo-400 transition-colors">
+                        <button className="hover:text-indigo-400 transition-colors" aria-label="リンクをコピー">
                             <LuLink />
                         </button>
                     </div>
