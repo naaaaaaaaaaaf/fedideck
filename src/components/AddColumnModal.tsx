@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { LuHouse, LuBell, LuUsers, LuGlobe, LuX } from 'react-icons/lu';
+import { useState, useEffect, type ReactNode } from 'react';
+import { LuHouse, LuBell, LuUsers, LuGlobe, LuX, LuChevronDown } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
 import { useColumnsStore } from '../store/columns';
 import type { StreamType } from '../streaming/streamTypes';
@@ -21,11 +21,25 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
     const activeAccountId = useAccountsStore(state => state.activeAccountId);
     const addColumn = useColumnsStore(state => state.addColumn);
 
+    // State for selected account
+    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(activeAccountId);
+    const [showAccountSelector, setShowAccountSelector] = useState(false);
+
+    // Reset selected account when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedAccountId(activeAccountId ?? accounts[0]?.id ?? null);
+            setShowAccountSelector(false);
+        }
+    }, [isOpen, activeAccountId, accounts]);
+
+    const selectedAccount = accounts.find(a => a.id === selectedAccountId);
+
     const handleAddColumn = (type: StreamType) => {
-        if (!activeAccountId) return;
+        if (!selectedAccountId) return;
 
         addColumn({
-            accountId: activeAccountId,
+            accountId: selectedAccountId,
             stream: { type },
         });
 
@@ -33,8 +47,6 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
     };
 
     if (!isOpen) return null;
-
-    const activeAccount = accounts.find(a => a.id === activeAccountId);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -50,22 +62,64 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                     </button>
                 </div>
 
-                {/* Account info */}
-                {activeAccount && (
-                    <div className="px-6 py-3 bg-slate-900/30 border-b border-slate-700/30 flex items-center gap-3">
-                        <img
-                            src={activeAccount.account.avatar}
-                            alt=""
-                            className="w-8 h-8 rounded-lg"
-                        />
-                        <div className="min-w-0">
-                            <div className="text-sm font-medium text-slate-200 truncate">
-                                {activeAccount.account.displayName || activeAccount.account.username}
+                {/* Account selector */}
+                {selectedAccount && (
+                    <div className="px-6 py-3 bg-slate-900/30 border-b border-slate-700/30 relative">
+                        <button
+                            onClick={() => setShowAccountSelector(!showAccountSelector)}
+                            className="flex items-center gap-3 w-full text-left hover:bg-slate-700/30 -mx-3 px-3 py-2 rounded-lg transition-colors"
+                        >
+                            <img
+                                src={selectedAccount.account.avatar}
+                                alt=""
+                                className="w-8 h-8 rounded-lg"
+                            />
+                            <div className="min-w-0 flex-1">
+                                <div className="text-sm font-medium text-slate-200 truncate">
+                                    {selectedAccount.account.displayName || selectedAccount.account.username}
+                                </div>
+                                <div className="text-xs text-slate-400 truncate">
+                                    @{selectedAccount.account.acct}@{new URL(selectedAccount.instanceUrl).hostname}
+                                </div>
                             </div>
-                            <div className="text-xs text-slate-400 truncate">
-                                @{activeAccount.account.acct}@{new URL(activeAccount.instanceUrl).hostname}
+                            {accounts.length > 1 && (
+                                <LuChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showAccountSelector ? 'rotate-180' : ''}`} />
+                            )}
+                        </button>
+
+                        {/* Account dropdown */}
+                        {showAccountSelector && accounts.length > 1 && (
+                            <div className="absolute left-4 right-4 top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-10 overflow-hidden">
+                                {accounts.map(acc => (
+                                    <button
+                                        key={acc.id}
+                                        onClick={() => {
+                                            setSelectedAccountId(acc.id);
+                                            setShowAccountSelector(false);
+                                        }}
+                                        className={`flex items-center gap-3 p-3 w-full text-left hover:bg-slate-700/50 transition-colors ${acc.id === selectedAccountId ? 'bg-slate-700/30' : ''
+                                            }`}
+                                    >
+                                        <img
+                                            src={acc.account.avatar}
+                                            alt=""
+                                            className="w-8 h-8 rounded-lg"
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="text-sm font-medium text-slate-200 truncate">
+                                                {acc.account.displayName || acc.account.username}
+                                            </div>
+                                            <div className="text-xs text-slate-400 truncate">
+                                                @{acc.account.acct}@{new URL(acc.instanceUrl).hostname}
+                                            </div>
+                                        </div>
+                                        {acc.id === selectedAccountId && (
+                                            <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+                                        )}
+                                    </button>
+                                ))}
                             </div>
-                        </div>
+                        )}
                     </div>
                 )}
 
@@ -91,3 +145,4 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
         </div>
     );
 }
+
