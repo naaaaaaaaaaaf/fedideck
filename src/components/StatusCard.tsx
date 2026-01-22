@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { mastodon } from 'masto';
 import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert } from 'react-icons/lu';
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
+import { formatDate } from '../utils/dateFormat';
 
 interface StatusCardProps {
     status: mastodon.v1.Status;
@@ -9,27 +10,10 @@ interface StatusCardProps {
     accountSession?: AccountSession;  // Required for boost/favorite - uses column's account
     onStatusUpdate?: (updatedStatus: mastodon.v1.Status) => void;
     onReply?: (status: mastodon.v1.Status) => void;
+    onStatusClick?: (status: mastodon.v1.Status) => void;
 }
 
-/**
- * Format a date string to relative time in Japanese
- */
-function formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return '今';
-    if (diffMins < 60) return `${diffMins}分`;
-    if (diffHours < 24) return `${diffHours}時間`;
-    if (diffDays < 7) return `${diffDays}日`;
-    return date.toLocaleDateString('ja-JP');
-}
-
-export function StatusCard({ status, isReblog = false, accountSession, onStatusUpdate, onReply }: StatusCardProps) {
+export function StatusCard({ status, isReblog = false, accountSession, onStatusUpdate, onReply, onStatusClick }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
     const reblogger = status.reblog ? status.account : null;
@@ -169,8 +153,35 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
     // Check if reblog is allowed (not for private/direct messages)
     const canReblog = displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
 
+    // Handle card click to open detail modal
+    const handleCardClick = (e: React.MouseEvent) => {
+        const target = e.target as HTMLElement;
+        // Ignore clicks on interactive elements
+        if (
+            target.closest('a') ||
+            target.closest('button') ||
+            target.closest('video') ||
+            target.closest('details')
+        ) {
+            return;
+        }
+        // Always pass displayStatus (the actual content being shown) with local state
+        // This ensures consistent handling regardless of reblog status
+        const statusWithLocalState: mastodon.v1.Status = {
+            ...displayStatus,
+            favourited: localFavourited,
+            favouritesCount: localFavouritesCount,
+            reblogged: localReblogged,
+            reblogsCount: localReblogsCount,
+        };
+        onStatusClick?.(statusWithLocalState);
+    };
+
     return (
-        <article className={`p-4 border-b border-slate-700/50 card-hover ${isReblog ? 'animate-fade-in' : ''}`}>
+        <article
+            className={`p-4 border-b border-slate-700/50 card-hover ${onStatusClick ? 'cursor-pointer' : ''} ${isReblog ? 'animate-fade-in' : ''}`}
+            onClick={onStatusClick ? handleCardClick : undefined}
+        >
             {/* Reblog indicator */}
             {reblogger && (
                 <div className="flex items-center gap-2 text-sm text-slate-400 mb-2 ml-12">
@@ -235,7 +246,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                 <LuTriangleAlert className="inline mr-1" /> {displayStatus.spoilerText}
                             </summary>
                             <div
-                                className="mt-2 text-slate-200 break-words status-content"
+                                className="mt-2 text-slate-200 wrap-break-word status-content"
                                 dangerouslySetInnerHTML={{ __html: displayStatus.content }}
                             />
                         </details>
@@ -244,7 +255,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                     {/* Main content */}
                     {!displayStatus.spoilerText && (
                         <div
-                            className="mt-2 text-slate-200 break-words status-content"
+                            className="mt-2 text-slate-200 wrap-break-word status-content"
                             dangerouslySetInnerHTML={{ __html: displayStatus.content }}
                         />
                     )}
@@ -327,6 +338,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                         <button
                             onClick={() => onReply?.(displayStatus)}
                             className="flex items-center gap-1.5 hover:text-blue-400 transition-colors"
+                            aria-label="返信"
                         >
                             <LuMessageCircle />
                             <span className="text-sm">{displayStatus.repliesCount || ''}</span>
@@ -334,6 +346,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                         <button
                             onClick={handleReblog}
                             disabled={!accountSession || isLoading.reblog || !canReblog}
+                            tabIndex={!canReblog ? -1 : undefined}
                             className={`flex items-center gap-1.5 transition-colors ${!canReblog
                                 ? 'opacity-50 cursor-not-allowed'
                                 : localReblogged
@@ -341,6 +354,8 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                     : 'hover:text-green-400'
                                 } ${isLoading.reblog ? 'opacity-50' : ''}`}
                             title={!canReblog ? 'この投稿はブーストできません' : undefined}
+                            aria-label={localReblogged ? 'ブースト解除' : 'ブースト'}
+                            aria-disabled={!canReblog}
                         >
                             <LuRepeat2 />
                             <span className="text-sm">{localReblogsCount || ''}</span>
@@ -352,11 +367,12 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                 ? 'text-amber-400 hover:text-amber-300'
                                 : 'hover:text-amber-400'
                                 } ${isLoading.favourite ? 'opacity-50' : ''}`}
+                            aria-label={localFavourited ? 'お気に入り解除' : 'お気に入り'}
                         >
                             <LuStar className={localFavourited ? 'fill-current' : ''} />
                             <span className="text-sm">{localFavouritesCount || ''}</span>
                         </button>
-                        <button className="hover:text-indigo-400 transition-colors">
+                        <button className="hover:text-indigo-400 transition-colors" aria-label="リンクをコピー">
                             <LuLink />
                         </button>
                     </div>
@@ -365,7 +381,4 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
         </article>
     );
 }
-
-// Export for testing
-export { formatDate };
 

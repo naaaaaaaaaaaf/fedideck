@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { StatusCard, formatDate } from './StatusCard';
+import { StatusCard } from './StatusCard';
+import { formatDate } from '../utils/dateFormat';
 import type { mastodon } from 'masto';
 
 // Minimal mock status for testing
@@ -225,6 +226,84 @@ describe('StatusCard', () => {
         it('should return days for dates within a week', () => {
             const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
             expect(formatDate(threeDaysAgo)).toBe('3日');
+        });
+    });
+
+    describe('card click', () => {
+        it('should call onStatusClick when card content is clicked', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                content: '<p>Clickable content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            // Click on the content area
+            const content = screen.getByText('Clickable content');
+            await user.click(content);
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
+                id: '12345',
+            }));
+        });
+
+        it('should NOT call onStatusClick when clicking a link', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                content: '<p>Text with <a href="https://example.com">link</a></p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const link = screen.getByRole('link', { name: 'link' });
+            await user.click(link);
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should NOT call onStatusClick when clicking a button', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const onReply = vi.fn();
+            const status = createMockStatus();
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} onReply={onReply} />);
+
+            const replyButton = screen.getAllByRole('button')[0];
+            await user.click(replyButton);
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should call onStatusClick with original status when clicking reblog card', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const originalStatus = createMockStatus({
+                id: 'original-123',
+                content: '<p>Original content</p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Original Author',
+                },
+            });
+
+            const reblogStatus = createMockStatus({
+                id: 'reblog-456',
+                reblog: originalStatus,
+            });
+
+            render(<StatusCard status={reblogStatus} onStatusClick={onStatusClick} />);
+
+            const content = screen.getByText('Original content');
+            await user.click(content);
+
+            // Should pass original status, not the reblog wrapper
+            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
+                id: 'original-123',
+            }));
         });
     });
 

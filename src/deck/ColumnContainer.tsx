@@ -8,9 +8,10 @@ import { useAccountsStore } from '../store/accounts';
 interface ColumnContainerProps {
     onAddColumn?: () => void;
     onReply?: (status: mastodon.v1.Status, accountId: string) => void;
+    onStatusClick?: (status: mastodon.v1.Status, accountId: string) => void;
 }
 
-export function ColumnContainer({ onAddColumn, onReply }: ColumnContainerProps) {
+export function ColumnContainer({ onAddColumn, onReply, onStatusClick }: ColumnContainerProps) {
     const columns = useColumnsStore(state => state.columns);
     const removeColumn = useColumnsStore(state => state.removeColumn);
     const activeAccountId = useAccountsStore(state => state.activeAccountId);
@@ -32,6 +33,7 @@ export function ColumnContainer({ onAddColumn, onReply }: ColumnContainerProps) 
                     stream={column.stream}
                     onRemove={() => removeColumn(column.id)}
                     onReply={onReply}
+                    onStatusClick={onStatusClick}
                 />
             ))}
 

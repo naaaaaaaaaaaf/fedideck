@@ -147,13 +147,13 @@ export function NotificationCard({ notification }: NotificationCardProps) {
                                 <LuTriangleAlert className="inline mr-1" /> {status.spoilerText}
                             </summary>
                             <div
-                                className="mt-2 text-sm text-slate-300 break-words"
+                                className="mt-2 text-sm text-slate-300 wrap-break-word"
                                 dangerouslySetInnerHTML={{ __html: status.content }}
                             />
                         </details>
                     ) : (
                         <div
-                            className="text-sm text-slate-300 break-words line-clamp-4"
+                            className="text-sm text-slate-300 wrap-break-word line-clamp-4"
                             dangerouslySetInnerHTML={{ __html: status.content }}
                         />
                     )}
