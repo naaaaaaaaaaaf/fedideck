@@ -165,18 +165,9 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
         ) {
             return;
         }
-        // Maintain original structure: if status has reblog, update the nested reblog
-        // Otherwise, update the status itself with local state
-        const statusWithLocalState: mastodon.v1.Status = status.reblog ? {
-            ...status,
-            reblog: {
-                ...displayStatus,
-                favourited: localFavourited,
-                favouritesCount: localFavouritesCount,
-                reblogged: localReblogged,
-                reblogsCount: localReblogsCount,
-            }
-        } : {
+        // Always pass displayStatus (the actual content being shown) with local state
+        // This ensures consistent handling regardless of reblog status
+        const statusWithLocalState: mastodon.v1.Status = {
             ...displayStatus,
             favourited: localFavourited,
             favouritesCount: localFavouritesCount,
