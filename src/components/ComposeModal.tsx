@@ -109,7 +109,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
             const mention = `@${replyToStatus.acct} `;
             setContent(mention);
         }
-    }, [replyToStatus?.id, isOpen]);
+    }, [replyToStatus, isOpen]);
 
     const remainingChars = MAX_CHARS - content.length;
     const isOverLimit = remainingChars < 0;

@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { LuHouse, LuBell, LuUsers, LuGlobe, LuX, LuChevronDown } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
 import { useColumnsStore } from '../store/columns';
@@ -21,17 +21,12 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
     const activeAccountId = useAccountsStore(state => state.activeAccountId);
     const addColumn = useColumnsStore(state => state.addColumn);
 
-    // State for selected account
-    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(activeAccountId);
+    // State for selected account - initialized with activeAccountId or first account
+    // Component is remounted when modal opens (via key prop), so initial values are recalculated
+    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
+        activeAccountId ?? accounts[0]?.id ?? null
+    );
     const [showAccountSelector, setShowAccountSelector] = useState(false);
-
-    // Reset selected account when modal opens
-    useEffect(() => {
-        if (isOpen) {
-            setSelectedAccountId(activeAccountId ?? accounts[0]?.id ?? null);
-            setShowAccountSelector(false);
-        }
-    }, [isOpen, activeAccountId, accounts]);
 
     const selectedAccount = accounts.find(a => a.id === selectedAccountId);
 

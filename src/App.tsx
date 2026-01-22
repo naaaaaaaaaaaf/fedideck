@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { mastodon } from 'masto';
 import './index.css';
 import { Sidebar } from './components/Sidebar';
@@ -29,10 +29,13 @@ function App() {
   const addColumn = useColumnsStore(state => state.addColumn);
   const { prependStatus, removeStatus, updateStatus, updateStatusGlobal, prependNotification } = useStreamsStore();
 
+  // Ref to track if default columns have been added
+  const hasAddedDefaultColumns = useRef(false);
+
   // Load accounts from storage on mount
   useEffect(() => {
     loadFromStorage();
-  }, []);
+  }, [loadFromStorage]);
 
   // Initialize stream manager with real callbacks
   useEffect(() => {
@@ -67,21 +70,18 @@ function App() {
     });
   }, [prependStatus, removeStatus, updateStatus, prependNotification]);
 
-  // Add default columns for new accounts
+  // Add default columns for new accounts (run only once)
   useEffect(() => {
-    if (accounts.length > 0 && columns.length === 0) {
+    if (!hasAddedDefaultColumns.current && accounts.length > 0 && columns.length === 0) {
+      hasAddedDefaultColumns.current = true;
       const firstAccount = accounts[0];
       addColumn({ accountId: firstAccount.id, stream: { type: 'home' } });
       addColumn({ accountId: firstAccount.id, stream: { type: 'notifications' } });
     }
-  }, [accounts.length]);
+  }, [accounts, columns.length, addColumn]);
 
-  // Open login modal if no accounts
-  useEffect(() => {
-    if (accounts.length === 0) {
-      setIsLoginModalOpen(true);
-    }
-  }, [accounts.length]);
+  // Derive login modal open state - show when no accounts exist or user explicitly opens it
+  const shouldShowLoginModal = isLoginModalOpen || accounts.length === 0;
 
   const handleReply = (status: mastodon.v1.Status, accountId: string) => {
     const account = status.account;
@@ -137,10 +137,11 @@ function App() {
       </main>
 
       <LoginModal
-        isOpen={isLoginModalOpen}
+        isOpen={shouldShowLoginModal}
         onClose={() => setIsLoginModalOpen(false)}
       />
       <AddColumnModal
+        key={isAddColumnModalOpen ? 'open' : 'closed'}
         isOpen={isAddColumnModalOpen}
         onClose={() => setIsAddColumnModalOpen(false)}
       />

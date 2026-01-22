@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { mastodon } from 'masto';
 import { ComposeModal } from './ComposeModal';
 import * as mastoClient from '../api/mastoClient';
 import { useAccountsStore } from '../store/accounts';
@@ -140,7 +141,7 @@ describe('ComposeModal', () => {
         const user = userEvent.setup();
         const onClose = vi.fn();
         const mockCreateStatus = vi.mocked(mastoClient.createStatus);
-        mockCreateStatus.mockResolvedValueOnce({} as any);
+        mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
 
         render(<ComposeModal isOpen={true} onClose={onClose} />);
 
@@ -187,7 +188,7 @@ describe('ComposeModal', () => {
         const user = userEvent.setup();
         const onClose = vi.fn();
         const mockCreateStatus = vi.mocked(mastoClient.createStatus);
-        mockCreateStatus.mockResolvedValueOnce({} as any);
+        mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
 
         render(<ComposeModal isOpen={true} onClose={onClose} />);
 
@@ -223,7 +224,7 @@ describe('ComposeModal', () => {
         const user = userEvent.setup();
         const onClose = vi.fn();
         const mockCreateStatus = vi.mocked(mastoClient.createStatus);
-        mockCreateStatus.mockResolvedValueOnce({} as any);
+        mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
 
         render(<ComposeModal isOpen={true} onClose={onClose} />);
 
@@ -328,7 +329,7 @@ describe('ComposeModal', () => {
         const user = userEvent.setup();
         const onClose = vi.fn();
         const mockCreateStatus = vi.mocked(mastoClient.createStatus);
-        mockCreateStatus.mockResolvedValueOnce({} as any);
+        mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
 
         render(<ComposeModal isOpen={true} onClose={onClose} />);
 
@@ -426,7 +427,7 @@ describe('ComposeModal', () => {
         const user = userEvent.setup();
         const onClose = vi.fn();
         const mockCreateStatus = vi.mocked(mastoClient.createStatus);
-        mockCreateStatus.mockResolvedValueOnce({} as any);
+        mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
 
         render(
             <ComposeModal isOpen={true} onClose={onClose} replyToStatus={mockReplyToStatus} />
