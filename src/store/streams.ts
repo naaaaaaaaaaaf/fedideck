@@ -155,33 +155,36 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
     updateStatusGlobal: (status: mastodon.v1.Status) => {
         set((state) => {
             const newData = { ...state.data };
-            let hasChanges = false;
+            let hasAnyChanges = false;
 
             for (const key of Object.keys(newData)) {
                 const current = newData[key];
+                let streamHasChanges = false;
+
                 const updatedStatuses = current.statuses.map(s => {
                     // Direct match
                     if (s.id === status.id) {
-                        hasChanges = true;
+                        streamHasChanges = true;
                         return status;
                     }
                     // Check if this is a reblog containing the status
                     if (s.reblog && s.reblog.id === status.id) {
-                        hasChanges = true;
+                        streamHasChanges = true;
                         return { ...s, reblog: status };
                     }
                     return s;
                 });
 
-                if (hasChanges) {
+                if (streamHasChanges) {
                     newData[key] = {
                         ...current,
                         statuses: updatedStatuses,
                     };
+                    hasAnyChanges = true;
                 }
             }
 
-            return hasChanges ? { data: newData } : state;
+            return hasAnyChanges ? { data: newData } : state;
         });
     },
 
