@@ -109,6 +109,12 @@ function App() {
     }
   };
 
+  const handleDetailModalClose = () => {
+    setIsStatusDetailOpen(false);
+    setDetailStatus(null);
+    setDetailAccountSession(undefined);
+  };
+
   const handleComposeClose = () => {
     setIsComposeModalOpen(false);
     setReplyToStatus(undefined);
@@ -146,7 +152,7 @@ function App() {
       />
       <StatusDetailModal
         isOpen={isStatusDetailOpen}
-        onClose={() => setIsStatusDetailOpen(false)}
+        onClose={handleDetailModalClose}
         status={detailStatus}
         accountSession={detailAccountSession}
         onReply={handleStatusDetailReply}

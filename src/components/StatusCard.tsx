@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { mastodon } from 'masto';
 import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert } from 'react-icons/lu';
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
+import { formatDate } from '../utils/dateFormat';
 
 interface StatusCardProps {
     status: mastodon.v1.Status;
@@ -10,24 +11,6 @@ interface StatusCardProps {
     onStatusUpdate?: (updatedStatus: mastodon.v1.Status) => void;
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusClick?: (status: mastodon.v1.Status) => void;
-}
-
-/**
- * Format a date string to relative time in Japanese
- */
-function formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return '今';
-    if (diffMins < 60) return `${diffMins}分`;
-    if (diffHours < 24) return `${diffHours}時間`;
-    if (diffDays < 7) return `${diffDays}日`;
-    return date.toLocaleDateString('ja-JP');
 }
 
 export function StatusCard({ status, isReblog = false, accountSession, onStatusUpdate, onReply, onStatusClick }: StatusCardProps) {
@@ -195,8 +178,8 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
 
     return (
         <article
-            className={`p-4 border-b border-slate-700/50 card-hover cursor-pointer ${isReblog ? 'animate-fade-in' : ''}`}
-            onClick={handleCardClick}
+            className={`p-4 border-b border-slate-700/50 card-hover ${onStatusClick ? 'cursor-pointer' : ''} ${isReblog ? 'animate-fade-in' : ''}`}
+            onClick={onStatusClick ? handleCardClick : undefined}
         >
             {/* Reblog indicator */}
             {reblogger && (
@@ -262,7 +245,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                 <LuTriangleAlert className="inline mr-1" /> {displayStatus.spoilerText}
                             </summary>
                             <div
-                                className="mt-2 text-slate-200 break-words status-content"
+                                className="mt-2 text-slate-200 wrap-break-word status-content"
                                 dangerouslySetInnerHTML={{ __html: displayStatus.content }}
                             />
                         </details>
@@ -271,7 +254,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                     {/* Main content */}
                     {!displayStatus.spoilerText && (
                         <div
-                            className="mt-2 text-slate-200 break-words status-content"
+                            className="mt-2 text-slate-200 wrap-break-word status-content"
                             dangerouslySetInnerHTML={{ __html: displayStatus.content }}
                         />
                     )}
@@ -392,7 +375,4 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
         </article>
     );
 }
-
-// Export for testing
-export { formatDate };
 

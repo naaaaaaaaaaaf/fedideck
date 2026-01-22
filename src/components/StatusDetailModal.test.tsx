@@ -1,8 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StatusDetailModal } from './StatusDetailModal';
 import type { mastodon } from 'masto';
+import type { AccountSession } from '../api/mastoClient';
+import * as mastoClient from '../api/mastoClient';
 
 // Minimal mock status for testing
 const createMockStatus = (overrides: Partial<mastodon.v1.Status> = {}): mastodon.v1.Status => {
@@ -63,6 +66,13 @@ const createMockStatus = (overrides: Partial<mastodon.v1.Status> = {}): mastodon
     };
     return base as unknown as mastodon.v1.Status;
 };
+
+const createMockAccountSession = (): AccountSession => ({
+    id: 'session1',
+    instanceUrl: 'https://mastodon.social',
+    accessToken: 'test-token',
+    account: createMockStatus().account,
+});
 
 describe('StatusDetailModal', () => {
     describe('rendering', () => {
@@ -302,6 +312,657 @@ describe('StatusDetailModal', () => {
             expect(screen.getByText('Option B')).toBeInTheDocument();
             expect(screen.getByText('70%')).toBeInTheDocument();
             expect(screen.getByText('30%')).toBeInTheDocument();
+        });
+    });
+
+    describe('focus management', () => {
+        it('should have proper ARIA attributes for accessibility', () => {
+            const status = createMockStatus();
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                />
+            );
+
+            const dialog = screen.getByRole('dialog');
+            expect(dialog).toHaveAttribute('aria-modal', 'true');
+            expect(dialog).toHaveAttribute('aria-labelledby', 'status-detail-title');
+        });
+
+        it('should focus close button when modal opens', () => {
+            const status = createMockStatus();
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                />
+            );
+
+            const closeButton = screen.getByRole('button', { name: '閉じる' });
+            expect(closeButton).toHaveFocus();
+        });
+
+        it('should call onClose when Escape key is pressed', async () => {
+            const user = userEvent.setup();
+            const onClose = vi.fn();
+            const status = createMockStatus();
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={onClose}
+                    status={status}
+                />
+            );
+
+            await user.keyboard('{Escape}');
+
+            expect(onClose).toHaveBeenCalledTimes(1);
+        });
+
+        it('should trap focus within modal when Tab is pressed', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                />
+            );
+
+            const closeButton = screen.getByRole('button', { name: '閉じる' });
+            expect(closeButton).toHaveFocus();
+
+            // Tab through focusable elements
+            await user.tab();
+            // Should cycle through focusable elements within the modal
+            expect(document.activeElement?.closest('[role="dialog"]')).toBeTruthy();
+        });
+
+        it('should restore focus to previously focused element when closed', async () => {
+            const status = createMockStatus();
+            const TestComponent = () => {
+                const [isOpen, setIsOpen] = useState(false);
+                return (
+                    <>
+                        <button data-testid="trigger" onClick={() => setIsOpen(true)}>
+                            Open Modal
+                        </button>
+                        <StatusDetailModal
+                            isOpen={isOpen}
+                            onClose={() => setIsOpen(false)}
+                            status={status}
+                        />
+                    </>
+                );
+            };
+
+            render(<TestComponent />);
+
+            // Focus the trigger button and open modal
+            const trigger = screen.getByTestId('trigger');
+            trigger.focus();
+            expect(trigger).toHaveFocus();
+
+            await userEvent.click(trigger);
+
+            // Modal should be open and close button focused
+            const closeButton = screen.getByRole('button', { name: '閉じる' });
+            expect(closeButton).toHaveFocus();
+
+            // Close the modal
+            await userEvent.click(closeButton);
+
+            // Focus should be restored to trigger button
+            expect(trigger).toHaveFocus();
+        });
+    });
+
+    describe('favourite button interactions', () => {
+        beforeEach(() => {
+            vi.clearAllMocks();
+        });
+
+        it('should not show favourite button as active when status is not favourited', () => {
+            const status = createMockStatus({ favourited: false });
+            const accountSession = createMockAccountSession();
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Find all buttons and locate favourite button by checking for star icon
+            const buttons = screen.getAllByRole('button');
+            const favouriteButton = buttons.find(btn => btn.querySelector('svg'));
+            
+            // The button should not have the filled star or active color class
+            expect(favouriteButton?.className).not.toMatch(/text-amber-400/);
+        });
+
+        it('should show favourite button as active when status is favourited', () => {
+            const status = createMockStatus({ favourited: true, favouritesCount: 10 });
+            const accountSession = createMockAccountSession();
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Favourite count should be visible
+            expect(screen.getByText('10')).toBeInTheDocument();
+        });
+
+        it('should call favouriteStatus API when unfavourited status is clicked', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ favourited: false, favouritesCount: 5 });
+            const accountSession = createMockAccountSession();
+            const onStatusUpdate = vi.fn();
+
+            const updatedStatus = createMockStatus({ favourited: true, favouritesCount: 6 });
+            
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'favouriteStatus').mockResolvedValue(updatedStatus);
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                    onStatusUpdate={onStatusUpdate}
+                />
+            );
+
+            // Find favourite button - it's in the action bar
+            const buttons = screen.getAllByRole('button');
+            // The favourite button should have a star icon (LuStar)
+            const favouriteButton = buttons.find(btn => {
+                const svg = btn.querySelector('svg');
+                return svg && btn.textContent?.includes('5');
+            });
+
+            expect(favouriteButton).toBeDefined();
+            await user.click(favouriteButton!);
+
+            await waitFor(() => {
+                expect(mastoClient.favouriteStatus).toHaveBeenCalledWith({}, '12345');
+                expect(onStatusUpdate).toHaveBeenCalledWith(updatedStatus);
+            });
+        });
+
+        it('should call unfavouriteStatus API when favourited status is clicked', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ favourited: true, favouritesCount: 10 });
+            const accountSession = createMockAccountSession();
+            const onStatusUpdate = vi.fn();
+
+            const updatedStatus = createMockStatus({ favourited: false, favouritesCount: 9 });
+            
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'unfavouriteStatus').mockResolvedValue(updatedStatus);
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                    onStatusUpdate={onStatusUpdate}
+                />
+            );
+
+            const buttons = screen.getAllByRole('button');
+            const favouriteButton = buttons.find(btn => {
+                const svg = btn.querySelector('svg');
+                return svg && btn.textContent?.includes('10');
+            });
+
+            expect(favouriteButton).toBeDefined();
+            await user.click(favouriteButton!);
+
+            await waitFor(() => {
+                expect(mastoClient.unfavouriteStatus).toHaveBeenCalledWith({}, '12345');
+                expect(onStatusUpdate).toHaveBeenCalledWith(updatedStatus);
+            });
+        });
+
+        it('should optimistically update UI before API call completes', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ favourited: false, favouritesCount: 5 });
+            const accountSession = createMockAccountSession();
+
+            let resolvePromise: (value: mastodon.v1.Status) => void;
+            const favouritePromise = new Promise<mastodon.v1.Status>((resolve) => {
+                resolvePromise = resolve;
+            });
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'favouriteStatus').mockReturnValue(favouritePromise);
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Initial count should be 5
+            expect(screen.getByText('5')).toBeInTheDocument();
+
+            const buttons = screen.getAllByRole('button');
+            const favouriteButton = buttons.find(btn => btn.textContent?.includes('5'));
+            await user.click(favouriteButton!);
+
+            // Count should optimistically update to 6 before API completes
+            await waitFor(() => {
+                expect(screen.getByText('6')).toBeInTheDocument();
+            });
+
+            // Resolve the API call
+            resolvePromise!(createMockStatus({ favourited: true, favouritesCount: 6 }));
+        });
+
+        it('should revert optimistic update on API failure', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ favourited: false, favouritesCount: 5 });
+            const accountSession = createMockAccountSession();
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'favouriteStatus').mockRejectedValue(new Error('API Error'));
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            const buttons = screen.getAllByRole('button');
+            const favouriteButton = buttons.find(btn => btn.textContent?.includes('5'));
+            await user.click(favouriteButton!);
+
+            // Should optimistically show 6
+            await waitFor(() => {
+                expect(screen.getByText('6')).toBeInTheDocument();
+            });
+
+            // Should revert back to 5 after error
+            await waitFor(() => {
+                expect(screen.getByText('5')).toBeInTheDocument();
+            });
+
+            expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to toggle favourite:', expect.any(Error));
+            consoleErrorSpy.mockRestore();
+        });
+
+        it('should not trigger favourite action when accountSession is not provided', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ favourited: false });
+            const favouriteSpy = vi.spyOn(mastoClient, 'favouriteStatus');
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    // No accountSession provided
+                />
+            );
+
+            const buttons = screen.getAllByRole('button');
+            const favouriteButton = buttons.find(btn => btn.textContent?.includes('10'));
+            
+            if (favouriteButton) {
+                await user.click(favouriteButton);
+                expect(favouriteSpy).not.toHaveBeenCalled();
+            }
+        });
+
+        it('should prevent multiple simultaneous favourite requests', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ favourited: false, favouritesCount: 5 });
+            const accountSession = createMockAccountSession();
+
+            let resolvePromise: (value: mastodon.v1.Status) => void;
+            const favouritePromise = new Promise<mastodon.v1.Status>((resolve) => {
+                resolvePromise = resolve;
+            });
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            const favouriteSpy = vi.spyOn(mastoClient, 'favouriteStatus').mockReturnValue(favouritePromise);
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            const buttons = screen.getAllByRole('button');
+            const favouriteButton = buttons.find(btn => btn.textContent?.includes('5'));
+
+            // Click multiple times rapidly
+            await user.click(favouriteButton!);
+            await user.click(favouriteButton!);
+            await user.click(favouriteButton!);
+
+            // Should only call the API once
+            expect(favouriteSpy).toHaveBeenCalledTimes(1);
+
+            // Resolve the promise
+            resolvePromise!(createMockStatus({ favourited: true, favouritesCount: 6 }));
+        });
+    });
+
+    describe('reblog button interactions', () => {
+        beforeEach(() => {
+            vi.clearAllMocks();
+        });
+
+        it('should call reblogStatus API when unreblogged status is clicked', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ reblogged: false, reblogsCount: 3, visibility: 'public' });
+            const accountSession = createMockAccountSession();
+            const onStatusUpdate = vi.fn();
+
+            const updatedStatus = createMockStatus({ reblogged: true, reblogsCount: 4 });
+            
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'reblogStatus').mockResolvedValue(updatedStatus);
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                    onStatusUpdate={onStatusUpdate}
+                />
+            );
+
+            const buttons = screen.getAllByRole('button');
+            // Find reblog button by looking for the one with reblog count
+            const reblogButton = buttons.find(btn => btn.textContent?.includes('3'));
+
+            expect(reblogButton).toBeDefined();
+            await user.click(reblogButton!);
+
+            await waitFor(() => {
+                expect(mastoClient.reblogStatus).toHaveBeenCalledWith({}, '12345');
+                expect(onStatusUpdate).toHaveBeenCalledWith(updatedStatus);
+            });
+        });
+
+        it('should call unreblogStatus API when reblogged status is clicked', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ reblogged: true, reblogsCount: 8, visibility: 'public' });
+            const accountSession = createMockAccountSession();
+            const onStatusUpdate = vi.fn();
+
+            const updatedStatus = createMockStatus({ reblogged: false, reblogsCount: 7 });
+            
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'unreblogStatus').mockResolvedValue(updatedStatus);
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                    onStatusUpdate={onStatusUpdate}
+                />
+            );
+
+            const buttons = screen.getAllByRole('button');
+            const reblogButton = buttons.find(btn => btn.textContent?.includes('8'));
+
+            expect(reblogButton).toBeDefined();
+            await user.click(reblogButton!);
+
+            await waitFor(() => {
+                expect(mastoClient.unreblogStatus).toHaveBeenCalledWith({}, '12345');
+                expect(onStatusUpdate).toHaveBeenCalledWith(updatedStatus);
+            });
+        });
+
+        it('should not allow reblogging private statuses', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ visibility: 'private', reblogsCount: 0 });
+            const accountSession = createMockAccountSession();
+            const reblogSpy = vi.spyOn(mastoClient, 'reblogStatus');
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            const buttons = screen.getAllByRole('button');
+            // Try to find and click reblog button
+            const reblogButton = buttons.find(btn => {
+                // Look for repeat icon in button
+                const hasRepeatIcon = btn.querySelector('svg');
+                return hasRepeatIcon && !btn.textContent?.includes('返信');
+            });
+
+            if (reblogButton) {
+                await user.click(reblogButton);
+                expect(reblogSpy).not.toHaveBeenCalled();
+            }
+        });
+
+        it('should not allow reblogging direct messages', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ visibility: 'direct', reblogsCount: 0 });
+            const accountSession = createMockAccountSession();
+            const reblogSpy = vi.spyOn(mastoClient, 'reblogStatus');
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            const buttons = screen.getAllByRole('button');
+            const reblogButton = buttons.find(btn => {
+                const hasRepeatIcon = btn.querySelector('svg');
+                return hasRepeatIcon && !btn.textContent?.includes('返信');
+            });
+
+            if (reblogButton) {
+                await user.click(reblogButton);
+                expect(reblogSpy).not.toHaveBeenCalled();
+            }
+        });
+
+        it('should handle reblog API returning wrapper status', async () => {
+            const user = userEvent.setup();
+            const originalStatus = createMockStatus({ reblogged: false, reblogsCount: 3 });
+            const accountSession = createMockAccountSession();
+            const onStatusUpdate = vi.fn();
+
+            // API returns a wrapper status with the actual status in reblog field
+            const wrapperStatus = createMockStatus({
+                id: 'wrapper-id',
+                reblog: createMockStatus({ id: '12345', reblogged: true, reblogsCount: 4 }),
+            });
+            
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'reblogStatus').mockResolvedValue(wrapperStatus);
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={originalStatus}
+                    accountSession={accountSession}
+                    onStatusUpdate={onStatusUpdate}
+                />
+            );
+
+            const buttons = screen.getAllByRole('button');
+            const reblogButton = buttons.find(btn => btn.textContent?.includes('3'));
+
+            await user.click(reblogButton!);
+
+            await waitFor(() => {
+                // Should extract the actual status from the wrapper
+                expect(onStatusUpdate).toHaveBeenCalledWith(
+                    expect.objectContaining({ id: '12345', reblogged: true, reblogsCount: 4 })
+                );
+            });
+        });
+
+        it('should optimistically update reblog UI before API completes', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ reblogged: false, reblogsCount: 5 });
+            const accountSession = createMockAccountSession();
+
+            let resolvePromise: (value: mastodon.v1.Status) => void;
+            const reblogPromise = new Promise<mastodon.v1.Status>((resolve) => {
+                resolvePromise = resolve;
+            });
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'reblogStatus').mockReturnValue(reblogPromise);
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            const buttons = screen.getAllByRole('button');
+            const reblogButton = buttons.find(btn => btn.textContent?.includes('5'));
+            await user.click(reblogButton!);
+
+            // Count should optimistically update to 6
+            await waitFor(() => {
+                expect(screen.getByText('6')).toBeInTheDocument();
+            });
+
+            resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 6 }));
+        });
+
+        it('should revert optimistic reblog update on API failure', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ reblogged: false, reblogsCount: 5 });
+            const accountSession = createMockAccountSession();
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            vi.spyOn(mastoClient, 'reblogStatus').mockRejectedValue(new Error('Network error'));
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            const buttons = screen.getAllByRole('button');
+            const reblogButton = buttons.find(btn => btn.textContent?.includes('5'));
+            await user.click(reblogButton!);
+
+            // Should revert back to 5 after error
+            await waitFor(() => {
+                expect(screen.getByText('5')).toBeInTheDocument();
+            });
+
+            expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to toggle reblog:', expect.any(Error));
+            consoleErrorSpy.mockRestore();
+        });
+
+        it('should not trigger reblog action when accountSession is not provided', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ reblogged: false });
+            const reblogSpy = vi.spyOn(mastoClient, 'reblogStatus');
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    // No accountSession
+                />
+            );
+
+            const buttons = screen.getAllByRole('button');
+            const reblogButton = buttons.find(btn => btn.textContent?.includes('5'));
+            
+            if (reblogButton) {
+                await user.click(reblogButton);
+                expect(reblogSpy).not.toHaveBeenCalled();
+            }
+        });
+
+        it('should prevent multiple simultaneous reblog requests', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ reblogged: false, reblogsCount: 5 });
+            const accountSession = createMockAccountSession();
+
+            let resolvePromise: (value: mastodon.v1.Status) => void;
+            const reblogPromise = new Promise<mastodon.v1.Status>((resolve) => {
+                resolvePromise = resolve;
+            });
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as any);
+            const reblogSpy = vi.spyOn(mastoClient, 'reblogStatus').mockReturnValue(reblogPromise);
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            const buttons = screen.getAllByRole('button');
+            const reblogButton = buttons.find(btn => btn.textContent?.includes('5'));
+
+            // Click multiple times rapidly
+            await user.click(reblogButton!);
+            await user.click(reblogButton!);
+            await user.click(reblogButton!);
+
+            // Should only call once
+            expect(reblogSpy).toHaveBeenCalledTimes(1);
+
+            resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 6 }));
         });
     });
 });

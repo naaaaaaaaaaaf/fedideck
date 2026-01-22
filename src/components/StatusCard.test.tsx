@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { StatusCard, formatDate } from './StatusCard';
+import { StatusCard } from './StatusCard';
+import { formatDate } from '../utils/dateFormat';
 import type { mastodon } from 'masto';
 
 // Minimal mock status for testing
