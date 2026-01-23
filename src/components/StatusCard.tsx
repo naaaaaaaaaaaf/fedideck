@@ -165,6 +165,19 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
         ) {
             return;
         }
+        openStatusDetail();
+    };
+
+    // Handle keyboard navigation for card
+    const handleCardKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openStatusDetail();
+        }
+    };
+
+    // Open status detail modal
+    const openStatusDetail = () => {
         // Always pass displayStatus (the actual content being shown) with local state
         // This ensures consistent handling regardless of reblog status
         const statusWithLocalState: mastodon.v1.Status = {
@@ -181,11 +194,14 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
         <article
             className={`p-4 border-b border-slate-700/50 card-hover ${onStatusClick ? 'cursor-pointer' : ''} ${isReblog ? 'animate-fade-in' : ''}`}
             onClick={onStatusClick ? handleCardClick : undefined}
+            onKeyDown={onStatusClick ? handleCardKeyDown : undefined}
+            tabIndex={onStatusClick ? 0 : undefined}
+            aria-label={onStatusClick ? `${account.displayName || account.username}の投稿を詳細表示` : undefined}
         >
             {/* Reblog indicator */}
             {reblogger && (
                 <div className="flex items-center gap-2 text-sm text-slate-400 mb-2 ml-12">
-                    <LuRepeat2 className="text-green-400" />
+                    <LuRepeat2 className="text-green-400" aria-hidden="true" />
                     <img
                         src={reblogger.avatar}
                         alt=""
@@ -340,7 +356,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                             className="flex items-center gap-1.5 hover:text-blue-400 transition-colors"
                             aria-label="返信"
                         >
-                            <LuMessageCircle />
+                            <LuMessageCircle aria-hidden="true" />
                             <span className="text-sm">{displayStatus.repliesCount || ''}</span>
                         </button>
                         <button
@@ -357,7 +373,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                             aria-label={localReblogged ? 'ブースト解除' : 'ブースト'}
                             aria-disabled={!canReblog}
                         >
-                            <LuRepeat2 />
+                            <LuRepeat2 aria-hidden="true" />
                             <span className="text-sm">{localReblogsCount || ''}</span>
                         </button>
                         <button
@@ -369,11 +385,11 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                 } ${isLoading.favourite ? 'opacity-50' : ''}`}
                             aria-label={localFavourited ? 'お気に入り解除' : 'お気に入り'}
                         >
-                            <LuStar className={localFavourited ? 'fill-current' : ''} />
+                            <LuStar className={localFavourited ? 'fill-current' : ''} aria-hidden="true" />
                             <span className="text-sm">{localFavouritesCount || ''}</span>
                         </button>
                         <button className="hover:text-indigo-400 transition-colors" aria-label="リンクをコピー">
-                            <LuLink />
+                            <LuLink aria-hidden="true" />
                         </button>
                     </div>
                 </div>

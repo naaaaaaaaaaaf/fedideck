@@ -1,0 +1,155 @@
+import { useRef } from 'react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useModalAccessibility } from './useModalAccessibility';
+
+// Test component that uses the hook
+function TestModal({
+    isOpen,
+    onClose,
+    canClose = true,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    canClose?: boolean;
+}) {
+    const modalRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+    const { handleKeyDown } = useModalAccessibility({
+        isOpen,
+        onClose,
+        closeButtonRef,
+        modalRef,
+        canClose,
+    });
+
+    if (!isOpen) return null;
+
+    return (
+        <div onKeyDown={handleKeyDown} role="dialog" aria-modal="true" data-testid="modal-wrapper">
+            <div ref={modalRef} data-testid="modal-content">
+                <button ref={closeButtonRef} data-testid="close-button">
+                    閉じる
+                </button>
+                <input data-testid="input-field" type="text" />
+                <button data-testid="action-button">アクション</button>
+            </div>
+        </div>
+    );
+}
+
+describe('useModalAccessibility', () => {
+    let onClose: () => void;
+
+    beforeEach(() => {
+        onClose = vi.fn();
+    });
+
+    describe('ESC key handling', () => {
+        it('ESCキーでonCloseが呼ばれる', () => {
+            render(<TestModal isOpen={true} onClose={onClose} />);
+
+            const modalWrapper = screen.getByTestId('modal-wrapper');
+            fireEvent.keyDown(modalWrapper, { key: 'Escape' });
+
+            expect(onClose).toHaveBeenCalledTimes(1);
+        });
+
+        it('canClose=falseの場合ESCキーでonCloseが呼ばれない', () => {
+            render(<TestModal isOpen={true} onClose={onClose} canClose={false} />);
+
+            const modalWrapper = screen.getByTestId('modal-wrapper');
+            fireEvent.keyDown(modalWrapper, { key: 'Escape' });
+
+            expect(onClose).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('focus management', () => {
+        it('モーダルが開いた時に閉じるボタンにフォーカスが移動する', () => {
+            render(<TestModal isOpen={true} onClose={onClose} />);
+
+            const closeButton = screen.getByTestId('close-button');
+            expect(document.activeElement).toBe(closeButton);
+        });
+
+        it('モーダルが閉じた時にフォーカスが復帰する', () => {
+            // 外部ボタンを先にフォーカス
+            const { rerender } = render(
+                <>
+                    <button data-testid="trigger-button">トリガー</button>
+                    <TestModal isOpen={false} onClose={onClose} />
+                </>
+            );
+
+            const triggerButton = screen.getByTestId('trigger-button');
+            triggerButton.focus();
+            expect(document.activeElement).toBe(triggerButton);
+
+            // モーダルを開く
+            rerender(
+                <>
+                    <button data-testid="trigger-button">トリガー</button>
+                    <TestModal isOpen={true} onClose={onClose} />
+                </>
+            );
+
+            const closeButton = screen.getByTestId('close-button');
+            expect(document.activeElement).toBe(closeButton);
+
+            // モーダルを閉じる
+            rerender(
+                <>
+                    <button data-testid="trigger-button">トリガー</button>
+                    <TestModal isOpen={false} onClose={onClose} />
+                </>
+            );
+
+            expect(document.activeElement).toBe(triggerButton);
+        });
+    });
+
+    describe('focus trap', () => {
+        it('最後の要素でTabを押すと最初の要素にフォーカスが移動する', async () => {
+            const user = userEvent.setup();
+            render(<TestModal isOpen={true} onClose={onClose} />);
+
+            // 最後のボタンにフォーカス
+            const actionButton = screen.getByTestId('action-button');
+            actionButton.focus();
+
+            // Tabを押す
+            await user.tab();
+
+            // 最初の要素（閉じるボタン）にフォーカスが戻る
+            const closeButton = screen.getByTestId('close-button');
+            expect(document.activeElement).toBe(closeButton);
+        });
+
+        it('最初の要素でShift+Tabを押すと最後の要素にフォーカスが移動する', async () => {
+            const user = userEvent.setup();
+            render(<TestModal isOpen={true} onClose={onClose} />);
+
+            // 最初のボタン（閉じるボタン）にフォーカス
+            const closeButton = screen.getByTestId('close-button');
+            closeButton.focus();
+
+            // Shift+Tabを押す
+            await user.tab({ shift: true });
+
+            // 最後の要素にフォーカスが移動する
+            const actionButton = screen.getByTestId('action-button');
+            expect(document.activeElement).toBe(actionButton);
+        });
+    });
+
+    describe('modal closed state', () => {
+        it('isOpen=falseの場合モーダルがレンダリングされない', () => {
+            render(<TestModal isOpen={false} onClose={onClose} />);
+
+            expect(screen.queryByTestId('modal-wrapper')).not.toBeInTheDocument();
+        });
+    });
+});

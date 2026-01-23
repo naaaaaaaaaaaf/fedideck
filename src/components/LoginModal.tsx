@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { LuX } from 'react-icons/lu';
 import { registerApp, getAuthorizationUrl } from '../auth/appRegistration';
 import { exchangeCodeForToken, verifyCredentials } from '../auth/oauthOob';
 import { createSession } from '../auth/sessions';
 import { useAccountsStore } from '../store/accounts';
+import { useModalAccessibility } from '../hooks/useModalAccessibility';
 
 interface LoginModalProps {
     isOpen: boolean;
@@ -21,7 +22,18 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
+    const modalRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+
     const addAccount = useAccountsStore(state => state.addAccount);
+
+    const { handleKeyDown } = useModalAccessibility({
+        isOpen,
+        onClose,
+        closeButtonRef,
+        modalRef,
+        canClose,
+    });
 
     const handleInstanceSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -84,24 +96,51 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
 
     if (!isOpen) return null;
 
+    const getTitle = () => {
+        switch (step) {
+            case 'instance':
+                return 'アカウントを追加';
+            case 'authorize':
+                return '認証';
+            case 'code':
+                return '認証コードを入力';
+        }
+    };
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onKeyDown={handleKeyDown}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="login-modal-title"
+        >
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={canClose ? onClose : undefined}
+                aria-hidden="true"
+            />
+
+            {/* Modal */}
+            <div
+                ref={modalRef}
+                className="relative w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden"
+            >
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
-                    <h2 className="text-lg font-semibold text-slate-100">
-                        {step === 'instance' && 'アカウントを追加'}
-                        {step === 'authorize' && '認証'}
-                        {step === 'code' && '認証コードを入力'}
+                    <h2 id="login-modal-title" className="text-lg font-semibold text-slate-100">
+                        {getTitle()}
                     </h2>
                     {canClose && (
                         <button
+                            ref={closeButtonRef}
                             onClick={onClose}
                             className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-slate-200"
                             aria-label="閉じる"
                             title="閉じる"
                         >
-                            <LuX className="w-5 h-5" />
+                            <LuX className="w-5 h-5" aria-hidden="true" />
                         </button>
                     )}
                 </div>
@@ -109,7 +148,7 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
                 {/* Content */}
                 <div className="p-6">
                     {error && (
-                        <div className="mb-4 p-3 bg-red-900/30 border border-red-700/50 rounded-lg text-red-300 text-sm">
+                        <div className="mb-4 p-3 bg-red-900/30 border border-red-700/50 rounded-lg text-red-300 text-sm" role="alert">
                             {error}
                         </div>
                     )}
@@ -117,10 +156,11 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
                     {/* Step 1: Instance URL */}
                     {step === 'instance' && (
                         <form onSubmit={handleInstanceSubmit}>
-                            <label className="block text-sm text-slate-300 mb-2">
+                            <label htmlFor="instance-url-input" className="block text-sm text-slate-300 mb-2">
                                 インスタンスURL
                             </label>
                             <input
+                                id="instance-url-input"
                                 type="text"
                                 value={instanceUrl}
                                 onChange={(e) => setInstanceUrl(e.target.value)}
@@ -181,10 +221,11 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
                     {/* Step 3: Enter code */}
                     {step === 'code' && (
                         <form onSubmit={handleCodeSubmit}>
-                            <label className="block text-sm text-slate-300 mb-2">
+                            <label htmlFor="auth-code-input" className="block text-sm text-slate-300 mb-2">
                                 認証コード
                             </label>
                             <input
+                                id="auth-code-input"
                                 type="text"
                                 value={code}
                                 onChange={(e) => setCode(e.target.value)}

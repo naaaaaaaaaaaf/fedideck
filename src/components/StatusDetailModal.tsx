@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { mastodon } from 'masto';
 import { LuX, LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert } from 'react-icons/lu';
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
+import { useModalAccessibility } from '../hooks/useModalAccessibility';
 
 interface StatusDetailModalProps {
     isOpen: boolean;
@@ -33,10 +34,16 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
     // Refs for focus management
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
-    const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
     // Get the display status (original if reblog)
     const displayStatus = status?.reblog ?? status;
+
+    const { handleKeyDown } = useModalAccessibility({
+        isOpen,
+        onClose,
+        closeButtonRef,
+        modalRef,
+    });
 
     // Sync local state when status changes or modal opens
     useEffect(() => {
@@ -47,50 +54,6 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
             setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
         }
     }, [displayStatus, isOpen]);
-
-    // Focus management: save previous focus, move to close button, restore on close
-    useEffect(() => {
-        if (isOpen) {
-            // Save currently focused element
-            previouslyFocusedRef.current = document.activeElement as HTMLElement;
-            // Move focus to close button
-            closeButtonRef.current?.focus();
-        } else {
-            // Restore focus to previously focused element
-            previouslyFocusedRef.current?.focus();
-            previouslyFocusedRef.current = null;
-        }
-    }, [isOpen]);
-
-    // Handle keyboard events for focus trap and ESC to close
-    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-        if (e.key === 'Escape') {
-            onClose();
-            return;
-        }
-
-        if (e.key === 'Tab' && modalRef.current) {
-            const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
-                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-            );
-            const firstElement = focusableElements[0];
-            const lastElement = focusableElements[focusableElements.length - 1];
-
-            if (e.shiftKey) {
-                // Shift+Tab: if on first element, move to last
-                if (document.activeElement === firstElement) {
-                    e.preventDefault();
-                    lastElement?.focus();
-                }
-            } else {
-                // Tab: if on last element, move to first
-                if (document.activeElement === lastElement) {
-                    e.preventDefault();
-                    firstElement?.focus();
-                }
-            }
-        }
-    }, [onClose]);
 
     if (!isOpen || !status || !displayStatus) return null;
 
@@ -173,6 +136,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                 onClick={onClose}
+                aria-hidden="true"
             />
 
             {/* Modal */}
@@ -189,7 +153,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                         className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-slate-200"
                         aria-label="閉じる"
                     >
-                        <LuX className="w-5 h-5" />
+                        <LuX className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
 
