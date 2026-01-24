@@ -70,7 +70,7 @@ export function NotificationCard({ notification }: NotificationCardProps) {
         <article className="p-4 border-b border-slate-700/50 card-hover animate-fade-in">
             {/* Notification header */}
             <div className="flex items-center gap-3 mb-2">
-                <span className={`text-lg ${info.color}`}>{info.icon}</span>
+                <span className={`text-lg ${info.color}`} aria-hidden="true">{info.icon}</span>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                     <a
                         href={account.url}
@@ -80,7 +80,7 @@ export function NotificationCard({ notification }: NotificationCardProps) {
                     >
                         <img
                             src={account.avatar}
-                            alt=""
+                            alt={account.displayName || account.username}
                             className="w-6 h-6 rounded"
                         />
                     </a>
@@ -107,7 +107,7 @@ export function NotificationCard({ notification }: NotificationCardProps) {
                     <div className="flex items-start gap-3">
                         <img
                             src={account.avatar}
-                            alt=""
+                            alt={account.displayName || account.username}
                             className="w-12 h-12 rounded-lg"
                         />
                         <div className="min-w-0 flex-1">
@@ -127,10 +127,16 @@ export function NotificationCard({ notification }: NotificationCardProps) {
                     </div>
                     {notification.type === 'follow_request' && (
                         <div className="flex gap-2 mt-3 ml-15">
-                            <button className="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm transition-colors">
+                            <button
+                                className="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm transition-colors"
+                                aria-label={`${account.displayName || account.username}のフォローリクエストを承認`}
+                            >
                                 承認
                             </button>
-                            <button className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">
+                            <button
+                                className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors"
+                                aria-label={`${account.displayName || account.username}のフォローリクエストを拒否`}
+                            >
                                 拒否
                             </button>
                         </div>
@@ -165,7 +171,7 @@ export function NotificationCard({ notification }: NotificationCardProps) {
                                 <img
                                     key={media.id}
                                     src={media.previewUrl ?? media.url}
-                                    alt=""
+                                    alt={media.description || '添付メディア'}
                                     className="w-12 h-12 rounded object-cover"
                                 />
                             ))}

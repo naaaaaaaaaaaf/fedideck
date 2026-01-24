@@ -305,6 +305,63 @@ describe('StatusCard', () => {
                 id: 'original-123',
             }));
         });
+
+        it('should call onStatusClick when pressing Enter on focusable card', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                content: '<p>Keyboard navigable content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const article = screen.getByRole('article');
+            article.focus();
+            await user.keyboard('{Enter}');
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
+                id: '12345',
+            }));
+        });
+
+        it('should call onStatusClick when pressing Space on focusable card', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                content: '<p>Keyboard navigable content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const article = screen.getByRole('article');
+            article.focus();
+            await user.keyboard(' ');
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
+                id: '12345',
+            }));
+        });
+
+        it('should not have keyboard handler when onStatusClick is not provided', () => {
+            const status = createMockStatus({
+                content: '<p>Non-clickable content</p>',
+            });
+
+            render(<StatusCard status={status} />);
+
+            const article = screen.getByRole('article');
+            
+            // When onStatusClick is not provided, the card should not be keyboard-interactive
+            // Check that tabIndex is not set (making it non-focusable via keyboard)
+            expect(article).not.toHaveAttribute('tabindex');
+            
+            // Alternatively, verify that attempting keyboard interaction does nothing
+            // (no focus is actually set since tabIndex is undefined)
+            article.focus();
+            expect(document.activeElement).not.toBe(article);
+        });
     });
 
     describe('reply button', () => {

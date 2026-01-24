@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { LuHouse, LuBell, LuUsers, LuGlobe, LuX, LuChevronDown } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
 import { useColumnsStore } from '../store/columns';
 import type { StreamType } from '../streaming/streamTypes';
+import { useModalAccessibility } from '../hooks/useModalAccessibility';
 
 interface AddColumnModalProps {
     isOpen: boolean;
@@ -10,10 +11,10 @@ interface AddColumnModalProps {
 }
 
 const COLUMN_TYPES: { type: StreamType; icon: ReactNode; label: string; description: string }[] = [
-    { type: 'home', icon: <LuHouse />, label: 'ホーム', description: 'フォロー中のユーザーの投稿' },
-    { type: 'notifications', icon: <LuBell />, label: '通知', description: 'メンション、ブースト、お気に入りなど' },
-    { type: 'public:local', icon: <LuUsers />, label: 'ローカル', description: 'このサーバーの投稿' },
-    { type: 'public', icon: <LuGlobe />, label: '連合', description: 'すべての連合サーバーの投稿' },
+    { type: 'home', icon: <LuHouse aria-hidden="true" />, label: 'ホーム', description: 'フォロー中のユーザーの投稿' },
+    { type: 'notifications', icon: <LuBell aria-hidden="true" />, label: '通知', description: 'メンション、ブースト、お気に入りなど' },
+    { type: 'public:local', icon: <LuUsers aria-hidden="true" />, label: 'ローカル', description: 'このサーバーの投稿' },
+    { type: 'public', icon: <LuGlobe aria-hidden="true" />, label: '連合', description: 'すべての連合サーバーの投稿' },
 ];
 
 export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
@@ -27,6 +28,25 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
         activeAccountId ?? accounts[0]?.id ?? null
     );
     const [showAccountSelector, setShowAccountSelector] = useState(false);
+    const [focusedAccountIndex, setFocusedAccountIndex] = useState(0);
+
+    const modalRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const listboxRef = useRef<HTMLDivElement>(null);
+
+    const { handleKeyDown } = useModalAccessibility({
+        isOpen,
+        onClose,
+        closeButtonRef,
+        modalRef,
+    });
+
+    // Focus management for account selector listbox
+    useEffect(() => {
+        if (showAccountSelector && listboxRef.current) {
+            listboxRef.current.focus();
+        }
+    }, [showAccountSelector]);
 
     const selectedAccount = accounts.find(a => a.id === selectedAccountId);
 
@@ -44,16 +64,35 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onKeyDown={handleKeyDown}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-column-modal-title"
+        >
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={onClose}
+                aria-hidden="true"
+            />
+
+            {/* Modal */}
+            <div
+                ref={modalRef}
+                className="relative w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden"
+            >
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
-                    <h2 className="text-lg font-semibold text-slate-100">カラムを追加</h2>
+                    <h2 id="add-column-modal-title" className="text-lg font-semibold text-slate-100">カラムを追加</h2>
                     <button
+                        ref={closeButtonRef}
                         onClick={onClose}
-                        className="text-slate-400 hover:text-slate-200 transition-colors"
+                        className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-slate-200"
+                        aria-label="閉じる"
                     >
-                        <LuX />
+                        <LuX aria-hidden="true" />
                     </button>
                 </div>
 
@@ -61,8 +100,19 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                 {selectedAccount && (
                     <div className="px-6 py-3 bg-slate-900/30 border-b border-slate-700/30 relative">
                         <button
-                            onClick={() => setShowAccountSelector(!showAccountSelector)}
+                            onClick={() => {
+                                const newState = !showAccountSelector;
+                                setShowAccountSelector(newState);
+                                if (newState) {
+                                    // Reset focused index to current account when opening
+                                    const currentIndex = accounts.findIndex(a => a.id === selectedAccountId);
+                                    setFocusedAccountIndex(currentIndex >= 0 ? currentIndex : 0);
+                                }
+                            }}
                             className="flex items-center gap-3 w-full text-left hover:bg-slate-700/30 -mx-3 px-3 py-2 rounded-lg transition-colors"
+                            aria-expanded={showAccountSelector}
+                            aria-haspopup="listbox"
+                            aria-label={`アカウント選択: ${selectedAccount.account.displayName || selectedAccount.account.username}`}
                         >
                             <img
                                 src={selectedAccount.account.avatar}
@@ -78,22 +128,62 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                                 </div>
                             </div>
                             {accounts.length > 1 && (
-                                <LuChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showAccountSelector ? 'rotate-180' : ''}`} />
+                                <LuChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showAccountSelector ? 'rotate-180' : ''}`} aria-hidden="true" />
                             )}
                         </button>
 
                         {/* Account dropdown */}
                         {showAccountSelector && accounts.length > 1 && (
-                            <div className="absolute left-4 right-4 top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-10 overflow-hidden">
-                                {accounts.map(acc => (
+                            <div
+                                ref={listboxRef}
+                                className="absolute left-4 right-4 top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-10 overflow-hidden"
+                                role="listbox"
+                                aria-label="アカウント一覧"
+                                aria-activedescendant={
+                                    focusedAccountIndex >= 0 &&
+                                    focusedAccountIndex < accounts.length &&
+                                    accounts[focusedAccountIndex]?.id
+                                        ? `account-option-${accounts[focusedAccountIndex].id}`
+                                        : undefined
+                                }
+                                tabIndex={-1}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'ArrowDown') {
+                                        e.preventDefault();
+                                        setFocusedAccountIndex(prev => (prev + 1) % accounts.length);
+                                    } else if (e.key === 'ArrowUp') {
+                                        e.preventDefault();
+                                        setFocusedAccountIndex(prev => (prev - 1 + accounts.length) % accounts.length);
+                                    } else if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setSelectedAccountId(accounts[focusedAccountIndex].id);
+                                        setShowAccountSelector(false);
+                                    } else if (e.key === 'Escape') {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setShowAccountSelector(false);
+                                    } else if (e.key === 'Tab') {
+                                        // Close listbox and allow Tab to move focus naturally
+                                        setShowAccountSelector(false);
+                                        // stopPropagation to prevent modal's focus trap from interfering
+                                        e.stopPropagation();
+                                    }
+                                }}
+                            >
+                                {accounts.map((acc, index) => (
                                     <button
                                         key={acc.id}
+                                        id={`account-option-${acc.id}`}
                                         onClick={() => {
                                             setSelectedAccountId(acc.id);
                                             setShowAccountSelector(false);
                                         }}
-                                        className={`flex items-center gap-3 p-3 w-full text-left hover:bg-slate-700/50 transition-colors ${acc.id === selectedAccountId ? 'bg-slate-700/30' : ''
+                                        className={`flex items-center gap-3 p-3 w-full text-left hover:bg-slate-700/50 transition-colors ${acc.id === selectedAccountId ? 'bg-slate-700/30' : ''} ${index === focusedAccountIndex ? 'bg-slate-700/40' : ''}
                                             }`}
+                                        role="option"
+                                        aria-selected={acc.id === selectedAccountId}
+                                        tabIndex={-1}
                                     >
                                         <img
                                             src={acc.account.avatar}
@@ -109,7 +199,7 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                                             </div>
                                         </div>
                                         {acc.id === selectedAccountId && (
-                                            <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+                                            <div className="w-2 h-2 rounded-full bg-indigo-400" aria-hidden="true"></div>
                                         )}
                                     </button>
                                 ))}
@@ -120,7 +210,7 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
 
                 {/* Column types */}
                 <div className="p-4">
-                    <div className="space-y-2">
+                    <div className="space-y-2" role="group" aria-label="カラムタイプを選択">
                         {COLUMN_TYPES.map(({ type, icon, label, description }) => (
                             <button
                                 key={type}
@@ -140,4 +230,3 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
         </div>
     );
 }
-

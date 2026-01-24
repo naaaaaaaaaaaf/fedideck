@@ -74,7 +74,7 @@ describe('ComposeModal', () => {
 
     it('disables submit button when content is empty', () => {
         render(<ComposeModal isOpen={true} onClose={() => { }} />);
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         expect(submitButton).toBeDisabled();
     });
 
@@ -85,7 +85,7 @@ describe('ComposeModal', () => {
         const textarea = screen.getByPlaceholderText('今なにしてる？');
         await user.type(textarea, 'Test post');
 
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         expect(submitButton).not.toBeDisabled();
     });
 
@@ -148,7 +148,7 @@ describe('ComposeModal', () => {
         const textarea = screen.getByPlaceholderText('今なにしてる？');
         await user.type(textarea, 'Test post content');
 
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         await user.click(submitButton);
 
         await waitFor(() => {
@@ -176,7 +176,7 @@ describe('ComposeModal', () => {
         const textarea = screen.getByPlaceholderText('今なにしてる？');
         await user.type(textarea, 'Test post content');
 
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         await user.click(submitButton);
 
         await waitFor(() => {
@@ -205,7 +205,7 @@ describe('ComposeModal', () => {
         await user.type(textarea, 'Hidden content');
 
         // Submit
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         await user.click(submitButton);
 
         await waitFor(() => {
@@ -237,7 +237,7 @@ describe('ComposeModal', () => {
         await user.type(textarea, 'Private post');
 
         // Submit
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         await user.click(submitButton);
 
         await waitFor(() => {
@@ -348,7 +348,7 @@ describe('ComposeModal', () => {
         await user.type(textarea, 'Poll question');
 
         // Submit
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         await user.click(submitButton);
 
         await waitFor(() => {
@@ -436,7 +436,7 @@ describe('ComposeModal', () => {
         const textarea = screen.getByPlaceholderText('今なにしてる？');
         await user.type(textarea, 'My reply text');
 
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         await user.click(submitButton);
 
         await waitFor(() => {
