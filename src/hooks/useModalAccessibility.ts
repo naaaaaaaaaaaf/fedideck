@@ -13,25 +13,54 @@ export interface UseModalAccessibilityReturn {
 }
 
 /**
- * Checks if an element is visible and focusable.
- * Filters out hidden inputs, elements with display:none or visibility:hidden,
- * and elements within hidden containers.
+ * Checks if an element is still in the document and can be focused.
  */
-function isElementVisible(element: HTMLElement): boolean {
+function canElementBeFocused(element: HTMLElement | null): boolean {
+    if (!element || !document.contains(element)) {
+        return false;
+    }
+
+    // Check if element is disabled
+    if ('disabled' in element && (element as HTMLButtonElement | HTMLInputElement).disabled) {
+        return false;
+    }
+
+    // Check if element or its parents are hidden
+    let current: HTMLElement | null = element;
+    while (current) {
+        const style = window.getComputedStyle(current);
+        if (style.display === 'none' || style.visibility === 'hidden') {
+            return false;
+        }
+        // Check hidden attribute
+        if (current.hasAttribute('hidden')) {
+            return false;
+        }
+        current = current.parentElement;
+    }
+
+    return true;
+}
+
+/**
+ * Checks if an element is visible and focusable.
+ * Optimized version that stops traversing at the modal container boundary.
+ */
+function isElementVisible(element: HTMLElement, modalContainer?: HTMLElement): boolean {
     // Check if element is hidden input
     if (element.tagName === 'INPUT' && (element as HTMLInputElement).type === 'hidden') {
         return false;
     }
 
-    // Check computed styles
+    // Check element's own styles
     const style = window.getComputedStyle(element);
     if (style.display === 'none' || style.visibility === 'hidden') {
         return false;
     }
 
-    // Check if any parent has display:none or visibility:hidden
+    // Check parent elements up to modal container (optimization: don't traverse beyond modal)
     let parent = element.parentElement;
-    while (parent) {
+    while (parent && parent !== modalContainer) {
         const parentStyle = window.getComputedStyle(parent);
         if (parentStyle.display === 'none' || parentStyle.visibility === 'hidden') {
             return false;
@@ -46,17 +75,19 @@ function isElementVisible(element: HTMLElement): boolean {
  * Gets all focusable elements within a container that are actually visible and interactive.
  */
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
+    // More specific selector to exclude hidden elements upfront
     const selector = [
-        'button:not([disabled])',
-        '[href]',
-        'input:not([disabled])',
-        'select:not([disabled])',
-        'textarea:not([disabled])',
-        '[tabindex]:not([tabindex="-1"])'
+        'button:not([disabled]):not([hidden])',
+        '[href]:not([hidden])',
+        'input:not([disabled]):not([type="hidden"]):not([hidden])',
+        'select:not([disabled]):not([hidden])',
+        'textarea:not([disabled]):not([hidden])',
+        '[tabindex]:not([tabindex="-1"]):not([hidden])'
     ].join(', ');
 
     const elements = container.querySelectorAll<HTMLElement>(selector);
-    return Array.from(elements).filter(isElementVisible);
+    // Pass modalContainer to optimize visibility check
+    return Array.from(elements).filter(el => isElementVisible(el, container));
 }
 
 /**
@@ -90,8 +121,14 @@ export function useModalAccessibility({
                 focusableElements[0]?.focus();
             }
         } else {
-            // Restore focus to previously focused element
-            previouslyFocusedRef.current?.focus();
+            // Restore focus to previously focused element if it's still focusable
+            const previousElement = previouslyFocusedRef.current;
+            if (previousElement && canElementBeFocused(previousElement)) {
+                previousElement.focus();
+            } else if (previousElement) {
+                // Fallback: focus body if previous element is no longer focusable
+                document.body.focus();
+            }
             previouslyFocusedRef.current = null;
         }
     }, [isOpen, closeButtonRef, modalRef]);
@@ -100,35 +137,33 @@ export function useModalAccessibility({
     useEffect(() => {
         if (!isOpen || !modalRef.current) return;
 
-        const checkFocus = () => {
-            const activeElement = document.activeElement;
-            
-            // Check if focus is lost or outside the modal
-            if (!activeElement || !modalRef.current?.contains(activeElement)) {
-                // Find a safe element to focus on
-                if (closeButtonRef.current) {
-                    closeButtonRef.current.focus();
-                } else if (modalRef.current) {
-                    const focusableElements = getFocusableElements(modalRef.current);
-                    if (focusableElements.length > 0) {
-                        focusableElements[0].focus();
+        const handleFocusOut = () => {
+            // Use setTimeout to allow the new focus target to be set
+            setTimeout(() => {
+                const activeElement = document.activeElement;
+                
+                // Check if focus is lost or moved outside the modal
+                if (!activeElement || activeElement === document.body || !modalRef.current?.contains(activeElement)) {
+                    // Find a safe element to focus on
+                    if (closeButtonRef.current) {
+                        closeButtonRef.current.focus();
+                    } else if (modalRef.current) {
+                        const focusableElements = getFocusableElements(modalRef.current);
+                        if (focusableElements.length > 0) {
+                            focusableElements[0].focus();
+                        }
                     }
                 }
-            }
+            }, 0);
         };
 
-        // Use MutationObserver to detect DOM changes that might remove focused element
-        const observer = new MutationObserver(() => {
-            // Small delay to allow React to complete DOM updates
-            requestAnimationFrame(checkFocus);
-        });
+        // Listen for focusout events on the modal
+        const currentModal = modalRef.current;
+        currentModal.addEventListener('focusout', handleFocusOut);
 
-        observer.observe(modalRef.current, {
-            childList: true,
-            subtree: true,
-        });
-
-        return () => observer.disconnect();
+        return () => {
+            currentModal.removeEventListener('focusout', handleFocusOut);
+        };
     }, [isOpen, modalRef, closeButtonRef]);
 
     // Handle keyboard events for focus trap and ESC to close
