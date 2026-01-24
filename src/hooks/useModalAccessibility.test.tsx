@@ -40,6 +40,38 @@ function TestModal({
     );
 }
 
+// Test component without close button (closeButtonRef is null)
+function TestModalNoCloseButton({
+    isOpen,
+    onClose,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+}) {
+    const modalRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+    const { handleKeyDown } = useModalAccessibility({
+        isOpen,
+        onClose,
+        closeButtonRef,
+        modalRef,
+        canClose: false,
+    });
+
+    if (!isOpen) return null;
+
+    return (
+        <div onKeyDown={handleKeyDown} role="dialog" aria-modal="true" data-testid="modal-wrapper">
+            <div ref={modalRef} data-testid="modal-content">
+                {/* No close button rendered - closeButtonRef will be null */}
+                <input data-testid="first-input" type="text" />
+                <button data-testid="submit-button">送信</button>
+            </div>
+        </div>
+    );
+}
+
 describe('useModalAccessibility', () => {
     let onClose: () => void;
 
@@ -73,6 +105,14 @@ describe('useModalAccessibility', () => {
 
             const closeButton = screen.getByTestId('close-button');
             expect(document.activeElement).toBe(closeButton);
+        });
+
+        it('閉じるボタンがない場合は最初のフォーカス可能な要素にフォーカスが移動する', () => {
+            render(<TestModalNoCloseButton isOpen={true} onClose={onClose} />);
+
+            // 最初のフォーカス可能な要素（input）にフォーカスが移動する
+            const firstInput = screen.getByTestId('first-input');
+            expect(document.activeElement).toBe(firstInput);
         });
 
         it('モーダルが閉じた時にフォーカスが復帰する', () => {
@@ -142,6 +182,22 @@ describe('useModalAccessibility', () => {
             // 最後の要素にフォーカスが移動する
             const actionButton = screen.getByTestId('action-button');
             expect(document.activeElement).toBe(actionButton);
+        });
+
+        it('閉じるボタンがない場合もフォーカストラップが機能する', async () => {
+            const user = userEvent.setup();
+            render(<TestModalNoCloseButton isOpen={true} onClose={onClose} />);
+
+            // 最後のボタンにフォーカス
+            const submitButton = screen.getByTestId('submit-button');
+            submitButton.focus();
+
+            // Tabを押す
+            await user.tab();
+
+            // 最初の要素（input）にフォーカスが戻る
+            const firstInput = screen.getByTestId('first-input');
+            expect(document.activeElement).toBe(firstInput);
         });
     });
 
