@@ -52,9 +52,9 @@ function isElementVisible(element: HTMLElement, modalContainer?: HTMLElement): b
         return false;
     }
 
-    // Check element's own styles
+    // Check element's own styles and hidden attribute
     const style = window.getComputedStyle(element);
-    if (style.display === 'none' || style.visibility === 'hidden') {
+    if (style.display === 'none' || style.visibility === 'hidden' || element.hasAttribute('hidden')) {
         return false;
     }
 
@@ -62,7 +62,7 @@ function isElementVisible(element: HTMLElement, modalContainer?: HTMLElement): b
     let parent = element.parentElement;
     while (parent && parent !== modalContainer) {
         const parentStyle = window.getComputedStyle(parent);
-        if (parentStyle.display === 'none' || parentStyle.visibility === 'hidden') {
+        if (parentStyle.display === 'none' || parentStyle.visibility === 'hidden' || parent.hasAttribute('hidden')) {
             return false;
         }
         parent = parent.parentElement;
@@ -89,7 +89,16 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
 
     const elements = container.querySelectorAll<HTMLElement>(selector);
     // Pass modalContainer to optimize visibility check
-    return Array.from(elements).filter(el => isElementVisible(el, container));
+    // Filter out elements with negative tabindex (other than -1 which is already excluded in selector)
+    return Array.from(elements).filter(el => {
+        const tabindex = el.getAttribute('tabindex');
+        const tabindexValue = tabindex ? parseInt(tabindex, 10) : null;
+        // Exclude elements with negative tabindex values other than -1
+        if (tabindexValue !== null && tabindexValue < 0) {
+            return false;
+        }
+        return isElementVisible(el, container);
+    });
 }
 
 /**

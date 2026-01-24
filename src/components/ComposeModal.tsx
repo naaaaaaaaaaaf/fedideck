@@ -428,7 +428,9 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-10 overflow-hidden"
                                     role="listbox"
                                     aria-label="アカウント一覧"
-                                    aria-activedescendant={`account-option-${accounts[focusedAccountIndex]?.id}`}
+                                    {...(accounts[focusedAccountIndex]?.id && {
+                                        'aria-activedescendant': `account-option-${accounts[focusedAccountIndex].id}`
+                                    })}
                                     tabIndex={-1}
                                     onKeyDown={(e) => {
                                         if (e.key === 'ArrowDown') {
@@ -747,24 +749,29 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                     {/* Visibility selector */}
                     <fieldset className="mt-3">
                         <legend className="text-sm text-slate-400 mb-2">公開範囲</legend>
-                        <div className="grid grid-cols-2 gap-2" role="radiogroup">
+                        <div className="grid grid-cols-2 gap-2">
                             {VISIBILITY_OPTIONS.map((option) => (
-                                <button
+                                <label
                                     key={option.value}
-                                    onClick={() => setVisibility(option.value)}
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all ${visibility === option.value
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all ${visibility === option.value
                                         ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
                                         : 'bg-slate-800 text-slate-300 border border-slate-700 hover:border-slate-600'
                                         }`}
-                                    role="radio"
-                                    aria-checked={visibility === option.value}
                                 >
+                                    <input
+                                        type="radio"
+                                        name="visibility"
+                                        value={option.value}
+                                        checked={visibility === option.value}
+                                        onChange={() => setVisibility(option.value)}
+                                        className="sr-only"
+                                    />
                                     <span className="text-lg">{option.icon}</span>
                                     <div>
                                         <div className="text-sm font-medium">{option.label}</div>
                                         <div className="text-xs text-slate-400">{option.description}</div>
                                     </div>
-                                </button>
+                                </label>
                             ))}
                         </div>
                     </fieldset>

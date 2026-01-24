@@ -139,7 +139,9 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                                 className="absolute left-4 right-4 top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-10 overflow-hidden"
                                 role="listbox"
                                 aria-label="アカウント一覧"
-                                aria-activedescendant={`account-option-${accounts[focusedAccountIndex]?.id}`}
+                                {...(accounts[focusedAccountIndex]?.id && {
+                                    'aria-activedescendant': `account-option-${accounts[focusedAccountIndex].id}`
+                                })}
                                 tabIndex={-1}
                                 onKeyDown={(e) => {
                                     if (e.key === 'ArrowDown') {
