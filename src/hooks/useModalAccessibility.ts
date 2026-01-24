@@ -76,12 +76,14 @@ function isElementVisible(element: HTMLElement, modalContainer?: HTMLElement): b
  */
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
     // More specific selector to exclude hidden elements upfront
+    // Note: :not([tabindex="-1"]) is added to all selectors to exclude elements
+    // that are programmatically focusable but not part of the tab sequence
     const selector = [
-        'button:not([disabled]):not([hidden])',
-        '[href]:not([hidden])',
-        'input:not([disabled]):not([type="hidden"]):not([hidden])',
-        'select:not([disabled]):not([hidden])',
-        'textarea:not([disabled]):not([hidden])',
+        'button:not([disabled]):not([hidden]):not([tabindex="-1"])',
+        '[href]:not([hidden]):not([tabindex="-1"])',
+        'input:not([disabled]):not([type="hidden"]):not([hidden]):not([tabindex="-1"])',
+        'select:not([disabled]):not([hidden]):not([tabindex="-1"])',
+        'textarea:not([disabled]):not([hidden]):not([tabindex="-1"])',
         '[tabindex]:not([tabindex="-1"]):not([hidden])'
     ].join(', ');
 
@@ -138,17 +140,24 @@ export function useModalAccessibility({
         if (!isOpen || !modalRef.current) return;
 
         const handleFocusOut = () => {
+            // Capture stable references before setTimeout to avoid stale closure issues
+            const modal = modalRef.current;
+            const closeButton = closeButtonRef.current;
+
             // Use setTimeout to allow the new focus target to be set
             setTimeout(() => {
+                // Check if modal still exists (could have been unmounted)
+                if (!modal) return;
+
                 const activeElement = document.activeElement;
                 
                 // Check if focus is lost or moved outside the modal
-                if (!activeElement || activeElement === document.body || !modalRef.current?.contains(activeElement)) {
+                if (!activeElement || activeElement === document.body || !modal.contains(activeElement)) {
                     // Find a safe element to focus on
-                    if (closeButtonRef.current) {
-                        closeButtonRef.current.focus();
-                    } else if (modalRef.current) {
-                        const focusableElements = getFocusableElements(modalRef.current);
+                    if (closeButton) {
+                        closeButton.focus();
+                    } else {
+                        const focusableElements = getFocusableElements(modal);
                         if (focusableElements.length > 0) {
                             focusableElements[0].focus();
                         }
