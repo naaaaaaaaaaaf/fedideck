@@ -195,7 +195,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
             className={`p-4 border-b border-slate-700/50 card-hover ${onStatusClick ? 'cursor-pointer' : ''} ${isReblog ? 'animate-fade-in' : ''}`}
             onClick={onStatusClick ? handleCardClick : undefined}
             onKeyDown={onStatusClick ? handleCardKeyDown : undefined}
-            tabIndex={onStatusClick ? 0 : undefined}
+            tabIndex={onStatusClick && !accountSession && !onReply ? 0 : undefined}
             aria-label={onStatusClick ? `${account.displayName || account.username}の投稿を詳細表示` : undefined}
         >
             {/* Reblog indicator */}
