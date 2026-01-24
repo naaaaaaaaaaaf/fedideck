@@ -452,6 +452,11 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                             e.preventDefault();
                                             e.stopPropagation();
                                             setShowAccountSelector(false);
+                                        } else if (e.key === 'Tab') {
+                                            // Close listbox and allow Tab to move focus naturally
+                                            setShowAccountSelector(false);
+                                            // stopPropagation to prevent modal's focus trap from interfering
+                                            e.stopPropagation();
                                         }
                                     }}
                                 >

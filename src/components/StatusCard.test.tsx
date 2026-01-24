@@ -352,7 +352,15 @@ describe('StatusCard', () => {
             render(<StatusCard status={status} />);
 
             const article = screen.getByRole('article');
-            expect(article).not.toHaveAttribute('onKeyDown');
+            
+            // When onStatusClick is not provided, the card should not be keyboard-interactive
+            // Check that tabIndex is not set (making it non-focusable via keyboard)
+            expect(article).not.toHaveAttribute('tabindex');
+            
+            // Alternatively, verify that attempting keyboard interaction does nothing
+            // (no focus is actually set since tabIndex is undefined)
+            article.focus();
+            expect(document.activeElement).not.toBe(article);
         });
     });
 

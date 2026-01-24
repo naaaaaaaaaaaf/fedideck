@@ -116,6 +116,48 @@ export function useModalAccessibility({
     canClose = true,
 }: UseModalAccessibilityOptions): UseModalAccessibilityReturn {
     const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+    const focusableElementsCacheRef = useRef<HTMLElement[]>([]);
+    const cacheInvalidatedRef = useRef<boolean>(true);
+
+    // Cache focusable elements with MutationObserver to detect DOM changes
+    useEffect(() => {
+        if (!isOpen || !modalRef.current) return;
+
+        const modal = modalRef.current;
+
+        // Invalidate cache initially and recalculate
+        cacheInvalidatedRef.current = true;
+
+        // MutationObserver to detect DOM changes within modal
+        const observer = new MutationObserver(() => {
+            // Mark cache as invalid when DOM changes
+            cacheInvalidatedRef.current = true;
+        });
+
+        // Observe modal for DOM changes
+        observer.observe(modal, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['disabled', 'hidden', 'tabindex', 'type'],
+        });
+
+        return () => {
+            observer.disconnect();
+            // Clear cache when modal closes
+            focusableElementsCacheRef.current = [];
+            cacheInvalidatedRef.current = true;
+        };
+    }, [isOpen, modalRef]);
+
+    // Helper to get cached or fresh focusable elements
+    const getCachedFocusableElements = useCallback((container: HTMLElement): HTMLElement[] => {
+        if (cacheInvalidatedRef.current) {
+            focusableElementsCacheRef.current = getFocusableElements(container);
+            cacheInvalidatedRef.current = false;
+        }
+        return focusableElementsCacheRef.current;
+    }, []);
 
     // Focus management: save previous focus, move to close button, restore on close
     useEffect(() => {
@@ -128,7 +170,7 @@ export function useModalAccessibility({
                 closeButtonRef.current.focus();
             } else if (modalRef.current) {
                 // Find first focusable element as fallback
-                const focusableElements = getFocusableElements(modalRef.current);
+                const focusableElements = getCachedFocusableElements(modalRef.current);
                 focusableElements[0]?.focus();
             }
         } else {
@@ -142,7 +184,7 @@ export function useModalAccessibility({
             }
             previouslyFocusedRef.current = null;
         }
-    }, [isOpen, closeButtonRef, modalRef]);
+    }, [isOpen, closeButtonRef, modalRef, getCachedFocusableElements]);
 
     // Monitor focus and restore to safe element if lost
     useEffect(() => {
@@ -166,7 +208,7 @@ export function useModalAccessibility({
                     if (closeButton && canElementBeFocused(closeButton)) {
                         closeButton.focus();
                     } else {
-                        const focusableElements = getFocusableElements(modal);
+                        const focusableElements = getCachedFocusableElements(modal);
                         if (focusableElements.length > 0) {
                             focusableElements[0].focus();
                         }
@@ -182,7 +224,7 @@ export function useModalAccessibility({
         return () => {
             currentModal.removeEventListener('focusout', handleFocusOut);
         };
-    }, [isOpen, modalRef, closeButtonRef]);
+    }, [isOpen, modalRef, closeButtonRef, getCachedFocusableElements]);
 
     // Handle keyboard events for focus trap and ESC to close
     const handleKeyDown = useCallback(
@@ -194,7 +236,7 @@ export function useModalAccessibility({
             }
 
             if (e.key === 'Tab' && modalRef.current) {
-                const focusableElements = getFocusableElements(modalRef.current);
+                const focusableElements = getCachedFocusableElements(modalRef.current);
 
                 if (focusableElements.length === 0) return;
 
@@ -216,7 +258,7 @@ export function useModalAccessibility({
                 }
             }
         },
-        [onClose, canClose, modalRef]
+        [onClose, canClose, modalRef, getCachedFocusableElements]
     );
 
     return { handleKeyDown };
