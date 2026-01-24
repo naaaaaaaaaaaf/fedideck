@@ -428,9 +428,13 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-10 overflow-hidden"
                                     role="listbox"
                                     aria-label="アカウント一覧"
-                                    {...(focusedAccountIndex >= 0 && focusedAccountIndex < accounts.length && accounts[focusedAccountIndex]?.id ? {
-                                        'aria-activedescendant': `account-option-${accounts[focusedAccountIndex].id}`
-                                    } : {})}
+                                    aria-activedescendant={
+                                        focusedAccountIndex >= 0 &&
+                                        focusedAccountIndex < accounts.length &&
+                                        accounts[focusedAccountIndex]?.id
+                                            ? `account-option-${accounts[focusedAccountIndex].id}`
+                                            : undefined
+                                    }
                                     tabIndex={-1}
                                     onKeyDown={(e) => {
                                         if (e.key === 'ArrowDown') {
@@ -767,7 +771,6 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                         checked={visibility === option.value}
                                         onChange={() => setVisibility(option.value)}
                                         className="sr-only"
-                                        tabIndex={-1}
                                     />
                                     <span className="text-lg">{option.icon}</span>
                                     <div>
