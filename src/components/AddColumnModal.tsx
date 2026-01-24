@@ -1,4 +1,4 @@
-import { useState, useRef, type ReactNode } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { LuHouse, LuBell, LuUsers, LuGlobe, LuX, LuChevronDown } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
 import { useColumnsStore } from '../store/columns';
@@ -28,9 +28,11 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
         activeAccountId ?? accounts[0]?.id ?? null
     );
     const [showAccountSelector, setShowAccountSelector] = useState(false);
+    const [focusedAccountIndex, setFocusedAccountIndex] = useState(0);
 
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const listboxRef = useRef<HTMLDivElement>(null);
 
     const { handleKeyDown } = useModalAccessibility({
         isOpen,
@@ -38,6 +40,13 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
         closeButtonRef,
         modalRef,
     });
+
+    // Focus management for account selector listbox
+    useEffect(() => {
+        if (showAccountSelector && listboxRef.current) {
+            listboxRef.current.focus();
+        }
+    }, [showAccountSelector]);
 
     const selectedAccount = accounts.find(a => a.id === selectedAccountId);
 
@@ -91,7 +100,15 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                 {selectedAccount && (
                     <div className="px-6 py-3 bg-slate-900/30 border-b border-slate-700/30 relative">
                         <button
-                            onClick={() => setShowAccountSelector(!showAccountSelector)}
+                            onClick={() => {
+                                const newState = !showAccountSelector;
+                                setShowAccountSelector(newState);
+                                if (newState) {
+                                    // Reset focused index to current account when opening
+                                    const currentIndex = accounts.findIndex(a => a.id === selectedAccountId);
+                                    setFocusedAccountIndex(currentIndex >= 0 ? currentIndex : 0);
+                                }
+                            }}
                             className="flex items-center gap-3 w-full text-left hover:bg-slate-700/30 -mx-3 px-3 py-2 rounded-lg transition-colors"
                             aria-expanded={showAccountSelector}
                             aria-haspopup="listbox"
@@ -118,21 +135,42 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                         {/* Account dropdown */}
                         {showAccountSelector && accounts.length > 1 && (
                             <div
+                                ref={listboxRef}
                                 className="absolute left-4 right-4 top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-10 overflow-hidden"
                                 role="listbox"
                                 aria-label="アカウント一覧"
+                                aria-activedescendant={`account-option-${accounts[focusedAccountIndex]?.id}`}
+                                tabIndex={-1}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'ArrowDown') {
+                                        e.preventDefault();
+                                        setFocusedAccountIndex(prev => (prev + 1) % accounts.length);
+                                    } else if (e.key === 'ArrowUp') {
+                                        e.preventDefault();
+                                        setFocusedAccountIndex(prev => (prev - 1 + accounts.length) % accounts.length);
+                                    } else if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        setSelectedAccountId(accounts[focusedAccountIndex].id);
+                                        setShowAccountSelector(false);
+                                    } else if (e.key === 'Escape') {
+                                        e.preventDefault();
+                                        setShowAccountSelector(false);
+                                    }
+                                }}
                             >
-                                {accounts.map(acc => (
+                                {accounts.map((acc, index) => (
                                     <button
                                         key={acc.id}
+                                        id={`account-option-${acc.id}`}
                                         onClick={() => {
                                             setSelectedAccountId(acc.id);
                                             setShowAccountSelector(false);
                                         }}
-                                        className={`flex items-center gap-3 p-3 w-full text-left hover:bg-slate-700/50 transition-colors ${acc.id === selectedAccountId ? 'bg-slate-700/30' : ''
+                                        className={`flex items-center gap-3 p-3 w-full text-left hover:bg-slate-700/50 transition-colors ${acc.id === selectedAccountId ? 'bg-slate-700/30' : ''} ${index === focusedAccountIndex ? 'bg-slate-700/40' : ''}
                                             }`}
                                         role="option"
                                         aria-selected={acc.id === selectedAccountId}
+                                        tabIndex={-1}
                                     >
                                         <img
                                             src={acc.account.avatar}

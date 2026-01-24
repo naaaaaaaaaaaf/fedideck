@@ -82,6 +82,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     const fileInputRef = useRef<HTMLInputElement>(null);
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const listboxRef = useRef<HTMLDivElement>(null);
     const accounts = useAccountsStore(state => state.accounts);
     const activeAccountId = useAccountsStore(state => state.activeAccountId);
 
@@ -91,6 +92,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     // State for selected account (can be changed by user for new posts, but locked for replies)
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(accountId ?? activeAccountId);
     const [showAccountSelector, setShowAccountSelector] = useState(false);
+    const [focusedAccountIndex, setFocusedAccountIndex] = useState(0);
 
     // Get the account to compose from (for replies, use locked accountId; for new posts, use selected)
     const composingAccount = isAccountLocked
@@ -107,6 +109,13 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         modalRef,
         canClose: canCloseModal,
     });
+
+    // Focus management for account selector listbox
+    useEffect(() => {
+        if (showAccountSelector && listboxRef.current) {
+            listboxRef.current.focus();
+        }
+    }, [showAccountSelector]);
 
     // Reset selected account when modal opens
     useEffect(() => {
@@ -381,7 +390,16 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                     {composingAccount && (
                         <div className="relative mb-3">
                             <button
-                                onClick={() => !isAccountLocked && setShowAccountSelector(!showAccountSelector)}
+                                onClick={() => {
+                                    if (isAccountLocked) return;
+                                    const newState = !showAccountSelector;
+                                    setShowAccountSelector(newState);
+                                    if (newState) {
+                                        // Reset focused index to current account when opening
+                                        const currentIndex = accounts.findIndex(a => a.id === selectedAccountId);
+                                        setFocusedAccountIndex(currentIndex >= 0 ? currentIndex : 0);
+                                    }
+                                }}
                                 disabled={isAccountLocked}
                                 className={`flex items-center gap-2 p-2 -m-2 rounded-lg transition-colors w-full text-left ${isAccountLocked ? 'cursor-default' : 'hover:bg-slate-700/50'
                                     }`}
@@ -406,21 +424,42 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                             {/* Account dropdown */}
                             {!isAccountLocked && showAccountSelector && accounts.length > 1 && (
                                 <div
+                                    ref={listboxRef}
                                     className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-10 overflow-hidden"
                                     role="listbox"
                                     aria-label="アカウント一覧"
+                                    aria-activedescendant={`account-option-${accounts[focusedAccountIndex]?.id}`}
+                                    tabIndex={-1}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'ArrowDown') {
+                                            e.preventDefault();
+                                            setFocusedAccountIndex(prev => (prev + 1) % accounts.length);
+                                        } else if (e.key === 'ArrowUp') {
+                                            e.preventDefault();
+                                            setFocusedAccountIndex(prev => (prev - 1 + accounts.length) % accounts.length);
+                                        } else if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            setSelectedAccountId(accounts[focusedAccountIndex].id);
+                                            setShowAccountSelector(false);
+                                        } else if (e.key === 'Escape') {
+                                            e.preventDefault();
+                                            setShowAccountSelector(false);
+                                        }
+                                    }}
                                 >
-                                    {accounts.map(acc => (
+                                    {accounts.map((acc, index) => (
                                         <button
                                             key={acc.id}
+                                            id={`account-option-${acc.id}`}
                                             onClick={() => {
                                                 setSelectedAccountId(acc.id);
                                                 setShowAccountSelector(false);
                                             }}
-                                            className={`flex items-center gap-2 p-2 w-full text-left hover:bg-slate-700/50 transition-colors ${acc.id === selectedAccountId ? 'bg-slate-700/30' : ''
+                                            className={`flex items-center gap-2 p-2 w-full text-left hover:bg-slate-700/50 transition-colors ${acc.id === selectedAccountId ? 'bg-slate-700/30' : ''} ${index === focusedAccountIndex ? 'bg-slate-700/40' : ''}
                                                 }`}
                                             role="option"
                                             aria-selected={acc.id === selectedAccountId}
+                                            tabIndex={-1}
                                         >
                                             <img
                                                 src={acc.account.avatar}
@@ -692,7 +731,6 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                             rows={6}
                             disabled={isSubmitting}
                             className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 resize-none focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
-                            autoFocus
                         />
                     </div>
 
@@ -752,6 +790,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                         onClick={handleSubmit}
                         disabled={!canSubmit}
                         className="flex items-center gap-2 px-6 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors"
+                        aria-label={isSubmitting ? '投稿を送信中' : isUploading ? 'メディアをアップロード中' : '投稿を送信'}
                     >
                         {(isSubmitting || isUploading) && <LuLoader className="w-4 h-4 animate-spin" aria-hidden="true" />}
                         {isSubmitting ? '投稿中...' : isUploading ? 'アップロード中...' : '投稿'}

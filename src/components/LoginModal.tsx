@@ -167,7 +167,6 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
                                 placeholder="mastodon.social"
                                 className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
                                 disabled={isLoading}
-                                autoFocus
                             />
                             <p className="mt-2 text-xs text-slate-400">
                                 例: mastodon.social, mstdn.jp, pawoo.net
@@ -232,7 +231,6 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
                                 placeholder="認証コードを貼り付け"
                                 className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors font-mono"
                                 disabled={isLoading}
-                                autoFocus
                             />
                             <div className="flex gap-2 mt-4">
                                 <button

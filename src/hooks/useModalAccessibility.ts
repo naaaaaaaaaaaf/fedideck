@@ -114,8 +114,8 @@ export function useModalAccessibility({
             // Save currently focused element
             previouslyFocusedRef.current = document.activeElement as HTMLElement;
             
-            // Move focus to close button if it exists, otherwise focus first focusable element
-            if (closeButtonRef.current) {
+            // Move focus to close button if it exists and is focusable, otherwise focus first focusable element
+            if (closeButtonRef.current && canElementBeFocused(closeButtonRef.current)) {
                 closeButtonRef.current.focus();
             } else if (modalRef.current) {
                 // Find first focusable element as fallback
@@ -154,7 +154,7 @@ export function useModalAccessibility({
                 // Check if focus is lost or moved outside the modal
                 if (!activeElement || activeElement === document.body || !modal.contains(activeElement)) {
                     // Find a safe element to focus on
-                    if (closeButton) {
+                    if (closeButton && canElementBeFocused(closeButton)) {
                         closeButton.focus();
                     } else {
                         const focusableElements = getFocusableElements(modal);
