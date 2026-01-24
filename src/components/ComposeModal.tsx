@@ -623,8 +623,12 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
                                         {/* Upload overlay */}
                                         {media.uploading && (
-                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                                <LuLoader className="w-6 h-6 text-white animate-spin" aria-label="アップロード中" />
+                                            <div 
+                                                className="absolute inset-0 bg-black/50 flex items-center justify-center"
+                                                aria-busy="true"
+                                                aria-label="アップロード中"
+                                            >
+                                                <LuLoader className="w-6 h-6 text-white animate-spin" aria-hidden="true" />
                                             </div>
                                         )}
 
