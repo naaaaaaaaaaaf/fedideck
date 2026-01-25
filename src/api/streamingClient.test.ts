@@ -116,7 +116,7 @@ describe('StreamingClient', () => {
             expect(instances.length).toBe(1);
         });
 
-        it('should reset reconnectAttempts on successful open', () => {
+        it('should call onConnect callback when connected', () => {
             const onConnect = vi.fn();
             const client = new StreamingClient(createOptions({ onConnect }));
 
@@ -126,14 +126,27 @@ describe('StreamingClient', () => {
             expect(onConnect).toHaveBeenCalledTimes(1);
         });
 
-        it('should call onConnect callback when connected', () => {
-            const onConnect = vi.fn();
-            const client = new StreamingClient(createOptions({ onConnect }));
-
+        it('should reset reconnectAttempts on successful open, restarting backoff from 1s', () => {
+            const client = new StreamingClient(createOptions());
             client.connect();
+
+            // First disconnect -> reconnect after 1s
+            getLastInstance().close();
+            vi.advanceTimersByTime(1000);
+            expect(instances.length).toBe(2);
+
+            // Second disconnect -> reconnect after 2s
+            getLastInstance().close();
+            vi.advanceTimersByTime(2000);
+            expect(instances.length).toBe(3);
+
+            // Now simulate successful connection (this should reset reconnectAttempts)
             getLastInstance().simulateOpen();
 
-            expect(onConnect).toHaveBeenCalledTimes(1);
+            // Third disconnect after successful open -> should reconnect after 1s (not 4s)
+            getLastInstance().close();
+            vi.advanceTimersByTime(1000);
+            expect(instances.length).toBe(4); // Would be 3 if not reset (waiting 4s)
         });
 
         it('should re-subscribe to all streams after reconnect', () => {
