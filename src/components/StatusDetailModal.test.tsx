@@ -74,7 +74,20 @@ const createMockAccountSession = (): AccountSession => ({
     account: createMockStatus().account,
 });
 
+// Mock getStatusContext by default to avoid errors in tests
+vi.mock('../api/mastoClient', async (importOriginal) => {
+    const actual = await importOriginal<typeof mastoClient>();
+    return {
+        ...actual,
+        getStatusContext: vi.fn().mockResolvedValue({ ancestors: [], descendants: [] }),
+    };
+});
+
 describe('StatusDetailModal', () => {
+    beforeEach(() => {
+        vi.mocked(mastoClient.getStatusContext).mockResolvedValue({ ancestors: [], descendants: [] });
+    });
+
     describe('rendering', () => {
         it('should not render when isOpen is false', () => {
             const status = createMockStatus();
@@ -919,6 +932,149 @@ describe('StatusDetailModal', () => {
             expect(reblogSpy).toHaveBeenCalledTimes(1);
 
             resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 6 }));
+        });
+    });
+
+    describe('thread context', () => {
+        beforeEach(() => {
+            vi.clearAllMocks();
+        });
+
+        it('should display loading indicator while fetching context', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            // Create a promise that doesn't resolve immediately
+            let resolveContext: (value: { ancestors: mastodon.v1.Status[]; descendants: mastodon.v1.Status[] }) => void;
+            const contextPromise = new Promise<{ ancestors: mastodon.v1.Status[]; descendants: mastodon.v1.Status[] }>((resolve) => {
+                resolveContext = resolve;
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockReturnValue(contextPromise);
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Should show loading indicator
+            expect(screen.getByText('スレッドを読み込み中...')).toBeInTheDocument();
+
+            // Resolve the context
+            resolveContext!({ ancestors: [], descendants: [] });
+        });
+
+        it('should display ancestors when present', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            const ancestorStatus = createMockStatus({
+                id: 'ancestor-1',
+                content: '<p>This is the parent post</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'parent-user',
+                    displayName: 'Parent User',
+                    acct: 'parentuser',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestorStatus],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('このスレッドの上の投稿')).toBeInTheDocument();
+                expect(screen.getByText('Parent User')).toBeInTheDocument();
+            });
+        });
+
+        it('should display descendants when present', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            const replyStatus = createMockStatus({
+                id: 'reply-1',
+                content: '<p>This is a reply</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'reply-user',
+                    displayName: 'Reply User',
+                    acct: 'replyuser',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [replyStatus],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('返信 (1)')).toBeInTheDocument();
+                expect(screen.getByText('Reply User')).toBeInTheDocument();
+            });
+        });
+
+        it('should show error message when context fetch fails', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            vi.mocked(mastoClient.getStatusContext).mockRejectedValue(new Error('Network error'));
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('スレッドの読み込みに失敗しました')).toBeInTheDocument();
+            });
+
+            consoleErrorSpy.mockRestore();
+        });
+
+        it('should not fetch context when accountSession is not provided', () => {
+            const status = createMockStatus();
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    // No accountSession
+                />
+            );
+
+            // Should not call getStatusContext
+            expect(mastoClient.getStatusContext).not.toHaveBeenCalled();
         });
     });
 });

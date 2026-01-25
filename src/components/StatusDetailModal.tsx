@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import type { mastodon } from 'masto';
-import { LuX, LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert } from 'react-icons/lu';
-import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
+import { LuX, LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert, LuLoader } from 'react-icons/lu';
+import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus, getStatusContext, type StatusContext } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
+import { formatDate } from '../utils/dateFormat';
 
 interface StatusDetailModalProps {
     isOpen: boolean;
@@ -24,6 +25,96 @@ function formatFullDate(dateStr: string): string {
     });
 }
 
+// Compact status display for thread ancestors/descendants
+interface ThreadItemProps {
+    status: mastodon.v1.Status;
+    type: 'ancestor' | 'descendant';
+    depth?: number;
+}
+
+function ThreadItem({ status, type, depth = 0 }: ThreadItemProps) {
+    const account = status.account;
+    if (!account) return null;
+
+    const maxDepth = 3; // Maximum indentation level
+    const indentLevel = Math.min(depth, maxDepth);
+
+    return (
+        <div
+            className={`py-3 ${type === 'descendant' ? 'border-t border-slate-700/30' : 'border-b border-slate-700/30'}`}
+            style={{ marginLeft: type === 'descendant' ? `${indentLevel * 16}px` : 0 }}
+        >
+            <div className="flex gap-3">
+                {/* Thread connector line for descendants */}
+                {type === 'descendant' && depth > 0 && (
+                    <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-700/50" style={{ marginLeft: `${(indentLevel - 1) * 16 + 18}px` }} />
+                )}
+
+                {/* Avatar */}
+                <a
+                    href={account.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0"
+                >
+                    <img
+                        src={account.avatar}
+                        alt={account.displayName || account.username}
+                        className="w-10 h-10 rounded-lg hover:opacity-80 transition-opacity"
+                    />
+                </a>
+
+                {/* Content */}
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                        <a
+                            href={account.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline truncate"
+                        >
+                            <span className="font-medium text-slate-200">
+                                {account.displayName || account.username}
+                            </span>
+                            <span className="text-slate-500 ml-1">
+                                @{account.acct}
+                            </span>
+                        </a>
+                        <span className="text-slate-500 text-sm shrink-0">
+                            {formatDate(status.createdAt)}
+                        </span>
+                    </div>
+
+                    {/* Content warning */}
+                    {status.spoilerText ? (
+                        <details className="text-sm">
+                            <summary className="cursor-pointer text-amber-400 text-xs">
+                                CW: {status.spoilerText}
+                            </summary>
+                            <div
+                                className="text-slate-300 mt-1 status-content text-sm"
+                                dangerouslySetInnerHTML={{ __html: status.content }}
+                            />
+                        </details>
+                    ) : (
+                        <div
+                            className="text-slate-300 status-content text-sm line-clamp-3"
+                            dangerouslySetInnerHTML={{ __html: status.content }}
+                        />
+                    )}
+
+                    {/* Media indicator */}
+                    {status.mediaAttachments && status.mediaAttachments.length > 0 && (
+                        <div className="text-slate-500 text-xs mt-1">
+                            📎 {status.mediaAttachments.length}件のメディア
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function StatusDetailModal({ isOpen, onClose, status, accountSession, onReply, onStatusUpdate }: StatusDetailModalProps) {
     const [localFavourited, setLocalFavourited] = useState(false);
     const [localFavouritesCount, setLocalFavouritesCount] = useState(0);
@@ -31,9 +122,15 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
     const [localReblogsCount, setLocalReblogsCount] = useState(0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
+    // Thread context state
+    const [context, setContext] = useState<StatusContext | null>(null);
+    const [isLoadingContext, setIsLoadingContext] = useState(false);
+    const [contextError, setContextError] = useState<string | null>(null);
+
     // Refs for focus management
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const mainStatusRef = useRef<HTMLDivElement>(null);
 
     // Get the display status (original if reblog)
     const displayStatus = status?.reblog ?? status;
@@ -54,6 +151,58 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
             setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
         }
     }, [displayStatus, isOpen]);
+
+    // Extract status ID for dependency array
+    const statusId = displayStatus?.id;
+
+    // Fetch thread context when modal opens
+    useEffect(() => {
+        if (!isOpen || !statusId || !accountSession) {
+            setContext(null);
+            setContextError(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        const fetchContext = async () => {
+            setIsLoadingContext(true);
+            setContextError(null);
+
+            try {
+                const client = getClient(accountSession);
+                const ctx = await getStatusContext(client, statusId);
+                if (!cancelled) {
+                    setContext(ctx);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error('Failed to fetch thread context:', error);
+                    setContextError('スレッドの読み込みに失敗しました');
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsLoadingContext(false);
+                }
+            }
+        };
+
+        fetchContext();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isOpen, statusId, accountSession]);
+
+    // Scroll to main status after context loads
+    useEffect(() => {
+        if (context && mainStatusRef.current) {
+            // Small delay to ensure DOM is updated
+            setTimeout(() => {
+                mainStatusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+    }, [context]);
 
     if (!isOpen || !status || !displayStatus) return null;
 
@@ -159,70 +308,103 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
 
                 {/* Content */}
                 <div className="p-4 overflow-y-auto flex-1">
-                    {/* Reblog indicator */}
-                    {reblogger && (
-                        <div className="flex items-center gap-2 text-sm text-slate-400 mb-3">
-                            <LuRepeat2 className="text-green-400" />
-                            <img
-                                src={reblogger.avatar}
-                                alt=""
-                                className="w-5 h-5 rounded"
-                            />
-                            <span>{reblogger.displayName || reblogger.username} がブースト</span>
+                    {/* Loading indicator for thread context */}
+                    {isLoadingContext && (
+                        <div className="flex items-center justify-center py-4 text-slate-400">
+                            <LuLoader className="w-5 h-5 animate-spin mr-2" />
+                            <span>スレッドを読み込み中...</span>
                         </div>
                     )}
 
-                    {/* Author info */}
-                    <div className="flex items-start gap-3 mb-4">
-                        <a
-                            href={account.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="shrink-0"
-                        >
-                            <img
-                                src={account.avatar}
-                                alt={account.displayName || account.username}
-                                className="w-14 h-14 rounded-xl hover:opacity-80 transition-opacity"
-                            />
-                        </a>
-                        <div className="min-w-0 flex-1">
+                    {/* Error message */}
+                    {contextError && (
+                        <div className="text-center py-2 text-slate-500 text-sm mb-4">
+                            {contextError}
+                        </div>
+                    )}
+
+                    {/* Ancestors (parent posts) */}
+                    {context && context.ancestors.length > 0 && (
+                        <div className="mb-4 pb-2">
+                            <div className="text-xs text-slate-500 uppercase tracking-wide mb-2">
+                                このスレッドの上の投稿
+                            </div>
+                            {context.ancestors.map((ancestor) => (
+                                <ThreadItem
+                                    key={ancestor.id}
+                                    status={ancestor}
+                                    type="ancestor"
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Main status - highlighted */}
+                    <div ref={mainStatusRef} className={`${context && (context.ancestors.length > 0 || context.descendants.length > 0) ? 'bg-slate-800/50 rounded-xl p-4 -mx-2 ring-2 ring-indigo-500/30' : ''}`}>
+                        {/* Reblog indicator */}
+                        {reblogger && (
+                            <div className="flex items-center gap-2 text-sm text-slate-400 mb-3">
+                                <LuRepeat2 className="text-green-400" />
+                                <img
+                                    src={reblogger.avatar}
+                                    alt=""
+                                    className="w-5 h-5 rounded"
+                                />
+                                <span>{reblogger.displayName || reblogger.username} がブースト</span>
+                            </div>
+                        )}
+
+                        {/* Author info */}
+                        <div className="flex items-start gap-3 mb-4">
                             <a
                                 href={account.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="hover:underline"
+                                className="shrink-0"
                             >
-                                <span className="font-semibold text-lg text-slate-100 block">
-                                    {account.displayName || account.username}
-                                </span>
-                                <span className="text-slate-400 block">
-                                    @{account.acct}
-                                </span>
+                                <img
+                                    src={account.avatar}
+                                    alt={account.displayName || account.username}
+                                    className="w-14 h-14 rounded-xl hover:opacity-80 transition-opacity"
+                                />
                             </a>
+                            <div className="min-w-0 flex-1">
+                                <a
+                                    href={account.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:underline"
+                                >
+                                    <span className="font-semibold text-lg text-slate-100 block">
+                                        {account.displayName || account.username}
+                                    </span>
+                                    <span className="text-slate-400 block">
+                                        @{account.acct}
+                                    </span>
+                                </a>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Content Warning */}
-                    {displayStatus.spoilerText && (
-                        <details className="mb-4" open>
-                            <summary className="cursor-pointer text-amber-400 mb-2">
-                                <LuTriangleAlert className="inline mr-1" /> {displayStatus.spoilerText}
-                            </summary>
+                        {/* Content Warning */}
+                        {displayStatus.spoilerText && (
+                            <details className="mb-4" open>
+                                <summary className="cursor-pointer text-amber-400 mb-2">
+                                    <LuTriangleAlert className="inline mr-1" /> {displayStatus.spoilerText}
+                                </summary>
+                                <div
+                                    className="text-slate-200 text-lg leading-relaxed status-content"
+                                    dangerouslySetInnerHTML={{ __html: displayStatus.content }}
+                                />
+                            </details>
+                        )}
+
+                        {/* Main content */}
+                        {!displayStatus.spoilerText && (
                             <div
-                                className="text-slate-200 text-lg leading-relaxed status-content"
+                                className="text-slate-200 text-lg leading-relaxed mb-4 status-content"
                                 dangerouslySetInnerHTML={{ __html: displayStatus.content }}
                             />
-                        </details>
-                    )}
-
-                    {/* Main content */}
-                    {!displayStatus.spoilerText && (
-                        <div
-                            className="text-slate-200 text-lg leading-relaxed mb-4 status-content"
-                            dangerouslySetInnerHTML={{ __html: displayStatus.content }}
-                        />
-                    )}
+                        )}
 
                     {/* Media attachments - larger display */}
                     {mediaAttachments.length > 0 && (
@@ -360,8 +542,47 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                             <span>リンク</span>
                         </a>
                     </div>
+                    </div>
+
+                    {/* Descendants (replies) */}
+                    {context && context.descendants.length > 0 && (
+                        <div className="mt-4 pt-2">
+                            <div className="text-xs text-slate-500 uppercase tracking-wide mb-2">
+                                返信 ({context.descendants.length})
+                            </div>
+                            {buildThreadTree(context.descendants).map((item) => (
+                                <ThreadItem
+                                    key={item.status.id}
+                                    status={item.status}
+                                    type="descendant"
+                                    depth={item.depth}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
+}
+
+// Build a tree structure from flat descendants array
+interface ThreadTreeItem {
+    status: mastodon.v1.Status;
+    depth: number;
+}
+
+function buildThreadTree(descendants: mastodon.v1.Status[]): ThreadTreeItem[] {
+    const result: ThreadTreeItem[] = [];
+    const depthMap = new Map<string, number>();
+
+    for (const status of descendants) {
+        // Calculate depth based on parent's depth
+        const parentDepth = status.inReplyToId ? depthMap.get(status.inReplyToId) ?? -1 : -1;
+        const depth = parentDepth + 1;
+        depthMap.set(status.id, depth);
+        result.push({ status, depth });
+    }
+
+    return result;
 }
