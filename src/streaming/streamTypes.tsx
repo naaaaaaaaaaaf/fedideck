@@ -12,7 +12,7 @@ export type StreamType =
 export interface StreamConfig {
     type: StreamType;
     listId?: string;     // Required for 'list' type
-    hashtag?: string;    // Used for 'hashtag' type (defaults to 'ハッシュタグ' if not set)
+    hashtag?: string;    // Used for 'hashtag' type (displays 'ハッシュタグ' as fallback when rendering)
 }
 
 export interface StreamEvent {
