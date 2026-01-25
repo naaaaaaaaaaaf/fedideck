@@ -12,7 +12,7 @@ export type StreamType =
 export interface StreamConfig {
     type: StreamType;
     listId?: string;     // Required for 'list' type
-    hashtag?: string;    // Required for 'hashtag' type
+    hashtag?: string;    // Used for 'hashtag' type (displays 'ハッシュタグ' as fallback when rendering)
 }
 
 export interface StreamEvent {
@@ -37,7 +37,7 @@ export function getStreamDisplayName(config: StreamConfig): string {
         case 'list':
             return `リスト`;
         case 'hashtag':
-            return `#${config.hashtag}`;
+            return `#${config.hashtag || 'ハッシュタグ'}`;
         default:
             return 'Unknown';
     }
