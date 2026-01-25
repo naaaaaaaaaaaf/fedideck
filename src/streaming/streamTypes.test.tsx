@@ -37,6 +37,11 @@ describe('getStreamDisplayName', () => {
         const config: StreamConfig = { type: 'hashtag' };
         expect(getStreamDisplayName(config)).toBe('#ハッシュタグ');
     });
+
+    it('should return fallback when hashtag is an empty string', () => {
+        const config: StreamConfig = { type: 'hashtag', hashtag: '' };
+        expect(getStreamDisplayName(config)).toBe('#ハッシュタグ');
+    });
 });
 
 describe('getStreamIcon', () => {
