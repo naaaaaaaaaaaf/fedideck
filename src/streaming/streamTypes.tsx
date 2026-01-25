@@ -37,7 +37,7 @@ export function getStreamDisplayName(config: StreamConfig): string {
         case 'list':
             return `リスト`;
         case 'hashtag':
-            return `#${config.hashtag}`;
+            return `#${config.hashtag || 'ハッシュタグ'}`;
         default:
             return 'Unknown';
     }

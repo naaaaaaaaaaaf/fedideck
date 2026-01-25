@@ -33,9 +33,9 @@ describe('getStreamDisplayName', () => {
         expect(getStreamDisplayName(config)).toBe('#typescript');
     });
 
-    it('should return "#undefined" when hashtag is not set', () => {
+    it('should return fallback when hashtag is not set', () => {
         const config: StreamConfig = { type: 'hashtag' };
-        expect(getStreamDisplayName(config)).toBe('#undefined');
+        expect(getStreamDisplayName(config)).toBe('#ハッシュタグ');
     });
 });
 
