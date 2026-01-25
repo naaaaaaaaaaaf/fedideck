@@ -5,6 +5,8 @@ import {
     unfavouriteStatus,
     reblogStatus,
     unreblogStatus,
+    getStatus,
+    getStatusContext,
     type CreateStatusParams,
     type MastoClient
 } from './mastoClient';
@@ -237,5 +239,122 @@ describe('unreblogStatus', () => {
         expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('456');
         expect(mockUnreblog).toHaveBeenCalled();
         expect(result.reblogged).toBe(false);
+    });
+});
+
+describe('getStatus', () => {
+    it('fetches a single status by ID', async () => {
+        const mockStatus = {
+            id: '123',
+            content: '<p>Test status</p>',
+            createdAt: '2026-01-25T12:00:00.000Z',
+            account: { id: 'user1', acct: 'testuser' },
+        };
+        const mockFetch = vi.fn().mockResolvedValue(mockStatus);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        fetch: mockFetch,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await getStatus(mockClient, '123');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('123');
+        expect(mockFetch).toHaveBeenCalled();
+        expect(result).toEqual(mockStatus);
+    });
+
+    it('throws an error when status is not found', async () => {
+        const mockFetch = vi.fn().mockRejectedValue(new Error('Status not found'));
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        fetch: mockFetch,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(getStatus(mockClient, 'invalid')).rejects.toThrow('Status not found');
+    });
+});
+
+describe('getStatusContext', () => {
+    it('fetches ancestors and descendants for a status', async () => {
+        const mockContext = {
+            ancestors: [
+                { id: '1', content: '<p>Parent</p>' },
+                { id: '2', content: '<p>Grandparent</p>' },
+            ],
+            descendants: [
+                { id: '4', content: '<p>Reply 1</p>' },
+                { id: '5', content: '<p>Reply 2</p>' },
+            ],
+        };
+        const mockContextFetch = vi.fn().mockResolvedValue(mockContext);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        context: {
+                            fetch: mockContextFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await getStatusContext(mockClient, '3');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('3');
+        expect(mockContextFetch).toHaveBeenCalled();
+        expect(result.ancestors).toHaveLength(2);
+        expect(result.descendants).toHaveLength(2);
+    });
+
+    it('returns empty arrays when status has no context', async () => {
+        const mockContext = {
+            ancestors: [],
+            descendants: [],
+        };
+        const mockContextFetch = vi.fn().mockResolvedValue(mockContext);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        context: {
+                            fetch: mockContextFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await getStatusContext(mockClient, '123');
+
+        expect(result.ancestors).toEqual([]);
+        expect(result.descendants).toEqual([]);
+    });
+
+    it('throws an error when API call fails', async () => {
+        const mockContextFetch = vi.fn().mockRejectedValue(new Error('API Error'));
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        context: {
+                            fetch: mockContextFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(getStatusContext(mockClient, '123')).rejects.toThrow('API Error');
     });
 });
