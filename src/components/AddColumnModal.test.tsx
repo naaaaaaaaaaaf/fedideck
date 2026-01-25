@@ -43,7 +43,15 @@ vi.mock('../store/columns', () => ({
 }));
 
 vi.mock('../hooks/useModalAccessibility', () => ({
-    useModalAccessibility: ({ onClose }: { onClose: () => void }) => ({
+    useModalAccessibility: ({
+        onClose,
+    }: {
+        isOpen: boolean;
+        onClose: () => void;
+        closeButtonRef: React.RefObject<HTMLButtonElement | null>;
+        modalRef: React.RefObject<HTMLDivElement | null>;
+        canClose?: boolean;
+    }) => ({
         handleKeyDown: (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
         },

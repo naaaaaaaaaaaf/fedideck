@@ -149,7 +149,7 @@ const mockObserve = vi.fn();
 const mockDisconnect = vi.fn();
 
 class MockIntersectionObserver {
-    // eslint @typescript-eslint/no-unused-vars: "off"
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     constructor(_cb: IntersectionObserverCallback, _opts?: IntersectionObserverInit) {}
     observe = mockObserve;
     disconnect = mockDisconnect;
