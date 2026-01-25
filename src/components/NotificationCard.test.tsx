@@ -119,6 +119,14 @@ describe('NotificationCard', () => {
             expect(screen.getByText(/投票終了/)).toBeInTheDocument();
         });
 
+        it('should display status notification', () => {
+            const notification = createMockNotification('status', {
+                status: createMockStatus(),
+            });
+            render(<NotificationCard notification={notification} />);
+            expect(screen.getByText(/新規投稿/)).toBeInTheDocument();
+        });
+
         it('should display update notification', () => {
             const notification = createMockNotification('update', {
                 status: createMockStatus(),
