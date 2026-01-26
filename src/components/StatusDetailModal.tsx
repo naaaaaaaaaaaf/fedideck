@@ -30,19 +30,42 @@ interface ThreadItemProps {
     status: mastodon.v1.Status;
     type: 'ancestor' | 'descendant';
     depth?: number;
+    onClick?: (status: mastodon.v1.Status) => void;
 }
 
-function ThreadItem({ status, type, depth = 0 }: ThreadItemProps) {
+function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
     const account = status.account;
     if (!account) return null;
 
     const maxDepth = 3; // Maximum indentation level
     const indentLevel = Math.min(depth, maxDepth);
 
+    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!onClick) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('a, button, video, details')) return;
+        onClick(status);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (!onClick) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick(status);
+        }
+    };
+
     return (
         <div
-            className={`py-3 ${type === 'descendant' ? 'border-t border-slate-700/30' : 'border-b border-slate-700/30'}`}
+            className={`py-3 ${type === 'descendant' ? 'border-t border-slate-700/30' : 'border-b border-slate-700/30'} ${onClick ? 'cursor-pointer hover:bg-slate-700/20' : ''}`}
             style={{ marginLeft: type === 'descendant' ? `${indentLevel * 16}px` : 0 }}
+            onClick={handleClick}
+            onKeyDown={handleKeyDown}
+            {...(onClick ? {
+                role: 'button',
+                tabIndex: 0,
+                'aria-label': `${account.displayName || account.username}の投稿を表示`,
+            } : {})}
         >
             <div className="flex gap-3">
                 {/* Thread connector line for descendants */}
@@ -122,6 +145,9 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
     const [localReblogsCount, setLocalReblogsCount] = useState(0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
+    // Thread navigation state
+    const [navigatedStatus, setNavigatedStatus] = useState<mastodon.v1.Status | null>(null);
+
     // Thread context state
     const [context, setContext] = useState<StatusContext | null>(null);
     const [isLoadingContext, setIsLoadingContext] = useState(false);
@@ -132,8 +158,8 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const mainStatusRef = useRef<HTMLDivElement>(null);
 
-    // Get the display status (original if reblog)
-    const displayStatus = status?.reblog ?? status;
+    // Get the display status (navigated > original reblog > original)
+    const displayStatus = navigatedStatus ?? (status?.reblog ?? status);
 
     const { handleKeyDown } = useModalAccessibility({
         isOpen,
@@ -141,6 +167,11 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
         closeButtonRef,
         modalRef,
     });
+
+    // Reset navigated status when modal closes or status prop changes
+    useEffect(() => {
+        setNavigatedStatus(null);
+    }, [status, isOpen]);
 
     // Sync local state when status changes or modal opens
     useEffect(() => {
@@ -206,7 +237,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
 
     if (!isOpen || !status || !displayStatus) return null;
 
-    const reblogger = status.reblog ? status.account : null;
+    const reblogger = navigatedStatus ? null : (status.reblog ? status.account : null);
     const account = displayStatus.account;
 
     if (!account) return null;
@@ -214,6 +245,10 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
     const poll = displayStatus.poll;
     const canReblog = displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
+
+    const handleThreadNavigate = (clickedStatus: mastodon.v1.Status) => {
+        setNavigatedStatus(clickedStatus);
+    };
 
     const handleFavourite = async () => {
         if (!accountSession || isLoading.favourite) return;
@@ -334,6 +369,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                                     key={ancestor.id}
                                     status={ancestor}
                                     type="ancestor"
+                                    onClick={handleThreadNavigate}
                                 />
                             ))}
                         </div>
@@ -556,6 +592,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                                     status={item.status}
                                     type="descendant"
                                     depth={item.depth}
+                                    onClick={handleThreadNavigate}
                                 />
                             ))}
                         </div>

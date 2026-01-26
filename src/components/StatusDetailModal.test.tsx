@@ -935,6 +935,432 @@ describe('StatusDetailModal', () => {
         });
     });
 
+    describe('thread navigation', () => {
+        beforeEach(() => {
+            vi.clearAllMocks();
+        });
+
+        const createAncestorStatus = () => createMockStatus({
+            id: 'ancestor-1',
+            content: '<p>Ancestor post content</p>',
+            account: {
+                ...createMockStatus().account,
+                id: 'ancestor-user',
+                displayName: 'Ancestor User',
+                acct: 'ancestoruser',
+            },
+        });
+
+        const createDescendantStatus = () => createMockStatus({
+            id: 'descendant-1',
+            content: '<p>Descendant post content</p>',
+            inReplyToId: '12345',
+            account: {
+                ...createMockStatus().account,
+                id: 'descendant-user',
+                displayName: 'Descendant User',
+                acct: 'descendantuser',
+            },
+        });
+
+        it('should re-fetch context when an ancestor is clicked', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Wait for initial context to load
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            // Initial fetch was for status '12345'
+            expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), '12345');
+
+            // Setup mock for the next fetch
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            // Click the ancestor ThreadItem (click on the content text)
+            const ancestorContent = screen.getByText('Ancestor post content');
+            await user.click(ancestorContent);
+
+            // Should re-fetch with the ancestor's ID
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'ancestor-1');
+            });
+        });
+
+        it('should re-fetch context when a descendant is clicked', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const descendant = createDescendantStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [descendant],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Descendant User')).toBeInTheDocument();
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            const descendantContent = screen.getByText('Descendant post content');
+            await user.click(descendantContent);
+
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'descendant-1');
+            });
+        });
+
+        it('should update main status content after navigation', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ content: '<p>Original main content</p>' });
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            // Main content should show original
+            expect(screen.getByText('Original main content')).toBeInTheDocument();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            const ancestorContent = screen.getByText('Ancestor post content');
+            await user.click(ancestorContent);
+
+            // After navigation, main status should show ancestor's content
+            await waitFor(() => {
+                // The ancestor content should now be the main display
+                expect(screen.getByText('Ancestor post content')).toBeInTheDocument();
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+        });
+
+        it('should not navigate when clicking a link inside ThreadItem', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            // Click on a link (avatar/username link) inside the ThreadItem
+            const avatarLink = screen.getByAltText('Ancestor User').closest('a')!;
+            await user.click(avatarLink);
+
+            // Should NOT re-fetch context - call count should remain the same
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(initialCallCount);
+        });
+
+        it('should navigate when Enter key is pressed on ThreadItem', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            // Find the ThreadItem button and press Enter
+            const threadItemButton = screen.getByRole('button', { name: /Ancestor Userの投稿を表示/ });
+            threadItemButton.focus();
+            await user.keyboard('{Enter}');
+
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'ancestor-1');
+            });
+        });
+
+        it('should navigate when Space key is pressed on ThreadItem', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            const threadItemButton = screen.getByRole('button', { name: /Ancestor Userの投稿を表示/ });
+            threadItemButton.focus();
+            await user.keyboard(' ');
+
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'ancestor-1');
+            });
+        });
+
+        it('should reset navigation state when modal is closed and reopened', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ content: '<p>Original main content</p>' });
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            const TestWrapper = () => {
+                const [isOpen, setIsOpen] = useState(true);
+                return (
+                    <>
+                        <button data-testid="toggle" onClick={() => setIsOpen(prev => !prev)}>Toggle</button>
+                        <StatusDetailModal
+                            isOpen={isOpen}
+                            onClose={() => setIsOpen(false)}
+                            status={status}
+                            accountSession={accountSession}
+                        />
+                    </>
+                );
+            };
+
+            render(<TestWrapper />);
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            // Navigate to ancestor
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            const ancestorContent = screen.getByText('Ancestor post content');
+            await user.click(ancestorContent);
+
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'ancestor-1');
+            });
+
+            // Close and reopen
+            const closeButton = screen.getByRole('button', { name: '閉じる' });
+            await user.click(closeButton);
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            const toggleButton = screen.getByTestId('toggle');
+            await user.click(toggleButton);
+
+            // Should show original content again
+            await waitFor(() => {
+                expect(screen.getByText('Original main content')).toBeInTheDocument();
+            });
+        });
+
+        it('should hide reblog indicator after navigating within thread', async () => {
+            const user = userEvent.setup();
+            const originalStatus = createMockStatus({
+                id: 'original-1',
+                content: '<p>Original reblogged content</p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Original Author',
+                    username: 'original',
+                },
+            });
+
+            const reblogStatus = createMockStatus({
+                reblog: originalStatus,
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Reblogger',
+                    username: 'reblogger',
+                },
+            });
+
+            const accountSession = createMockAccountSession();
+            const descendant = createDescendantStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [descendant],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={reblogStatus}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Reblog indicator should be visible initially
+            await waitFor(() => {
+                expect(screen.getByText(/Reblogger がブースト/)).toBeInTheDocument();
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            // Navigate to descendant
+            const descendantContent = screen.getByText('Descendant post content');
+            await user.click(descendantContent);
+
+            // Reblog indicator should disappear
+            await waitFor(() => {
+                expect(screen.queryByText(/Reblogger がブースト/)).not.toBeInTheDocument();
+            });
+        });
+
+        it('should have correct accessibility attributes on ThreadItems', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+            const descendant = createDescendantStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [descendant],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            // Both ThreadItems should have button role
+            const threadButtons = screen.getAllByRole('button').filter(
+                btn => btn.getAttribute('aria-label')?.includes('の投稿を表示')
+            );
+            expect(threadButtons).toHaveLength(2);
+
+            // Check ancestor ThreadItem
+            const ancestorButton = screen.getByRole('button', { name: /Ancestor Userの投稿を表示/ });
+            expect(ancestorButton).toHaveAttribute('tabindex', '0');
+            expect(ancestorButton).toHaveAttribute('role', 'button');
+
+            // Check descendant ThreadItem
+            const descendantButton = screen.getByRole('button', { name: /Descendant Userの投稿を表示/ });
+            expect(descendantButton).toHaveAttribute('tabindex', '0');
+            expect(descendantButton).toHaveAttribute('role', 'button');
+        });
+    });
+
     describe('thread context', () => {
         beforeEach(() => {
             vi.clearAllMocks();
