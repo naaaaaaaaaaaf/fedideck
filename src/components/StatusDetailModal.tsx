@@ -168,10 +168,10 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
         modalRef,
     });
 
-    // Reset navigated status when modal closes or status prop changes
+    // Reset navigated status when modal closes or the base status changes
     useEffect(() => {
         setNavigatedStatus(null);
-    }, [status, isOpen]);
+    }, [status?.id, isOpen]);
 
     // Sync local state when status changes or modal opens
     useEffect(() => {
@@ -247,6 +247,8 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
     const canReblog = displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
 
     const handleThreadNavigate = (clickedStatus: mastodon.v1.Status) => {
+        setContext(null);
+        setIsLoadingContext(true);
         setNavigatedStatus(clickedStatus);
     };
 
