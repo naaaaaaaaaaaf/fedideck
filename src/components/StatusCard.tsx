@@ -214,21 +214,23 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
             {/* Reply indicator */}
             {displayStatus.inReplyToId && (
                 <div
-                    className="flex items-center gap-2 text-sm text-slate-400 mb-2 ml-12 cursor-pointer hover:text-slate-300"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        openStatusDetail();
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
+                    className={`flex items-center gap-2 text-sm text-slate-400 mb-2 ml-12 ${onStatusClick ? 'cursor-pointer hover:text-slate-300' : ''}`}
+                    {...(onStatusClick ? {
+                        onClick: (e) => {
                             e.stopPropagation();
                             openStatusDetail();
-                        }
-                    }}
-                    aria-label="スレッドを表示"
+                        },
+                        role: 'button',
+                        tabIndex: 0,
+                        onKeyDown: (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                openStatusDetail();
+                            }
+                        },
+                        'aria-label': 'スレッドを表示',
+                    } : {})}
                 >
                     <LuCornerUpLeft className="text-blue-400" aria-hidden="true" />
                     <span className="truncate">

@@ -57,7 +57,7 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
 
     return (
         <div
-            className={`py-3 ${type === 'descendant' ? 'border-t border-slate-700/30' : 'border-b border-slate-700/30'} ${onClick ? 'cursor-pointer hover:bg-slate-700/20' : ''}`}
+            className={`relative py-3 ${type === 'descendant' ? 'border-t border-slate-700/30' : 'border-b border-slate-700/30'} ${onClick ? 'cursor-pointer hover:bg-slate-700/20' : ''}`}
             style={{ marginLeft: type === 'descendant' ? `${indentLevel * 16}px` : 0 }}
             onClick={handleClick}
             onKeyDown={handleKeyDown}
@@ -191,6 +191,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
         if (!isOpen || !statusId || !accountSession) {
             setContext(null);
             setContextError(null);
+            setIsLoadingContext(false);
             return;
         }
 
@@ -229,9 +230,13 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
     useEffect(() => {
         if (context && mainStatusRef.current) {
             // Small delay to ensure DOM is updated
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
                 mainStatusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 100);
+
+            return () => {
+                clearTimeout(timeoutId);
+            };
         }
     }, [context]);
 
