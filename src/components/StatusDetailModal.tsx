@@ -51,6 +51,10 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
         if (!onClick) return;
         if (e.key === 'Enter' || e.key === ' ') {
+            const target = e.target as HTMLElement;
+            // Don't trigger if focus is on interactive elements (same as handleClick)
+            if (target.closest('a, button, video, details')) return;
+            
             e.preventDefault();
             onClick(status);
         }

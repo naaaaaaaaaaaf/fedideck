@@ -1198,6 +1198,55 @@ describe('StatusDetailModal', () => {
             });
         });
 
+        it('should not navigate when keyboard is used on interactive elements within ThreadItem', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            
+            const ancestor = createMockStatus({
+                id: 'ancestor-1',
+                content: '<p>Check this <a href="https://example.com">link</a></p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Ancestor User',
+                    acct: 'ancestoruser',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            // Find the link within the ThreadItem
+            const link = screen.getByRole('link', { name: /link/ });
+            link.focus();
+            
+            // Press Enter on the link - should not trigger navigation
+            await user.keyboard('{Enter}');
+
+            // Wait a bit to ensure no navigation happened
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // getStatusContext should not be called again (navigation didn't happen)
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(initialCallCount);
+        });
+
         it('should reset navigation state when modal is closed and reopened', async () => {
             const user = userEvent.setup();
             const status = createMockStatus({ content: '<p>Original main content</p>' });
