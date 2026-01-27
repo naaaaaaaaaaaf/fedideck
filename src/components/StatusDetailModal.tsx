@@ -309,9 +309,12 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
         };
     }, [isOpen, statusId, accountSession]);
 
-    // Scroll to main status after context loads
+    // Scroll to main status after context loads (only when there's thread UI)
     useEffect(() => {
-        if (context && mainStatusRef.current) {
+        // Only scroll if there are ancestors or descendants to show
+        const hasThreadUI = context && (context.ancestors.length > 0 || context.descendants.length > 0);
+        
+        if (hasThreadUI && mainStatusRef.current) {
             // Small delay to ensure DOM is updated
             const timeoutId = setTimeout(() => {
                 // Check if scrollIntoView is available (may be undefined in test environments)
@@ -451,7 +454,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                     {/* Loading indicator for thread context */}
                     {isLoadingContext && (
                         <div className="flex items-center justify-center py-4 text-slate-400">
-                            <LuLoader className="w-5 h-5 animate-spin mr-2" />
+                            <LuLoader className="w-5 h-5 animate-spin mr-2" aria-hidden="true" />
                             <span>スレッドを読み込み中...</span>
                         </div>
                     )}
@@ -485,7 +488,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                         {/* Reblog indicator */}
                         {reblogger && (
                             <div className="flex items-center gap-2 text-sm text-slate-400 mb-3">
-                                <LuRepeat2 className="text-green-400" />
+                                <LuRepeat2 className="text-green-400" aria-hidden="true" />
                                 <img
                                     src={reblogger.avatar}
                                     alt=""
@@ -530,7 +533,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                         {displayStatus.spoilerText && (
                             <details className="mb-4" open>
                                 <summary className="cursor-pointer text-amber-400 mb-2">
-                                    <LuTriangleAlert className="inline mr-1" /> {displayStatus.spoilerText}
+                                    <LuTriangleAlert className="inline mr-1" aria-hidden="true" /> {displayStatus.spoilerText}
                                 </summary>
                                 <div
                                     className="text-slate-200 text-lg leading-relaxed status-content"
@@ -645,7 +648,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                             onClick={handleReply}
                             className="flex items-center gap-2 px-4 py-2 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
                         >
-                            <LuMessageCircle className="w-5 h-5" />
+                            <LuMessageCircle className="w-5 h-5" aria-hidden="true" />
                             <span>返信</span>
                         </button>
                         <button
@@ -659,7 +662,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                                 } ${isLoading.reblog ? 'opacity-50' : ''}`}
                             title={!canReblog ? 'この投稿はブーストできません' : undefined}
                         >
-                            <LuRepeat2 className="w-5 h-5" />
+                            <LuRepeat2 className="w-5 h-5" aria-hidden="true" />
                             <span>ブースト</span>
                         </button>
                         <button
@@ -670,7 +673,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                                 : 'hover:text-amber-400 hover:bg-amber-400/10'
                                 } ${isLoading.favourite ? 'opacity-50' : ''}`}
                         >
-                            <LuStar className={`w-5 h-5 ${localFavourited ? 'fill-current' : ''}`} />
+                            <LuStar className={`w-5 h-5 ${localFavourited ? 'fill-current' : ''}`} aria-hidden="true" />
                             <span>お気に入り</span>
                         </button>
                         <a
@@ -679,7 +682,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                             rel="noopener noreferrer"
                             className="flex items-center gap-2 px-4 py-2 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-colors"
                         >
-                            <LuLink className="w-5 h-5" />
+                            <LuLink className="w-5 h-5" aria-hidden="true" />
                             <span>リンク</span>
                         </a>
                     </div>
