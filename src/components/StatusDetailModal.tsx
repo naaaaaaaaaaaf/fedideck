@@ -251,9 +251,12 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
         modalRef,
     });
 
-    // Reset navigated status when modal closes or the base status changes
+    // Reset navigation and context state when modal closes or the base status changes
     useEffect(() => {
         setNavigatedStatus(null);
+        setContext(null);
+        setContextError(null);
+        setIsLoadingContext(false);
     }, [status?.id, isOpen]);
 
     // Sync local state when status changes or modal opens
