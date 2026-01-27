@@ -310,9 +310,18 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
         if (context && mainStatusRef.current) {
             // Small delay to ensure DOM is updated
             const timeoutId = setTimeout(() => {
-                // Respect user's motion preferences
-                const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                mainStatusRef.current?.scrollIntoView({ 
+                // Check if scrollIntoView is available (may be undefined in test environments)
+                if (typeof mainStatusRef.current?.scrollIntoView !== 'function') {
+                    return;
+                }
+
+                // Respect user's motion preferences (with feature detection for test environments)
+                const prefersReducedMotion = 
+                    typeof window !== 'undefined' && 
+                    typeof window.matchMedia === 'function' &&
+                    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                
+                mainStatusRef.current.scrollIntoView({ 
                     behavior: prefersReducedMotion ? 'auto' : 'smooth', 
                     block: 'center' 
                 });
@@ -717,7 +726,7 @@ function DescendantsThread({ descendants, onThreadNavigate }: DescendantsThreadP
 }
 
 // Calculate nesting depth for each descendant reply in a flat array.
-// Uses memoization and recursive lookup to handle replies in any order.
+// Uses memoization and iterative lookup to handle replies in any order.
 interface ThreadDepthItem {
     status: mastodon.v1.Status;
     depth: number;
