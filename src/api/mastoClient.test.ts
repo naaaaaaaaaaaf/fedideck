@@ -5,7 +5,6 @@ import {
     unfavouriteStatus,
     reblogStatus,
     unreblogStatus,
-    getStatus,
     getStatusContext,
     type CreateStatusParams,
     type MastoClient
@@ -239,48 +238,6 @@ describe('unreblogStatus', () => {
         expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('456');
         expect(mockUnreblog).toHaveBeenCalled();
         expect(result.reblogged).toBe(false);
-    });
-});
-
-describe('getStatus', () => {
-    it('fetches a single status by ID', async () => {
-        const mockStatus = {
-            id: '123',
-            content: '<p>Test status</p>',
-            createdAt: '2026-01-25T12:00:00.000Z',
-            account: { id: 'user1', acct: 'testuser' },
-        };
-        const mockFetch = vi.fn().mockResolvedValue(mockStatus);
-        const mockClient = {
-            v1: {
-                statuses: {
-                    $select: vi.fn().mockReturnValue({
-                        fetch: mockFetch,
-                    }),
-                },
-            },
-        } as unknown as MastoClient;
-
-        const result = await getStatus(mockClient, '123');
-
-        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('123');
-        expect(mockFetch).toHaveBeenCalled();
-        expect(result).toEqual(mockStatus);
-    });
-
-    it('throws an error when status is not found', async () => {
-        const mockFetch = vi.fn().mockRejectedValue(new Error('Status not found'));
-        const mockClient = {
-            v1: {
-                statuses: {
-                    $select: vi.fn().mockReturnValue({
-                        fetch: mockFetch,
-                    }),
-                },
-            },
-        } as unknown as MastoClient;
-
-        await expect(getStatus(mockClient, 'invalid')).rejects.toThrow('Status not found');
     });
 });
 

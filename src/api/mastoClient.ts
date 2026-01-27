@@ -255,17 +255,6 @@ export async function unreblogStatus(
 export type StatusContext = mastodon.v1.Context;
 
 /**
- * Fetch a single status by ID
- */
-export async function getStatus(
-    client: MastoClient,
-    statusId: string
-): Promise<mastodon.v1.Status> {
-    const status = await client.v1.statuses.$select(statusId).fetch();
-    return status;
-}
-
-/**
  * Fetch the context (ancestors and descendants) for a status
  * - ancestors: The chain of parent statuses leading up to this one
  * - descendants: All replies and nested replies to this status
