@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { mastodon } from 'masto';
 import { LuX, LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert, LuLoader } from 'react-icons/lu';
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus, getStatusContext, type StatusContext } from '../api/mastoClient';
@@ -590,20 +590,10 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
 
                     {/* Descendants (replies) */}
                     {context && context.descendants.length > 0 && (
-                        <div className="mt-4 pt-2">
-                            <div className="text-xs text-slate-500 uppercase tracking-wide mb-2">
-                                返信 ({context.descendants.length})
-                            </div>
-                            {buildThreadTree(context.descendants).map((item) => (
-                                <ThreadItem
-                                    key={item.status.id}
-                                    status={item.status}
-                                    type="descendant"
-                                    depth={item.depth}
-                                    onClick={handleThreadNavigate}
-                                />
-                            ))}
-                        </div>
+                        <DescendantsThread
+                            descendants={context.descendants}
+                            onThreadNavigate={handleThreadNavigate}
+                        />
                     )}
                 </div>
             </div>
@@ -611,13 +601,45 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
     );
 }
 
-// Build a tree structure from flat descendants array
-interface ThreadTreeItem {
+// Memoized component for rendering descendant replies with computed depths
+interface DescendantsThreadProps {
+    descendants: mastodon.v1.Status[];
+    onThreadNavigate: (status: mastodon.v1.Status) => void;
+}
+
+function DescendantsThread({ descendants, onThreadNavigate }: DescendantsThreadProps) {
+    // Memoize depth calculation to avoid recalculating on every render
+    const threadItems = useMemo(
+        () => calculateThreadDepths(descendants),
+        [descendants]
+    );
+
+    return (
+        <div className="mt-4 pt-2">
+            <div className="text-xs text-slate-500 uppercase tracking-wide mb-2">
+                返信 ({descendants.length})
+            </div>
+            {threadItems.map((item) => (
+                <ThreadItem
+                    key={item.status.id}
+                    status={item.status}
+                    type="descendant"
+                    depth={item.depth}
+                    onClick={onThreadNavigate}
+                />
+            ))}
+        </div>
+    );
+}
+
+// Calculate nesting depth for each descendant reply in a flat array.
+// Uses memoization and recursive lookup to handle replies in any order.
+interface ThreadDepthItem {
     status: mastodon.v1.Status;
     depth: number;
 }
 
-function buildThreadTree(descendants: mastodon.v1.Status[]): ThreadTreeItem[] {
+function calculateThreadDepths(descendants: mastodon.v1.Status[]): ThreadDepthItem[] {
     // Build id -> status map for O(1) lookup
     const statusMap = new Map<string, mastodon.v1.Status>();
     for (const status of descendants) {
@@ -652,7 +674,7 @@ function buildThreadTree(descendants: mastodon.v1.Status[]): ThreadTreeItem[] {
     }
 
     // Calculate depth for all statuses and build result
-    const result: ThreadTreeItem[] = descendants.map(status => ({
+    const result: ThreadDepthItem[] = descendants.map(status => ({
         status,
         depth: calculateDepth(status.id)
     }));
