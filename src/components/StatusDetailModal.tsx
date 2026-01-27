@@ -253,6 +253,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
 
     const handleThreadNavigate = (clickedStatus: mastodon.v1.Status) => {
         setContext(null);
+        setContextError(null);
         setIsLoadingContext(true);
         setNavigatedStatus(clickedStatus);
     };
@@ -617,16 +618,44 @@ interface ThreadTreeItem {
 }
 
 function buildThreadTree(descendants: mastodon.v1.Status[]): ThreadTreeItem[] {
-    const result: ThreadTreeItem[] = [];
-    const depthMap = new Map<string, number>();
-
+    // Build id -> status map for O(1) lookup
+    const statusMap = new Map<string, mastodon.v1.Status>();
     for (const status of descendants) {
-        // Calculate depth based on parent's depth
-        const parentDepth = status.inReplyToId ? depthMap.get(status.inReplyToId) ?? -1 : -1;
-        const depth = parentDepth + 1;
-        depthMap.set(status.id, depth);
-        result.push({ status, depth });
+        statusMap.set(status.id, status);
     }
+
+    // Memoized depth calculation with recursion
+    const depthCache = new Map<string, number>();
+    
+    function calculateDepth(statusId: string): number {
+        if (depthCache.has(statusId)) {
+            return depthCache.get(statusId)!;
+        }
+
+        const status = statusMap.get(statusId);
+        if (!status || !status.inReplyToId) {
+            // Root level (no parent or parent not in descendants)
+            depthCache.set(statusId, 0);
+            return 0;
+        }
+
+        // If parent is in descendants, recursively calculate its depth
+        if (statusMap.has(status.inReplyToId)) {
+            const depth = calculateDepth(status.inReplyToId) + 1;
+            depthCache.set(statusId, depth);
+            return depth;
+        } else {
+            // Parent is not in descendants (e.g., it's the main status), so this is root level
+            depthCache.set(statusId, 0);
+            return 0;
+        }
+    }
+
+    // Calculate depth for all statuses and build result
+    const result: ThreadTreeItem[] = descendants.map(status => ({
+        status,
+        depth: calculateDepth(status.id)
+    }));
 
     return result;
 }

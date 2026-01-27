@@ -1502,5 +1502,156 @@ describe('StatusDetailModal', () => {
             // Should not call getStatusContext
             expect(mastoClient.getStatusContext).not.toHaveBeenCalled();
         });
+
+        it('should correctly calculate depth for nested replies regardless of ordering', async () => {
+            const status = createMockStatus({ id: 'main-status' });
+            const accountSession = createMockAccountSession();
+
+            // Create a nested reply structure:
+            // main-status (not in descendants)
+            //   └─ reply-1 (depth 0)
+            //        └─ reply-2 (depth 1)
+            //             └─ reply-3 (depth 2)
+            // But return them in reverse chronological order (child before parent)
+            const reply1 = createMockStatus({
+                id: 'reply-1',
+                inReplyToId: 'main-status',
+                content: '<p>First level reply</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'user1',
+                    displayName: 'User 1',
+                    acct: 'user1',
+                },
+            });
+
+            const reply2 = createMockStatus({
+                id: 'reply-2',
+                inReplyToId: 'reply-1',
+                content: '<p>Second level reply</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'user2',
+                    displayName: 'User 2',
+                    acct: 'user2',
+                },
+            });
+
+            const reply3 = createMockStatus({
+                id: 'reply-3',
+                inReplyToId: 'reply-2',
+                content: '<p>Third level reply</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'user3',
+                    displayName: 'User 3',
+                    acct: 'user3',
+                },
+            });
+
+            // Return descendants in problematic order: deepest first
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [reply3, reply2, reply1],
+            });
+
+            const { container } = render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('User 1')).toBeInTheDocument();
+                expect(screen.getByText('User 2')).toBeInTheDocument();
+                expect(screen.getByText('User 3')).toBeInTheDocument();
+            });
+
+            // Check that indentation is applied correctly
+            // reply-1 should have marginLeft: 0px (depth 0)
+            // reply-2 should have marginLeft: 16px (depth 1)
+            // reply-3 should have marginLeft: 32px (depth 2)
+            const replyElements = container.querySelectorAll('[role="button"]');
+            
+            // Find each reply by checking for the user name
+            const reply1Element = Array.from(replyElements).find(el => el.textContent?.includes('User 1'));
+            const reply2Element = Array.from(replyElements).find(el => el.textContent?.includes('User 2'));
+            const reply3Element = Array.from(replyElements).find(el => el.textContent?.includes('User 3'));
+
+            expect(reply1Element).toHaveStyle({ marginLeft: '0px' });
+            expect(reply2Element).toHaveStyle({ marginLeft: '16px' });
+            expect(reply3Element).toHaveStyle({ marginLeft: '32px' });
+        });
+
+        it('should clear error message when navigating to another status', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            const ancestor = createMockStatus({
+                id: 'ancestor-1',
+                content: '<p>Ancestor post</p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Ancestor User',
+                    acct: 'ancestoruser',
+                },
+            });
+
+            // First fetch fails
+            vi.mocked(mastoClient.getStatusContext).mockRejectedValueOnce(new Error('Network error'));
+
+            const { rerender } = render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Error message should appear
+            await waitFor(() => {
+                expect(screen.getByText('スレッドの読み込みに失敗しました')).toBeInTheDocument();
+            });
+
+            // Setup successful fetch with ancestor for reopening
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            // Close and reopen modal (simulates navigation by changing status)
+            rerender(
+                <StatusDetailModal
+                    isOpen={false}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            rerender(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Wait for ancestor to appear (successful fetch)
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            // Error message should be cleared
+            expect(screen.queryByText('スレッドの読み込みに失敗しました')).not.toBeInTheDocument();
+
+            consoleErrorSpy.mockRestore();
+        });
     });
 });
