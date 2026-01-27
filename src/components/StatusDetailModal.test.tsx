@@ -1708,13 +1708,13 @@ describe('StatusDetailModal', () => {
             });
         });
 
-        it('should cap depth at maximum to prevent stack overflow', async () => {
+        it('should handle very deep thread chains without stack overflow', async () => {
             const status = createMockStatus({ id: 'main-status' });
             const accountSession = createMockAccountSession();
 
-            // Create a very deep thread chain (15 levels)
+            // Create an extremely deep thread chain (100 levels) to test iterative implementation
             const deepReplies: mastodon.v1.Status[] = [];
-            for (let i = 0; i < 15; i++) {
+            for (let i = 0; i < 100; i++) {
                 deepReplies.push(
                     createMockStatus({
                         id: `reply-${i}`,
@@ -1733,20 +1733,33 @@ describe('StatusDetailModal', () => {
                 descendants: deepReplies,
             });
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            // Should not throw stack overflow error
+            expect(() => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            }).not.toThrow();
 
-            // Should render without stack overflow
+            // Should render successfully
             await waitFor(() => {
                 expect(screen.getByText('User 0')).toBeInTheDocument();
-                expect(screen.getByText('User 14')).toBeInTheDocument();
+                expect(screen.getByText('User 99')).toBeInTheDocument();
             });
+
+            // Verify that depth is capped at UI maxDepth (3)
+            // The calculation returns up to MAX_DEPTH=10, but UI caps display at maxDepth=3
+            // So the deepest reply should have marginLeft = 3 * 16 = 48px
+            const container = screen.getByRole('dialog');
+            const replyElements = container.querySelectorAll('[role="button"]');
+            const deepestReply = Array.from(replyElements).find(el => el.textContent?.includes('User 99'));
+            
+            // UI caps indentation at maxDepth=3, so marginLeft should be 48px
+            expect(deepestReply).toHaveStyle({ marginLeft: '48px' });
         });
     });
 });

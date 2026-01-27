@@ -310,7 +310,12 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
         if (context && mainStatusRef.current) {
             // Small delay to ensure DOM is updated
             const timeoutId = setTimeout(() => {
-                mainStatusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Respect user's motion preferences
+                const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                mainStatusRef.current?.scrollIntoView({ 
+                    behavior: prefersReducedMotion ? 'auto' : 'smooth', 
+                    block: 'center' 
+                });
             }, 100);
 
             return () => {
@@ -725,46 +730,63 @@ function calculateThreadDepths(descendants: mastodon.v1.Status[]): ThreadDepthIt
         statusMap.set(status.id, status);
     }
 
-    // Maximum recursion depth to prevent stack overflow
+    // Maximum depth to prevent excessive nesting
     const MAX_DEPTH = 10;
 
-    // Memoized depth calculation with recursion protection
+    // Memoized depth calculation using iterative approach (no recursion)
     const depthCache = new Map<string, number>();
     
-    function calculateDepth(statusId: string, visiting = new Set<string>()): number {
+    function calculateDepth(statusId: string): number {
         if (depthCache.has(statusId)) {
             return depthCache.get(statusId)!;
         }
 
-        // Detect circular reference
-        if (visiting.has(statusId)) {
-            // Circular reference detected, treat as root level
-            depthCache.set(statusId, 0);
-            return 0;
+        // Track visited nodes to detect circular references
+        const visited = new Set<string>();
+        let currentId: string | null = statusId;
+        let depth = 0;
+
+        // Walk up the parent chain iteratively (no recursion)
+        while (currentId && depth < MAX_DEPTH) {
+            // Circular reference detected
+            if (visited.has(currentId)) {
+                depthCache.set(statusId, 0);
+                return 0;
+            }
+
+            // Check if we already computed this node's depth
+            if (depthCache.has(currentId)) {
+                const cachedDepth = depthCache.get(currentId)!;
+                const finalDepth = Math.min(cachedDepth + depth, MAX_DEPTH);
+                depthCache.set(statusId, finalDepth);
+                return finalDepth;
+            }
+
+            visited.add(currentId);
+            const status = statusMap.get(currentId);
+
+            if (!status || !status.inReplyToId) {
+                // Reached root level
+                const finalDepth = Math.min(depth, MAX_DEPTH);
+                depthCache.set(statusId, finalDepth);
+                return finalDepth;
+            }
+
+            // Parent not in descendants (e.g., it's the main status)
+            if (!statusMap.has(status.inReplyToId)) {
+                const finalDepth = Math.min(depth, MAX_DEPTH);
+                depthCache.set(statusId, finalDepth);
+                return finalDepth;
+            }
+
+            // Move to parent and increment depth
+            currentId = status.inReplyToId;
+            depth++;
         }
 
-        const status = statusMap.get(statusId);
-        if (!status || !status.inReplyToId) {
-            // Root level (no parent or parent not in descendants)
-            depthCache.set(statusId, 0);
-            return 0;
-        }
-
-        // If parent is in descendants, recursively calculate its depth
-        if (statusMap.has(status.inReplyToId)) {
-            visiting.add(statusId);
-            const parentDepth = calculateDepth(status.inReplyToId, visiting);
-            visiting.delete(statusId);
-            
-            // Cap depth at MAX_DEPTH to prevent stack overflow
-            const depth = Math.min(parentDepth + 1, MAX_DEPTH);
-            depthCache.set(statusId, depth);
-            return depth;
-        } else {
-            // Parent is not in descendants (e.g., it's the main status), so this is root level
-            depthCache.set(statusId, 0);
-            return 0;
-        }
+        // Reached max depth
+        depthCache.set(statusId, MAX_DEPTH);
+        return MAX_DEPTH;
     }
 
     // Calculate depth for all statuses and build result
