@@ -40,32 +40,99 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
     const maxDepth = 3; // Maximum indentation level
     const indentLevel = Math.min(depth, maxDepth);
 
-    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
         if (!onClick) return;
         const target = e.target as HTMLElement;
-        if (target.closest('a, button, video, details')) return;
+        if (target.closest('a, video, details')) return;
         onClick(status);
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-        if (!onClick) return;
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onClick(status);
-        }
-    };
+    // Render as button when clickable for better accessibility
+    if (onClick) {
+        return (
+            <button
+                type="button"
+                className={`relative py-3 w-full text-left ${type === 'descendant' ? 'border-t border-slate-700/30' : 'border-b border-slate-700/30'} cursor-pointer hover:bg-slate-700/20`}
+                style={{ marginLeft: type === 'descendant' ? `${indentLevel * 16}px` : 0 }}
+                onClick={handleClick}
+                aria-label={`${account.displayName || account.username}の投稿を表示`}
+            >
+            <div className="flex gap-3">
+                {/* Thread connector line for descendants */}
+                {type === 'descendant' && depth > 0 && (
+                    <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-700/50" style={{ marginLeft: `${(indentLevel - 1) * 16 + 18}px` }} />
+                )}
 
+                {/* Avatar */}
+                <a
+                    href={account.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0"
+                >
+                    <img
+                        src={account.avatar}
+                        alt={account.displayName || account.username}
+                        className="w-10 h-10 rounded-lg hover:opacity-80 transition-opacity"
+                    />
+                </a>
+
+                {/* Content */}
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                        <a
+                            href={account.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline truncate"
+                        >
+                            <span className="font-medium text-slate-200">
+                                {account.displayName || account.username}
+                            </span>
+                            <span className="text-slate-500 ml-1">
+                                @{account.acct}
+                            </span>
+                        </a>
+                        <span className="text-slate-500 text-sm shrink-0">
+                            {formatDate(status.createdAt)}
+                        </span>
+                    </div>
+
+                    {/* Content warning */}
+                    {status.spoilerText ? (
+                        <details className="text-sm">
+                            <summary className="cursor-pointer text-amber-400 text-xs">
+                                CW: {status.spoilerText}
+                            </summary>
+                            <div
+                                className="text-slate-300 mt-1 status-content text-sm"
+                                dangerouslySetInnerHTML={{ __html: status.content }}
+                            />
+                        </details>
+                    ) : (
+                        <div
+                            className="text-slate-300 status-content text-sm line-clamp-3"
+                            dangerouslySetInnerHTML={{ __html: status.content }}
+                        />
+                    )}
+
+                    {/* Media indicator */}
+                    {status.mediaAttachments && status.mediaAttachments.length > 0 && (
+                        <div className="text-slate-500 text-xs mt-1">
+                            📎 {status.mediaAttachments.length}件のメディア
+                        </div>
+                    )}
+                </div>
+            </div>
+            </button>
+        );
+    }
+
+    // Render as div when not clickable
     return (
         <div
-            className={`relative py-3 ${type === 'descendant' ? 'border-t border-slate-700/30' : 'border-b border-slate-700/30'} ${onClick ? 'cursor-pointer hover:bg-slate-700/20' : ''}`}
+            className={`relative py-3 ${type === 'descendant' ? 'border-t border-slate-700/30' : 'border-b border-slate-700/30'}`}
             style={{ marginLeft: type === 'descendant' ? `${indentLevel * 16}px` : 0 }}
-            onClick={handleClick}
-            onKeyDown={handleKeyDown}
-            {...(onClick ? {
-                role: 'button',
-                tabIndex: 0,
-                'aria-label': `${account.displayName || account.username}の投稿を表示`,
-            } : {})}
         >
             <div className="flex gap-3">
                 {/* Thread connector line for descendants */}

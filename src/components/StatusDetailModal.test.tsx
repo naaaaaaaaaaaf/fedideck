@@ -1349,15 +1349,15 @@ describe('StatusDetailModal', () => {
             );
             expect(threadButtons).toHaveLength(2);
 
-            // Check ancestor ThreadItem
+            // Check ancestor ThreadItem - native button elements have implicit role and tabindex
             const ancestorButton = screen.getByRole('button', { name: /Ancestor Userの投稿を表示/ });
-            expect(ancestorButton).toHaveAttribute('tabindex', '0');
-            expect(ancestorButton).toHaveAttribute('role', 'button');
+            expect(ancestorButton).toBeInTheDocument();
+            expect(ancestorButton.tagName).toBe('BUTTON');
 
             // Check descendant ThreadItem
             const descendantButton = screen.getByRole('button', { name: /Descendant Userの投稿を表示/ });
-            expect(descendantButton).toHaveAttribute('tabindex', '0');
-            expect(descendantButton).toHaveAttribute('role', 'button');
+            expect(descendantButton).toBeInTheDocument();
+            expect(descendantButton.tagName).toBe('BUTTON');
         });
     });
 
@@ -1574,7 +1574,7 @@ describe('StatusDetailModal', () => {
             // reply-1 should have marginLeft: 0px (depth 0)
             // reply-2 should have marginLeft: 16px (depth 1)
             // reply-3 should have marginLeft: 32px (depth 2)
-            const replyElements = container.querySelectorAll('[role="button"]');
+            const replyElements = container.querySelectorAll('button[type="button"]');
             
             // Find each reply by checking for the user name
             const reply1Element = Array.from(replyElements).find(el => el.textContent?.includes('User 1'));
