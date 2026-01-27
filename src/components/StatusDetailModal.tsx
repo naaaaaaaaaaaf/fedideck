@@ -40,21 +40,33 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
     const maxDepth = 3; // Maximum indentation level
     const indentLevel = Math.min(depth, maxDepth);
 
-    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!onClick) return;
         const target = e.target as HTMLElement;
-        if (target.closest('a, video, details')) return;
+        // Don't trigger if clicking on interactive elements
+        if (target.closest('a, button, video, details')) return;
         onClick(status);
     };
 
-    // Render as button when clickable for better accessibility
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (!onClick) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick(status);
+        }
+    };
+
+    // Use div with role="button" to avoid nesting interactive elements
+    // (button cannot contain <a>, <details>, etc. per HTML spec)
     if (onClick) {
         return (
-            <button
-                type="button"
-                className={`relative py-3 w-full text-left ${type === 'descendant' ? 'border-t border-slate-700/30' : 'border-b border-slate-700/30'} cursor-pointer hover:bg-slate-700/20`}
+            <div
+                className={`relative py-3 ${type === 'descendant' ? 'border-t border-slate-700/30' : 'border-b border-slate-700/30'} cursor-pointer hover:bg-slate-700/20`}
                 style={{ marginLeft: type === 'descendant' ? `${indentLevel * 16}px` : 0 }}
                 onClick={handleClick}
+                onKeyDown={handleKeyDown}
+                role="button"
+                tabIndex={0}
                 aria-label={`${account.displayName || account.username}の投稿を表示`}
             >
             <div className="flex gap-3">
@@ -124,7 +136,7 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
                     )}
                 </div>
             </div>
-            </button>
+            </div>
         );
     }
 
@@ -713,12 +725,22 @@ function calculateThreadDepths(descendants: mastodon.v1.Status[]): ThreadDepthIt
         statusMap.set(status.id, status);
     }
 
-    // Memoized depth calculation with recursion
+    // Maximum recursion depth to prevent stack overflow
+    const MAX_DEPTH = 10;
+
+    // Memoized depth calculation with recursion protection
     const depthCache = new Map<string, number>();
     
-    function calculateDepth(statusId: string): number {
+    function calculateDepth(statusId: string, visiting = new Set<string>()): number {
         if (depthCache.has(statusId)) {
             return depthCache.get(statusId)!;
+        }
+
+        // Detect circular reference
+        if (visiting.has(statusId)) {
+            // Circular reference detected, treat as root level
+            depthCache.set(statusId, 0);
+            return 0;
         }
 
         const status = statusMap.get(statusId);
@@ -730,7 +752,12 @@ function calculateThreadDepths(descendants: mastodon.v1.Status[]): ThreadDepthIt
 
         // If parent is in descendants, recursively calculate its depth
         if (statusMap.has(status.inReplyToId)) {
-            const depth = calculateDepth(status.inReplyToId) + 1;
+            visiting.add(statusId);
+            const parentDepth = calculateDepth(status.inReplyToId, visiting);
+            visiting.delete(statusId);
+            
+            // Cap depth at MAX_DEPTH to prevent stack overflow
+            const depth = Math.min(parentDepth + 1, MAX_DEPTH);
             depthCache.set(statusId, depth);
             return depth;
         } else {

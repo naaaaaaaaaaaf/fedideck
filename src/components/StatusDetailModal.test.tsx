@@ -1349,15 +1349,17 @@ describe('StatusDetailModal', () => {
             );
             expect(threadButtons).toHaveLength(2);
 
-            // Check ancestor ThreadItem - native button elements have implicit role and tabindex
+            // Check ancestor ThreadItem - div with role="button" and tabIndex
             const ancestorButton = screen.getByRole('button', { name: /Ancestor Userの投稿を表示/ });
             expect(ancestorButton).toBeInTheDocument();
-            expect(ancestorButton.tagName).toBe('BUTTON');
+            expect(ancestorButton).toHaveAttribute('role', 'button');
+            expect(ancestorButton).toHaveAttribute('tabindex', '0');
 
             // Check descendant ThreadItem
             const descendantButton = screen.getByRole('button', { name: /Descendant Userの投稿を表示/ });
             expect(descendantButton).toBeInTheDocument();
-            expect(descendantButton.tagName).toBe('BUTTON');
+            expect(descendantButton).toHaveAttribute('role', 'button');
+            expect(descendantButton).toHaveAttribute('tabindex', '0');
         });
     });
 
@@ -1574,7 +1576,7 @@ describe('StatusDetailModal', () => {
             // reply-1 should have marginLeft: 0px (depth 0)
             // reply-2 should have marginLeft: 16px (depth 1)
             // reply-3 should have marginLeft: 32px (depth 2)
-            const replyElements = container.querySelectorAll('button[type="button"]');
+            const replyElements = container.querySelectorAll('[role="button"]');
             
             // Find each reply by checking for the user name
             const reply1Element = Array.from(replyElements).find(el => el.textContent?.includes('User 1'));
@@ -1652,6 +1654,99 @@ describe('StatusDetailModal', () => {
             expect(screen.queryByText('スレッドの読み込みに失敗しました')).not.toBeInTheDocument();
 
             consoleErrorSpy.mockRestore();
+        });
+
+        it('should handle circular references in thread depth calculation', async () => {
+            const status = createMockStatus({ id: 'main-status' });
+            const accountSession = createMockAccountSession();
+
+            // Create a circular reference: reply1 -> reply2 -> reply1
+            const reply1 = createMockStatus({
+                id: 'reply-1',
+                inReplyToId: 'main-status',
+                content: '<p>Reply 1</p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'User 1',
+                },
+            });
+
+            const reply2 = createMockStatus({
+                id: 'reply-2',
+                inReplyToId: 'reply-1', // Points to reply-1
+                content: '<p>Reply 2 (circular)</p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'User 2',
+                },
+            });
+
+            // Simulate circular reference by modifying reply1's inReplyToId
+            const reply1Circular = {
+                ...reply1,
+                inReplyToId: 'reply-2', // Creates cycle: reply1 -> reply2 -> reply1
+            };
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [reply1Circular, reply2],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Should render without crashing despite circular reference
+            await waitFor(() => {
+                expect(screen.getByText('User 1')).toBeInTheDocument();
+                expect(screen.getByText('User 2')).toBeInTheDocument();
+            });
+        });
+
+        it('should cap depth at maximum to prevent stack overflow', async () => {
+            const status = createMockStatus({ id: 'main-status' });
+            const accountSession = createMockAccountSession();
+
+            // Create a very deep thread chain (15 levels)
+            const deepReplies: mastodon.v1.Status[] = [];
+            for (let i = 0; i < 15; i++) {
+                deepReplies.push(
+                    createMockStatus({
+                        id: `reply-${i}`,
+                        inReplyToId: i === 0 ? 'main-status' : `reply-${i - 1}`,
+                        content: `<p>Level ${i}</p>`,
+                        account: {
+                            ...createMockStatus().account,
+                            displayName: `User ${i}`,
+                        },
+                    })
+                );
+            }
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: deepReplies,
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Should render without stack overflow
+            await waitFor(() => {
+                expect(screen.getByText('User 0')).toBeInTheDocument();
+                expect(screen.getByText('User 14')).toBeInTheDocument();
+            });
         });
     });
 });
