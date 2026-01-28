@@ -5,6 +5,7 @@ import {
     unfavouriteStatus,
     reblogStatus,
     unreblogStatus,
+    getStatusContext,
     type CreateStatusParams,
     type MastoClient
 } from './mastoClient';
@@ -237,5 +238,80 @@ describe('unreblogStatus', () => {
         expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('456');
         expect(mockUnreblog).toHaveBeenCalled();
         expect(result.reblogged).toBe(false);
+    });
+});
+
+describe('getStatusContext', () => {
+    it('fetches ancestors and descendants for a status', async () => {
+        const mockContext = {
+            ancestors: [
+                { id: '1', content: '<p>Parent</p>' },
+                { id: '2', content: '<p>Grandparent</p>' },
+            ],
+            descendants: [
+                { id: '4', content: '<p>Reply 1</p>' },
+                { id: '5', content: '<p>Reply 2</p>' },
+            ],
+        };
+        const mockContextFetch = vi.fn().mockResolvedValue(mockContext);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        context: {
+                            fetch: mockContextFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await getStatusContext(mockClient, '3');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('3');
+        expect(mockContextFetch).toHaveBeenCalled();
+        expect(result.ancestors).toHaveLength(2);
+        expect(result.descendants).toHaveLength(2);
+    });
+
+    it('returns empty arrays when status has no context', async () => {
+        const mockContext = {
+            ancestors: [],
+            descendants: [],
+        };
+        const mockContextFetch = vi.fn().mockResolvedValue(mockContext);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        context: {
+                            fetch: mockContextFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await getStatusContext(mockClient, '123');
+
+        expect(result.ancestors).toEqual([]);
+        expect(result.descendants).toEqual([]);
+    });
+
+    it('throws an error when API call fails', async () => {
+        const mockContextFetch = vi.fn().mockRejectedValue(new Error('API Error'));
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        context: {
+                            fetch: mockContextFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(getStatusContext(mockClient, '123')).rejects.toThrow('API Error');
     });
 });

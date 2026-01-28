@@ -364,6 +364,99 @@ describe('StatusCard', () => {
         });
     });
 
+    describe('reply indicator', () => {
+        it('should show reply indicator when status is a reply', () => {
+            const status = createMockStatus({
+                inReplyToId: 'parent-123',
+                inReplyToAccountId: '999',
+                mentions: [
+                    {
+                        id: '999',
+                        username: 'parentuser',
+                        acct: 'parentuser@other.social',
+                        url: 'https://other.social/@parentuser',
+                    } as mastodon.v1.StatusMention,
+                ],
+            });
+
+            render(<StatusCard status={status} onStatusClick={vi.fn()} />);
+
+            expect(screen.getByText('@parentuser@other.social への返信')).toBeInTheDocument();
+        });
+
+        it('should show generic reply text when mention is not found', () => {
+            const status = createMockStatus({
+                inReplyToId: 'parent-123',
+                inReplyToAccountId: '999',
+                mentions: [], // No matching mention
+            });
+
+            render(<StatusCard status={status} onStatusClick={vi.fn()} />);
+
+            expect(screen.getByText('返信')).toBeInTheDocument();
+        });
+
+        it('should not show reply indicator when not a reply', () => {
+            const status = createMockStatus({
+                inReplyToId: null,
+            });
+
+            render(<StatusCard status={status} onStatusClick={vi.fn()} />);
+
+            expect(screen.queryByText(/への返信/)).not.toBeInTheDocument();
+            expect(screen.queryByText(/^返信$/)).not.toBeInTheDocument();
+        });
+
+        it('should call onStatusClick when reply indicator is clicked', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                inReplyToId: 'parent-123',
+                inReplyToAccountId: '999',
+                mentions: [
+                    {
+                        id: '999',
+                        username: 'parentuser',
+                        acct: 'parentuser',
+                        url: 'https://mastodon.social/@parentuser',
+                    } as mastodon.v1.StatusMention,
+                ],
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const replyIndicator = screen.getByText('@parentuser への返信');
+            await user.click(replyIndicator);
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
+                id: '12345',
+            }));
+        });
+
+        it('should call onStatusClick when pressing Enter on reply indicator', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                inReplyToId: 'parent-123',
+                inReplyToAccountId: '999',
+                mentions: [],
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            // Use click followed by keyboard to ensure element is focused
+            const replyIndicator = screen.getByRole('button', { name: 'スレッドを表示' });
+            await user.click(replyIndicator);
+
+            // Reset mock and test keyboard navigation
+            onStatusClick.mockClear();
+            await user.keyboard('{Enter}');
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+        });
+    });
+
     describe('reply button', () => {
         it('should call onReply with displayStatus when reply button is clicked', async () => {
             const user = userEvent.setup();

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { mastodon } from 'masto';
-import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert } from 'react-icons/lu';
+import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert, LuCornerUpLeft } from 'react-icons/lu';
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
 import { formatDate } from '../utils/dateFormat';
 
@@ -208,6 +208,44 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                         className="w-4 h-4 rounded"
                     />
                     <span className="truncate">{reblogger.displayName || reblogger.username} がブースト</span>
+                </div>
+            )}
+
+            {/* Reply indicator */}
+            {displayStatus.inReplyToId && (
+                <div
+                    className={`flex items-center gap-2 text-sm text-slate-400 mb-2 ml-12 ${onStatusClick ? 'cursor-pointer hover:text-slate-300' : ''}`}
+                    {...(onStatusClick ? {
+                        onClick: (e) => {
+                            e.stopPropagation();
+                            openStatusDetail();
+                        },
+                        role: 'button',
+                        tabIndex: 0,
+                        onKeyDown: (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                openStatusDetail();
+                            }
+                        },
+                        'aria-label': 'スレッドを表示',
+                    } : {})}
+                >
+                    <LuCornerUpLeft className="text-blue-400" aria-hidden="true" />
+                    <span className="truncate">
+                        {(() => {
+                            // Find reply target from mentions using inReplyToAccountId
+                            const replyToAccountId = displayStatus.inReplyToAccountId;
+                            const replyToMention = displayStatus.mentions?.find(
+                                (m) => m.id === replyToAccountId
+                            );
+                            if (replyToMention) {
+                                return `@${replyToMention.acct} への返信`;
+                            }
+                            return '返信';
+                        })()}
+                    </span>
                 </div>
             )}
 

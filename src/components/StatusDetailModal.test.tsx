@@ -74,7 +74,20 @@ const createMockAccountSession = (): AccountSession => ({
     account: createMockStatus().account,
 });
 
+// Mock getStatusContext by default to avoid errors in tests
+vi.mock('../api/mastoClient', async (importOriginal) => {
+    const actual = await importOriginal<typeof mastoClient>();
+    return {
+        ...actual,
+        getStatusContext: vi.fn().mockResolvedValue({ ancestors: [], descendants: [] }),
+    };
+});
+
 describe('StatusDetailModal', () => {
+    beforeEach(() => {
+        vi.mocked(mastoClient.getStatusContext).mockResolvedValue({ ancestors: [], descendants: [] });
+    });
+
     describe('rendering', () => {
         it('should not render when isOpen is false', () => {
             const status = createMockStatus();
@@ -919,6 +932,881 @@ describe('StatusDetailModal', () => {
             expect(reblogSpy).toHaveBeenCalledTimes(1);
 
             resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 6 }));
+        });
+    });
+
+    describe('thread navigation', () => {
+        beforeEach(() => {
+            vi.clearAllMocks();
+        });
+
+        const createAncestorStatus = () => createMockStatus({
+            id: 'ancestor-1',
+            content: '<p>Ancestor post content</p>',
+            account: {
+                ...createMockStatus().account,
+                id: 'ancestor-user',
+                displayName: 'Ancestor User',
+                acct: 'ancestoruser',
+            },
+        });
+
+        const createDescendantStatus = () => createMockStatus({
+            id: 'descendant-1',
+            content: '<p>Descendant post content</p>',
+            inReplyToId: '12345',
+            account: {
+                ...createMockStatus().account,
+                id: 'descendant-user',
+                displayName: 'Descendant User',
+                acct: 'descendantuser',
+            },
+        });
+
+        it('should re-fetch context when an ancestor is clicked', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Wait for initial context to load
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            // Initial fetch was for status '12345'
+            expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), '12345');
+
+            // Setup mock for the next fetch
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            // Click the ancestor ThreadItem (click on the content text)
+            const ancestorContent = screen.getByText('Ancestor post content');
+            await user.click(ancestorContent);
+
+            // Should re-fetch with the ancestor's ID
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'ancestor-1');
+            });
+        });
+
+        it('should re-fetch context when a descendant is clicked', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const descendant = createDescendantStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [descendant],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Descendant User')).toBeInTheDocument();
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            const descendantContent = screen.getByText('Descendant post content');
+            await user.click(descendantContent);
+
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'descendant-1');
+            });
+        });
+
+        it('should update main status content after navigation', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ content: '<p>Original main content</p>' });
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            // Main content should show original
+            expect(screen.getByText('Original main content')).toBeInTheDocument();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            const ancestorContent = screen.getByText('Ancestor post content');
+            await user.click(ancestorContent);
+
+            // After navigation, main status should show ancestor's content
+            await waitFor(() => {
+                // The ancestor content should now be the main display
+                expect(screen.getByText('Ancestor post content')).toBeInTheDocument();
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+        });
+
+        it('should not navigate when clicking a link inside ThreadItem', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            // Click on a link (avatar/username link) inside the ThreadItem
+            const avatarLink = screen.getByAltText('Ancestor User').closest('a')!;
+            await user.click(avatarLink);
+
+            // Should NOT re-fetch context - call count should remain the same
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(initialCallCount);
+        });
+
+        it('should navigate when Enter key is pressed on ThreadItem', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            // Find the ThreadItem button and press Enter
+            const threadItemButton = screen.getByRole('button', { name: /Ancestor Userの投稿を表示/ });
+            threadItemButton.focus();
+            await user.keyboard('{Enter}');
+
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'ancestor-1');
+            });
+        });
+
+        it('should navigate when Space key is pressed on ThreadItem', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            const threadItemButton = screen.getByRole('button', { name: /Ancestor Userの投稿を表示/ });
+            threadItemButton.focus();
+            await user.keyboard(' ');
+
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'ancestor-1');
+            });
+        });
+
+        it('should not navigate when keyboard is used on interactive elements within ThreadItem', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            
+            const ancestor = createMockStatus({
+                id: 'ancestor-1',
+                content: '<p>Check this <a href="https://example.com">link</a></p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Ancestor User',
+                    acct: 'ancestoruser',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            // Find the link within the ThreadItem
+            const link = screen.getByRole('link', { name: /link/ });
+            link.focus();
+            
+            // Press Enter on the link - should not trigger navigation
+            await user.keyboard('{Enter}');
+
+            // getStatusContext should not be called again (navigation didn't happen)
+            // Assert synchronously - no need to wait as the interaction is synchronous
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(initialCallCount);
+        });
+
+        it('should reset navigation state when modal is closed and reopened', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ content: '<p>Original main content</p>' });
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            const TestWrapper = () => {
+                const [isOpen, setIsOpen] = useState(true);
+                return (
+                    <>
+                        <button data-testid="toggle" onClick={() => setIsOpen(prev => !prev)}>Toggle</button>
+                        <StatusDetailModal
+                            isOpen={isOpen}
+                            onClose={() => setIsOpen(false)}
+                            status={status}
+                            accountSession={accountSession}
+                        />
+                    </>
+                );
+            };
+
+            render(<TestWrapper />);
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            // Navigate to ancestor
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            const ancestorContent = screen.getByText('Ancestor post content');
+            await user.click(ancestorContent);
+
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'ancestor-1');
+            });
+
+            // Close and reopen
+            const closeButton = screen.getByRole('button', { name: '閉じる' });
+            await user.click(closeButton);
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            const toggleButton = screen.getByTestId('toggle');
+            await user.click(toggleButton);
+
+            // Should show original content again
+            await waitFor(() => {
+                expect(screen.getByText('Original main content')).toBeInTheDocument();
+            });
+        });
+
+        it('should hide reblog indicator after navigating within thread', async () => {
+            const user = userEvent.setup();
+            const originalStatus = createMockStatus({
+                id: 'original-1',
+                content: '<p>Original reblogged content</p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Original Author',
+                    username: 'original',
+                },
+            });
+
+            const reblogStatus = createMockStatus({
+                reblog: originalStatus,
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Reblogger',
+                    username: 'reblogger',
+                },
+            });
+
+            const accountSession = createMockAccountSession();
+            const descendant = createDescendantStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [descendant],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={reblogStatus}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Reblog indicator should be visible initially
+            await waitFor(() => {
+                expect(screen.getByText(/Reblogger がブースト/)).toBeInTheDocument();
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            // Navigate to descendant
+            const descendantContent = screen.getByText('Descendant post content');
+            await user.click(descendantContent);
+
+            // Reblog indicator should disappear
+            await waitFor(() => {
+                expect(screen.queryByText(/Reblogger がブースト/)).not.toBeInTheDocument();
+            });
+        });
+
+        it('should have correct accessibility attributes on ThreadItems', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const ancestor = createAncestorStatus();
+            const descendant = createDescendantStatus();
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [descendant],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            // Both ThreadItems should have button role
+            const threadButtons = screen.getAllByRole('button').filter(
+                btn => btn.getAttribute('aria-label')?.includes('の投稿を表示')
+            );
+            expect(threadButtons).toHaveLength(2);
+
+            // Check ancestor ThreadItem - div with role="button" and tabIndex
+            const ancestorButton = screen.getByRole('button', { name: /Ancestor Userの投稿を表示/ });
+            expect(ancestorButton).toBeInTheDocument();
+            expect(ancestorButton).toHaveAttribute('role', 'button');
+            expect(ancestorButton).toHaveAttribute('tabindex', '0');
+
+            // Check descendant ThreadItem
+            const descendantButton = screen.getByRole('button', { name: /Descendant Userの投稿を表示/ });
+            expect(descendantButton).toBeInTheDocument();
+            expect(descendantButton).toHaveAttribute('role', 'button');
+            expect(descendantButton).toHaveAttribute('tabindex', '0');
+        });
+    });
+
+    describe('thread context', () => {
+        beforeEach(() => {
+            vi.clearAllMocks();
+        });
+
+        it('should display loading indicator while fetching context', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            // Create a promise that doesn't resolve immediately
+            let resolveContext: (value: { ancestors: mastodon.v1.Status[]; descendants: mastodon.v1.Status[] }) => void;
+            const contextPromise = new Promise<{ ancestors: mastodon.v1.Status[]; descendants: mastodon.v1.Status[] }>((resolve) => {
+                resolveContext = resolve;
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockReturnValue(contextPromise);
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Should show loading indicator
+            expect(screen.getByText('スレッドを読み込み中...')).toBeInTheDocument();
+
+            // Resolve the context
+            resolveContext!({ ancestors: [], descendants: [] });
+        });
+
+        it('should display ancestors when present', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            const ancestorStatus = createMockStatus({
+                id: 'ancestor-1',
+                content: '<p>This is the parent post</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'parent-user',
+                    displayName: 'Parent User',
+                    acct: 'parentuser',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestorStatus],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('このスレッドの上の投稿')).toBeInTheDocument();
+                expect(screen.getByText('Parent User')).toBeInTheDocument();
+            });
+        });
+
+        it('should display descendants when present', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            const replyStatus = createMockStatus({
+                id: 'reply-1',
+                content: '<p>This is a reply</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'reply-user',
+                    displayName: 'Reply User',
+                    acct: 'replyuser',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [replyStatus],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('返信 (1)')).toBeInTheDocument();
+                expect(screen.getByText('Reply User')).toBeInTheDocument();
+            });
+        });
+
+        it('should show error message when context fetch fails', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            vi.mocked(mastoClient.getStatusContext).mockRejectedValue(new Error('Network error'));
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('スレッドの読み込みに失敗しました')).toBeInTheDocument();
+            });
+
+            consoleErrorSpy.mockRestore();
+        });
+
+        it('should not fetch context when accountSession is not provided', () => {
+            const status = createMockStatus();
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    // No accountSession
+                />
+            );
+
+            // Should not call getStatusContext
+            expect(mastoClient.getStatusContext).not.toHaveBeenCalled();
+        });
+
+        it('should correctly calculate depth for nested replies regardless of ordering', async () => {
+            const status = createMockStatus({ id: 'main-status' });
+            const accountSession = createMockAccountSession();
+
+            // Create a nested reply structure:
+            // main-status (not in descendants)
+            //   └─ reply-1 (depth 0)
+            //        └─ reply-2 (depth 1)
+            //             └─ reply-3 (depth 2)
+            // But return them in reverse chronological order (child before parent)
+            const reply1 = createMockStatus({
+                id: 'reply-1',
+                inReplyToId: 'main-status',
+                content: '<p>First level reply</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'user1',
+                    displayName: 'User 1',
+                    acct: 'user1',
+                },
+            });
+
+            const reply2 = createMockStatus({
+                id: 'reply-2',
+                inReplyToId: 'reply-1',
+                content: '<p>Second level reply</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'user2',
+                    displayName: 'User 2',
+                    acct: 'user2',
+                },
+            });
+
+            const reply3 = createMockStatus({
+                id: 'reply-3',
+                inReplyToId: 'reply-2',
+                content: '<p>Third level reply</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'user3',
+                    displayName: 'User 3',
+                    acct: 'user3',
+                },
+            });
+
+            // Return descendants in problematic order: deepest first
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [reply3, reply2, reply1],
+            });
+
+            const { container } = render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('User 1')).toBeInTheDocument();
+                expect(screen.getByText('User 2')).toBeInTheDocument();
+                expect(screen.getByText('User 3')).toBeInTheDocument();
+            });
+
+            // Check that indentation is applied correctly
+            // reply-1 should have marginLeft: 0px (depth 0)
+            // reply-2 should have marginLeft: 16px (depth 1)
+            // reply-3 should have marginLeft: 32px (depth 2)
+            const replyElements = container.querySelectorAll('[role="button"]');
+            
+            // Find each reply by checking for the user name
+            const reply1Element = Array.from(replyElements).find(el => el.textContent?.includes('User 1'));
+            const reply2Element = Array.from(replyElements).find(el => el.textContent?.includes('User 2'));
+            const reply3Element = Array.from(replyElements).find(el => el.textContent?.includes('User 3'));
+
+            expect(reply1Element).toHaveStyle({ marginLeft: '0px' });
+            expect(reply2Element).toHaveStyle({ marginLeft: '16px' });
+            expect(reply3Element).toHaveStyle({ marginLeft: '32px' });
+        });
+
+        it('should clear error message when navigating to another status', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            const ancestor = createMockStatus({
+                id: 'ancestor-1',
+                content: '<p>Ancestor post</p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Ancestor User',
+                    acct: 'ancestoruser',
+                },
+            });
+
+            // First fetch fails
+            vi.mocked(mastoClient.getStatusContext).mockRejectedValueOnce(new Error('Network error'));
+
+            const { rerender } = render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Error message should appear
+            await waitFor(() => {
+                expect(screen.getByText('スレッドの読み込みに失敗しました')).toBeInTheDocument();
+            });
+
+            // Setup successful fetch with ancestor for reopening
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            // Close and reopen modal (simulates navigation by changing status)
+            rerender(
+                <StatusDetailModal
+                    isOpen={false}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            rerender(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Wait for ancestor to appear (successful fetch)
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+
+            // Error message should be cleared
+            expect(screen.queryByText('スレッドの読み込みに失敗しました')).not.toBeInTheDocument();
+
+            consoleErrorSpy.mockRestore();
+        });
+
+        it('should handle circular references in thread depth calculation', async () => {
+            const status = createMockStatus({ id: 'main-status' });
+            const accountSession = createMockAccountSession();
+
+            // Create a circular reference: reply1 -> reply2 -> reply1
+            const reply1 = createMockStatus({
+                id: 'reply-1',
+                inReplyToId: 'main-status',
+                content: '<p>Reply 1</p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'User 1',
+                },
+            });
+
+            const reply2 = createMockStatus({
+                id: 'reply-2',
+                inReplyToId: 'reply-1', // Points to reply-1
+                content: '<p>Reply 2 (circular)</p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'User 2',
+                },
+            });
+
+            // Simulate circular reference by modifying reply1's inReplyToId
+            const reply1Circular = {
+                ...reply1,
+                inReplyToId: 'reply-2', // Creates cycle: reply1 -> reply2 -> reply1
+            };
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [reply1Circular, reply2],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Should render without crashing despite circular reference
+            await waitFor(() => {
+                expect(screen.getByText('User 1')).toBeInTheDocument();
+                expect(screen.getByText('User 2')).toBeInTheDocument();
+            });
+        });
+
+        it('should handle very deep thread chains without stack overflow', async () => {
+            const status = createMockStatus({ id: 'main-status' });
+            const accountSession = createMockAccountSession();
+
+            // Create an extremely deep thread chain (100 levels) to test iterative implementation
+            const deepReplies: mastodon.v1.Status[] = [];
+            for (let i = 0; i < 100; i++) {
+                deepReplies.push(
+                    createMockStatus({
+                        id: `reply-${i}`,
+                        inReplyToId: i === 0 ? 'main-status' : `reply-${i - 1}`,
+                        content: `<p>Level ${i}</p>`,
+                        account: {
+                            ...createMockStatus().account,
+                            displayName: `User ${i}`,
+                        },
+                    })
+                );
+            }
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: deepReplies,
+            });
+
+            // Should not throw stack overflow error
+            expect(() => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            }).not.toThrow();
+
+            // Should render successfully
+            await waitFor(() => {
+                expect(screen.getByText('User 0')).toBeInTheDocument();
+                expect(screen.getByText('User 99')).toBeInTheDocument();
+            });
+
+            // Verify that depth is capped at UI maxDepth (3)
+            // The calculation returns up to MAX_DEPTH=10, but UI caps display at maxDepth=3
+            // So the deepest reply should have marginLeft = 3 * 16 = 48px
+            const container = screen.getByRole('dialog');
+            const replyElements = container.querySelectorAll('[role="button"]');
+            const deepestReply = Array.from(replyElements).find(el => el.textContent?.includes('User 99'));
+            
+            // UI caps indentation at maxDepth=3, so marginLeft should be 48px
+            expect(deepestReply).toHaveStyle({ marginLeft: '48px' });
         });
     });
 });
