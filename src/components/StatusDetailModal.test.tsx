@@ -1240,10 +1240,8 @@ describe('StatusDetailModal', () => {
             // Press Enter on the link - should not trigger navigation
             await user.keyboard('{Enter}');
 
-            // Wait a bit to ensure no navigation happened
-            await new Promise(resolve => setTimeout(resolve, 100));
-
             // getStatusContext should not be called again (navigation didn't happen)
+            // Assert synchronously - no need to wait as the interaction is synchronous
             expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(initialCallCount);
         });
 
