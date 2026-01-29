@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import type { mastodon } from 'masto';
 import './index.css';
 import { Sidebar } from './components/Sidebar';
@@ -7,6 +7,7 @@ import { LoginModal } from './components/LoginModal';
 import { AddColumnModal } from './components/AddColumnModal';
 import { ComposeModal, type ReplyToStatus } from './components/ComposeModal';
 import { StatusDetailModal } from './components/StatusDetailModal';
+import { ImageViewer, type ImageViewerImage } from './components/ImageViewer';
 import { useAccountsStore } from './store/accounts';
 import type { AccountSession } from './api/mastoClient';
 import { useColumnsStore } from './store/columns';
@@ -22,6 +23,12 @@ function App() {
   const [isStatusDetailOpen, setIsStatusDetailOpen] = useState(false);
   const [detailStatus, setDetailStatus] = useState<mastodon.v1.Status | null>(null);
   const [detailAccountSession, setDetailAccountSession] = useState<AccountSession | undefined>();
+
+  // ImageViewer state
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [viewerImages, setViewerImages] = useState<ImageViewerImage[]>([]);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
+  const [imageViewerKey, setImageViewerKey] = useState(0);
 
   const loadFromStorage = useAccountsStore(state => state.loadFromStorage);
   const accounts = useAccountsStore(state => state.accounts);
@@ -128,6 +135,17 @@ function App() {
     setReplyAccountId(undefined);
   };
 
+  const handleImageClick = useCallback((images: ImageViewerImage[], index: number) => {
+    setViewerImages(images);
+    setViewerInitialIndex(index);
+    setImageViewerKey(k => k + 1); // Force remount to reset index
+    setIsImageViewerOpen(true);
+  }, []);
+
+  const handleImageViewerClose = useCallback(() => {
+    setIsImageViewerOpen(false);
+  }, []);
+
   return (
     <div className="h-screen flex overflow-hidden">
       <Sidebar
@@ -140,6 +158,7 @@ function App() {
           onAddColumn={() => setIsAddColumnModalOpen(true)}
           onReply={handleReply}
           onStatusClick={handleStatusClick}
+          onImageClick={handleImageClick}
         />
       </main>
 
@@ -166,6 +185,14 @@ function App() {
         accountSession={detailAccountSession}
         onReply={handleStatusDetailReply}
         onStatusUpdate={updateStatusGlobal}
+        onImageClick={handleImageClick}
+      />
+      <ImageViewer
+        key={imageViewerKey}
+        isOpen={isImageViewerOpen}
+        onClose={handleImageViewerClose}
+        images={viewerImages}
+        initialIndex={viewerInitialIndex}
       />
     </div>
   );
