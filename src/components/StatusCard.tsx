@@ -78,8 +78,10 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
     const poll = displayStatus.poll;
 
     // Convert image attachments to ImageViewerImage format (memoized)
+    // Use displayStatus.mediaAttachments as dependency for stable reference
     const imageViewerImages = useMemo(() => {
-        return mediaAttachments
+        const attachments = displayStatus.mediaAttachments ?? [];
+        return attachments
             .filter(media => media.type === 'image')
             .slice(0, 4)
             .map(media => ({
@@ -87,7 +89,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                 previewUrl: media.previewUrl ?? undefined,
                 description: media.description ?? undefined,
             }));
-    }, [mediaAttachments]);
+    }, [displayStatus.mediaAttachments]);
 
     // Safely access account
     const account = displayStatus.account;
