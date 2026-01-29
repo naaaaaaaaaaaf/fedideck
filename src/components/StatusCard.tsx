@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { mastodon } from 'masto';
 import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert, LuCornerUpLeft } from 'react-icons/lu';
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
 import { formatDate } from '../utils/dateFormat';
+import type { ImageViewerImage } from './ImageViewer';
 
 interface StatusCardProps {
     status: mastodon.v1.Status;
@@ -11,9 +12,10 @@ interface StatusCardProps {
     onStatusUpdate?: (updatedStatus: mastodon.v1.Status) => void;
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusClick?: (status: mastodon.v1.Status) => void;
+    onImageClick?: (images: ImageViewerImage[], index: number) => void;
 }
 
-export function StatusCard({ status, isReblog = false, accountSession, onStatusUpdate, onReply, onStatusClick }: StatusCardProps) {
+export function StatusCard({ status, isReblog = false, accountSession, onStatusUpdate, onReply, onStatusClick, onImageClick }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
     const reblogger = status.reblog ? status.account : null;
@@ -74,6 +76,18 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
     const poll = displayStatus.poll;
+
+    // Convert image attachments to ImageViewerImage format (memoized)
+    const imageViewerImages = useMemo(() => {
+        return mediaAttachments
+            .filter(media => media.type === 'image')
+            .slice(0, 4)
+            .map(media => ({
+                url: media.url ?? '',
+                previewUrl: media.previewUrl ?? undefined,
+                description: media.description ?? undefined,
+            }));
+    }, [mediaAttachments]);
 
     // Safely access account
     const account = displayStatus.account;
@@ -319,41 +333,62 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                         <div className={`mt-3 grid gap-1 ${mediaAttachments.length === 1 ? 'grid-cols-1' :
                             mediaAttachments.length >= 2 ? 'grid-cols-2' : 'grid-cols-2'
                             }`}>
-                            {mediaAttachments.slice(0, 4).map((media) => (
-                                <a
-                                    key={media.id}
-                                    href={media.url ?? '#'}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block overflow-hidden rounded-lg"
-                                >
-                                    {media.type === 'image' && (
-                                        <img
-                                            src={media.previewUrl ?? media.url ?? ''}
-                                            alt={media.description ?? ''}
-                                            className="w-full h-36 object-cover hover:opacity-90 transition-opacity"
-                                        />
-                                    )}
-                                    {media.type === 'video' && (
-                                        <video
-                                            src={media.url ?? undefined}
-                                            poster={media.previewUrl ?? undefined}
-                                            className="w-full h-36 object-cover"
-                                            controls
-                                        />
-                                    )}
-                                    {media.type === 'gifv' && (
-                                        <video
-                                            src={media.url ?? undefined}
-                                            className="w-full h-36 object-cover"
-                                            autoPlay
-                                            loop
-                                            muted
-                                            playsInline
-                                        />
-                                    )}
-                                </a>
-                            ))}
+                            {mediaAttachments.slice(0, 4).map((media, index) => {
+                                // For images, use button to open ImageViewer
+                                if (media.type === 'image') {
+                                    // Calculate the index within image-only attachments
+                                    const imageIndex = mediaAttachments
+                                        .slice(0, index + 1)
+                                        .filter(m => m.type === 'image').length - 1;
+
+                                    return (
+                                        <button
+                                            key={media.id}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onImageClick?.(imageViewerImages, imageIndex);
+                                            }}
+                                            className="block overflow-hidden rounded-lg text-left"
+                                        >
+                                            <img
+                                                src={media.previewUrl ?? media.url ?? ''}
+                                                alt={media.description ?? ''}
+                                                className="w-full h-36 object-cover hover:opacity-90 transition-opacity"
+                                            />
+                                        </button>
+                                    );
+                                }
+
+                                // For video/gifv, keep existing behavior with <a> tag
+                                return (
+                                    <a
+                                        key={media.id}
+                                        href={media.url ?? '#'}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block overflow-hidden rounded-lg"
+                                    >
+                                        {media.type === 'video' && (
+                                            <video
+                                                src={media.url ?? undefined}
+                                                poster={media.previewUrl ?? undefined}
+                                                className="w-full h-36 object-cover"
+                                                controls
+                                            />
+                                        )}
+                                        {media.type === 'gifv' && (
+                                            <video
+                                                src={media.url ?? undefined}
+                                                className="w-full h-36 object-cover"
+                                                autoPlay
+                                                loop
+                                                muted
+                                                playsInline
+                                            />
+                                        )}
+                                    </a>
+                                );
+                            })}
                         </div>
                     )}
 
