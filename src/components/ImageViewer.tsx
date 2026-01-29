@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { LuX, LuChevronLeft, LuChevronRight } from 'react-icons/lu';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 
@@ -19,13 +19,6 @@ export function ImageViewer({ isOpen, onClose, images, initialIndex = 0 }: Image
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
-
-    // Reset index when modal opens with new initialIndex
-    useEffect(() => {
-        if (isOpen) {
-            setCurrentIndex(initialIndex);
-        }
-    }, [isOpen, initialIndex]);
 
     const { handleKeyDown: baseHandleKeyDown } = useModalAccessibility({
         isOpen,

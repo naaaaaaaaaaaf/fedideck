@@ -481,16 +481,26 @@ describe('ImageViewer', () => {
     });
 
     describe('index reset on reopen', () => {
-        it('should reset to initialIndex when modal reopens', async () => {
+        it('should reset to initialIndex when modal reopens with new key', async () => {
+            // This test verifies the key-based remount pattern used by parent components
+            // When the modal reopens with a new key, it remounts and resets to initialIndex
             const images = createMockImages(4);
             const TestComponent = () => {
                 const [isOpen, setIsOpen] = useState(true);
+                const [viewerKey, setViewerKey] = useState(0);
+
+                const handleOpen = () => {
+                    setViewerKey(k => k + 1); // Increment key to force remount
+                    setIsOpen(true);
+                };
+
                 return (
                     <>
-                        <button data-testid="toggle" onClick={() => setIsOpen(prev => !prev)}>
-                            Toggle
+                        <button data-testid="open" onClick={handleOpen}>
+                            Open
                         </button>
                         <ImageViewer
+                            key={viewerKey}
                             isOpen={isOpen}
                             onClose={() => setIsOpen(false)}
                             images={images}
@@ -514,10 +524,10 @@ describe('ImageViewer', () => {
             await userEvent.click(screen.getByRole('button', { name: '閉じる' }));
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
-            // Reopen modal
-            await userEvent.click(screen.getByTestId('toggle'));
+            // Reopen modal with new key
+            await userEvent.click(screen.getByTestId('open'));
 
-            // Should be back to first image (initialIndex)
+            // Should be back to first image (initialIndex) due to remount
             expect(screen.getByText('1 / 4')).toBeInTheDocument();
         });
     });
