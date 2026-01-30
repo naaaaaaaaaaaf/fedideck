@@ -293,6 +293,173 @@ describe('StatusDetailModal', () => {
         });
     });
 
+    describe('image click', () => {
+        it('should call onImageClick when an image is clicked', async () => {
+            const user = userEvent.setup();
+            const onImageClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        description: 'First image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    onImageClick={onImageClick}
+                />
+            );
+
+            const img = screen.getByAltText('First image');
+            await user.click(img);
+
+            expect(onImageClick).toHaveBeenCalledTimes(1);
+            expect(onImageClick).toHaveBeenCalledWith(
+                [{ url: 'https://example.com/image1.png', previewUrl: 'https://example.com/preview1.png', description: 'First image' }],
+                0
+            );
+        });
+
+        it('should call onImageClick with correct index for multiple images', async () => {
+            const user = userEvent.setup();
+            const onImageClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        description: 'First image',
+                    } as mastodon.v1.MediaAttachment,
+                    {
+                        id: '2',
+                        type: 'image',
+                        url: 'https://example.com/image2.png',
+                        previewUrl: 'https://example.com/preview2.png',
+                        description: 'Second image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    onImageClick={onImageClick}
+                />
+            );
+
+            // Click the second image
+            const secondImg = screen.getByAltText('Second image');
+            await user.click(secondImg);
+
+            expect(onImageClick).toHaveBeenCalledWith(
+                expect.arrayContaining([
+                    expect.objectContaining({ url: 'https://example.com/image1.png' }),
+                    expect.objectContaining({ url: 'https://example.com/image2.png' }),
+                ]),
+                1 // index of second image
+            );
+        });
+
+        it('should NOT call onImageClick for video attachments', async () => {
+            const user = userEvent.setup();
+            const onImageClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'video',
+                        url: 'https://example.com/video.mp4',
+                        previewUrl: 'https://example.com/video-poster.png',
+                        description: 'Test video',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const { container } = render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    onImageClick={onImageClick}
+                />
+            );
+
+            // Video should be in an anchor tag, not a button
+            const videoLink = container.querySelector('a[href="https://example.com/video.mp4"]');
+            expect(videoLink).toBeInTheDocument();
+
+            // Click on the video element
+            const video = container.querySelector('video');
+            expect(video).toBeInTheDocument();
+            await user.click(video!);
+            expect(onImageClick).not.toHaveBeenCalled();
+        });
+
+        it('should handle mixed media types correctly (images only in viewer)', async () => {
+            const user = userEvent.setup();
+            const onImageClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        description: 'First image',
+                    } as mastodon.v1.MediaAttachment,
+                    {
+                        id: '2',
+                        type: 'video',
+                        url: 'https://example.com/video.mp4',
+                        previewUrl: 'https://example.com/video-poster.png',
+                        description: 'Video',
+                    } as mastodon.v1.MediaAttachment,
+                    {
+                        id: '3',
+                        type: 'image',
+                        url: 'https://example.com/image2.png',
+                        previewUrl: 'https://example.com/preview2.png',
+                        description: 'Second image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    onImageClick={onImageClick}
+                />
+            );
+
+            // Click the second image (which appears after a video in the list)
+            const secondImg = screen.getByAltText('Second image');
+            await user.click(secondImg);
+
+            // The images array passed to onImageClick should only contain images
+            expect(onImageClick).toHaveBeenCalledWith(
+                [
+                    { url: 'https://example.com/image1.png', previewUrl: 'https://example.com/preview1.png', description: 'First image' },
+                    { url: 'https://example.com/image2.png', previewUrl: 'https://example.com/preview2.png', description: 'Second image' },
+                ],
+                1 // Second image is at index 1 in the images-only array
+            );
+        });
+    });
+
     describe('poll', () => {
         it('should render poll when present', () => {
             const status = createMockStatus({

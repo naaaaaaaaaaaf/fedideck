@@ -15,6 +15,7 @@ import {
     fetchHashtagTimeline
 } from '../api/mastoClient';
 import { subscribeToStream, unsubscribeFromStream } from '../streaming/streamManager';
+import type { ImageViewerImage } from '../components/ImageViewer';
 
 interface ColumnProps {
     id: string;
@@ -23,9 +24,10 @@ interface ColumnProps {
     onRemove?: () => void;
     onReply?: (status: mastodon.v1.Status, accountId: string) => void;
     onStatusClick?: (status: mastodon.v1.Status, accountId: string) => void;
+    onImageClick?: (images: ImageViewerImage[], index: number) => void;
 }
 
-export function Column({ accountId, stream, onRemove, onReply, onStatusClick }: ColumnProps) {
+export function Column({ accountId, stream, onRemove, onReply, onStatusClick, onImageClick }: ColumnProps) {
     const account = useAccountsStore(state => state.accounts.find(a => a.id === accountId));
     const streamKey = getStreamKey(accountId, stream.type, stream);
     const data = useStreamsStore(state => state.data[streamKey]);
@@ -248,6 +250,7 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick }: 
                         onStatusUpdate={updateStatusGlobal}
                         onReply={onReply ? (s) => onReply(s, accountId) : undefined}
                         onStatusClick={onStatusClick ? (s) => onStatusClick(s, accountId) : undefined}
+                        onImageClick={onImageClick}
                     />
                 ))}
 

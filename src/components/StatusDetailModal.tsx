@@ -4,6 +4,7 @@ import { LuX, LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert, LuLoa
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus, getStatusContext, type StatusContext } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { formatDate } from '../utils/dateFormat';
+import type { ImageViewerImage } from './ImageViewer';
 
 interface StatusDetailModalProps {
     isOpen: boolean;
@@ -12,6 +13,7 @@ interface StatusDetailModalProps {
     accountSession?: AccountSession;
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusUpdate?: (status: mastodon.v1.Status) => void;
+    onImageClick?: (images: ImageViewerImage[], index: number) => void;
 }
 
 function formatFullDate(dateStr: string): string {
@@ -167,7 +169,7 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
     );
 }
 
-export function StatusDetailModal({ isOpen, onClose, status, accountSession, onReply, onStatusUpdate }: StatusDetailModalProps) {
+export function StatusDetailModal({ isOpen, onClose, status, accountSession, onReply, onStatusUpdate, onImageClick }: StatusDetailModalProps) {
     const [localFavourited, setLocalFavourited] = useState(false);
     const [localFavouritesCount, setLocalFavouritesCount] = useState(0);
     const [localReblogged, setLocalReblogged] = useState(false);
@@ -288,6 +290,22 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
             };
         }
     }, [context]);
+
+    // Convert image attachments to ImageViewerImage format (memoized)
+    // Must be before early return to maintain hooks order
+    // Filter out images without valid URLs to prevent broken image rendering
+    const imageViewerImages = useMemo(() => {
+        const mediaAttachments = displayStatus?.mediaAttachments ?? [];
+        return mediaAttachments
+            .filter(media => media.type === 'image')
+            .slice(0, 4)
+            .map(media => ({
+                url: media.url ?? media.previewUrl ?? '',
+                previewUrl: media.previewUrl ?? undefined,
+                description: media.description ?? undefined,
+            }))
+            .filter(image => image.url !== '');
+    }, [displayStatus?.mediaAttachments]);
 
     if (!isOpen || !status || !displayStatus) return null;
 
@@ -502,41 +520,70 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                     {/* Media attachments - larger display */}
                     {mediaAttachments.length > 0 && (
                         <div className={`mb-4 grid gap-2 ${mediaAttachments.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                            {mediaAttachments.slice(0, 4).map((media) => (
-                                <a
-                                    key={media.id}
-                                    href={media.url ?? '#'}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block overflow-hidden rounded-xl"
-                                >
-                                    {media.type === 'image' && (
-                                        <img
-                                            src={media.url ?? media.previewUrl ?? ''}
-                                            alt={media.description ?? ''}
-                                            className="w-full max-h-96 object-contain bg-slate-800 hover:opacity-90 transition-opacity"
-                                        />
-                                    )}
-                                    {media.type === 'video' && (
-                                        <video
-                                            src={media.url ?? undefined}
-                                            poster={media.previewUrl ?? undefined}
-                                            className="w-full max-h-96 object-contain bg-slate-800"
-                                            controls
-                                        />
-                                    )}
-                                    {media.type === 'gifv' && (
-                                        <video
-                                            src={media.url ?? undefined}
-                                            className="w-full max-h-96 object-contain bg-slate-800"
-                                            autoPlay
-                                            loop
-                                            muted
-                                            playsInline
-                                        />
-                                    )}
-                                </a>
-                            ))}
+                            {mediaAttachments.slice(0, 4).map((media) => {
+                                // For images, use button to open ImageViewer
+                                if (media.type === 'image') {
+                                    // Skip images without valid URLs (matches imageViewerImages filtering)
+                                    const imageUrl = media.url ?? media.previewUrl ?? '';
+                                    if (imageUrl === '') {
+                                        return null;
+                                    }
+
+                                    // Find the index in the filtered imageViewerImages array
+                                    const imageIndex = imageViewerImages.findIndex(img => img.url === imageUrl);
+                                    if (imageIndex === -1) {
+                                        return null; // Guard against mismatch
+                                    }
+
+                                    const accessibleLabel = media.description
+                                        || `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
+
+                                    return (
+                                        <button
+                                            key={media.id}
+                                            onClick={() => onImageClick?.(imageViewerImages, imageIndex)}
+                                            className="block overflow-hidden rounded-xl text-left"
+                                            aria-label={accessibleLabel}
+                                        >
+                                            <img
+                                                src={media.url ?? media.previewUrl ?? ''}
+                                                alt={media.description ?? ''}
+                                                className="w-full max-h-96 object-contain bg-slate-800 hover:opacity-90 transition-opacity"
+                                            />
+                                        </button>
+                                    );
+                                }
+
+                                // For video/gifv, keep existing behavior with <a> tag
+                                return (
+                                    <a
+                                        key={media.id}
+                                        href={media.url ?? '#'}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block overflow-hidden rounded-xl"
+                                    >
+                                        {media.type === 'video' && (
+                                            <video
+                                                src={media.url ?? undefined}
+                                                poster={media.previewUrl ?? undefined}
+                                                className="w-full max-h-96 object-contain bg-slate-800"
+                                                controls
+                                            />
+                                        )}
+                                        {media.type === 'gifv' && (
+                                            <video
+                                                src={media.url ?? undefined}
+                                                className="w-full max-h-96 object-contain bg-slate-800"
+                                                autoPlay
+                                                loop
+                                                muted
+                                                playsInline
+                                            />
+                                        )}
+                                    </a>
+                                );
+                            })}
                         </div>
                     )}
 
