@@ -28,7 +28,12 @@ export function ImageViewer({ isOpen, onClose, images, initialIndex = 0 }: Image
     });
 
     const hasMultipleImages = images.length > 1;
-    const currentImage = images[currentIndex];
+    // Clamp currentIndex to valid range to prevent out-of-bounds access
+    // This handles cases where images array changes while viewer is open
+    const safeIndex = images.length > 0
+        ? Math.max(0, Math.min(currentIndex, images.length - 1))
+        : 0;
+    const currentImage = images[safeIndex];
 
     const goToPrevious = useCallback(() => {
         setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
@@ -133,7 +138,7 @@ export function ImageViewer({ isOpen, onClose, images, initialIndex = 0 }: Image
                     {/* Image counter */}
                     {hasMultipleImages && (
                         <div className="mt-4 text-slate-300 text-sm">
-                            {currentIndex + 1} / {images.length}
+                            {safeIndex + 1} / {images.length}
                         </div>
                     )}
 
