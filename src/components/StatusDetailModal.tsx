@@ -520,13 +520,20 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                     {/* Media attachments - larger display */}
                     {mediaAttachments.length > 0 && (
                         <div className={`mb-4 grid gap-2 ${mediaAttachments.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                            {mediaAttachments.slice(0, 4).map((media, index) => {
+                            {mediaAttachments.slice(0, 4).map((media) => {
                                 // For images, use button to open ImageViewer
                                 if (media.type === 'image') {
-                                    // Calculate the index within image-only attachments
-                                    const imageIndex = mediaAttachments
-                                        .slice(0, index + 1)
-                                        .filter(m => m.type === 'image').length - 1;
+                                    // Skip images without valid URLs (matches imageViewerImages filtering)
+                                    const imageUrl = media.url ?? media.previewUrl ?? '';
+                                    if (imageUrl === '') {
+                                        return null;
+                                    }
+
+                                    // Find the index in the filtered imageViewerImages array
+                                    const imageIndex = imageViewerImages.findIndex(img => img.url === imageUrl);
+                                    if (imageIndex === -1) {
+                                        return null; // Guard against mismatch
+                                    }
 
                                     const accessibleLabel = media.description
                                         || `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
