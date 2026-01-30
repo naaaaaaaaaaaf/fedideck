@@ -293,16 +293,18 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
 
     // Convert image attachments to ImageViewerImage format (memoized)
     // Must be before early return to maintain hooks order
+    // Filter out images without valid URLs to prevent broken image rendering
     const imageViewerImages = useMemo(() => {
         const mediaAttachments = displayStatus?.mediaAttachments ?? [];
         return mediaAttachments
             .filter(media => media.type === 'image')
             .slice(0, 4)
             .map(media => ({
-                url: media.url ?? '',
+                url: media.url ?? media.previewUrl ?? '',
                 previewUrl: media.previewUrl ?? undefined,
                 description: media.description ?? undefined,
-            }));
+            }))
+            .filter(image => image.url !== '');
     }, [displayStatus?.mediaAttachments]);
 
     if (!isOpen || !status || !displayStatus) return null;
