@@ -350,6 +350,24 @@ describe('ImageViewer', () => {
             expect(onClose).toHaveBeenCalledTimes(1);
         });
 
+        it('should call onClose when clicking outside the image area', async () => {
+            const user = userEvent.setup();
+            const onClose = vi.fn();
+            const images = createMockImages(1);
+
+            render(
+                <ImageViewer
+                    isOpen={true}
+                    onClose={onClose}
+                    images={images}
+                />
+            );
+
+            await user.click(screen.getByTestId('image-viewer-content'));
+
+            expect(onClose).toHaveBeenCalledTimes(1);
+        });
+
         it('should call onClose when Escape key is pressed', async () => {
             const user = userEvent.setup();
             const onClose = vi.fn();

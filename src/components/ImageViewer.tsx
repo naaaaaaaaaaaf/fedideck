@@ -19,6 +19,7 @@ export function ImageViewer({ isOpen, onClose, images, initialIndex = 0 }: Image
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const imageContainerRef = useRef<HTMLDivElement>(null);
 
     const { handleKeyDown: baseHandleKeyDown } = useModalAccessibility({
         isOpen,
@@ -73,6 +74,23 @@ export function ImageViewer({ isOpen, onClose, images, initialIndex = 0 }: Image
         }
     };
 
+    const handleContentClick = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            const target = e.target as Node;
+            if (imageContainerRef.current?.contains(target)) {
+                return;
+            }
+
+            const targetElement = e.target as HTMLElement | null;
+            if (targetElement?.closest('button')) {
+                return;
+            }
+
+            onClose();
+        },
+        [onClose]
+    );
+
     if (!isOpen || images.length === 0) return null;
 
     return (
@@ -94,6 +112,8 @@ export function ImageViewer({ isOpen, onClose, images, initialIndex = 0 }: Image
             <div
                 ref={modalRef}
                 className="relative flex flex-col items-center justify-center w-full h-full p-4"
+                onClick={handleContentClick}
+                data-testid="image-viewer-content"
             >
                 {/* Close button */}
                 <button
@@ -128,7 +148,10 @@ export function ImageViewer({ isOpen, onClose, images, initialIndex = 0 }: Image
                 )}
 
                 {/* Image container */}
-                <div className="flex flex-col items-center justify-center max-w-full max-h-[calc(100vh-8rem)]">
+                <div
+                    ref={imageContainerRef}
+                    className="flex flex-col items-center justify-center max-w-full max-h-[calc(100vh-8rem)]"
+                >
                     <img
                         src={currentImage?.url}
                         alt={currentImage?.description ?? ''}
