@@ -345,6 +345,9 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                         .slice(0, index + 1)
                                         .filter(m => m.type === 'image').length - 1;
 
+                                    const accessibleLabel = media.description
+                                        || `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
+
                                     return (
                                         <button
                                             key={media.id}
@@ -353,6 +356,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                                 onImageClick?.(imageViewerImages, imageIndex);
                                             }}
                                             className="block overflow-hidden rounded-lg text-left"
+                                            aria-label={accessibleLabel}
                                         >
                                             <img
                                                 src={media.previewUrl ?? media.url ?? ''}

@@ -528,11 +528,15 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                                         .slice(0, index + 1)
                                         .filter(m => m.type === 'image').length - 1;
 
+                                    const accessibleLabel = media.description
+                                        || `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
+
                                     return (
                                         <button
                                             key={media.id}
                                             onClick={() => onImageClick?.(imageViewerImages, imageIndex)}
                                             className="block overflow-hidden rounded-xl text-left"
+                                            aria-label={accessibleLabel}
                                         >
                                             <img
                                                 src={media.url ?? media.previewUrl ?? ''}
