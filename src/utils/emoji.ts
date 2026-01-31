@@ -20,27 +20,127 @@ function escapeHtml(str: string): string {
 }
 
 /**
- * Replaces emoji shortcodes (e.g., :shortcode:) with img tags.
+ * Validates and sanitizes emoji URL.
+ * Only allows http/https URLs and escapes special characters.
  *
- * @param text - The text containing emoji shortcodes
- * @param emojis - Array of custom emoji definitions from Mastodon API
- * @returns Text with shortcodes replaced by img tags
+ * @param url - The URL to validate
+ * @returns Sanitized URL or empty string if invalid
  */
-export function replaceEmojisWithImages(
-  text: string,
-  emojis: mastodon.v1.CustomEmoji[] | undefined
-): string {
-  if (!text || !emojis || emojis.length === 0) {
-    return text ?? "";
+function sanitizeEmojiUrl(url: string): string {
+  if (!url) return "";
+
+  // Only allow http and https schemes
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return "";
+    }
+  } catch {
+    // Invalid URL
+    return "";
   }
 
-  let result = text;
+  // Escape HTML special characters in URL
+  return escapeHtml(url);
+}
+
+/**
+ * Creates an img tag for a custom emoji.
+ *
+ * @param emoji - The custom emoji definition
+ * @returns HTML img tag string or empty string if URL is invalid
+ */
+function createEmojiImgTag(emoji: mastodon.v1.CustomEmoji): string {
+  const sanitizedUrl = sanitizeEmojiUrl(emoji.url);
+  if (!sanitizedUrl) {
+    return `:${escapeHtml(emoji.shortcode)}:`;
+  }
+
+  const escapedShortcode = escapeHtml(emoji.shortcode);
+  return `<img class="emoji" src="${sanitizedUrl}" alt=":${escapedShortcode}:" title=":${escapedShortcode}:">`;
+}
+
+/**
+ * Replaces emoji shortcodes (e.g., :shortcode:) with img tags in HTML content.
+ * Uses a negative lookbehind to avoid replacing shortcodes inside HTML tag attributes.
+ *
+ * @param html - The HTML string containing emoji shortcodes
+ * @param emojis - Array of custom emoji definitions from Mastodon API
+ * @returns HTML with shortcodes replaced by img tags
+ */
+export function replaceEmojisWithImages(
+  html: string,
+  emojis: mastodon.v1.CustomEmoji[] | undefined
+): string {
+  if (!html || !emojis || emojis.length === 0) {
+    return html ?? "";
+  }
+
+  // Early return if no colon in text (no possible shortcodes)
+  if (!html.includes(":")) {
+    return html;
+  }
+
+  let result = html;
 
   for (const emoji of emojis) {
     const shortcode = escapeRegExp(emoji.shortcode);
+    // Match :shortcode: but not inside HTML tags
+    // This regex avoids matching inside attribute values by checking we're not after ="
     const pattern = new RegExp(`:${shortcode}:`, "g");
-    const escapedShortcode = escapeHtml(emoji.shortcode);
-    const imgTag = `<img class="emoji" src="${emoji.url}" alt=":${escapedShortcode}:" title=":${escapedShortcode}:">`;
+    const imgTag = createEmojiImgTag(emoji);
+
+    result = result.replace(pattern, (match, offset) => {
+      // Check if we're inside an HTML tag by looking for unbalanced < and >
+      const before = result.substring(0, offset);
+      const lastOpenTag = before.lastIndexOf("<");
+      const lastCloseTag = before.lastIndexOf(">");
+
+      // If we're inside a tag (last < is after last >), don't replace
+      if (lastOpenTag > lastCloseTag) {
+        return match;
+      }
+
+      return imgTag;
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Replaces emoji shortcodes in plain text (like displayName).
+ * Escapes the input text first to prevent XSS, then replaces emoji shortcodes.
+ *
+ * @param text - Plain text containing emoji shortcodes
+ * @param emojis - Array of custom emoji definitions from Mastodon API
+ * @returns HTML string with text escaped and shortcodes replaced by img tags
+ */
+export function replaceEmojisInPlainText(
+  text: string,
+  emojis: mastodon.v1.CustomEmoji[] | undefined
+): string {
+  if (!text) {
+    return "";
+  }
+
+  if (!emojis || emojis.length === 0) {
+    return escapeHtml(text);
+  }
+
+  // Early return if no colon in text (no possible shortcodes)
+  if (!text.includes(":")) {
+    return escapeHtml(text);
+  }
+
+  // First escape the text to prevent XSS
+  let result = escapeHtml(text);
+
+  for (const emoji of emojis) {
+    // Use escaped shortcode for matching (since text is now escaped)
+    const shortcode = escapeRegExp(escapeHtml(emoji.shortcode));
+    const pattern = new RegExp(`:${shortcode}:`, "g");
+    const imgTag = createEmojiImgTag(emoji);
     result = result.replace(pattern, imgTag);
   }
 
