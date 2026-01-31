@@ -17,9 +17,10 @@ import {
 
 interface NotificationCardProps {
     notification: mastodon.v1.Notification;
+    onStatusClick?: (status: mastodon.v1.Status) => void;
 }
 
-export function NotificationCard({ notification }: NotificationCardProps) {
+export function NotificationCard({ notification, onStatusClick }: NotificationCardProps) {
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
         const now = new Date();
@@ -65,6 +66,36 @@ export function NotificationCard({ notification }: NotificationCardProps) {
     const info = getNotificationInfo();
     const account = notification.account;
     const status = notification.status;
+
+    // Check if status area should be clickable
+    const isStatusClickable = status && onStatusClick;
+
+    // Handle click on status area
+    const handleStatusClick = (e: React.MouseEvent) => {
+        if (!isStatusClickable) return;
+
+        const target = e.target as HTMLElement;
+        // Ignore clicks on interactive elements
+        if (
+            target.closest('a') ||
+            target.closest('button') ||
+            target.closest('details') ||
+            target.closest('summary')
+        ) {
+            return;
+        }
+        onStatusClick(status);
+    };
+
+    // Handle keyboard navigation for status area
+    const handleStatusKeyDown = (e: React.KeyboardEvent) => {
+        if (!isStatusClickable) return;
+
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onStatusClick(status);
+        }
+    };
 
     return (
         <article className="p-4 border-b border-slate-700/50 card-hover animate-fade-in">
@@ -146,7 +177,14 @@ export function NotificationCard({ notification }: NotificationCardProps) {
 
             {/* Status-related notifications */}
             {status && (
-                <div className="ml-9 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                <div
+                    className={`ml-9 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30 ${isStatusClickable ? 'cursor-pointer hover:bg-slate-700/50 transition-colors' : ''}`}
+                    onClick={isStatusClickable ? handleStatusClick : undefined}
+                    onKeyDown={isStatusClickable ? handleStatusKeyDown : undefined}
+                    role={isStatusClickable ? 'button' : undefined}
+                    tabIndex={isStatusClickable ? 0 : undefined}
+                    aria-label={isStatusClickable ? '投稿の詳細を表示' : undefined}
+                >
                     {status.spoilerText ? (
                         <details>
                             <summary className="cursor-pointer text-amber-400 text-sm">

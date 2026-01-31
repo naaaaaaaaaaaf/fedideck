@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { NotificationCard } from './NotificationCard';
 import type { mastodon } from 'masto';
 
@@ -313,6 +314,232 @@ describe('NotificationCard', () => {
             });
             render(<NotificationCard notification={notification} />);
             expect(screen.getByText('2日')).toBeInTheDocument();
+        });
+    });
+
+    describe('status click callback', () => {
+        it('should call onStatusClick when status area is clicked for mention notification', async () => {
+            const onStatusClick = vi.fn();
+            const mockStatus = createMockStatus({ content: '<p>Test mention</p>' });
+            const notification = createMockNotification('mention', {
+                status: mockStatus,
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const statusArea = screen.getByRole('button', { name: '投稿の詳細を表示' });
+            await userEvent.click(statusArea);
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).toHaveBeenCalledWith(mockStatus);
+        });
+
+        it('should call onStatusClick when status area is clicked for reblog notification', async () => {
+            const onStatusClick = vi.fn();
+            const mockStatus = createMockStatus();
+            const notification = createMockNotification('reblog', {
+                status: mockStatus,
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const statusArea = screen.getByRole('button', { name: '投稿の詳細を表示' });
+            await userEvent.click(statusArea);
+
+            expect(onStatusClick).toHaveBeenCalledWith(mockStatus);
+        });
+
+        it('should call onStatusClick when status area is clicked for favourite notification', async () => {
+            const onStatusClick = vi.fn();
+            const mockStatus = createMockStatus();
+            const notification = createMockNotification('favourite', {
+                status: mockStatus,
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const statusArea = screen.getByRole('button', { name: '投稿の詳細を表示' });
+            await userEvent.click(statusArea);
+
+            expect(onStatusClick).toHaveBeenCalledWith(mockStatus);
+        });
+
+        it('should call onStatusClick when status area is clicked for poll notification', async () => {
+            const onStatusClick = vi.fn();
+            const mockStatus = createMockStatus();
+            const notification = createMockNotification('poll', {
+                status: mockStatus,
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const statusArea = screen.getByRole('button', { name: '投稿の詳細を表示' });
+            await userEvent.click(statusArea);
+
+            expect(onStatusClick).toHaveBeenCalledWith(mockStatus);
+        });
+
+        it('should call onStatusClick when status area is clicked for status notification', async () => {
+            const onStatusClick = vi.fn();
+            const mockStatus = createMockStatus();
+            const notification = createMockNotification('status', {
+                status: mockStatus,
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const statusArea = screen.getByRole('button', { name: '投稿の詳細を表示' });
+            await userEvent.click(statusArea);
+
+            expect(onStatusClick).toHaveBeenCalledWith(mockStatus);
+        });
+
+        it('should call onStatusClick when status area is clicked for update notification', async () => {
+            const onStatusClick = vi.fn();
+            const mockStatus = createMockStatus();
+            const notification = createMockNotification('update', {
+                status: mockStatus,
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const statusArea = screen.getByRole('button', { name: '投稿の詳細を表示' });
+            await userEvent.click(statusArea);
+
+            expect(onStatusClick).toHaveBeenCalledWith(mockStatus);
+        });
+
+        it('should not have clickable status area for follow notification (no status)', () => {
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('follow');
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            expect(screen.queryByRole('button', { name: '投稿の詳細を表示' })).not.toBeInTheDocument();
+        });
+
+        it('should not have clickable status area for follow_request notification (no status)', () => {
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('follow_request');
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            expect(screen.queryByRole('button', { name: '投稿の詳細を表示' })).not.toBeInTheDocument();
+        });
+    });
+
+    describe('interactive elements exclusion', () => {
+        it('should not call onStatusClick when clicking on a link', async () => {
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({ content: '<p><a href="https://example.com">Link</a></p>' }),
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const link = screen.getByRole('link', { name: 'Link' });
+            await userEvent.click(link);
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should not call onStatusClick when clicking on CW summary', async () => {
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    spoilerText: 'CW: spoiler',
+                    content: '<p>Hidden content</p>',
+                }),
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/CW: spoiler/);
+            await userEvent.click(summary);
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('keyboard navigation', () => {
+        it('should call onStatusClick when Enter key is pressed on status area', () => {
+            const onStatusClick = vi.fn();
+            const mockStatus = createMockStatus();
+            const notification = createMockNotification('mention', {
+                status: mockStatus,
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const statusArea = screen.getByRole('button', { name: '投稿の詳細を表示' });
+            fireEvent.keyDown(statusArea, { key: 'Enter' });
+
+            expect(onStatusClick).toHaveBeenCalledWith(mockStatus);
+        });
+
+        it('should call onStatusClick when Space key is pressed on status area', () => {
+            const onStatusClick = vi.fn();
+            const mockStatus = createMockStatus();
+            const notification = createMockNotification('mention', {
+                status: mockStatus,
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const statusArea = screen.getByRole('button', { name: '投稿の詳細を表示' });
+            fireEvent.keyDown(statusArea, { key: ' ' });
+
+            expect(onStatusClick).toHaveBeenCalledWith(mockStatus);
+        });
+
+        it('should not call onStatusClick when other keys are pressed', () => {
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus(),
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const statusArea = screen.getByRole('button', { name: '投稿の詳細を表示' });
+            fireEvent.keyDown(statusArea, { key: 'Tab' });
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('accessibility', () => {
+        it('should have role="button" when onStatusClick is provided and status exists', () => {
+            const notification = createMockNotification('mention', {
+                status: createMockStatus(),
+            });
+            render(<NotificationCard notification={notification} onStatusClick={() => {}} />);
+
+            expect(screen.getByRole('button', { name: '投稿の詳細を表示' })).toBeInTheDocument();
+        });
+
+        it('should have tabIndex=0 when onStatusClick is provided and status exists', () => {
+            const notification = createMockNotification('mention', {
+                status: createMockStatus(),
+            });
+            render(<NotificationCard notification={notification} onStatusClick={() => {}} />);
+
+            const statusArea = screen.getByRole('button', { name: '投稿の詳細を表示' });
+            expect(statusArea).toHaveAttribute('tabIndex', '0');
+        });
+
+        it('should have aria-label when onStatusClick is provided and status exists', () => {
+            const notification = createMockNotification('mention', {
+                status: createMockStatus(),
+            });
+            render(<NotificationCard notification={notification} onStatusClick={() => {}} />);
+
+            expect(screen.getByLabelText('投稿の詳細を表示')).toBeInTheDocument();
+        });
+
+        it('should not have button role when onStatusClick is not provided', () => {
+            const notification = createMockNotification('mention', {
+                status: createMockStatus(),
+            });
+            render(<NotificationCard notification={notification} />);
+
+            expect(screen.queryByRole('button', { name: '投稿の詳細を表示' })).not.toBeInTheDocument();
+        });
+
+        it('should not have tabIndex when onStatusClick is not provided', () => {
+            const notification = createMockNotification('mention', {
+                status: createMockStatus(),
+            });
+            const { container } = render(<NotificationCard notification={notification} />);
+
+            const statusArea = container.querySelector('.ml-9.p-3');
+            expect(statusArea).not.toHaveAttribute('tabIndex');
         });
     });
 });
