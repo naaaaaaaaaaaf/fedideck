@@ -14,6 +14,7 @@ import {
     LuBell,
     LuTriangleAlert
 } from 'react-icons/lu';
+import { formatDate } from '../utils/dateFormat';
 
 interface NotificationCardProps {
     notification: mastodon.v1.Notification;
@@ -21,20 +22,6 @@ interface NotificationCardProps {
 }
 
 export function NotificationCard({ notification, onStatusClick }: NotificationCardProps) {
-    const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMins / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffMins < 1) return '今';
-        if (diffMins < 60) return `${diffMins}分`;
-        if (diffHours < 24) return `${diffHours}時間`;
-        if (diffDays < 7) return `${diffDays}日`;
-        return date.toLocaleDateString('ja-JP');
-    };
 
     const getNotificationInfo = (): { icon: ReactNode; label: string; color: string } => {
         switch (notification.type) {
@@ -90,6 +77,17 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
     // Handle keyboard navigation for status area
     const handleStatusKeyDown = (e: React.KeyboardEvent) => {
         if (!isStatusClickable) return;
+
+        // Ignore keyboard events on interactive elements
+        const target = e.target as HTMLElement;
+        if (
+            target.closest('a') ||
+            target.closest('button') ||
+            target.closest('details') ||
+            target.closest('summary')
+        ) {
+            return;
+        }
 
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();

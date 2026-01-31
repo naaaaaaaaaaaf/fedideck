@@ -492,6 +492,64 @@ describe('NotificationCard', () => {
 
             expect(onStatusClick).not.toHaveBeenCalled();
         });
+
+        it('should not call onStatusClick when Enter is pressed on a link', () => {
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({ content: '<p><a href="https://example.com">Link</a></p>' }),
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const link = screen.getByRole('link', { name: 'Link' });
+            fireEvent.keyDown(link, { key: 'Enter' });
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should not call onStatusClick when Space is pressed on a link', () => {
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({ content: '<p><a href="https://example.com">Link</a></p>' }),
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const link = screen.getByRole('link', { name: 'Link' });
+            fireEvent.keyDown(link, { key: ' ' });
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should not call onStatusClick when Enter is pressed on CW summary', () => {
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    spoilerText: 'CW: spoiler',
+                    content: '<p>Hidden content</p>',
+                }),
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/CW: spoiler/);
+            fireEvent.keyDown(summary, { key: 'Enter' });
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should not call onStatusClick when Space is pressed on CW summary', () => {
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    spoilerText: 'CW: spoiler',
+                    content: '<p>Hidden content</p>',
+                }),
+            });
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/CW: spoiler/);
+            fireEvent.keyDown(summary, { key: ' ' });
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
     });
 
     describe('accessibility', () => {
