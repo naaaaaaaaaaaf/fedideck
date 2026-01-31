@@ -745,6 +745,66 @@ describe('StatusCard', () => {
         });
     });
 
+    describe('custom emoji in status content', () => {
+        it('should render custom emoji in post content as images', () => {
+            const status = createMockStatus({
+                content: '<p>Hello :blobcat: world</p>',
+                emojis: [
+                    {
+                        shortcode: 'blobcat',
+                        url: 'https://example.com/emoji/blobcat.png',
+                        staticUrl: 'https://example.com/emoji/blobcat.png',
+                        visibleInPicker: true,
+                    } as mastodon.v1.CustomEmoji,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            const emojiImg = screen.getByAltText(':blobcat:');
+            expect(emojiImg).toBeInTheDocument();
+            expect(emojiImg).toHaveAttribute('src', 'https://example.com/emoji/blobcat.png');
+            expect(emojiImg).toHaveClass('emoji');
+        });
+
+        it('should render multiple custom emojis in content', () => {
+            const status = createMockStatus({
+                content: '<p>:cat: and :dog:</p>',
+                emojis: [
+                    {
+                        shortcode: 'cat',
+                        url: 'https://example.com/emoji/cat.png',
+                        staticUrl: 'https://example.com/emoji/cat.png',
+                        visibleInPicker: true,
+                    } as mastodon.v1.CustomEmoji,
+                    {
+                        shortcode: 'dog',
+                        url: 'https://example.com/emoji/dog.png',
+                        staticUrl: 'https://example.com/emoji/dog.png',
+                        visibleInPicker: true,
+                    } as mastodon.v1.CustomEmoji,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            expect(screen.getByAltText(':cat:')).toBeInTheDocument();
+            expect(screen.getByAltText(':dog:')).toBeInTheDocument();
+        });
+
+        it('should not convert shortcodes without matching emoji', () => {
+            const status = createMockStatus({
+                content: '<p>Hello :unknown: world</p>',
+                emojis: [],
+            });
+
+            render(<StatusCard status={status} />);
+
+            expect(screen.getByText(/Hello :unknown: world/)).toBeInTheDocument();
+            expect(screen.queryByAltText(':unknown:')).not.toBeInTheDocument();
+        });
+    });
+
     describe('reply button', () => {
         it('should call onReply with displayStatus when reply button is clicked', async () => {
             const user = userEvent.setup();

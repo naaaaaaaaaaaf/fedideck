@@ -15,6 +15,7 @@ import {
     LuTriangleAlert
 } from 'react-icons/lu';
 import { formatDate } from '../utils/dateFormat';
+import { replaceEmojisWithImages } from '../utils/emoji';
 import { DisplayName } from './DisplayName';
 
 interface NotificationCardProps {
@@ -192,13 +193,13 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
                             </summary>
                             <div
                                 className="mt-2 text-sm text-slate-300 wrap-break-word"
-                                dangerouslySetInnerHTML={{ __html: status.content }}
+                                dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(status.content, status.emojis) }}
                             />
                         </details>
                     ) : (
                         <div
                             className="text-sm text-slate-300 wrap-break-word line-clamp-4"
-                            dangerouslySetInnerHTML={{ __html: status.content }}
+                            dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(status.content, status.emojis) }}
                         />
                     )}
 

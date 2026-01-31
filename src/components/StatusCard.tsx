@@ -3,6 +3,7 @@ import type { mastodon } from 'masto';
 import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert, LuCornerUpLeft } from 'react-icons/lu';
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
 import { formatDate } from '../utils/dateFormat';
+import { replaceEmojisWithImages } from '../utils/emoji';
 import type { ImageViewerImage } from './ImageViewer';
 import { DisplayName } from './DisplayName';
 
@@ -321,7 +322,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                             </summary>
                             <div
                                 className="mt-2 text-slate-200 wrap-break-word status-content"
-                                dangerouslySetInnerHTML={{ __html: displayStatus.content }}
+                                dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(displayStatus.content, displayStatus.emojis) }}
                             />
                         </details>
                     )}
@@ -330,7 +331,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                     {!displayStatus.spoilerText && (
                         <div
                             className="mt-2 text-slate-200 wrap-break-word status-content"
-                            dangerouslySetInnerHTML={{ __html: displayStatus.content }}
+                            dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(displayStatus.content, displayStatus.emojis) }}
                         />
                     )}
 
