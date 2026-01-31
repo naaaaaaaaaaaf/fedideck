@@ -202,7 +202,8 @@ describe('StatusCard', () => {
 
             render(<StatusCard status={reblogStatus} />);
 
-            expect(screen.getByText(/Reblogger がブースト/)).toBeInTheDocument();
+            // Reblogger name is rendered via DisplayName component
+            expect(screen.getByText(/がブースト/)).toBeInTheDocument();
             expect(screen.getByText('Original Author')).toBeInTheDocument();
         });
     });
@@ -665,6 +666,82 @@ describe('StatusCard', () => {
                 ],
                 1 // Second image is at index 1 in the images-only array
             );
+        });
+    });
+
+    describe('custom emoji in display name', () => {
+        it('should render custom emoji in display name as images', () => {
+            const status = createMockStatus({
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'User :blobcat:',
+                    emojis: [
+                        {
+                            shortcode: 'blobcat',
+                            url: 'https://example.com/emoji/blobcat.png',
+                            staticUrl: 'https://example.com/emoji/blobcat.png',
+                            visibleInPicker: true,
+                        } as mastodon.v1.CustomEmoji,
+                    ],
+                },
+            });
+
+            render(<StatusCard status={status} />);
+
+            const emojiImg = screen.getByAltText(':blobcat:');
+            expect(emojiImg).toBeInTheDocument();
+            expect(emojiImg).toHaveAttribute('src', 'https://example.com/emoji/blobcat.png');
+            expect(emojiImg).toHaveClass('emoji');
+        });
+
+        it('should render plain text when emojis array is empty', () => {
+            const status = createMockStatus({
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Plain User :notfound:',
+                    emojis: [],
+                },
+            });
+
+            render(<StatusCard status={status} />);
+
+            expect(screen.getByText('Plain User :notfound:')).toBeInTheDocument();
+            // No emoji images should be rendered for shortcodes without matching emoji
+            const emojiImages = document.querySelectorAll('img.emoji');
+            expect(emojiImages.length).toBe(0);
+        });
+
+        it('should render custom emoji in reblogger display name', () => {
+            const originalStatus = createMockStatus({
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Original Author',
+                    username: 'original',
+                },
+            });
+
+            const reblogStatus = createMockStatus({
+                reblog: originalStatus,
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Reblogger :star:',
+                    username: 'reblogger',
+                    emojis: [
+                        {
+                            shortcode: 'star',
+                            url: 'https://example.com/emoji/star.png',
+                            staticUrl: 'https://example.com/emoji/star.png',
+                            visibleInPicker: true,
+                        } as mastodon.v1.CustomEmoji,
+                    ],
+                },
+            });
+
+            render(<StatusCard status={reblogStatus} />);
+
+            const emojiImg = screen.getByAltText(':star:');
+            expect(emojiImg).toBeInTheDocument();
+            expect(emojiImg).toHaveAttribute('src', 'https://example.com/emoji/star.png');
         });
     });
 

@@ -10,12 +10,14 @@ interface DisplayNameProps {
  * Renders an account's display name with custom emoji support.
  * If the account has custom emojis, they will be rendered as images.
  * Otherwise, the display name is rendered as plain text.
+ * Falls back to username if displayName is empty.
  */
 export function DisplayName({ account, className }: DisplayNameProps) {
+  const displayName = account.displayName || account.username;
   const hasEmojis = account.emojis && account.emojis.length > 0;
 
   if (hasEmojis) {
-    const html = replaceEmojisWithImages(account.displayName, account.emojis);
+    const html = replaceEmojisWithImages(displayName, account.emojis);
     return (
       <span
         className={className}
@@ -24,5 +26,5 @@ export function DisplayName({ account, className }: DisplayNameProps) {
     );
   }
 
-  return <span className={className}>{account.displayName}</span>;
+  return <span className={className}>{displayName}</span>;
 }
