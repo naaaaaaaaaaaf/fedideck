@@ -238,7 +238,11 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick, on
 
                 {/* Notifications */}
                 {isNotificationColumn && data?.notifications.map((notification) => (
-                    <NotificationCard key={notification.id} notification={notification} />
+                    <NotificationCard
+                        key={notification.id}
+                        notification={notification}
+                        onStatusClick={onStatusClick ? (s) => onStatusClick(s, accountId) : undefined}
+                    />
                 ))}
 
                 {/* Statuses */}

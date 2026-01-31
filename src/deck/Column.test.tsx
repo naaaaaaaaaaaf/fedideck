@@ -138,10 +138,22 @@ vi.mock('../components/StatusCard', () => ({
     ),
 }));
 
+const mockNotificationCardOnStatusClick = vi.fn();
 vi.mock('../components/NotificationCard', () => ({
-    NotificationCard: ({ notification }: { notification: mastodon.v1.Notification }) => (
-        <div data-testid={`notification-${notification.id}`}>Notification: {notification.id}</div>
-    ),
+    NotificationCard: ({ notification, onStatusClick }: { notification: mastodon.v1.Notification; onStatusClick?: (status: mastodon.v1.Status) => void }) => {
+        // Store the onStatusClick callback for testing
+        if (onStatusClick) {
+            mockNotificationCardOnStatusClick.mockImplementation(onStatusClick);
+        }
+        return (
+            <div
+                data-testid={`notification-${notification.id}`}
+                data-has-status-click={onStatusClick ? 'true' : 'false'}
+            >
+                Notification: {notification.id}
+            </div>
+        );
+    },
 }));
 
 // Mock IntersectionObserver
@@ -165,6 +177,7 @@ describe('Column', () => {
         mockAccount = createMockSession();
         mockStreamDataMap = {};
         vi.clearAllMocks();
+        mockNotificationCardOnStatusClick.mockReset();
         mockFetchHomeTimeline.mockResolvedValue([]);
         mockFetchPublicTimeline.mockResolvedValue([]);
         mockFetchNotificationsAPI.mockResolvedValue([]);
@@ -434,6 +447,75 @@ describe('Column', () => {
             );
             unmount();
             expect(mockDisconnect).toHaveBeenCalled();
+        });
+    });
+
+    describe('callback propagation', () => {
+        it('should pass onStatusClick to NotificationCard when provided', () => {
+            const onStatusClick = vi.fn();
+            mockStreamDataMap['1@mastodon.social:notifications'] = {
+                statuses: [],
+                notifications: [createMockNotification('n1')],
+                isLoading: false,
+                hasMore: true,
+                error: null,
+            };
+            render(
+                <Column
+                    id="col-1"
+                    accountId="1@mastodon.social"
+                    stream={{ type: 'notifications' }}
+                    onStatusClick={onStatusClick}
+                />
+            );
+
+            const notification = screen.getByTestId('notification-n1');
+            expect(notification).toHaveAttribute('data-has-status-click', 'true');
+        });
+
+        it('should not pass onStatusClick to NotificationCard when not provided', () => {
+            mockStreamDataMap['1@mastodon.social:notifications'] = {
+                statuses: [],
+                notifications: [createMockNotification('n1')],
+                isLoading: false,
+                hasMore: true,
+                error: null,
+            };
+            render(
+                <Column
+                    id="col-1"
+                    accountId="1@mastodon.social"
+                    stream={{ type: 'notifications' }}
+                />
+            );
+
+            const notification = screen.getByTestId('notification-n1');
+            expect(notification).toHaveAttribute('data-has-status-click', 'false');
+        });
+
+        it('should call onStatusClick with accountId when NotificationCard callback is triggered', () => {
+            const onStatusClick = vi.fn();
+            const mockStatus = createMockStatus('test-status');
+            mockStreamDataMap['1@mastodon.social:notifications'] = {
+                statuses: [],
+                notifications: [createMockNotification('n1')],
+                isLoading: false,
+                hasMore: true,
+                error: null,
+            };
+            render(
+                <Column
+                    id="col-1"
+                    accountId="1@mastodon.social"
+                    stream={{ type: 'notifications' }}
+                    onStatusClick={onStatusClick}
+                />
+            );
+
+            // Simulate NotificationCard calling onStatusClick
+            mockNotificationCardOnStatusClick(mockStatus);
+
+            expect(onStatusClick).toHaveBeenCalledWith(mockStatus, '1@mastodon.social');
         });
     });
 });

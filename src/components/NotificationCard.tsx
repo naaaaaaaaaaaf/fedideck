@@ -14,26 +14,14 @@ import {
     LuBell,
     LuTriangleAlert
 } from 'react-icons/lu';
+import { formatDate } from '../utils/dateFormat';
 
 interface NotificationCardProps {
     notification: mastodon.v1.Notification;
+    onStatusClick?: (status: mastodon.v1.Status) => void;
 }
 
-export function NotificationCard({ notification }: NotificationCardProps) {
-    const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMins / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffMins < 1) return '今';
-        if (diffMins < 60) return `${diffMins}分`;
-        if (diffHours < 24) return `${diffHours}時間`;
-        if (diffDays < 7) return `${diffDays}日`;
-        return date.toLocaleDateString('ja-JP');
-    };
+export function NotificationCard({ notification, onStatusClick }: NotificationCardProps) {
 
     const getNotificationInfo = (): { icon: ReactNode; label: string; color: string } => {
         switch (notification.type) {
@@ -65,6 +53,47 @@ export function NotificationCard({ notification }: NotificationCardProps) {
     const info = getNotificationInfo();
     const account = notification.account;
     const status = notification.status;
+
+    // Check if status area should be clickable
+    const isStatusClickable = status && onStatusClick;
+
+    // Handle click on status area
+    const handleStatusClick = (e: React.MouseEvent) => {
+        if (!isStatusClickable) return;
+
+        const target = e.target as HTMLElement;
+        // Ignore clicks on interactive elements
+        if (
+            target.closest('a') ||
+            target.closest('button') ||
+            target.closest('details') ||
+            target.closest('summary')
+        ) {
+            return;
+        }
+        onStatusClick(status);
+    };
+
+    // Handle keyboard navigation for status area
+    const handleStatusKeyDown = (e: React.KeyboardEvent) => {
+        if (!isStatusClickable) return;
+
+        // Ignore keyboard events on interactive elements
+        const target = e.target as HTMLElement;
+        if (
+            target.closest('a') ||
+            target.closest('button') ||
+            target.closest('details') ||
+            target.closest('summary')
+        ) {
+            return;
+        }
+
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onStatusClick(status);
+        }
+    };
 
     return (
         <article className="p-4 border-b border-slate-700/50 card-hover animate-fade-in">
@@ -146,7 +175,14 @@ export function NotificationCard({ notification }: NotificationCardProps) {
 
             {/* Status-related notifications */}
             {status && (
-                <div className="ml-9 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                <div
+                    className={`ml-9 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30 ${isStatusClickable ? 'cursor-pointer hover:bg-slate-700/50 transition-colors' : ''}`}
+                    onClick={isStatusClickable ? handleStatusClick : undefined}
+                    onKeyDown={isStatusClickable ? handleStatusKeyDown : undefined}
+                    role={isStatusClickable ? 'button' : undefined}
+                    tabIndex={isStatusClickable ? 0 : undefined}
+                    aria-label={isStatusClickable ? '投稿の詳細を表示' : undefined}
+                >
                     {status.spoilerText ? (
                         <details>
                             <summary className="cursor-pointer text-amber-400 text-sm">
