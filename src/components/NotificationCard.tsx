@@ -15,6 +15,7 @@ import {
     LuTriangleAlert
 } from 'react-icons/lu';
 import { formatDate } from '../utils/dateFormat';
+import { DisplayName } from './DisplayName';
 
 interface NotificationCardProps {
     notification: mastodon.v1.Notification;
@@ -120,7 +121,7 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
                             rel="noopener noreferrer"
                             className="font-semibold text-slate-100 hover:underline"
                         >
-                            {account.displayName || account.username}
+                            <DisplayName account={account} />
                         </a>
                         <span className="text-slate-400"> さんが{info.label}</span>
                     </span>
@@ -140,9 +141,10 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
                             className="w-12 h-12 rounded-lg"
                         />
                         <div className="min-w-0 flex-1">
-                            <div className="font-semibold text-slate-100 truncate">
-                                {account.displayName || account.username}
-                            </div>
+                            <DisplayName
+                                account={account}
+                                className="font-semibold text-slate-100 truncate block"
+                            />
                             <div className="text-sm text-slate-400 truncate">
                                 @{account.acct}
                             </div>

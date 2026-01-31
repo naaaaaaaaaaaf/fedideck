@@ -4,6 +4,7 @@ import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert, LuCornerUp
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
 import { formatDate } from '../utils/dateFormat';
 import type { ImageViewerImage } from './ImageViewer';
+import { DisplayName } from './DisplayName';
 
 interface StatusCardProps {
     status: mastodon.v1.Status;
@@ -225,7 +226,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                         alt=""
                         className="w-4 h-4 rounded"
                     />
-                    <span className="truncate">{reblogger.displayName || reblogger.username} がブースト</span>
+                    <span className="truncate"><DisplayName account={reblogger} /> がブースト</span>
                 </div>
             )}
 
@@ -293,9 +294,10 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                 rel="noopener noreferrer"
                                 className="hover:underline"
                             >
-                                <span className="font-semibold text-slate-100 block truncate">
-                                    {account.displayName || account.username}
-                                </span>
+                                <DisplayName
+                                    account={account}
+                                    className="font-semibold text-slate-100 block truncate"
+                                />
                                 <span className="text-sm text-slate-400 block truncate">
                                     @{account.acct}
                                 </span>
