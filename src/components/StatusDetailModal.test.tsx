@@ -189,7 +189,7 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            expect(screen.getByText(/がブースト/)).toBeInTheDocument();
+            expect(screen.getByText(/Reblogger がブースト/)).toBeInTheDocument();
             expect(screen.getByText('Original Author')).toBeInTheDocument();
         });
     });
@@ -1515,7 +1515,7 @@ describe('StatusDetailModal', () => {
 
             // Reblog indicator should be visible initially
             await waitFor(() => {
-                expect(screen.getByText(/がブースト/)).toBeInTheDocument();
+                expect(screen.getByText(/Reblogger がブースト/)).toBeInTheDocument();
             });
 
             vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
@@ -1529,7 +1529,7 @@ describe('StatusDetailModal', () => {
 
             // Reblog indicator should disappear
             await waitFor(() => {
-                expect(screen.queryByText(/がブースト/)).not.toBeInTheDocument();
+                expect(screen.queryByText(/Reblogger がブースト/)).not.toBeInTheDocument();
             });
         });
 

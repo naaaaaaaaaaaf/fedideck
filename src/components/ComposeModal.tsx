@@ -3,7 +3,6 @@ import { LuX, LuTriangleAlert, LuGlobe, LuLockOpen, LuLock, LuMail, LuLoader, Lu
 import { useAccountsStore } from '../store/accounts';
 import { getClient, createStatus, uploadMedia, updateMediaDescription, type CreateStatusParams } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
-import { DisplayName } from './DisplayName';
 
 /**
  * Reply target status information
@@ -414,10 +413,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     className="w-8 h-8 rounded-lg"
                                 />
                                 <div className="text-sm flex-1 min-w-0">
-                                    <DisplayName
-                                        account={composingAccount.account}
-                                        className="text-slate-200 truncate block"
-                                    />
+                                    <div className="text-slate-200 truncate">{composingAccount.account.displayName || composingAccount.account.username}</div>
                                     <div className="text-slate-400 truncate">@{composingAccount.account.acct}</div>
                                 </div>
                                 {!isAccountLocked && accounts.length > 1 && (
@@ -484,10 +480,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                                 className="w-8 h-8 rounded-lg"
                                             />
                                             <div className="text-sm flex-1 min-w-0">
-                                                <DisplayName
-                                                    account={acc.account}
-                                                    className="text-slate-200 truncate block"
-                                                />
+                                                <div className="text-slate-200 truncate">{acc.account.displayName || acc.account.username}</div>
                                                 <div className="text-slate-400 truncate">@{acc.account.acct}</div>
                                             </div>
                                             {acc.id === selectedAccountId && (

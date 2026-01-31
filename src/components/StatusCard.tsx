@@ -3,9 +3,7 @@ import type { mastodon } from 'masto';
 import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert, LuCornerUpLeft } from 'react-icons/lu';
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
 import { formatDate } from '../utils/dateFormat';
-import { replaceEmojisWithImages } from '../utils/emoji';
 import type { ImageViewerImage } from './ImageViewer';
-import { DisplayName } from './DisplayName';
 
 interface StatusCardProps {
     status: mastodon.v1.Status;
@@ -227,7 +225,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                         alt=""
                         className="w-4 h-4 rounded"
                     />
-                    <span className="truncate"><DisplayName account={reblogger} /> がブースト</span>
+                    <span className="truncate">{reblogger.displayName || reblogger.username} がブースト</span>
                 </div>
             )}
 
@@ -295,10 +293,9 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                 rel="noopener noreferrer"
                                 className="hover:underline"
                             >
-                                <DisplayName
-                                    account={account}
-                                    className="font-semibold text-slate-100 block truncate"
-                                />
+                                <span className="font-semibold text-slate-100 block truncate">
+                                    {account.displayName || account.username}
+                                </span>
                                 <span className="text-sm text-slate-400 block truncate">
                                     @{account.acct}
                                 </span>
@@ -322,7 +319,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                             </summary>
                             <div
                                 className="mt-2 text-slate-200 wrap-break-word status-content"
-                                dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(displayStatus.content, displayStatus.emojis) }}
+                                dangerouslySetInnerHTML={{ __html: displayStatus.content }}
                             />
                         </details>
                     )}
@@ -331,7 +328,7 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                     {!displayStatus.spoilerText && (
                         <div
                             className="mt-2 text-slate-200 wrap-break-word status-content"
-                            dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(displayStatus.content, displayStatus.emojis) }}
+                            dangerouslySetInnerHTML={{ __html: displayStatus.content }}
                         />
                     )}
 

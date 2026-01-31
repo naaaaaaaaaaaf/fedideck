@@ -121,12 +121,3 @@ body {
 .status-content .ellipsis::after {
   content: "...";
 }
-
-/* カスタム絵文字 */
-.emoji {
-  display: inline;
-  height: 1.2em;
-  width: auto;
-  vertical-align: middle;
-  margin: 0 0.1em;
-}

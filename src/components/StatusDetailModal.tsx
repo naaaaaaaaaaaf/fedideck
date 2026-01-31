@@ -4,9 +4,7 @@ import { LuX, LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert, LuLoa
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus, getStatusContext, type StatusContext } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { formatDate } from '../utils/dateFormat';
-import { replaceEmojisWithImages } from '../utils/emoji';
 import type { ImageViewerImage } from './ImageViewer';
-import { DisplayName } from './DisplayName';
 
 interface StatusDetailModalProps {
     isOpen: boolean;
@@ -98,10 +96,9 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
                             rel="noopener noreferrer"
                             className="hover:underline truncate"
                         >
-                            <DisplayName
-                                account={account}
-                                className="font-medium text-slate-200"
-                            />
+                            <span className="font-medium text-slate-200">
+                                {account.displayName || account.username}
+                            </span>
                             <span className="text-slate-500 ml-1">
                                 @{account.acct}
                             </span>
@@ -119,13 +116,13 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
                             </summary>
                             <div
                                 className="text-slate-300 mt-1 status-content text-sm"
-                                dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(status.content, status.emojis) }}
+                                dangerouslySetInnerHTML={{ __html: status.content }}
                             />
                         </details>
                     ) : (
                         <div
                             className="text-slate-300 status-content text-sm line-clamp-3"
-                            dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(status.content, status.emojis) }}
+                            dangerouslySetInnerHTML={{ __html: status.content }}
                         />
                     )}
 
@@ -464,7 +461,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                                     alt=""
                                     className="w-5 h-5 rounded"
                                 />
-                                <span><DisplayName account={reblogger} /> がブースト</span>
+                                <span>{reblogger.displayName || reblogger.username} がブースト</span>
                             </div>
                         )}
 
@@ -489,10 +486,9 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                                     rel="noopener noreferrer"
                                     className="hover:underline"
                                 >
-                                    <DisplayName
-                                        account={account}
-                                        className="font-semibold text-lg text-slate-100 block"
-                                    />
+                                    <span className="font-semibold text-lg text-slate-100 block">
+                                        {account.displayName || account.username}
+                                    </span>
                                     <span className="text-slate-400 block">
                                         @{account.acct}
                                     </span>
@@ -508,7 +504,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                                 </summary>
                                 <div
                                     className="text-slate-200 text-lg leading-relaxed status-content"
-                                    dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(displayStatus.content, displayStatus.emojis) }}
+                                    dangerouslySetInnerHTML={{ __html: displayStatus.content }}
                                 />
                             </details>
                         )}
@@ -517,7 +513,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                         {!displayStatus.spoilerText && (
                             <div
                                 className="text-slate-200 text-lg leading-relaxed mb-4 status-content"
-                                dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(displayStatus.content, displayStatus.emojis) }}
+                                dangerouslySetInnerHTML={{ __html: displayStatus.content }}
                             />
                         )}
 

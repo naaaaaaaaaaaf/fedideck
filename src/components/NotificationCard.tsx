@@ -15,8 +15,6 @@ import {
     LuTriangleAlert
 } from 'react-icons/lu';
 import { formatDate } from '../utils/dateFormat';
-import { replaceEmojisWithImages } from '../utils/emoji';
-import { DisplayName } from './DisplayName';
 
 interface NotificationCardProps {
     notification: mastodon.v1.Notification;
@@ -122,7 +120,7 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
                             rel="noopener noreferrer"
                             className="font-semibold text-slate-100 hover:underline"
                         >
-                            <DisplayName account={account} />
+                            {account.displayName || account.username}
                         </a>
                         <span className="text-slate-400"> さんが{info.label}</span>
                     </span>
@@ -142,10 +140,9 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
                             className="w-12 h-12 rounded-lg"
                         />
                         <div className="min-w-0 flex-1">
-                            <DisplayName
-                                account={account}
-                                className="font-semibold text-slate-100 truncate block"
-                            />
+                            <div className="font-semibold text-slate-100 truncate">
+                                {account.displayName || account.username}
+                            </div>
                             <div className="text-sm text-slate-400 truncate">
                                 @{account.acct}
                             </div>
@@ -193,13 +190,13 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
                             </summary>
                             <div
                                 className="mt-2 text-sm text-slate-300 wrap-break-word"
-                                dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(status.content, status.emojis) }}
+                                dangerouslySetInnerHTML={{ __html: status.content }}
                             />
                         </details>
                     ) : (
                         <div
                             className="text-sm text-slate-300 wrap-break-word line-clamp-4"
-                            dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(status.content, status.emojis) }}
+                            dangerouslySetInnerHTML={{ __html: status.content }}
                         />
                     )}
 
