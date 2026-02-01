@@ -62,7 +62,7 @@ function createEmojiImgTag(emoji: mastodon.v1.CustomEmoji): string {
 
 /**
  * Replaces emoji shortcodes (e.g., :shortcode:) with img tags in HTML content.
- * Uses a negative lookbehind to avoid replacing shortcodes inside HTML tag attributes.
+ * Uses a replacement callback and context checks to avoid replacing shortcodes inside HTML tag attributes.
  *
  * @param html - The HTML string containing emoji shortcodes
  * @param emojis - Array of custom emoji definitions from Mastodon API
