@@ -1,9 +1,32 @@
 import { useState, useRef, useEffect } from 'react';
-import { LuX, LuTriangleAlert, LuGlobe, LuLockOpen, LuLock, LuMail, LuLoader, LuImage, LuListOrdered, LuPlus, LuMinus, LuCornerUpLeft, LuChevronDown } from 'react-icons/lu';
+import {
+    LuX,
+    LuTriangleAlert,
+    LuGlobe,
+    LuLockOpen,
+    LuLock,
+    LuMail,
+    LuLoader,
+    LuImage,
+    LuListOrdered,
+    LuPlus,
+    LuMinus,
+    LuCornerUpLeft,
+    LuChevronDown,
+    LuSmile,
+} from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
-import { getClient, createStatus, uploadMedia, updateMediaDescription, type CreateStatusParams } from '../api/mastoClient';
+import {
+    getClient,
+    createStatus,
+    uploadMedia,
+    updateMediaDescription,
+    type CreateStatusParams,
+} from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
+import { useTextareaCursor } from '../hooks/useTextareaCursor';
 import { DisplayName } from './DisplayName';
+import { EmojiPalette } from './EmojiPalette';
 
 /**
  * Reply target status information
@@ -20,7 +43,7 @@ interface ComposeModalProps {
     isOpen: boolean;
     onClose: () => void;
     replyToStatus?: ReplyToStatus;
-    accountId?: string;  // If provided (reply), lock to this account; otherwise allow switching
+    accountId?: string; // If provided (reply), lock to this account; otherwise allow switching
 }
 
 type Visibility = 'public' | 'unlisted' | 'private' | 'direct';
@@ -42,10 +65,30 @@ interface MediaFile {
 }
 
 const VISIBILITY_OPTIONS: VisibilityOption[] = [
-    { value: 'public', label: '公開', description: '全員に表示', icon: <LuGlobe aria-hidden="true" /> },
-    { value: 'unlisted', label: '未収載', description: '公開タイムラインに表示しない', icon: <LuLockOpen aria-hidden="true" /> },
-    { value: 'private', label: 'フォロワーのみ', description: 'フォロワーにのみ表示', icon: <LuLock aria-hidden="true" /> },
-    { value: 'direct', label: 'ダイレクト', description: 'メンションしたユーザーにのみ表示', icon: <LuMail aria-hidden="true" /> },
+    {
+        value: 'public',
+        label: '公開',
+        description: '全員に表示',
+        icon: <LuGlobe aria-hidden="true" />,
+    },
+    {
+        value: 'unlisted',
+        label: '未収載',
+        description: '公開タイムラインに表示しない',
+        icon: <LuLockOpen aria-hidden="true" />,
+    },
+    {
+        value: 'private',
+        label: 'フォロワーのみ',
+        description: 'フォロワーにのみ表示',
+        icon: <LuLock aria-hidden="true" />,
+    },
+    {
+        value: 'direct',
+        label: 'ダイレクト',
+        description: 'メンションしたユーザーにのみ表示',
+        icon: <LuMail aria-hidden="true" />,
+    },
 ];
 
 const MAX_CHARS = 500;
@@ -84,23 +127,34 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const listboxRef = useRef<HTMLDivElement>(null);
-    const accounts = useAccountsStore(state => state.accounts);
-    const activeAccountId = useAccountsStore(state => state.activeAccountId);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const emojiButtonRef = useRef<HTMLButtonElement>(null);
+    const accounts = useAccountsStore((state) => state.accounts);
+    const activeAccountId = useAccountsStore((state) => state.activeAccountId);
 
     // Whether account switching is allowed (disabled for replies)
     const isAccountLocked = !!accountId;
 
     // State for selected account (can be changed by user for new posts, but locked for replies)
-    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(accountId ?? activeAccountId);
+    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
+        accountId ?? activeAccountId
+    );
     const [showAccountSelector, setShowAccountSelector] = useState(false);
     const [focusedAccountIndex, setFocusedAccountIndex] = useState(0);
 
+    // Emoji palette state
+    const [showEmojiPalette, setShowEmojiPalette] = useState(false);
+
+    // Textarea cursor hook
+    const { insertAtCursor } = useTextareaCursor(textareaRef);
+
     // Get the account to compose from (for replies, use locked accountId; for new posts, use selected)
     const composingAccount = isAccountLocked
-        ? accounts.find(a => a.id === accountId)
-        : accounts.find(a => a.id === selectedAccountId) ?? accounts.find(a => a.id === activeAccountId);
+        ? accounts.find((a) => a.id === accountId)
+        : (accounts.find((a) => a.id === selectedAccountId) ??
+          accounts.find((a) => a.id === activeAccountId));
 
-    const isUploading = mediaFiles.some(m => m.uploading);
+    const isUploading = mediaFiles.some((m) => m.uploading);
     const canCloseModal = !isSubmitting && !isUploading;
 
     const { handleKeyDown } = useModalAccessibility({
@@ -138,22 +192,27 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     const remainingChars = MAX_CHARS - content.length;
     const isOverLimit = remainingChars < 0;
     const hasMedia = mediaFiles.length > 0;
-    const allMediaUploaded = mediaFiles.every(m => m.uploadedId && !m.uploading);
+    const allMediaUploaded = mediaFiles.every((m) => m.uploadedId && !m.uploading);
 
     // Poll validation
-    const validPollOptions = pollOptions.filter(opt => opt.trim().length > 0);
-    const isPollValid = !showPoll || (validPollOptions.length >= MIN_POLL_OPTIONS);
+    const validPollOptions = pollOptions.filter((opt) => opt.trim().length > 0);
+    const isPollValid = !showPoll || validPollOptions.length >= MIN_POLL_OPTIONS;
 
-    const canSubmit = (content.trim().length > 0 || hasMedia || showPoll) &&
-        !isOverLimit && !isSubmitting && !isUploading && composingAccount &&
-        (!hasMedia || allMediaUploaded) && isPollValid;
+    const canSubmit =
+        (content.trim().length > 0 || hasMedia || showPoll) &&
+        !isOverLimit &&
+        !isSubmitting &&
+        !isUploading &&
+        composingAccount &&
+        (!hasMedia || allMediaUploaded) &&
+        isPollValid;
 
     // Poll helper functions
     const togglePoll = () => {
         if (!showPoll) {
             // Clear media when enabling poll (they're mutually exclusive)
             if (hasMedia) {
-                mediaFiles.forEach(m => {
+                mediaFiles.forEach((m) => {
                     if (m.preview) URL.revokeObjectURL(m.preview);
                 });
                 setMediaFiles([]);
@@ -190,8 +249,8 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         if (filesToAdd.length === 0) return;
 
         // Check for video - video can only be alone
-        const hasVideo = mediaFiles.some(m => m.file.type.startsWith('video/'));
-        const newHasVideo = filesToAdd.some(f => f.type.startsWith('video/'));
+        const hasVideo = mediaFiles.some((m) => m.file.type.startsWith('video/'));
+        const newHasVideo = filesToAdd.some((f) => f.type.startsWith('video/'));
 
         if (hasVideo || (newHasVideo && mediaFiles.length > 0)) {
             setError('動画は他のメディアと同時に添付できません');
@@ -206,14 +265,14 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         const client = getClient(composingAccount);
 
         // Create preview and add to state
-        const newMediaFiles: MediaFile[] = filesToAdd.map(file => ({
+        const newMediaFiles: MediaFile[] = filesToAdd.map((file) => ({
             file,
             preview: URL.createObjectURL(file),
             uploading: true,
             altText: '',
         }));
 
-        setMediaFiles(prev => [...prev, ...newMediaFiles]);
+        setMediaFiles((prev) => [...prev, ...newMediaFiles]);
         setError(null);
 
         // Upload each file
@@ -223,18 +282,27 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
             try {
                 const media = await uploadMedia(client, file);
-                setMediaFiles(prev => prev.map((m, idx) =>
-                    idx === mediaIndex
-                        ? { ...m, uploading: false, uploadedId: media.id }
-                        : m
-                ));
+                setMediaFiles((prev) =>
+                    prev.map((m, idx) =>
+                        idx === mediaIndex ? { ...m, uploading: false, uploadedId: media.id } : m
+                    )
+                );
             } catch (err) {
                 console.error('Failed to upload media:', err);
-                setMediaFiles(prev => prev.map((m, idx) =>
-                    idx === mediaIndex
-                        ? { ...m, uploading: false, error: err instanceof Error ? err.message : 'アップロードに失敗しました' }
-                        : m
-                ));
+                setMediaFiles((prev) =>
+                    prev.map((m, idx) =>
+                        idx === mediaIndex
+                            ? {
+                                  ...m,
+                                  uploading: false,
+                                  error:
+                                      err instanceof Error
+                                          ? err.message
+                                          : 'アップロードに失敗しました',
+                              }
+                            : m
+                    )
+                );
             }
         }
 
@@ -245,7 +313,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     };
 
     const removeMedia = (index: number) => {
-        setMediaFiles(prev => {
+        setMediaFiles((prev) => {
             const media = prev[index];
             if (media.preview) {
                 URL.revokeObjectURL(media.preview);
@@ -255,9 +323,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     };
 
     const updateAltText = (index: number, altText: string) => {
-        setMediaFiles(prev => prev.map((m, i) =>
-            i === index ? { ...m, altText } : m
-        ));
+        setMediaFiles((prev) => prev.map((m, i) => (i === index ? { ...m, altText } : m)));
     };
 
     const handleSubmit = async () => {
@@ -294,7 +360,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                         }
                     }
                 }
-                params.mediaIds = mediaFiles.map(m => m.uploadedId!);
+                params.mediaIds = mediaFiles.map((m) => m.uploadedId!);
                 if (isSensitive) {
                     params.sensitive = true;
                 }
@@ -312,7 +378,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
             await createStatus(client, params);
 
             // Clean up previews
-            mediaFiles.forEach(m => {
+            mediaFiles.forEach((m) => {
                 if (m.preview) URL.revokeObjectURL(m.preview);
             });
 
@@ -340,7 +406,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         if (isSubmitting || isUploading) return;
 
         // Clean up previews
-        mediaFiles.forEach(m => {
+        mediaFiles.forEach((m) => {
             if (m.preview) URL.revokeObjectURL(m.preview);
         });
         setMediaFiles([]);
@@ -397,13 +463,18 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     setShowAccountSelector(newState);
                                     if (newState) {
                                         // Reset focused index to current account when opening
-                                        const currentIndex = accounts.findIndex(a => a.id === selectedAccountId);
-                                        setFocusedAccountIndex(currentIndex >= 0 ? currentIndex : 0);
+                                        const currentIndex = accounts.findIndex(
+                                            (a) => a.id === selectedAccountId
+                                        );
+                                        setFocusedAccountIndex(
+                                            currentIndex >= 0 ? currentIndex : 0
+                                        );
                                     }
                                 }}
                                 disabled={isAccountLocked}
-                                className={`flex items-center gap-2 p-2 -m-2 rounded-lg transition-colors w-full text-left ${isAccountLocked ? 'cursor-default' : 'hover:bg-slate-700/50'
-                                    }`}
+                                className={`flex items-center gap-2 p-2 -m-2 rounded-lg transition-colors w-full text-left ${
+                                    isAccountLocked ? 'cursor-default' : 'hover:bg-slate-700/50'
+                                }`}
                                 aria-expanded={showAccountSelector}
                                 aria-haspopup="listbox"
                                 aria-label={`投稿アカウント: ${composingAccount.account.displayName || composingAccount.account.username}`}
@@ -418,10 +489,15 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                         account={composingAccount.account}
                                         className="text-slate-200 truncate block"
                                     />
-                                    <div className="text-slate-400 truncate">@{composingAccount.account.acct}</div>
+                                    <div className="text-slate-400 truncate">
+                                        @{composingAccount.account.acct}
+                                    </div>
                                 </div>
                                 {!isAccountLocked && accounts.length > 1 && (
-                                    <LuChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showAccountSelector ? 'rotate-180' : ''}`} aria-hidden="true" />
+                                    <LuChevronDown
+                                        className={`w-4 h-4 text-slate-400 transition-transform ${showAccountSelector ? 'rotate-180' : ''}`}
+                                        aria-hidden="true"
+                                    />
                                 )}
                             </button>
 
@@ -443,10 +519,15 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     onKeyDown={(e) => {
                                         if (e.key === 'ArrowDown') {
                                             e.preventDefault();
-                                            setFocusedAccountIndex(prev => (prev + 1) % accounts.length);
+                                            setFocusedAccountIndex(
+                                                (prev) => (prev + 1) % accounts.length
+                                            );
                                         } else if (e.key === 'ArrowUp') {
                                             e.preventDefault();
-                                            setFocusedAccountIndex(prev => (prev - 1 + accounts.length) % accounts.length);
+                                            setFocusedAccountIndex(
+                                                (prev) =>
+                                                    (prev - 1 + accounts.length) % accounts.length
+                                            );
                                         } else if (e.key === 'Enter' || e.key === ' ') {
                                             e.preventDefault();
                                             e.stopPropagation();
@@ -488,10 +569,15 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                                     account={acc.account}
                                                     className="text-slate-200 truncate block"
                                                 />
-                                                <div className="text-slate-400 truncate">@{acc.account.acct}</div>
+                                                <div className="text-slate-400 truncate">
+                                                    @{acc.account.acct}
+                                                </div>
                                             </div>
                                             {acc.id === selectedAccountId && (
-                                                <div className="w-2 h-2 rounded-full bg-indigo-400" aria-hidden="true"></div>
+                                                <div
+                                                    className="w-2 h-2 rounded-full bg-indigo-400"
+                                                    aria-hidden="true"
+                                                ></div>
                                             )}
                                         </button>
                                     ))}
@@ -517,7 +603,9 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     <div className="text-sm text-slate-200 font-medium truncate">
                                         {replyToStatus.displayName}
                                     </div>
-                                    <div className="text-xs text-slate-400 truncate">@{replyToStatus.acct}</div>
+                                    <div className="text-xs text-slate-400 truncate">
+                                        @{replyToStatus.acct}
+                                    </div>
                                     <div
                                         className="text-sm text-slate-300 mt-1 line-clamp-2 status-content"
                                         dangerouslySetInnerHTML={{ __html: replyToStatus.content }}
@@ -528,40 +616,80 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                     )}
 
                     {/* CW, Media, and Poll buttons */}
-                    <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="投稿オプション">
+                    <div
+                        className="mb-3 flex flex-wrap gap-2"
+                        role="group"
+                        aria-label="投稿オプション"
+                    >
                         <button
                             onClick={() => setShowCW(!showCW)}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${showCW
-                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
-                                }`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                                showCW
+                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                    : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+                            }`}
                             aria-pressed={showCW}
                         >
                             <LuTriangleAlert className="w-4 h-4" aria-hidden="true" />
                             CW
                         </button>
 
+                        <div className="relative">
+                            <button
+                                ref={emojiButtonRef}
+                                onClick={() => setShowEmojiPalette(!showEmojiPalette)}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                                    showEmojiPalette
+                                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                        : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+                                }`}
+                                aria-pressed={showEmojiPalette}
+                                aria-label="絵文字を挿入"
+                            >
+                                <LuSmile className="w-4 h-4" aria-hidden="true" />
+                                絵文字
+                            </button>
+
+                            {/* Emoji palette */}
+                            {composingAccount && (
+                                <EmojiPalette
+                                    isOpen={showEmojiPalette}
+                                    onClose={() => setShowEmojiPalette(false)}
+                                    onSelect={insertAtCursor}
+                                    customEmojis={composingAccount.account.emojis ?? []}
+                                    triggerRef={emojiButtonRef}
+                                    textareaRef={textareaRef}
+                                />
+                            )}
+                        </div>
+
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             disabled={mediaFiles.length >= MAX_MEDIA || isUploading || showPoll}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${hasMedia
-                                ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
-                                : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
-                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                                hasMedia
+                                    ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                                    : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
                             aria-label={`画像/動画を追加${hasMedia ? ` (${mediaFiles.length}/${MAX_MEDIA})` : ''}`}
                         >
                             <LuImage className="w-4 h-4" aria-hidden="true" />
                             画像/動画
-                            {hasMedia && <span className="text-xs">({mediaFiles.length}/{MAX_MEDIA})</span>}
+                            {hasMedia && (
+                                <span className="text-xs">
+                                    ({mediaFiles.length}/{MAX_MEDIA})
+                                </span>
+                            )}
                         </button>
 
                         <button
                             onClick={togglePoll}
                             disabled={hasMedia}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${showPoll
-                                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                                : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
-                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                                showPoll
+                                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                    : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
                             aria-pressed={showPoll}
                         >
                             <LuListOrdered className="w-4 h-4" aria-hidden="true" />
@@ -581,7 +709,9 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
                     {showCW && (
                         <div className="mb-3">
-                            <label htmlFor="cw-text-input" className="sr-only">警告文</label>
+                            <label htmlFor="cw-text-input" className="sr-only">
+                                警告文
+                            </label>
                             <input
                                 id="cw-text-input"
                                 type="text"
@@ -600,12 +730,16 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                             <div className="space-y-2 mb-3">
                                 {pollOptions.map((option, index) => (
                                     <div key={index} className="flex gap-2">
-                                        <label htmlFor={`poll-option-${index}`} className="sr-only">選択肢 {index + 1}</label>
+                                        <label htmlFor={`poll-option-${index}`} className="sr-only">
+                                            選択肢 {index + 1}
+                                        </label>
                                         <input
                                             id={`poll-option-${index}`}
                                             type="text"
                                             value={option}
-                                            onChange={(e) => updatePollOption(index, e.target.value)}
+                                            onChange={(e) =>
+                                                updatePollOption(index, e.target.value)
+                                            }
                                             placeholder={`選択肢 ${index + 1}`}
                                             className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
                                         />
@@ -634,7 +768,12 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
                             <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-slate-700">
                                 <div className="flex items-center gap-2">
-                                    <label htmlFor="poll-duration-select" className="text-sm text-slate-400">有効期限:</label>
+                                    <label
+                                        htmlFor="poll-duration-select"
+                                        className="text-sm text-slate-400"
+                                    >
+                                        有効期限:
+                                    </label>
                                     <select
                                         id="poll-duration-select"
                                         value={pollExpiresIn}
@@ -642,7 +781,9 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                         className="px-2 py-1 bg-slate-900 border border-slate-700 rounded text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
                                     >
                                         {POLL_DURATION_OPTIONS.map((opt) => (
-                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            <option key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </option>
                                         ))}
                                     </select>
                                 </div>
@@ -664,7 +805,10 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                     {hasMedia && (
                         <div className="mb-3 space-y-2">
                             {mediaFiles.map((media, index) => (
-                                <div key={index} className="bg-slate-800 rounded-lg overflow-hidden">
+                                <div
+                                    key={index}
+                                    className="bg-slate-800 rounded-lg overflow-hidden"
+                                >
                                     <div className="relative aspect-video">
                                         {media.file.type.startsWith('video/') ? (
                                             <video
@@ -682,19 +826,27 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
                                         {/* Upload overlay */}
                                         {media.uploading && (
-                                            <div 
+                                            <div
                                                 className="absolute inset-0 bg-black/50 flex items-center justify-center"
                                                 aria-busy="true"
                                                 aria-label="アップロード中"
                                             >
-                                                <LuLoader className="w-6 h-6 text-white animate-spin" aria-hidden="true" />
+                                                <LuLoader
+                                                    className="w-6 h-6 text-white animate-spin"
+                                                    aria-hidden="true"
+                                                />
                                             </div>
                                         )}
 
                                         {/* Error overlay */}
                                         {media.error && (
-                                            <div className="absolute inset-0 bg-red-900/50 flex items-center justify-center p-2" role="alert">
-                                                <span className="text-xs text-red-200 text-center">{media.error}</span>
+                                            <div
+                                                className="absolute inset-0 bg-red-900/50 flex items-center justify-center p-2"
+                                                role="alert"
+                                            >
+                                                <span className="text-xs text-red-200 text-center">
+                                                    {media.error}
+                                                </span>
                                             </div>
                                         )}
 
@@ -711,7 +863,9 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
                                     {/* Alt text input */}
                                     <div className="p-2 border-t border-slate-700">
-                                        <label htmlFor={`alt-text-${index}`} className="sr-only">メディア {index + 1} の代替テキスト</label>
+                                        <label htmlFor={`alt-text-${index}`} className="sr-only">
+                                            メディア {index + 1} の代替テキスト
+                                        </label>
                                         <input
                                             id={`alt-text-${index}`}
                                             type="text"
@@ -742,8 +896,11 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
                     {/* Text area */}
                     <div>
-                        <label htmlFor="compose-content" className="sr-only">投稿内容</label>
+                        <label htmlFor="compose-content" className="sr-only">
+                            投稿内容
+                        </label>
                         <textarea
+                            ref={textareaRef}
                             id="compose-content"
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
@@ -756,8 +913,13 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
                     {/* Character count */}
                     <div
-                        className={`text-sm text-right mt-1 ${isOverLimit ? 'text-red-400' : remainingChars <= 50 ? 'text-amber-400' : 'text-slate-400'
-                            }`}
+                        className={`text-sm text-right mt-1 ${
+                            isOverLimit
+                                ? 'text-red-400'
+                                : remainingChars <= 50
+                                  ? 'text-amber-400'
+                                  : 'text-slate-400'
+                        }`}
                         aria-live="polite"
                         aria-atomic="true"
                     >
@@ -771,10 +933,11 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                             {VISIBILITY_OPTIONS.map((option) => (
                                 <label
                                     key={option.value}
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all ${visibility === option.value
-                                        ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
-                                        : 'bg-slate-800 text-slate-300 border border-slate-700 hover:border-slate-600'
-                                        }`}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all ${
+                                        visibility === option.value
+                                            ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                                            : 'bg-slate-800 text-slate-300 border border-slate-700 hover:border-slate-600'
+                                    }`}
                                 >
                                     <input
                                         type="radio"
@@ -787,7 +950,9 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     <span className="text-lg">{option.icon}</span>
                                     <div>
                                         <div className="text-sm font-medium">{option.label}</div>
-                                        <div className="text-xs text-slate-400">{option.description}</div>
+                                        <div className="text-xs text-slate-400">
+                                            {option.description}
+                                        </div>
                                     </div>
                                 </label>
                             ))}
@@ -796,7 +961,10 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
                     {/* Error message */}
                     {error && (
-                        <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm" role="alert">
+                        <div
+                            className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm"
+                            role="alert"
+                        >
                             {error}
                         </div>
                     )}
@@ -815,9 +983,17 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                         onClick={handleSubmit}
                         disabled={!canSubmit}
                         className="flex items-center gap-2 px-6 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors"
-                        aria-label={isSubmitting ? '投稿を送信中' : isUploading ? 'メディアをアップロード中' : '投稿を送信'}
+                        aria-label={
+                            isSubmitting
+                                ? '投稿を送信中'
+                                : isUploading
+                                  ? 'メディアをアップロード中'
+                                  : '投稿を送信'
+                        }
                     >
-                        {(isSubmitting || isUploading) && <LuLoader className="w-4 h-4 animate-spin" aria-hidden="true" />}
+                        {(isSubmitting || isUploading) && (
+                            <LuLoader className="w-4 h-4 animate-spin" aria-hidden="true" />
+                        )}
                         {isSubmitting ? '投稿中...' : isUploading ? 'アップロード中...' : '投稿'}
                     </button>
                 </div>
