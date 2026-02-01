@@ -5,7 +5,7 @@ import { useRef, useCallback } from 'react';
  * @param textareaRef - Reference to the textarea element
  * @returns Object with insertAtCursor function
  */
-export function useTextareaCursor(textareaRef: React.RefObject<HTMLTextAreaElement>) {
+export function useTextareaCursor(textareaRef: React.RefObject<HTMLTextAreaElement | null>) {
     // Track cursor position to restore after re-renders
     const cursorPositionRef = useRef<number>(0);
 

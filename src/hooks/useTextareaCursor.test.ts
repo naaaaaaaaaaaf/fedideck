@@ -103,7 +103,7 @@ describe('useTextareaCursor', () => {
     });
 
     it('should do nothing when textarea ref is null', () => {
-        const ref = { current: null };
+        const ref = { current: null as HTMLTextAreaElement | null };
         const { insertAtCursor } = renderHook(() => useTextareaCursor(ref)).result.current;
 
         // Should not throw
