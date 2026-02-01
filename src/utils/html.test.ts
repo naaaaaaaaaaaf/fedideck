@@ -138,3 +138,114 @@ describe("escapeHtml", () => {
     });
   });
 });
+
+describe("escapeRegExp", () => {
+  describe("basic functionality", () => {
+    it("should escape asterisk *", () => {
+      expect(escapeRegExp("test*file")).toBe("test\\*file");
+    });
+
+    it("should escape plus +", () => {
+      expect(escapeRegExp("1+1")).toBe("1\\+1");
+    });
+
+    it("should escape question mark ?", () => {
+      expect(escapeRegExp("file?.txt")).toBe("file\\?\\.txt");
+    });
+
+    it("should escape caret ^", () => {
+      expect(escapeRegExp("^start")).toBe("\\^start");
+    });
+
+    it("should escape dollar sign $", () => {
+      expect(escapeRegExp("end$")).toBe("end\\$");
+    });
+
+    it("should escape dot .", () => {
+      expect(escapeRegExp("example.com")).toBe("example\\.com");
+    });
+
+    it("should escape pipe |", () => {
+      expect(escapeRegExp("a|b")).toBe("a\\|b");
+    });
+
+    it("should escape parentheses ()", () => {
+      expect(escapeRegExp("(group)")).toBe("\\(group\\)");
+    });
+  });
+
+  describe("complex patterns", () => {
+    it("should escape consecutive special characters", () => {
+      expect(escapeRegExp("a*b+c?d^e$f.g|h(i)")).toBe(
+        "a\\*b\\+c\\?d\\^e\\$f\\.g\\|h\\(i\\)"
+      );
+    });
+
+    it("should escape square brackets []", () => {
+      expect(escapeRegExp("[a-z]")).toBe("\\[a-z\\]");
+    });
+
+    it("should escape curly braces {}", () => {
+      expect(escapeRegExp("{2,5}")).toBe("\\{2,5\\}");
+    });
+
+    it("should escape backslash \\", () => {
+      expect(escapeRegExp("a\\b")).toBe("a\\\\b");
+    });
+
+    it("should escape regex character class", () => {
+      expect(escapeRegExp("\\d+")).toBe("\\\\d\\+");
+    });
+
+    it("should handle mixed special and safe characters", () => {
+      expect(escapeRegExp("test-file_123")).toBe("test-file_123");
+    });
+  });
+
+  describe("edge cases", () => {
+    it("should handle empty string", () => {
+      expect(escapeRegExp("")).toBe("");
+    });
+
+    it("should handle string with only special characters", () => {
+      expect(escapeRegExp(".*+?^${}()|[]\\")).toBe(
+        "\\.\\*\\+\\?\\^\\$\\{\\}\\(\\)\\|\\[\\]\\\\"
+      );
+    });
+
+    it("should preserve normal characters", () => {
+      expect(escapeRegExp("abcdefghijklmnopqrstuvwxyz")).toBe(
+        "abcdefghijklmnopqrstuvwxyz"
+      );
+    });
+
+    it("should escape all meta characters in complete pattern", () => {
+      const input = "https://example.com/path?query=value&sort=asc";
+      const result = escapeRegExp(input);
+      // : / ? = & . should all be escaped except : and /
+      expect(result).toContain("example\\.com");
+    });
+  });
+
+  describe("practical use cases", () => {
+    it("should escape user input for regex construction", () => {
+      const userInput = "file*.txt";
+      const regex = new RegExp(`^${escapeRegExp(userInput)}$`);
+      expect(regex.test("file*.txt")).toBe(true);
+      expect(regex.test("fileXtxt")).toBe(false);
+    });
+
+    it("should handle file extension pattern", () => {
+      const ext = ".txt";
+      const result = escapeRegExp(ext);
+      expect(result).toBe("\\.txt");
+    });
+
+    it("should handle URL pattern matching", () => {
+      const url = "https://example.com";
+      const result = escapeRegExp(url);
+      expect(result).toContain("example\\.com");
+      expect(result).toContain("https:");
+    });
+  });
+});
