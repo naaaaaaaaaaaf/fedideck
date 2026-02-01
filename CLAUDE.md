@@ -22,7 +22,30 @@ npm run test:ui       # Run tests with Vitest UI
 
 # Linting
 npm run lint          # ESLint check
+
+# Formatting
+npm run format        # Format code with Prettier
+npm run format:check  # Check code formatting with Prettier
+
+# Git Hooks
+npm run prepare       # Setup Husky git hooks (runs automatically on install)
 ```
+
+### Auto-Formatting
+
+This project uses Prettier with Husky and lint-staged for automatic code formatting:
+- Pre-commit hook automatically formats staged TypeScript/TSX/JS/JSX files
+- Run `npm run format` manually to format all files
+- Run `npm run format:check` to verify formatting without making changes
+
+#### Code Style Standards
+
+Per `.prettierrc`:
+- **Indentation**: 4 spaces
+- **Quotes**: Single quotes
+- **Semicolons**: Required
+- **Trailing commas**: ES5 compatible
+- **Line width**: 100 characters
 
 ## Architecture
 
@@ -151,4 +174,6 @@ Minimum requirements:
 
 * `npm run build` passes
 * `npm run test` passes
+* `npm run format:check` passes
+* `npm run lint` passes
 * No type errors
