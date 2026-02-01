@@ -10,7 +10,10 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "format": "npx prettier --write .",
+    "format:check": "npx prettier --check .",
+    "prepare": "husky"
   },
   "dependencies": {
     "@twemoji/parser": "^17.0.1",
@@ -19,6 +22,11 @@
     "react-dom": "^19.2.0",
     "react-icons": "^5.5.0",
     "zustand": "^5.0.10"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -34,8 +42,11 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "husky": "^9.1.7",
     "jsdom": "^27.4.0",
+    "lint-staged": "^16.2.7",
     "msw": "^2.12.7",
+    "prettier": "^3.8.1",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
