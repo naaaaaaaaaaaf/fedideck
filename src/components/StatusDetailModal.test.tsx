@@ -608,39 +608,43 @@ describe('StatusDetailModal', () => {
             vi.clearAllMocks();
         });
 
-        it('should not show favourite button as active when status is not favourited', () => {
+        it('should not show favourite button as active when status is not favourited', async () => {
             const status = createMockStatus({ favourited: false });
             const accountSession = createMockAccountSession();
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             // Find all buttons and locate favourite button by checking for star icon
             const buttons = screen.getAllByRole('button');
             const favouriteButton = buttons.find(btn => btn.querySelector('svg'));
-            
+
             // The button should not have the filled star or active color class
             expect(favouriteButton?.className).not.toMatch(/text-amber-400/);
         });
 
-        it('should show favourite button as active when status is favourited', () => {
+        it('should show favourite button as active when status is favourited', async () => {
             const status = createMockStatus({ favourited: true, favouritesCount: 10 });
             const accountSession = createMockAccountSession();
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             // Favourite count should be visible
             expect(screen.getByText('10')).toBeInTheDocument();
