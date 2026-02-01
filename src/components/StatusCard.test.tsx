@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { StatusCard, formatDate } from './StatusCard';
+import { StatusCard } from './StatusCard';
+import { formatDate } from '../utils/dateFormat';
 import type { mastodon } from 'masto';
 
 // Minimal mock status for testing
@@ -201,7 +202,8 @@ describe('StatusCard', () => {
 
             render(<StatusCard status={reblogStatus} />);
 
-            expect(screen.getByText(/Reblogger がブースト/)).toBeInTheDocument();
+            // Reblogger name is rendered via DisplayName component
+            expect(screen.getByText(/がブースト/)).toBeInTheDocument();
             expect(screen.getByText('Original Author')).toBeInTheDocument();
         });
     });
@@ -225,6 +227,581 @@ describe('StatusCard', () => {
         it('should return days for dates within a week', () => {
             const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
             expect(formatDate(threeDaysAgo)).toBe('3日');
+        });
+    });
+
+    describe('card click', () => {
+        it('should call onStatusClick when card content is clicked', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                content: '<p>Clickable content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            // Click on the content area
+            const content = screen.getByText('Clickable content');
+            await user.click(content);
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
+                id: '12345',
+            }));
+        });
+
+        it('should NOT call onStatusClick when clicking a link', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                content: '<p>Text with <a href="https://example.com">link</a></p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const link = screen.getByRole('link', { name: 'link' });
+            await user.click(link);
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should NOT call onStatusClick when clicking a button', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const onReply = vi.fn();
+            const status = createMockStatus();
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} onReply={onReply} />);
+
+            const replyButton = screen.getAllByRole('button')[0];
+            await user.click(replyButton);
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should call onStatusClick with original status when clicking reblog card', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const originalStatus = createMockStatus({
+                id: 'original-123',
+                content: '<p>Original content</p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Original Author',
+                },
+            });
+
+            const reblogStatus = createMockStatus({
+                id: 'reblog-456',
+                reblog: originalStatus,
+            });
+
+            render(<StatusCard status={reblogStatus} onStatusClick={onStatusClick} />);
+
+            const content = screen.getByText('Original content');
+            await user.click(content);
+
+            // Should pass original status, not the reblog wrapper
+            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
+                id: 'original-123',
+            }));
+        });
+
+        it('should call onStatusClick when pressing Enter on focusable card', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                content: '<p>Keyboard navigable content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const article = screen.getByRole('article');
+            article.focus();
+            await user.keyboard('{Enter}');
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
+                id: '12345',
+            }));
+        });
+
+        it('should call onStatusClick when pressing Space on focusable card', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                content: '<p>Keyboard navigable content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const article = screen.getByRole('article');
+            article.focus();
+            await user.keyboard(' ');
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
+                id: '12345',
+            }));
+        });
+
+        it('should not have keyboard handler when onStatusClick is not provided', () => {
+            const status = createMockStatus({
+                content: '<p>Non-clickable content</p>',
+            });
+
+            render(<StatusCard status={status} />);
+
+            const article = screen.getByRole('article');
+            
+            // When onStatusClick is not provided, the card should not be keyboard-interactive
+            // Check that tabIndex is not set (making it non-focusable via keyboard)
+            expect(article).not.toHaveAttribute('tabindex');
+            
+            // Alternatively, verify that attempting keyboard interaction does nothing
+            // (no focus is actually set since tabIndex is undefined)
+            article.focus();
+            expect(document.activeElement).not.toBe(article);
+        });
+    });
+
+    describe('reply indicator', () => {
+        it('should show reply indicator when status is a reply', () => {
+            const status = createMockStatus({
+                inReplyToId: 'parent-123',
+                inReplyToAccountId: '999',
+                mentions: [
+                    {
+                        id: '999',
+                        username: 'parentuser',
+                        acct: 'parentuser@other.social',
+                        url: 'https://other.social/@parentuser',
+                    } as mastodon.v1.StatusMention,
+                ],
+            });
+
+            render(<StatusCard status={status} onStatusClick={vi.fn()} />);
+
+            expect(screen.getByText('@parentuser@other.social への返信')).toBeInTheDocument();
+        });
+
+        it('should show generic reply text when mention is not found', () => {
+            const status = createMockStatus({
+                inReplyToId: 'parent-123',
+                inReplyToAccountId: '999',
+                mentions: [], // No matching mention
+            });
+
+            render(<StatusCard status={status} onStatusClick={vi.fn()} />);
+
+            expect(screen.getByText('返信')).toBeInTheDocument();
+        });
+
+        it('should not show reply indicator when not a reply', () => {
+            const status = createMockStatus({
+                inReplyToId: null,
+            });
+
+            render(<StatusCard status={status} onStatusClick={vi.fn()} />);
+
+            expect(screen.queryByText(/への返信/)).not.toBeInTheDocument();
+            expect(screen.queryByText(/^返信$/)).not.toBeInTheDocument();
+        });
+
+        it('should call onStatusClick when reply indicator is clicked', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                inReplyToId: 'parent-123',
+                inReplyToAccountId: '999',
+                mentions: [
+                    {
+                        id: '999',
+                        username: 'parentuser',
+                        acct: 'parentuser',
+                        url: 'https://mastodon.social/@parentuser',
+                    } as mastodon.v1.StatusMention,
+                ],
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const replyIndicator = screen.getByText('@parentuser への返信');
+            await user.click(replyIndicator);
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
+                id: '12345',
+            }));
+        });
+
+        it('should call onStatusClick when pressing Enter on reply indicator', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                inReplyToId: 'parent-123',
+                inReplyToAccountId: '999',
+                mentions: [],
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            // Use click followed by keyboard to ensure element is focused
+            const replyIndicator = screen.getByRole('button', { name: 'スレッドを表示' });
+            await user.click(replyIndicator);
+
+            // Reset mock and test keyboard navigation
+            onStatusClick.mockClear();
+            await user.keyboard('{Enter}');
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('image click', () => {
+        it('should call onImageClick when an image is clicked', async () => {
+            const user = userEvent.setup();
+            const onImageClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'First image',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onImageClick={onImageClick} />);
+
+            const img = screen.getByAltText('First image');
+            await user.click(img);
+
+            expect(onImageClick).toHaveBeenCalledTimes(1);
+            expect(onImageClick).toHaveBeenCalledWith(
+                [{ url: 'https://example.com/image1.png', previewUrl: 'https://example.com/preview1.png', description: 'First image' }],
+                0
+            );
+        });
+
+        it('should call onImageClick with correct index for multiple images', async () => {
+            const user = userEvent.setup();
+            const onImageClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        description: 'First image',
+                    } as mastodon.v1.MediaAttachment,
+                    {
+                        id: '2',
+                        type: 'image',
+                        url: 'https://example.com/image2.png',
+                        previewUrl: 'https://example.com/preview2.png',
+                        description: 'Second image',
+                    } as mastodon.v1.MediaAttachment,
+                    {
+                        id: '3',
+                        type: 'image',
+                        url: 'https://example.com/image3.png',
+                        previewUrl: 'https://example.com/preview3.png',
+                        description: 'Third image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onImageClick={onImageClick} />);
+
+            // Click the second image
+            const secondImg = screen.getByAltText('Second image');
+            await user.click(secondImg);
+
+            expect(onImageClick).toHaveBeenCalledWith(
+                expect.arrayContaining([
+                    expect.objectContaining({ url: 'https://example.com/image1.png' }),
+                    expect.objectContaining({ url: 'https://example.com/image2.png' }),
+                    expect.objectContaining({ url: 'https://example.com/image3.png' }),
+                ]),
+                1 // index of second image
+            );
+        });
+
+        it('should NOT call onImageClick for video attachments', async () => {
+            const user = userEvent.setup();
+            const onImageClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'video',
+                        url: 'https://example.com/video.mp4',
+                        previewUrl: 'https://example.com/video-poster.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Test video',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const { container } = render(<StatusCard status={status} onImageClick={onImageClick} />);
+
+            // Video should be in an anchor tag, not a button
+            const videoLink = container.querySelector('a[href="https://example.com/video.mp4"]');
+            expect(videoLink).toBeInTheDocument();
+
+            // Click on the video element
+            const video = container.querySelector('video');
+            expect(video).toBeInTheDocument();
+            await user.click(video!);
+            expect(onImageClick).not.toHaveBeenCalled();
+        });
+
+        it('should NOT call onImageClick for gifv attachments', async () => {
+            const user = userEvent.setup();
+            const onImageClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'gifv',
+                        url: 'https://example.com/animation.mp4',
+                        previewUrl: 'https://example.com/animation-poster.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Test animation',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const { container } = render(<StatusCard status={status} onImageClick={onImageClick} />);
+
+            // gifv should be in an anchor tag, not a button
+            const gifvLink = container.querySelector('a[href="https://example.com/animation.mp4"]');
+            expect(gifvLink).toBeInTheDocument();
+
+            // Click on the video element
+            const video = container.querySelector('video');
+            expect(video).toBeInTheDocument();
+            await user.click(video!);
+            expect(onImageClick).not.toHaveBeenCalled();
+        });
+
+        it('should NOT trigger card click when image is clicked', async () => {
+            const user = userEvent.setup();
+            const onImageClick = vi.fn();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        description: 'Test image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onImageClick={onImageClick} onStatusClick={onStatusClick} />);
+
+            const img = screen.getByAltText('Test image');
+            await user.click(img);
+
+            // onImageClick should be called
+            expect(onImageClick).toHaveBeenCalledTimes(1);
+            // onStatusClick should NOT be called (event propagation stopped)
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should handle mixed media types correctly (images only in viewer)', async () => {
+            const user = userEvent.setup();
+            const onImageClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        description: 'First image',
+                    } as mastodon.v1.MediaAttachment,
+                    {
+                        id: '2',
+                        type: 'video',
+                        url: 'https://example.com/video.mp4',
+                        previewUrl: 'https://example.com/video-poster.png',
+                        description: 'Video',
+                    } as mastodon.v1.MediaAttachment,
+                    {
+                        id: '3',
+                        type: 'image',
+                        url: 'https://example.com/image2.png',
+                        previewUrl: 'https://example.com/preview2.png',
+                        description: 'Second image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onImageClick={onImageClick} />);
+
+            // Click the second image (which appears after a video in the list)
+            const secondImg = screen.getByAltText('Second image');
+            await user.click(secondImg);
+
+            // The images array passed to onImageClick should only contain images
+            expect(onImageClick).toHaveBeenCalledWith(
+                [
+                    { url: 'https://example.com/image1.png', previewUrl: 'https://example.com/preview1.png', description: 'First image' },
+                    { url: 'https://example.com/image2.png', previewUrl: 'https://example.com/preview2.png', description: 'Second image' },
+                ],
+                1 // Second image is at index 1 in the images-only array
+            );
+        });
+    });
+
+    describe('custom emoji in display name', () => {
+        it('should render custom emoji in display name as images', () => {
+            const status = createMockStatus({
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'User :blobcat:',
+                    emojis: [
+                        {
+                            shortcode: 'blobcat',
+                            url: 'https://example.com/emoji/blobcat.png',
+                            staticUrl: 'https://example.com/emoji/blobcat.png',
+                            visibleInPicker: true,
+                        } as mastodon.v1.CustomEmoji,
+                    ],
+                },
+            });
+
+            render(<StatusCard status={status} />);
+
+            const emojiImg = screen.getByAltText(':blobcat:');
+            expect(emojiImg).toBeInTheDocument();
+            expect(emojiImg).toHaveAttribute('src', 'https://example.com/emoji/blobcat.png');
+            expect(emojiImg).toHaveClass('emoji');
+        });
+
+        it('should render plain text when emojis array is empty', () => {
+            const status = createMockStatus({
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Plain User :notfound:',
+                    emojis: [],
+                },
+            });
+
+            render(<StatusCard status={status} />);
+
+            expect(screen.getByText('Plain User :notfound:')).toBeInTheDocument();
+            // No emoji images should be rendered for shortcodes without matching emoji
+            const emojiImages = document.querySelectorAll('img.emoji');
+            expect(emojiImages.length).toBe(0);
+        });
+
+        it('should render custom emoji in reblogger display name', () => {
+            const originalStatus = createMockStatus({
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Original Author',
+                    username: 'original',
+                },
+            });
+
+            const reblogStatus = createMockStatus({
+                reblog: originalStatus,
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Reblogger :star:',
+                    username: 'reblogger',
+                    emojis: [
+                        {
+                            shortcode: 'star',
+                            url: 'https://example.com/emoji/star.png',
+                            staticUrl: 'https://example.com/emoji/star.png',
+                            visibleInPicker: true,
+                        } as mastodon.v1.CustomEmoji,
+                    ],
+                },
+            });
+
+            render(<StatusCard status={reblogStatus} />);
+
+            const emojiImg = screen.getByAltText(':star:');
+            expect(emojiImg).toBeInTheDocument();
+            expect(emojiImg).toHaveAttribute('src', 'https://example.com/emoji/star.png');
+        });
+    });
+
+    describe('custom emoji in status content', () => {
+        it('should render custom emoji in post content as images', () => {
+            const status = createMockStatus({
+                content: '<p>Hello :blobcat: world</p>',
+                emojis: [
+                    {
+                        shortcode: 'blobcat',
+                        url: 'https://example.com/emoji/blobcat.png',
+                        staticUrl: 'https://example.com/emoji/blobcat.png',
+                        visibleInPicker: true,
+                    } as mastodon.v1.CustomEmoji,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            const emojiImg = screen.getByAltText(':blobcat:');
+            expect(emojiImg).toBeInTheDocument();
+            expect(emojiImg).toHaveAttribute('src', 'https://example.com/emoji/blobcat.png');
+            expect(emojiImg).toHaveClass('emoji');
+        });
+
+        it('should render multiple custom emojis in content', () => {
+            const status = createMockStatus({
+                content: '<p>:cat: and :dog:</p>',
+                emojis: [
+                    {
+                        shortcode: 'cat',
+                        url: 'https://example.com/emoji/cat.png',
+                        staticUrl: 'https://example.com/emoji/cat.png',
+                        visibleInPicker: true,
+                    } as mastodon.v1.CustomEmoji,
+                    {
+                        shortcode: 'dog',
+                        url: 'https://example.com/emoji/dog.png',
+                        staticUrl: 'https://example.com/emoji/dog.png',
+                        visibleInPicker: true,
+                    } as mastodon.v1.CustomEmoji,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            expect(screen.getByAltText(':cat:')).toBeInTheDocument();
+            expect(screen.getByAltText(':dog:')).toBeInTheDocument();
+        });
+
+        it('should not convert shortcodes without matching emoji', () => {
+            const status = createMockStatus({
+                content: '<p>Hello :unknown: world</p>',
+                emojis: [],
+            });
+
+            render(<StatusCard status={status} />);
+
+            expect(screen.getByText(/Hello :unknown: world/)).toBeInTheDocument();
+            expect(screen.queryByAltText(':unknown:')).not.toBeInTheDocument();
         });
     });
 

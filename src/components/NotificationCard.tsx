@@ -14,26 +14,16 @@ import {
     LuBell,
     LuTriangleAlert
 } from 'react-icons/lu';
+import { formatDate } from '../utils/dateFormat';
+import { replaceEmojisWithImages } from '../utils/emoji';
+import { DisplayName } from './DisplayName';
 
 interface NotificationCardProps {
     notification: mastodon.v1.Notification;
+    onStatusClick?: (status: mastodon.v1.Status) => void;
 }
 
-export function NotificationCard({ notification }: NotificationCardProps) {
-    const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMins / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffMins < 1) return '今';
-        if (diffMins < 60) return `${diffMins}分`;
-        if (diffHours < 24) return `${diffHours}時間`;
-        if (diffDays < 7) return `${diffDays}日`;
-        return date.toLocaleDateString('ja-JP');
-    };
+export function NotificationCard({ notification, onStatusClick }: NotificationCardProps) {
 
     const getNotificationInfo = (): { icon: ReactNode; label: string; color: string } => {
         switch (notification.type) {
@@ -66,11 +56,52 @@ export function NotificationCard({ notification }: NotificationCardProps) {
     const account = notification.account;
     const status = notification.status;
 
+    // Check if status area should be clickable
+    const isStatusClickable = status && onStatusClick;
+
+    // Handle click on status area
+    const handleStatusClick = (e: React.MouseEvent) => {
+        if (!isStatusClickable) return;
+
+        const target = e.target as HTMLElement;
+        // Ignore clicks on interactive elements
+        if (
+            target.closest('a') ||
+            target.closest('button') ||
+            target.closest('details') ||
+            target.closest('summary')
+        ) {
+            return;
+        }
+        onStatusClick(status);
+    };
+
+    // Handle keyboard navigation for status area
+    const handleStatusKeyDown = (e: React.KeyboardEvent) => {
+        if (!isStatusClickable) return;
+
+        // Ignore keyboard events on interactive elements
+        const target = e.target as HTMLElement;
+        if (
+            target.closest('a') ||
+            target.closest('button') ||
+            target.closest('details') ||
+            target.closest('summary')
+        ) {
+            return;
+        }
+
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onStatusClick(status);
+        }
+    };
+
     return (
         <article className="p-4 border-b border-slate-700/50 card-hover animate-fade-in">
             {/* Notification header */}
             <div className="flex items-center gap-3 mb-2">
-                <span className={`text-lg ${info.color}`}>{info.icon}</span>
+                <span className={`text-lg ${info.color}`} aria-hidden="true">{info.icon}</span>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                     <a
                         href={account.url}
@@ -80,7 +111,7 @@ export function NotificationCard({ notification }: NotificationCardProps) {
                     >
                         <img
                             src={account.avatar}
-                            alt=""
+                            alt={account.displayName || account.username}
                             className="w-6 h-6 rounded"
                         />
                     </a>
@@ -91,7 +122,7 @@ export function NotificationCard({ notification }: NotificationCardProps) {
                             rel="noopener noreferrer"
                             className="font-semibold text-slate-100 hover:underline"
                         >
-                            {account.displayName || account.username}
+                            <DisplayName account={account} />
                         </a>
                         <span className="text-slate-400"> さんが{info.label}</span>
                     </span>
@@ -107,13 +138,14 @@ export function NotificationCard({ notification }: NotificationCardProps) {
                     <div className="flex items-start gap-3">
                         <img
                             src={account.avatar}
-                            alt=""
+                            alt={account.displayName || account.username}
                             className="w-12 h-12 rounded-lg"
                         />
                         <div className="min-w-0 flex-1">
-                            <div className="font-semibold text-slate-100 truncate">
-                                {account.displayName || account.username}
-                            </div>
+                            <DisplayName
+                                account={account}
+                                className="font-semibold text-slate-100 truncate block"
+                            />
                             <div className="text-sm text-slate-400 truncate">
                                 @{account.acct}
                             </div>
@@ -127,10 +159,16 @@ export function NotificationCard({ notification }: NotificationCardProps) {
                     </div>
                     {notification.type === 'follow_request' && (
                         <div className="flex gap-2 mt-3 ml-15">
-                            <button className="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm transition-colors">
+                            <button
+                                className="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm transition-colors"
+                                aria-label={`${account.displayName || account.username}のフォローリクエストを承認`}
+                            >
                                 承認
                             </button>
-                            <button className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">
+                            <button
+                                className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors"
+                                aria-label={`${account.displayName || account.username}のフォローリクエストを拒否`}
+                            >
                                 拒否
                             </button>
                         </div>
@@ -140,21 +178,28 @@ export function NotificationCard({ notification }: NotificationCardProps) {
 
             {/* Status-related notifications */}
             {status && (
-                <div className="ml-9 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                <div
+                    className={`ml-9 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30 ${isStatusClickable ? 'cursor-pointer hover:bg-slate-700/50 transition-colors' : ''}`}
+                    onClick={isStatusClickable ? handleStatusClick : undefined}
+                    onKeyDown={isStatusClickable ? handleStatusKeyDown : undefined}
+                    role={isStatusClickable ? 'button' : undefined}
+                    tabIndex={isStatusClickable ? 0 : undefined}
+                    aria-label={isStatusClickable ? '投稿の詳細を表示' : undefined}
+                >
                     {status.spoilerText ? (
                         <details>
                             <summary className="cursor-pointer text-amber-400 text-sm">
                                 <LuTriangleAlert className="inline mr-1" /> {status.spoilerText}
                             </summary>
                             <div
-                                className="mt-2 text-sm text-slate-300 break-words"
-                                dangerouslySetInnerHTML={{ __html: status.content }}
+                                className="mt-2 text-sm text-slate-300 wrap-break-word"
+                                dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(status.content, status.emojis) }}
                             />
                         </details>
                     ) : (
                         <div
-                            className="text-sm text-slate-300 break-words line-clamp-4"
-                            dangerouslySetInnerHTML={{ __html: status.content }}
+                            className="text-sm text-slate-300 wrap-break-word line-clamp-4"
+                            dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(status.content, status.emojis) }}
                         />
                     )}
 
@@ -165,7 +210,7 @@ export function NotificationCard({ notification }: NotificationCardProps) {
                                 <img
                                     key={media.id}
                                     src={media.previewUrl ?? media.url}
-                                    alt=""
+                                    alt={media.description || '添付メディア'}
                                     className="w-12 h-12 rounded object-cover"
                                 />
                             ))}

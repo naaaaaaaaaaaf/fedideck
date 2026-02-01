@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import type { mastodon } from 'masto';
 import './index.css';
 import { Sidebar } from './components/Sidebar';
@@ -6,7 +6,10 @@ import { ColumnContainer } from './deck/ColumnContainer';
 import { LoginModal } from './components/LoginModal';
 import { AddColumnModal } from './components/AddColumnModal';
 import { ComposeModal, type ReplyToStatus } from './components/ComposeModal';
+import { StatusDetailModal } from './components/StatusDetailModal';
+import { ImageViewer, type ImageViewerImage } from './components/ImageViewer';
 import { useAccountsStore } from './store/accounts';
+import type { AccountSession } from './api/mastoClient';
 import { useColumnsStore } from './store/columns';
 import { useStreamsStore, getStreamKey } from './store/streams';
 import { initStreamManager } from './streaming/streamManager';
@@ -17,17 +20,29 @@ function App() {
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
   const [replyToStatus, setReplyToStatus] = useState<ReplyToStatus | undefined>(undefined);
   const [replyAccountId, setReplyAccountId] = useState<string | undefined>(undefined);
+  const [isStatusDetailOpen, setIsStatusDetailOpen] = useState(false);
+  const [detailStatus, setDetailStatus] = useState<mastodon.v1.Status | null>(null);
+  const [detailAccountSession, setDetailAccountSession] = useState<AccountSession | undefined>();
+
+  // ImageViewer state
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [viewerImages, setViewerImages] = useState<ImageViewerImage[]>([]);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
+  const [imageViewerKey, setImageViewerKey] = useState(0);
 
   const loadFromStorage = useAccountsStore(state => state.loadFromStorage);
   const accounts = useAccountsStore(state => state.accounts);
   const columns = useColumnsStore(state => state.columns);
   const addColumn = useColumnsStore(state => state.addColumn);
-  const { prependStatus, removeStatus, updateStatus, prependNotification } = useStreamsStore();
+  const { prependStatus, removeStatus, updateStatus, updateStatusGlobal, prependNotification } = useStreamsStore();
+
+  // Ref to track if default columns have been added
+  const hasAddedDefaultColumns = useRef(false);
 
   // Load accounts from storage on mount
   useEffect(() => {
     loadFromStorage();
-  }, []);
+  }, [loadFromStorage]);
 
   // Initialize stream manager with real callbacks
   useEffect(() => {
@@ -62,21 +77,25 @@ function App() {
     });
   }, [prependStatus, removeStatus, updateStatus, prependNotification]);
 
-  // Add default columns for new accounts
+  // Mark as initialized if columns already exist (from storage or manual addition)
   useEffect(() => {
-    if (accounts.length > 0 && columns.length === 0) {
+    if (columns.length > 0) {
+      hasAddedDefaultColumns.current = true;
+    }
+  }, [columns.length]);
+
+  // Add default columns for new accounts (only if never initialized)
+  useEffect(() => {
+    if (!hasAddedDefaultColumns.current && accounts.length > 0 && columns.length === 0) {
+      hasAddedDefaultColumns.current = true;
       const firstAccount = accounts[0];
       addColumn({ accountId: firstAccount.id, stream: { type: 'home' } });
       addColumn({ accountId: firstAccount.id, stream: { type: 'notifications' } });
     }
-  }, [accounts.length]);
+  }, [accounts, columns.length, addColumn]);
 
-  // Open login modal if no accounts
-  useEffect(() => {
-    if (accounts.length === 0) {
-      setIsLoginModalOpen(true);
-    }
-  }, [accounts.length]);
+  // Derive login modal open state - show when no accounts exist or user explicitly opens it
+  const shouldShowLoginModal = isLoginModalOpen || accounts.length === 0;
 
   const handleReply = (status: mastodon.v1.Status, accountId: string) => {
     const account = status.account;
@@ -91,11 +110,41 @@ function App() {
     setIsComposeModalOpen(true);
   };
 
+  const handleStatusClick = (status: mastodon.v1.Status, accountId: string) => {
+    const accountSession = accounts.find(a => a.id === accountId);
+    setDetailStatus(status);
+    setDetailAccountSession(accountSession);
+    setIsStatusDetailOpen(true);
+  };
+
+  const handleStatusDetailReply = (status: mastodon.v1.Status) => {
+    if (detailAccountSession) {
+      handleReply(status, detailAccountSession.id);
+    }
+  };
+
+  const handleDetailModalClose = () => {
+    setIsStatusDetailOpen(false);
+    setDetailStatus(null);
+    setDetailAccountSession(undefined);
+  };
+
   const handleComposeClose = () => {
     setIsComposeModalOpen(false);
     setReplyToStatus(undefined);
     setReplyAccountId(undefined);
   };
+
+  const handleImageClick = useCallback((images: ImageViewerImage[], index: number) => {
+    setViewerImages(images);
+    setViewerInitialIndex(index);
+    setImageViewerKey(k => k + 1); // Force remount to reset index
+    setIsImageViewerOpen(true);
+  }, []);
+
+  const handleImageViewerClose = useCallback(() => {
+    setIsImageViewerOpen(false);
+  }, []);
 
   return (
     <div className="h-screen flex overflow-hidden">
@@ -108,14 +157,18 @@ function App() {
         <ColumnContainer
           onAddColumn={() => setIsAddColumnModalOpen(true)}
           onReply={handleReply}
+          onStatusClick={handleStatusClick}
+          onImageClick={handleImageClick}
         />
       </main>
 
       <LoginModal
-        isOpen={isLoginModalOpen}
+        isOpen={shouldShowLoginModal}
         onClose={() => setIsLoginModalOpen(false)}
+        canClose={accounts.length > 0}
       />
       <AddColumnModal
+        key={isAddColumnModalOpen ? 'open' : 'closed'}
         isOpen={isAddColumnModalOpen}
         onClose={() => setIsAddColumnModalOpen(false)}
       />
@@ -124,6 +177,22 @@ function App() {
         onClose={handleComposeClose}
         replyToStatus={replyToStatus}
         accountId={replyAccountId}
+      />
+      <StatusDetailModal
+        isOpen={isStatusDetailOpen}
+        onClose={handleDetailModalClose}
+        status={detailStatus}
+        accountSession={detailAccountSession}
+        onReply={handleStatusDetailReply}
+        onStatusUpdate={updateStatusGlobal}
+        onImageClick={handleImageClick}
+      />
+      <ImageViewer
+        key={imageViewerKey}
+        isOpen={isImageViewerOpen}
+        onClose={handleImageViewerClose}
+        images={viewerImages}
+        initialIndex={viewerInitialIndex}
       />
     </div>
   );

@@ -15,6 +15,7 @@ import {
     fetchHashtagTimeline
 } from '../api/mastoClient';
 import { subscribeToStream, unsubscribeFromStream } from '../streaming/streamManager';
+import type { ImageViewerImage } from '../components/ImageViewer';
 
 interface ColumnProps {
     id: string;
@@ -22,9 +23,11 @@ interface ColumnProps {
     stream: StreamConfig;
     onRemove?: () => void;
     onReply?: (status: mastodon.v1.Status, accountId: string) => void;
+    onStatusClick?: (status: mastodon.v1.Status, accountId: string) => void;
+    onImageClick?: (images: ImageViewerImage[], index: number) => void;
 }
 
-export function Column({ accountId, stream, onRemove, onReply }: ColumnProps) {
+export function Column({ accountId, stream, onRemove, onReply, onStatusClick, onImageClick }: ColumnProps) {
     const account = useAccountsStore(state => state.accounts.find(a => a.id === accountId));
     const streamKey = getStreamKey(accountId, stream.type, stream);
     const data = useStreamsStore(state => state.data[streamKey]);
@@ -35,7 +38,8 @@ export function Column({ accountId, stream, onRemove, onReply }: ColumnProps) {
         setNotifications,
         appendStatuses,
         appendNotifications,
-        setError
+        setError,
+        updateStatusGlobal
     } = useStreamsStore();
 
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -43,26 +47,7 @@ export function Column({ accountId, stream, onRemove, onReply }: ColumnProps) {
 
     const isNotificationColumn = stream.type === 'notifications';
 
-    // Initialize and load data
-    useEffect(() => {
-        if (!account) return;
-
-        initStream(streamKey);
-        loadInitialData();
-
-        // Subscribe to streaming
-        subscribeToStream(
-            accountId,
-            account.instanceUrl,
-            account.accessToken,
-            stream
-        );
-
-        return () => {
-            unsubscribeFromStream(accountId, stream);
-        };
-    }, [accountId, account?.instanceUrl, stream.type, stream.listId, stream.hashtag]);
-
+    // Define loadInitialData before useEffect that uses it
     const loadInitialData = useCallback(async () => {
         if (!account) return;
 
@@ -105,7 +90,7 @@ export function Column({ accountId, stream, onRemove, onReply }: ColumnProps) {
             console.error('Failed to load timeline:', error);
             setError(streamKey, (error as Error).message);
         }
-    }, [account, streamKey, stream, isNotificationColumn]);
+    }, [account, streamKey, stream, isNotificationColumn, setLoading, setNotifications, setStatuses, setError]);
 
     const loadMore = useCallback(async () => {
         if (!account || !data || data.isLoading || !data.hasMore) return;
@@ -154,7 +139,27 @@ export function Column({ accountId, stream, onRemove, onReply }: ColumnProps) {
         } catch (error) {
             console.error('Failed to load more:', error);
         }
-    }, [account, data, streamKey, stream, isNotificationColumn]);
+    }, [account, data, streamKey, stream, isNotificationColumn, setLoading, appendNotifications, appendStatuses]);
+
+    // Initialize and load data
+    useEffect(() => {
+        if (!account) return;
+
+        initStream(streamKey);
+        loadInitialData();
+
+        // Subscribe to streaming
+        subscribeToStream(
+            accountId,
+            account.instanceUrl,
+            account.accessToken,
+            stream
+        );
+
+        return () => {
+            unsubscribeFromStream(accountId, stream);
+        };
+    }, [accountId, account, stream, streamKey, initStream, loadInitialData]);
 
     // Infinite scroll observer
     useEffect(() => {
@@ -233,7 +238,11 @@ export function Column({ accountId, stream, onRemove, onReply }: ColumnProps) {
 
                 {/* Notifications */}
                 {isNotificationColumn && data?.notifications.map((notification) => (
-                    <NotificationCard key={notification.id} notification={notification} />
+                    <NotificationCard
+                        key={notification.id}
+                        notification={notification}
+                        onStatusClick={onStatusClick ? (s) => onStatusClick(s, accountId) : undefined}
+                    />
                 ))}
 
                 {/* Statuses */}
@@ -242,7 +251,10 @@ export function Column({ accountId, stream, onRemove, onReply }: ColumnProps) {
                         key={status.id}
                         status={status}
                         accountSession={account}
+                        onStatusUpdate={updateStatusGlobal}
                         onReply={onReply ? (s) => onReply(s, accountId) : undefined}
+                        onStatusClick={onStatusClick ? (s) => onStatusClick(s, accountId) : undefined}
+                        onImageClick={onImageClick}
                     />
                 ))}
 

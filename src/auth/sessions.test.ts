@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import type { mastodon } from 'masto';
 import {
     loadSessions,
     saveSession,
@@ -9,7 +10,7 @@ import {
     type Session
 } from '../auth/sessions';
 
-// Mock account data for testing
+// Mock account data for testing - cast to mastodon.v1.Account once
 const mockAccount = {
     id: '12345',
     username: 'testuser',
@@ -30,7 +31,7 @@ const mockAccount = {
     lastStatusAt: '2024-01-01',
     emojis: [],
     fields: [],
-} as const;
+} as unknown as mastodon.v1.Account;
 
 describe('sessions', () => {
     beforeEach(() => {
@@ -42,7 +43,7 @@ describe('sessions', () => {
             const session = createSession(
                 'https://mastodon.social',
                 'access_token_123',
-                mockAccount as any
+                mockAccount
             );
 
             expect(session.id).toBe('12345@mastodon.social');
@@ -59,7 +60,7 @@ describe('sessions', () => {
                 id: '12345@mastodon.social',
                 instanceUrl: 'https://mastodon.social',
                 accessToken: 'token123',
-                account: mockAccount as any,
+                account: mockAccount,
                 createdAt: Date.now(),
             };
 
@@ -76,7 +77,7 @@ describe('sessions', () => {
                 id: '12345@mastodon.social',
                 instanceUrl: 'https://mastodon.social',
                 accessToken: 'old_token',
-                account: mockAccount as any,
+                account: mockAccount,
                 createdAt: Date.now(),
             };
 
@@ -94,8 +95,8 @@ describe('sessions', () => {
         });
 
         it('should handle multiple sessions', () => {
-            const session1 = createSession('https://mastodon.social', 'token1', mockAccount as any);
-            const session2 = createSession('https://mstdn.jp', 'token2', { ...mockAccount, id: '67890' } as any);
+            const session1 = createSession('https://mastodon.social', 'token1', mockAccount);
+            const session2 = createSession('https://mstdn.jp', 'token2', { ...mockAccount, id: '67890' } as unknown as mastodon.v1.Account);
 
             saveSession(session1);
             saveSession(session2);
@@ -112,7 +113,7 @@ describe('sessions', () => {
         });
 
         it('should return the correct session by ID', () => {
-            const session = createSession('https://mastodon.social', 'token123', mockAccount as any);
+            const session = createSession('https://mastodon.social', 'token123', mockAccount);
             saveSession(session);
 
             const retrieved = getSession(session.id);
@@ -123,7 +124,7 @@ describe('sessions', () => {
 
     describe('removeSession', () => {
         it('should remove a session by ID', () => {
-            const session = createSession('https://mastodon.social', 'token123', mockAccount as any);
+            const session = createSession('https://mastodon.social', 'token123', mockAccount);
             saveSession(session);
 
             expect(loadSessions()).toHaveLength(1);
@@ -134,8 +135,8 @@ describe('sessions', () => {
         });
 
         it('should not affect other sessions when removing one', () => {
-            const session1 = createSession('https://mastodon.social', 'token1', mockAccount as any);
-            const session2 = createSession('https://mstdn.jp', 'token2', { ...mockAccount, id: '67890' } as any);
+            const session1 = createSession('https://mastodon.social', 'token1', mockAccount);
+            const session2 = createSession('https://mstdn.jp', 'token2', { ...mockAccount, id: '67890' } as unknown as mastodon.v1.Account);
 
             saveSession(session1);
             saveSession(session2);
@@ -150,8 +151,8 @@ describe('sessions', () => {
 
     describe('clearAllSessions', () => {
         it('should remove all sessions', () => {
-            const session1 = createSession('https://mastodon.social', 'token1', mockAccount as any);
-            const session2 = createSession('https://mstdn.jp', 'token2', { ...mockAccount, id: '67890' } as any);
+            const session1 = createSession('https://mastodon.social', 'token1', mockAccount);
+            const session2 = createSession('https://mstdn.jp', 'token2', { ...mockAccount, id: '67890' } as unknown as mastodon.v1.Account);
 
             saveSession(session1);
             saveSession(session2);

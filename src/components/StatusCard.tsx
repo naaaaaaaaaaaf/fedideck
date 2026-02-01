@@ -1,7 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { mastodon } from 'masto';
-import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert } from 'react-icons/lu';
+import { LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert, LuCornerUpLeft } from 'react-icons/lu';
 import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus } from '../api/mastoClient';
+import { formatDate } from '../utils/dateFormat';
+import { replaceEmojisWithImages } from '../utils/emoji';
+import type { ImageViewerImage } from './ImageViewer';
+import { DisplayName } from './DisplayName';
 
 interface StatusCardProps {
     status: mastodon.v1.Status;
@@ -9,27 +13,11 @@ interface StatusCardProps {
     accountSession?: AccountSession;  // Required for boost/favorite - uses column's account
     onStatusUpdate?: (updatedStatus: mastodon.v1.Status) => void;
     onReply?: (status: mastodon.v1.Status) => void;
+    onStatusClick?: (status: mastodon.v1.Status) => void;
+    onImageClick?: (images: ImageViewerImage[], index: number) => void;
 }
 
-/**
- * Format a date string to relative time in Japanese
- */
-function formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return '今';
-    if (diffMins < 60) return `${diffMins}分`;
-    if (diffHours < 24) return `${diffHours}時間`;
-    if (diffDays < 7) return `${diffDays}日`;
-    return date.toLocaleDateString('ja-JP');
-}
-
-export function StatusCard({ status, isReblog = false, accountSession, onStatusUpdate, onReply }: StatusCardProps) {
+export function StatusCard({ status, isReblog = false, accountSession, onStatusUpdate, onReply, onStatusClick, onImageClick }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
     const reblogger = status.reblog ? status.account : null;
@@ -90,6 +78,22 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
     const poll = displayStatus.poll;
+
+    // Convert image attachments to ImageViewerImage format (memoized)
+    // Use displayStatus.mediaAttachments as dependency for stable reference
+    // Filter out images without valid URLs to prevent broken image rendering
+    const imageViewerImages = useMemo(() => {
+        const attachments = displayStatus.mediaAttachments ?? [];
+        return attachments
+            .filter(media => media.type === 'image')
+            .slice(0, 4)
+            .map(media => ({
+                url: media.url ?? media.previewUrl ?? '',
+                previewUrl: media.previewUrl ?? undefined,
+                description: media.description ?? undefined,
+            }))
+            .filter(image => image.url !== '');
+    }, [displayStatus.mediaAttachments]);
 
     // Safely access account
     const account = displayStatus.account;
@@ -169,18 +173,99 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
     // Check if reblog is allowed (not for private/direct messages)
     const canReblog = displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
 
+    // Handle card click to open detail modal
+    const handleCardClick = (e: React.MouseEvent) => {
+        const target = e.target as HTMLElement;
+        // Ignore clicks on interactive elements
+        if (
+            target.closest('a') ||
+            target.closest('button') ||
+            target.closest('video') ||
+            target.closest('details')
+        ) {
+            return;
+        }
+        openStatusDetail();
+    };
+
+    // Handle keyboard navigation for card
+    const handleCardKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openStatusDetail();
+        }
+    };
+
+    // Open status detail modal
+    const openStatusDetail = () => {
+        // Always pass displayStatus (the actual content being shown) with local state
+        // This ensures consistent handling regardless of reblog status
+        const statusWithLocalState: mastodon.v1.Status = {
+            ...displayStatus,
+            favourited: localFavourited,
+            favouritesCount: localFavouritesCount,
+            reblogged: localReblogged,
+            reblogsCount: localReblogsCount,
+        };
+        onStatusClick?.(statusWithLocalState);
+    };
+
     return (
-        <article className={`p-4 border-b border-slate-700/50 card-hover ${isReblog ? 'animate-fade-in' : ''}`}>
+        <article
+            className={`p-4 border-b border-slate-700/50 card-hover ${onStatusClick ? 'cursor-pointer' : ''} ${isReblog ? 'animate-fade-in' : ''}`}
+            onClick={onStatusClick ? handleCardClick : undefined}
+            onKeyDown={onStatusClick ? handleCardKeyDown : undefined}
+            tabIndex={onStatusClick && !accountSession && !onReply ? 0 : undefined}
+            aria-label={onStatusClick ? `${account.displayName || account.username}の投稿を詳細表示` : undefined}
+        >
             {/* Reblog indicator */}
             {reblogger && (
                 <div className="flex items-center gap-2 text-sm text-slate-400 mb-2 ml-12">
-                    <LuRepeat2 className="text-green-400" />
+                    <LuRepeat2 className="text-green-400" aria-hidden="true" />
                     <img
                         src={reblogger.avatar}
                         alt=""
                         className="w-4 h-4 rounded"
                     />
-                    <span className="truncate">{reblogger.displayName || reblogger.username} がブースト</span>
+                    <span className="truncate"><DisplayName account={reblogger} /> がブースト</span>
+                </div>
+            )}
+
+            {/* Reply indicator */}
+            {displayStatus.inReplyToId && (
+                <div
+                    className={`flex items-center gap-2 text-sm text-slate-400 mb-2 ml-12 ${onStatusClick ? 'cursor-pointer hover:text-slate-300' : ''}`}
+                    {...(onStatusClick ? {
+                        onClick: (e) => {
+                            e.stopPropagation();
+                            openStatusDetail();
+                        },
+                        role: 'button',
+                        tabIndex: 0,
+                        onKeyDown: (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                openStatusDetail();
+                            }
+                        },
+                        'aria-label': 'スレッドを表示',
+                    } : {})}
+                >
+                    <LuCornerUpLeft className="text-blue-400" aria-hidden="true" />
+                    <span className="truncate">
+                        {(() => {
+                            // Find reply target from mentions using inReplyToAccountId
+                            const replyToAccountId = displayStatus.inReplyToAccountId;
+                            const replyToMention = displayStatus.mentions?.find(
+                                (m) => m.id === replyToAccountId
+                            );
+                            if (replyToMention) {
+                                return `@${replyToMention.acct} への返信`;
+                            }
+                            return '返信';
+                        })()}
+                    </span>
                 </div>
             )}
 
@@ -210,9 +295,10 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                 rel="noopener noreferrer"
                                 className="hover:underline"
                             >
-                                <span className="font-semibold text-slate-100 block truncate">
-                                    {account.displayName || account.username}
-                                </span>
+                                <DisplayName
+                                    account={account}
+                                    className="font-semibold text-slate-100 block truncate"
+                                />
                                 <span className="text-sm text-slate-400 block truncate">
                                     @{account.acct}
                                 </span>
@@ -235,8 +321,8 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                 <LuTriangleAlert className="inline mr-1" /> {displayStatus.spoilerText}
                             </summary>
                             <div
-                                className="mt-2 text-slate-200 break-words status-content"
-                                dangerouslySetInnerHTML={{ __html: displayStatus.content }}
+                                className="mt-2 text-slate-200 wrap-break-word status-content"
+                                dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(displayStatus.content, displayStatus.emojis) }}
                             />
                         </details>
                     )}
@@ -244,8 +330,8 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                     {/* Main content */}
                     {!displayStatus.spoilerText && (
                         <div
-                            className="mt-2 text-slate-200 break-words status-content"
-                            dangerouslySetInnerHTML={{ __html: displayStatus.content }}
+                            className="mt-2 text-slate-200 wrap-break-word status-content"
+                            dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(displayStatus.content, displayStatus.emojis) }}
                         />
                     )}
 
@@ -254,41 +340,73 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                         <div className={`mt-3 grid gap-1 ${mediaAttachments.length === 1 ? 'grid-cols-1' :
                             mediaAttachments.length >= 2 ? 'grid-cols-2' : 'grid-cols-2'
                             }`}>
-                            {mediaAttachments.slice(0, 4).map((media) => (
-                                <a
-                                    key={media.id}
-                                    href={media.url ?? '#'}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block overflow-hidden rounded-lg"
-                                >
-                                    {media.type === 'image' && (
-                                        <img
-                                            src={media.previewUrl ?? media.url ?? ''}
-                                            alt={media.description ?? ''}
-                                            className="w-full h-36 object-cover hover:opacity-90 transition-opacity"
-                                        />
-                                    )}
-                                    {media.type === 'video' && (
-                                        <video
-                                            src={media.url ?? undefined}
-                                            poster={media.previewUrl ?? undefined}
-                                            className="w-full h-36 object-cover"
-                                            controls
-                                        />
-                                    )}
-                                    {media.type === 'gifv' && (
-                                        <video
-                                            src={media.url ?? undefined}
-                                            className="w-full h-36 object-cover"
-                                            autoPlay
-                                            loop
-                                            muted
-                                            playsInline
-                                        />
-                                    )}
-                                </a>
-                            ))}
+                            {mediaAttachments.slice(0, 4).map((media) => {
+                                // For images, use button to open ImageViewer
+                                if (media.type === 'image') {
+                                    // Skip images without valid URLs (matches imageViewerImages filtering)
+                                    const imageUrl = media.url ?? media.previewUrl ?? '';
+                                    if (imageUrl === '') {
+                                        return null;
+                                    }
+
+                                    // Find the index in the filtered imageViewerImages array
+                                    const imageIndex = imageViewerImages.findIndex(img => img.url === imageUrl);
+                                    if (imageIndex === -1) {
+                                        return null; // Guard against mismatch
+                                    }
+
+                                    const accessibleLabel = media.description
+                                        || `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
+
+                                    return (
+                                        <button
+                                            key={media.id}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onImageClick?.(imageViewerImages, imageIndex);
+                                            }}
+                                            className="block overflow-hidden rounded-lg text-left"
+                                            aria-label={accessibleLabel}
+                                        >
+                                            <img
+                                                src={media.previewUrl ?? media.url ?? ''}
+                                                alt={media.description ?? ''}
+                                                className="w-full h-36 object-cover hover:opacity-90 transition-opacity"
+                                            />
+                                        </button>
+                                    );
+                                }
+
+                                // For video/gifv, keep existing behavior with <a> tag
+                                return (
+                                    <a
+                                        key={media.id}
+                                        href={media.url ?? '#'}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block overflow-hidden rounded-lg"
+                                    >
+                                        {media.type === 'video' && (
+                                            <video
+                                                src={media.url ?? undefined}
+                                                poster={media.previewUrl ?? undefined}
+                                                className="w-full h-36 object-cover"
+                                                controls
+                                            />
+                                        )}
+                                        {media.type === 'gifv' && (
+                                            <video
+                                                src={media.url ?? undefined}
+                                                className="w-full h-36 object-cover"
+                                                autoPlay
+                                                loop
+                                                muted
+                                                playsInline
+                                            />
+                                        )}
+                                    </a>
+                                );
+                            })}
                         </div>
                     )}
 
@@ -327,13 +445,15 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                         <button
                             onClick={() => onReply?.(displayStatus)}
                             className="flex items-center gap-1.5 hover:text-blue-400 transition-colors"
+                            aria-label="返信"
                         >
-                            <LuMessageCircle />
+                            <LuMessageCircle aria-hidden="true" />
                             <span className="text-sm">{displayStatus.repliesCount || ''}</span>
                         </button>
                         <button
                             onClick={handleReblog}
                             disabled={!accountSession || isLoading.reblog || !canReblog}
+                            tabIndex={!canReblog ? -1 : undefined}
                             className={`flex items-center gap-1.5 transition-colors ${!canReblog
                                 ? 'opacity-50 cursor-not-allowed'
                                 : localReblogged
@@ -341,8 +461,10 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                     : 'hover:text-green-400'
                                 } ${isLoading.reblog ? 'opacity-50' : ''}`}
                             title={!canReblog ? 'この投稿はブーストできません' : undefined}
+                            aria-label={localReblogged ? 'ブースト解除' : 'ブースト'}
+                            aria-disabled={!canReblog}
                         >
-                            <LuRepeat2 />
+                            <LuRepeat2 aria-hidden="true" />
                             <span className="text-sm">{localReblogsCount || ''}</span>
                         </button>
                         <button
@@ -352,12 +474,13 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
                                 ? 'text-amber-400 hover:text-amber-300'
                                 : 'hover:text-amber-400'
                                 } ${isLoading.favourite ? 'opacity-50' : ''}`}
+                            aria-label={localFavourited ? 'お気に入り解除' : 'お気に入り'}
                         >
-                            <LuStar className={localFavourited ? 'fill-current' : ''} />
+                            <LuStar className={localFavourited ? 'fill-current' : ''} aria-hidden="true" />
                             <span className="text-sm">{localFavouritesCount || ''}</span>
                         </button>
-                        <button className="hover:text-indigo-400 transition-colors">
-                            <LuLink />
+                        <button className="hover:text-indigo-400 transition-colors" aria-label="リンクをコピー">
+                            <LuLink aria-hidden="true" />
                         </button>
                     </div>
                 </div>
@@ -365,7 +488,4 @@ export function StatusCard({ status, isReblog = false, accountSession, onStatusU
         </article>
     );
 }
-
-// Export for testing
-export { formatDate };
 

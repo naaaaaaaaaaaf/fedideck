@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Prettier cache
+.prettier-cache
+
+# claude.md
+**/CLAUDE.md
+.claude/

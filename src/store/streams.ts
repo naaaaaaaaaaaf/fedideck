@@ -22,6 +22,7 @@ interface StreamsState {
     appendStatuses: (key: string, statuses: mastodon.v1.Status[]) => void;
     removeStatus: (key: string, statusId: string) => void;
     updateStatus: (key: string, status: mastodon.v1.Status) => void;
+    updateStatusGlobal: (status: mastodon.v1.Status) => void;
     setNotifications: (key: string, notifications: mastodon.v1.Notification[], hasMore?: boolean) => void;
     prependNotification: (key: string, notification: mastodon.v1.Notification) => void;
     appendNotifications: (key: string, notifications: mastodon.v1.Notification[]) => void;
@@ -147,6 +148,43 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                     },
                 },
             };
+        });
+    },
+
+    // Update status across all streams (for when status is modified from detail modal or card)
+    updateStatusGlobal: (status: mastodon.v1.Status) => {
+        set((state) => {
+            const newData = { ...state.data };
+            let hasAnyChanges = false;
+
+            for (const key of Object.keys(newData)) {
+                const current = newData[key];
+                let streamHasChanges = false;
+
+                const updatedStatuses = current.statuses.map(s => {
+                    // Direct match
+                    if (s.id === status.id) {
+                        streamHasChanges = true;
+                        return status;
+                    }
+                    // Check if this is a reblog containing the status
+                    if (s.reblog && s.reblog.id === status.id) {
+                        streamHasChanges = true;
+                        return { ...s, reblog: status };
+                    }
+                    return s;
+                });
+
+                if (streamHasChanges) {
+                    newData[key] = {
+                        ...current,
+                        statuses: updatedStatuses,
+                    };
+                    hasAnyChanges = true;
+                }
+            }
+
+            return hasAnyChanges ? { data: newData } : state;
         });
     },
 

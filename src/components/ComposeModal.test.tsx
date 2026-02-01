@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { mastodon } from 'masto';
 import { ComposeModal } from './ComposeModal';
 import * as mastoClient from '../api/mastoClient';
 import { useAccountsStore } from '../store/accounts';
@@ -73,7 +74,7 @@ describe('ComposeModal', () => {
 
     it('disables submit button when content is empty', () => {
         render(<ComposeModal isOpen={true} onClose={() => { }} />);
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         expect(submitButton).toBeDisabled();
     });
 
@@ -84,7 +85,7 @@ describe('ComposeModal', () => {
         const textarea = screen.getByPlaceholderText('今なにしてる？');
         await user.type(textarea, 'Test post');
 
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         expect(submitButton).not.toBeDisabled();
     });
 
@@ -140,14 +141,14 @@ describe('ComposeModal', () => {
         const user = userEvent.setup();
         const onClose = vi.fn();
         const mockCreateStatus = vi.mocked(mastoClient.createStatus);
-        mockCreateStatus.mockResolvedValueOnce({} as any);
+        mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
 
         render(<ComposeModal isOpen={true} onClose={onClose} />);
 
         const textarea = screen.getByPlaceholderText('今なにしてる？');
         await user.type(textarea, 'Test post content');
 
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         await user.click(submitButton);
 
         await waitFor(() => {
@@ -175,7 +176,7 @@ describe('ComposeModal', () => {
         const textarea = screen.getByPlaceholderText('今なにしてる？');
         await user.type(textarea, 'Test post content');
 
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         await user.click(submitButton);
 
         await waitFor(() => {
@@ -187,7 +188,7 @@ describe('ComposeModal', () => {
         const user = userEvent.setup();
         const onClose = vi.fn();
         const mockCreateStatus = vi.mocked(mastoClient.createStatus);
-        mockCreateStatus.mockResolvedValueOnce({} as any);
+        mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
 
         render(<ComposeModal isOpen={true} onClose={onClose} />);
 
@@ -204,7 +205,7 @@ describe('ComposeModal', () => {
         await user.type(textarea, 'Hidden content');
 
         // Submit
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         await user.click(submitButton);
 
         await waitFor(() => {
@@ -223,7 +224,7 @@ describe('ComposeModal', () => {
         const user = userEvent.setup();
         const onClose = vi.fn();
         const mockCreateStatus = vi.mocked(mastoClient.createStatus);
-        mockCreateStatus.mockResolvedValueOnce({} as any);
+        mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
 
         render(<ComposeModal isOpen={true} onClose={onClose} />);
 
@@ -236,7 +237,7 @@ describe('ComposeModal', () => {
         await user.type(textarea, 'Private post');
 
         // Submit
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         await user.click(submitButton);
 
         await waitFor(() => {
@@ -328,7 +329,7 @@ describe('ComposeModal', () => {
         const user = userEvent.setup();
         const onClose = vi.fn();
         const mockCreateStatus = vi.mocked(mastoClient.createStatus);
-        mockCreateStatus.mockResolvedValueOnce({} as any);
+        mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
 
         render(<ComposeModal isOpen={true} onClose={onClose} />);
 
@@ -347,7 +348,7 @@ describe('ComposeModal', () => {
         await user.type(textarea, 'Poll question');
 
         // Submit
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         await user.click(submitButton);
 
         await waitFor(() => {
@@ -426,7 +427,7 @@ describe('ComposeModal', () => {
         const user = userEvent.setup();
         const onClose = vi.fn();
         const mockCreateStatus = vi.mocked(mastoClient.createStatus);
-        mockCreateStatus.mockResolvedValueOnce({} as any);
+        mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
 
         render(
             <ComposeModal isOpen={true} onClose={onClose} replyToStatus={mockReplyToStatus} />
@@ -435,7 +436,7 @@ describe('ComposeModal', () => {
         const textarea = screen.getByPlaceholderText('今なにしてる？');
         await user.type(textarea, 'My reply text');
 
-        const submitButton = screen.getByRole('button', { name: '投稿' });
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         await user.click(submitButton);
 
         await waitFor(() => {

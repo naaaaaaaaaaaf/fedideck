@@ -84,6 +84,93 @@ describe('useStreamsStore', () => {
 
         expect(useStreamsStore.getState().data['account:home']).toBeUndefined();
     });
+
+    describe('updateStatusGlobal', () => {
+        it('updates status across multiple streams', () => {
+            const originalStatus = { id: '1', favourited: false } as mastodon.v1.Status;
+            const updatedStatus = { id: '1', favourited: true } as mastodon.v1.Status;
+
+            useStreamsStore.getState().setStatuses('account:home', [originalStatus, makeStatus('2')]);
+            useStreamsStore.getState().setStatuses('account:public', [makeStatus('3'), originalStatus]);
+
+            useStreamsStore.getState().updateStatusGlobal(updatedStatus);
+
+            const homeStream = useStreamsStore.getState().data['account:home'];
+            const publicStream = useStreamsStore.getState().data['account:public'];
+
+            expect(homeStream.statuses[0].favourited).toBe(true);
+            expect(publicStream.statuses[1].favourited).toBe(true);
+        });
+
+        it('does not modify streams without matching status', () => {
+            const status1 = makeStatus('1');
+            const status2 = makeStatus('2');
+            const updatedStatus = { id: '3', favourited: true } as mastodon.v1.Status;
+
+            useStreamsStore.getState().setStatuses('account:home', [status1]);
+            useStreamsStore.getState().setStatuses('account:public', [status2]);
+
+            const originalState = useStreamsStore.getState();
+            useStreamsStore.getState().updateStatusGlobal(updatedStatus);
+            const newState = useStreamsStore.getState();
+
+            // State reference should be unchanged when no matches
+            expect(newState.data).toBe(originalState.data);
+        });
+
+        it('updates status inside reblog', () => {
+            const originalInnerStatus = { id: 'inner-1', favourited: false } as mastodon.v1.Status;
+            const reblogStatus = {
+                id: 'reblog-1',
+                reblog: originalInnerStatus,
+            } as mastodon.v1.Status;
+            const updatedInnerStatus = { id: 'inner-1', favourited: true } as mastodon.v1.Status;
+
+            useStreamsStore.getState().setStatuses('account:home', [reblogStatus]);
+
+            useStreamsStore.getState().updateStatusGlobal(updatedInnerStatus);
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            expect(stream.statuses[0].id).toBe('reblog-1');
+            expect(stream.statuses[0].reblog?.favourited).toBe(true);
+        });
+
+        it('updates both direct status and reblog containing same status', () => {
+            const originalStatus = { id: '1', favourited: false } as mastodon.v1.Status;
+            const reblogStatus = {
+                id: 'reblog-1',
+                reblog: { ...originalStatus },
+            } as mastodon.v1.Status;
+            const updatedStatus = { id: '1', favourited: true } as mastodon.v1.Status;
+
+            useStreamsStore.getState().setStatuses('account:home', [originalStatus]);
+            useStreamsStore.getState().setStatuses('account:public', [reblogStatus]);
+
+            useStreamsStore.getState().updateStatusGlobal(updatedStatus);
+
+            const homeStream = useStreamsStore.getState().data['account:home'];
+            const publicStream = useStreamsStore.getState().data['account:public'];
+
+            expect(homeStream.statuses[0].favourited).toBe(true);
+            expect(publicStream.statuses[0].reblog?.favourited).toBe(true);
+        });
+
+        it('only updates streams that contain the status', () => {
+            const status1 = { id: '1', favourited: false } as mastodon.v1.Status;
+            const status2 = makeStatus('2');
+            const updatedStatus = { id: '1', favourited: true } as mastodon.v1.Status;
+
+            useStreamsStore.getState().setStatuses('account:home', [status1]);
+            useStreamsStore.getState().setStatuses('account:public', [status2]);
+
+            const publicStreamBefore = useStreamsStore.getState().data['account:public'];
+            useStreamsStore.getState().updateStatusGlobal(updatedStatus);
+            const publicStreamAfter = useStreamsStore.getState().data['account:public'];
+
+            // Public stream should be unchanged (same reference)
+            expect(publicStreamAfter).toBe(publicStreamBefore);
+        });
+    });
 });
 
 describe('getStreamKey', () => {
