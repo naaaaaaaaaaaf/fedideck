@@ -1622,20 +1622,24 @@ describe('StatusDetailModal', () => {
 
             vi.mocked(mastoClient.getStatusContext).mockReturnValue(contextPromise);
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             // Should show loading indicator
             expect(screen.getByText('スレッドを読み込み中...')).toBeInTheDocument();
 
             // Resolve the context
-            resolveContext!({ ancestors: [], descendants: [] });
+            await act(async () => {
+                resolveContext!({ ancestors: [], descendants: [] });
+            });
         });
 
         it('should display ancestors when present', async () => {
