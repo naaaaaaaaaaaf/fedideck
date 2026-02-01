@@ -126,7 +126,7 @@ export function useModalAccessibility({
     const previouslyFocusedRef = useRef<HTMLElement | null>(null);
     const focusableElementsCacheRef = useRef<HTMLElement[]>([]);
     const cacheInvalidatedRef = useRef<boolean>(true);
-    const isPointerDownRef = useRef(false);
+    const isPointerDownRef = useRef<boolean>(false);
 
     // Cache focusable elements with MutationObserver to detect DOM changes
     useEffect(() => {
