@@ -1,5 +1,5 @@
-import { parse, toCodePoints, type EmojiEntity, type ParsingOptions } from "@twemoji/parser";
-import { escapeHtml } from "./html";
+import { parse, toCodePoints, type EmojiEntity, type ParsingOptions } from '@twemoji/parser';
+import { escapeHtml } from './html';
 
 // Re-export EmojiEntity for use in other modules
 export type { EmojiEntity };
@@ -13,11 +13,11 @@ export type { EmojiEntity };
  * @returns CDN URL for the Twemoji image
  */
 export function buildTwemojiUrl(
-  codepoints: string[],
-  format: "svg" | "png" = "svg"
+    codepoints: string[],
+    format: 'svg' | 'png' = 'svg'
 ): string {
-  const fileName = codepoints.join("-");
-  return `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/${format}/${fileName}.${format}`;
+    const fileName = codepoints.join('-');
+    return `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/${format}/${fileName}.${format}`;
 }
 
 /**
@@ -31,7 +31,7 @@ export function buildTwemojiUrl(
  * @returns Array of emoji entities with text, url, and position info
  */
 export function parseUnicodeEmojis(text: string, options?: ParsingOptions): EmojiEntity[] {
-  return parse(text, options);
+    return parse(text, options);
 }
 
 /**
@@ -42,18 +42,18 @@ export function parseUnicodeEmojis(text: string, options?: ParsingOptions): Emoj
  * @returns true if URL is safe, false otherwise
  */
 export function validateTwemojiUrl(url: string): boolean {
-  if (!url) return false;
+    if (!url) return false;
 
-  try {
-    const parsed = new URL(url);
-    return (
-      parsed.protocol === "https:" &&
-      parsed.hostname === "cdn.jsdelivr.net" &&
-      parsed.pathname.startsWith("/gh/jdecked/twemoji@")
-    );
-  } catch {
-    return false;
-  }
+    try {
+        const parsed = new URL(url);
+        return (
+            parsed.protocol === 'https:' &&
+            parsed.hostname === 'cdn.jsdelivr.net' &&
+            parsed.pathname.startsWith('/gh/jdecked/twemoji@')
+        );
+    } catch {
+        return false;
+    }
 }
 
 /**
@@ -64,18 +64,18 @@ export function validateTwemojiUrl(url: string): boolean {
  * @returns HTML img tag string, or escaped text if URL validation fails
  */
 export function createTwemojiImgTag(emoji: EmojiEntity): string {
-  const escapedText = escapeHtml(emoji.text);
-  // Build URL from codepoints instead of trusting emoji.url
-  const codepoints = toCodePoints(emoji.text);
-  const url = buildTwemojiUrl(codepoints, "svg");
+    const escapedText = escapeHtml(emoji.text);
+    // Build URL from codepoints instead of trusting emoji.url
+    const codepoints = toCodePoints(emoji.text);
+    const url = buildTwemojiUrl(codepoints, 'svg');
 
-  // Validate URL before using it
-  if (!validateTwemojiUrl(url)) {
-    return escapedText;
-  }
+    // Validate URL before using it
+    if (!validateTwemojiUrl(url)) {
+        return escapedText;
+    }
 
-  const escapedUrl = escapeHtml(url);
-  return `<img class="emoji" src="${escapedUrl}" alt="${escapedText}" title="${escapedText}">`;
+    const escapedUrl = escapeHtml(url);
+    return `<img class="emoji" src="${escapedUrl}" alt="${escapedText}" title="${escapedText}">`;
 }
 
 /**
@@ -91,24 +91,24 @@ export function createTwemojiImgTag(emoji: EmojiEntity): string {
  * @returns HTML string with emojis replaced by img tags
  */
 export function replaceUnicodeEmojisWithImages(text: string): string {
-  if (!text) {
-    return "";
-  }
+    if (!text) {
+        return '';
+    }
 
-  const emojis = parse(text, { assetType: "svg" });
-  if (emojis.length === 0) {
-    return text;
-  }
+    const emojis = parse(text, { assetType: 'svg' });
+    if (emojis.length === 0) {
+        return text;
+    }
 
-  // Build result by replacing emojis from end to start to maintain offsets
-  let result = text;
-  for (let i = emojis.length - 1; i >= 0; i--) {
-    const emoji = emojis[i];
-    const imgTag = createTwemojiImgTag(emoji);
+    // Build result by replacing emojis from end to start to maintain offsets
+    let result = text;
+    for (let i = emojis.length - 1; i >= 0; i--) {
+        const emoji = emojis[i];
+        const imgTag = createTwemojiImgTag(emoji);
 
-    const [startIndex, endIndex] = emoji.indices;
-    result = result.slice(0, startIndex) + imgTag + result.slice(endIndex);
-  }
+        const [startIndex, endIndex] = emoji.indices;
+        result = result.slice(0, startIndex) + imgTag + result.slice(endIndex);
+    }
 
-  return result;
+    return result;
 }
