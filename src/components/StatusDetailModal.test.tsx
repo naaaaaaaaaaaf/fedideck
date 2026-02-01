@@ -1009,17 +1009,21 @@ describe('StatusDetailModal', () => {
             vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             vi.spyOn(mastoClient, 'reblogStatus').mockReturnValue(reblogPromise);
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             const reblogButton = screen.getByRole('button', { name: /ブースト/ });
-            await user.click(reblogButton);
+            await act(async () => {
+                await user.click(reblogButton);
+            });
 
             // Count should optimistically update to 6
             await waitFor(() => {
@@ -1028,7 +1032,9 @@ describe('StatusDetailModal', () => {
                 })).toBeInTheDocument();
             });
 
-            resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 6 }));
+            await act(async () => {
+                resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 6 }));
+            });
         });
 
         it('should revert optimistic reblog update on API failure', async () => {
@@ -1095,26 +1101,32 @@ describe('StatusDetailModal', () => {
             vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             const reblogSpy = vi.spyOn(mastoClient, 'reblogStatus').mockReturnValue(reblogPromise);
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             const reblogButton = screen.getByRole('button', { name: /ブースト/ });
 
             // Click multiple times rapidly
-            await user.click(reblogButton);
-            await user.click(reblogButton);
-            await user.click(reblogButton);
+            await act(async () => {
+                await user.click(reblogButton);
+                await user.click(reblogButton);
+                await user.click(reblogButton);
+            });
 
             // Should only call once
             expect(reblogSpy).toHaveBeenCalledTimes(1);
 
-            resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 6 }));
+            await act(async () => {
+                resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 6 }));
+            });
         });
     });
 
