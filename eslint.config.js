@@ -19,5 +19,11 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+        '@typescript-eslint/indent': ['error', 4],
+        '@typescript-eslint/quotes': ['error', 'single', { 'avoidEscape': true }],
+        '@typescript-eslint/semi': ['error', 'always'],
+        'semi': ['error', 'always'],
+    },
   },
 ])
