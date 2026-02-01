@@ -166,6 +166,56 @@ Recommended tools:
 * For fixes: **reproduction test → fix**
 * Untestable design is prohibited
 
+## Release Policy
+
+### Versioning
+
+Date-based versioning: `0.YEAR.MONTH.DAY`
+- Example: `0.2026.02.02`, `0.2026.02.09`, `0.2026.02.16`
+
+### Release Schedule
+
+Weekly releases (every Sunday/Monday). Develop → master merge happens on release day.
+
+### Release Procedure
+
+```bash
+# 1. Create release branch from master
+git checkout master && git pull origin master
+git checkout -b release/0.YEAR.MONTH.DAY
+
+# 2. Merge develop into release branch
+git merge develop
+
+# 3. Update version in package.json
+# Edit package.json: "version": "0.YEAR.MONTH.DAY"
+
+# 4. Commit version bump
+git add package.json
+git commit -m "chore: bump version to 0.YEAR.MONTH.DAY"
+
+# 5. Push and create PR
+git push origin release/0.YEAR.MONTH.DAY
+# Create PR: release/0.YEAR.MONTH.DAY → master
+
+# 6. After PR merge, create tag on master
+git checkout master && git pull origin master
+git tag -a v0.YEAR.MONTH.DAY -m "Release 0.YEAR.MONTH.DAY"
+git push origin v0.YEAR.MONTH.DAY
+
+# 7. Create GitHub Release
+gh release create v0.YEAR.MONTH.DAY --generate-notes
+```
+
+### Release Notes
+
+Include in PR description:
+- Major features added
+- Bug fixes
+- Code quality improvements
+- Test coverage updates
+- Dependency changes
+
 ## CI Expectations
 
 Write code assuming CI exists.
