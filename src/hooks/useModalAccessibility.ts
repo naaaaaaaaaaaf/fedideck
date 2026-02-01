@@ -248,9 +248,7 @@ export function useModalAccessibility({
 
     // Track pointer state to avoid stealing focus during drag selection.
     useEffect(() => {
-        if (!isOpen || !modalRef.current) return;
-
-        const modal = modalRef.current;
+        if (!isOpen) return;
 
         const handlePointerDown = () => {
             isPointerDownRef.current = true;
@@ -259,17 +257,19 @@ export function useModalAccessibility({
             isPointerDownRef.current = false;
         };
 
-        modal.addEventListener('pointerdown', handlePointerDown, { capture: true });
+        // Listen on window to catch pointer down events anywhere (including outside modal)
+        // This handles the case where user starts dragging from outside the modal
+        window.addEventListener('pointerdown', handlePointerDown, { capture: true });
         window.addEventListener('pointerup', handlePointerUp, { capture: true });
         window.addEventListener('pointercancel', handlePointerUp, { capture: true });
 
         return () => {
-            modal.removeEventListener('pointerdown', handlePointerDown, { capture: true });
+            window.removeEventListener('pointerdown', handlePointerDown, { capture: true });
             window.removeEventListener('pointerup', handlePointerUp, { capture: true });
             window.removeEventListener('pointercancel', handlePointerUp, { capture: true });
             isPointerDownRef.current = false;
         };
-    }, [isOpen, modalRef]);
+    }, [isOpen]);
 
     // Handle keyboard events for focus trap and ESC to close
     const handleKeyDown = useCallback(
