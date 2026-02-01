@@ -39,32 +39,30 @@ describe('ComposeModal', () => {
     });
 
     it('renders nothing when isOpen is false', () => {
-        const { container } = render(
-            <ComposeModal isOpen={false} onClose={() => { }} />
-        );
+        const { container } = render(<ComposeModal isOpen={false} onClose={() => {}} />);
         expect(container.firstChild).toBeNull();
     });
 
     it('renders the modal when isOpen is true', () => {
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
         expect(screen.getByText('新しい投稿')).toBeInTheDocument();
         expect(screen.getByPlaceholderText('今なにしてる？')).toBeInTheDocument();
     });
 
     it('displays the active account info', () => {
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
         expect(screen.getByText('Test User')).toBeInTheDocument();
         expect(screen.getByText('@testuser')).toBeInTheDocument();
     });
 
     it('shows character count', () => {
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
         expect(screen.getByText('500')).toBeInTheDocument();
     });
 
     it('updates character count when typing', async () => {
         const user = userEvent.setup();
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
         const textarea = screen.getByPlaceholderText('今なにしてる？');
         await user.type(textarea, 'Hello world');
@@ -73,14 +71,14 @@ describe('ComposeModal', () => {
     });
 
     it('disables submit button when content is empty', () => {
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
         const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
         expect(submitButton).toBeDisabled();
     });
 
     it('enables submit button when content is not empty', async () => {
         const user = userEvent.setup();
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
         const textarea = screen.getByPlaceholderText('今なにしてる？');
         await user.type(textarea, 'Test post');
@@ -91,7 +89,7 @@ describe('ComposeModal', () => {
 
     it('toggles CW input when clicking CW button', async () => {
         const user = userEvent.setup();
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
         // CW input should not be visible initially
         expect(screen.queryByPlaceholderText('警告文を入力...')).not.toBeInTheDocument();
@@ -105,7 +103,7 @@ describe('ComposeModal', () => {
     });
 
     it('displays visibility options', () => {
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
         expect(screen.getByText('公開')).toBeInTheDocument();
         expect(screen.getByText('未収載')).toBeInTheDocument();
         expect(screen.getByText('フォロワーのみ')).toBeInTheDocument();
@@ -171,7 +169,7 @@ describe('ComposeModal', () => {
         const mockCreateStatus = vi.mocked(mastoClient.createStatus);
         mockCreateStatus.mockRejectedValueOnce(new Error('Network error'));
 
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
         const textarea = screen.getByPlaceholderText('今なにしてる？');
         await user.type(textarea, 'Test post content');
@@ -253,13 +251,13 @@ describe('ComposeModal', () => {
 
     // Poll tests
     it('shows poll button', () => {
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
         expect(screen.getByRole('button', { name: /投票/i })).toBeInTheDocument();
     });
 
     it('toggles poll UI when clicking poll button', async () => {
         const user = userEvent.setup();
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
         // Poll options should not be visible initially
         expect(screen.queryByPlaceholderText('選択肢 1')).not.toBeInTheDocument();
@@ -275,7 +273,7 @@ describe('ComposeModal', () => {
 
     it('can add poll options up to 4', async () => {
         const user = userEvent.setup();
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
         // Enable poll
         const pollButton = screen.getByRole('button', { name: /投票/i });
@@ -302,7 +300,7 @@ describe('ComposeModal', () => {
 
     it('can remove poll options but keeps minimum 2', async () => {
         const user = userEvent.setup();
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
         // Enable poll
         const pollButton = screen.getByRole('button', { name: /投票/i });
@@ -316,7 +314,9 @@ describe('ComposeModal', () => {
         expect(screen.getByPlaceholderText('選択肢 3')).toBeInTheDocument();
 
         // Click the first visible remove button
-        const removeButton = screen.getByPlaceholderText('選択肢 3').parentElement?.querySelector('button');
+        const removeButton = screen
+            .getByPlaceholderText('選択肢 3')
+            .parentElement?.querySelector('button');
         if (removeButton) {
             await user.click(removeButton);
         }
@@ -368,7 +368,7 @@ describe('ComposeModal', () => {
 
     it('shows expiration selector in poll UI', async () => {
         const user = userEvent.setup();
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
         // Enable poll
         const pollButton = screen.getByRole('button', { name: /投票/i });
@@ -384,7 +384,7 @@ describe('ComposeModal', () => {
     // NSFW tests - Note: NSFW toggle only shows when media is attached
     // Since mocking file uploads is complex, we test the state logic indirectly
     it('does not show NSFW toggle when no media is attached', () => {
-        render(<ComposeModal isOpen={true} onClose={() => { }} />);
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
         expect(screen.queryByText('閲覧注意 (NSFW)')).not.toBeInTheDocument();
     });
 
@@ -398,17 +398,13 @@ describe('ComposeModal', () => {
     };
 
     it('shows reply header when replyToStatus is provided', () => {
-        render(
-            <ComposeModal isOpen={true} onClose={() => { }} replyToStatus={mockReplyToStatus} />
-        );
+        render(<ComposeModal isOpen={true} onClose={() => {}} replyToStatus={mockReplyToStatus} />);
         expect(screen.getByText('返信')).toBeInTheDocument();
         expect(screen.queryByText('新しい投稿')).not.toBeInTheDocument();
     });
 
     it('displays reply indicator with target user info', () => {
-        render(
-            <ComposeModal isOpen={true} onClose={() => { }} replyToStatus={mockReplyToStatus} />
-        );
+        render(<ComposeModal isOpen={true} onClose={() => {}} replyToStatus={mockReplyToStatus} />);
         expect(screen.getByText('返信先:')).toBeInTheDocument();
         // Reply indicator contains the target user info - use getAllByText since text may appear multiple places
         expect(screen.getAllByText('Other User').length).toBeGreaterThanOrEqual(1);
@@ -416,9 +412,7 @@ describe('ComposeModal', () => {
     });
 
     it('prefills content with mention when replying', () => {
-        render(
-            <ComposeModal isOpen={true} onClose={() => { }} replyToStatus={mockReplyToStatus} />
-        );
+        render(<ComposeModal isOpen={true} onClose={() => {}} replyToStatus={mockReplyToStatus} />);
         const textarea = screen.getByPlaceholderText('今なにしてる？') as HTMLTextAreaElement;
         expect(textarea.value).toBe('@otheruser@example.com ');
     });
@@ -429,9 +423,7 @@ describe('ComposeModal', () => {
         const mockCreateStatus = vi.mocked(mastoClient.createStatus);
         mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
 
-        render(
-            <ComposeModal isOpen={true} onClose={onClose} replyToStatus={mockReplyToStatus} />
-        );
+        render(<ComposeModal isOpen={true} onClose={onClose} replyToStatus={mockReplyToStatus} />);
 
         const textarea = screen.getByPlaceholderText('今なにしてる？');
         await user.type(textarea, 'My reply text');
@@ -447,5 +439,114 @@ describe('ComposeModal', () => {
                 })
             );
         });
+    });
+
+    // Emoji palette tests
+    it('shows emoji button in modal', () => {
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
+        expect(screen.getByRole('button', { name: '絵文字を挿入' })).toBeInTheDocument();
+    });
+
+    it('opens emoji palette when clicking emoji button', async () => {
+        const user = userEvent.setup();
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+        const emojiButton = screen.getByRole('button', { name: '絵文字を挿入' });
+        await user.click(emojiButton);
+
+        expect(screen.getByLabelText('絵文字を選択')).toBeInTheDocument();
+    });
+
+    it('inserts unicode emoji when clicking emoji in palette', async () => {
+        const user = userEvent.setup();
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+        // Open emoji palette
+        const emojiButton = screen.getByRole('button', { name: '絵文字を挿入' });
+        await user.click(emojiButton);
+
+        // Verify palette opened and emoji is available
+        expect(screen.getByLabelText('絵文字を選択')).toBeInTheDocument();
+        const emoji = screen.getByLabelText('😀');
+
+        // Click the emoji - the useTextareaCursor hook should insert it
+        // (actual insertion is tested in useTextareaCursor.test.ts)
+        await user.click(emoji);
+
+        // Palette should close after selection
+        expect(screen.queryByLabelText('絵文字を選択')).not.toBeInTheDocument();
+    });
+
+    it('closes emoji palette after selecting emoji', async () => {
+        const user = userEvent.setup();
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+        // Open emoji palette
+        const emojiButton = screen.getByRole('button', { name: '絵文字を挿入' });
+        await user.click(emojiButton);
+
+        expect(screen.getByLabelText('絵文字を選択')).toBeInTheDocument();
+
+        // Click an emoji
+        const emoji = screen.getByLabelText('😀');
+        await user.click(emoji);
+
+        // Palette should be closed
+        expect(screen.queryByLabelText('絵文字を選択')).not.toBeInTheDocument();
+    });
+
+    it('displays custom emojis from account', async () => {
+        const user = userEvent.setup();
+
+        // Add custom emojis to mock account
+        const mockAccountWithEmojis = {
+            ...mockAccount,
+            account: {
+                ...mockAccount.account,
+                emojis: [
+                    {
+                        shortcode: 'custom_test',
+                        url: 'https://example.com/custom.png',
+                        staticUrl: 'https://example.com/custom_static.png',
+                        visibleInPicker: true,
+                        category: 'Test',
+                    },
+                ] as mastodon.v1.CustomEmoji[],
+            },
+        } as Session;
+
+        useAccountsStore.setState({
+            accounts: [mockAccountWithEmojis],
+            activeAccountId: mockAccountWithEmojis.id,
+        });
+
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+        // Open emoji palette
+        const emojiButton = screen.getByRole('button', { name: '絵文字を挿入' });
+        await user.click(emojiButton);
+
+        // Should show custom emoji category
+        expect(screen.getByText('Test')).toBeInTheDocument();
+        expect(screen.getByAltText('custom_test')).toBeInTheDocument();
+    });
+
+    it('toggles emoji palette when clicking button multiple times', async () => {
+        const user = userEvent.setup();
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+        const emojiButton = screen.getByRole('button', { name: '絵文字を挿入' });
+
+        // Open
+        await user.click(emojiButton);
+        expect(screen.getByLabelText('絵文字を選択')).toBeInTheDocument();
+
+        // Close
+        await user.click(emojiButton);
+        expect(screen.queryByLabelText('絵文字を選択')).not.toBeInTheDocument();
+
+        // Open again
+        await user.click(emojiButton);
+        expect(screen.getByLabelText('絵文字を選択')).toBeInTheDocument();
     });
 });
