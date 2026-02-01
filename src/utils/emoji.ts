@@ -11,7 +11,7 @@ function escapeRegExp(str: string): string {
 /**
  * Escapes special HTML characters to prevent XSS
  */
-function escapeHtml(str: string): string {
+export function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

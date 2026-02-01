@@ -1,19 +1,8 @@
 import { parse, type EmojiEntity, type ParsingOptions } from "@twemoji/parser";
+import { escapeHtml } from "./emoji";
 
 // Re-export EmojiEntity for use in other modules
 export type { EmojiEntity };
-
-/**
- * Escapes special HTML characters to prevent XSS
- */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
 
 /**
  * Builds a Twemoji CDN URL for the given emoji codepoints.
