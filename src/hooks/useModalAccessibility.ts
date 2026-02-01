@@ -54,7 +54,11 @@ function isElementVisible(element: HTMLElement, modalContainer?: HTMLElement): b
 
     // Check element's own styles and hidden attribute
     const style = window.getComputedStyle(element);
-    if (style.display === 'none' || style.visibility === 'hidden' || element.hasAttribute('hidden')) {
+    if (
+        style.display === 'none' ||
+        style.visibility === 'hidden' ||
+        element.hasAttribute('hidden')
+    ) {
         return false;
     }
 
@@ -62,7 +66,11 @@ function isElementVisible(element: HTMLElement, modalContainer?: HTMLElement): b
     let parent = element.parentElement;
     while (parent && parent !== modalContainer) {
         const parentStyle = window.getComputedStyle(parent);
-        if (parentStyle.display === 'none' || parentStyle.visibility === 'hidden' || parent.hasAttribute('hidden')) {
+        if (
+            parentStyle.display === 'none' ||
+            parentStyle.visibility === 'hidden' ||
+            parent.hasAttribute('hidden')
+        ) {
             return false;
         }
         parent = parent.parentElement;
@@ -84,13 +92,13 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
         'input:not([disabled]):not([type="hidden"]):not([hidden]):not([tabindex="-1"])',
         'select:not([disabled]):not([hidden]):not([tabindex="-1"])',
         'textarea:not([disabled]):not([hidden]):not([tabindex="-1"])',
-        '[tabindex]:not([tabindex="-1"]):not([hidden])'
+        '[tabindex]:not([tabindex="-1"]):not([hidden])',
     ].join(', ');
 
     const elements = container.querySelectorAll<HTMLElement>(selector);
     // Pass modalContainer to optimize visibility check
     // Filter out elements with negative tabindex (other than -1 which is already excluded in selector)
-    return Array.from(elements).filter(el => {
+    return Array.from(elements).filter((el) => {
         const tabindex = el.getAttribute('tabindex');
         const tabindexValue = tabindex ? parseInt(tabindex, 10) : null;
         // Exclude elements with negative tabindex values other than -1
@@ -118,6 +126,7 @@ export function useModalAccessibility({
     const previouslyFocusedRef = useRef<HTMLElement | null>(null);
     const focusableElementsCacheRef = useRef<HTMLElement[]>([]);
     const cacheInvalidatedRef = useRef<boolean>(true);
+    const isPointerDownRef = useRef<boolean>(false);
 
     // Cache focusable elements with MutationObserver to detect DOM changes
     useEffect(() => {
@@ -164,7 +173,7 @@ export function useModalAccessibility({
         if (isOpen) {
             // Save currently focused element
             previouslyFocusedRef.current = document.activeElement as HTMLElement;
-            
+
             // Move focus to close button if it exists and is focusable, otherwise focus first focusable element
             if (closeButtonRef.current && canElementBeFocused(closeButtonRef.current)) {
                 closeButtonRef.current.focus();
@@ -201,9 +210,20 @@ export function useModalAccessibility({
                 if (!modal) return;
 
                 const activeElement = document.activeElement;
-                
+
                 // Check if focus is lost or moved outside the modal
-                if (!activeElement || activeElement === document.body || !modal.contains(activeElement)) {
+                if (
+                    !activeElement ||
+                    activeElement === document.body ||
+                    !modal.contains(activeElement)
+                ) {
+                    if (isPointerDownRef.current) {
+                        return;
+                    }
+                    const selection = window.getSelection?.();
+                    if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+                        return;
+                    }
                     // Find a safe element to focus on
                     if (closeButton && canElementBeFocused(closeButton)) {
                         closeButton.focus();
@@ -225,6 +245,31 @@ export function useModalAccessibility({
             currentModal.removeEventListener('focusout', handleFocusOut);
         };
     }, [isOpen, modalRef, closeButtonRef, getCachedFocusableElements]);
+
+    // Track pointer state to avoid stealing focus during drag selection.
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handlePointerDown = () => {
+            isPointerDownRef.current = true;
+        };
+        const handlePointerUp = () => {
+            isPointerDownRef.current = false;
+        };
+
+        // Listen on window to catch pointer down events anywhere (including outside modal)
+        // This handles the case where user starts dragging from outside the modal
+        window.addEventListener('pointerdown', handlePointerDown, { capture: true });
+        window.addEventListener('pointerup', handlePointerUp, { capture: true });
+        window.addEventListener('pointercancel', handlePointerUp, { capture: true });
+
+        return () => {
+            window.removeEventListener('pointerdown', handlePointerDown, { capture: true });
+            window.removeEventListener('pointerup', handlePointerUp, { capture: true });
+            window.removeEventListener('pointercancel', handlePointerUp, { capture: true });
+            isPointerDownRef.current = false;
+        };
+    }, [isOpen]);
 
     // Handle keyboard events for focus trap and ESC to close
     const handleKeyDown = useCallback(
