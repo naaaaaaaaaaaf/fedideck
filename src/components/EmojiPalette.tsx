@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 
 // Custom emoji type matching Mastodon's CustomEmoji entity
 export interface CustomEmoji {
@@ -290,8 +291,24 @@ export function EmojiPalette({
 }: EmojiPaletteProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [focusedEmojiIndex, setFocusedEmojiIndex] = useState(-1);
+    const [position, setPosition] = useState({ top: 0, left: 0 });
     const paletteRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Calculate position based on trigger button
+    useEffect(() => {
+        if (isOpen && triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            // Position palette above the button, aligned with left edge
+            // Account for viewport to prevent overflow
+            const maxLeft = window.innerWidth - 340; // 320px width + margin
+            const left = Math.min(rect.left, maxLeft);
+            setPosition({
+                top: rect.top,
+                left: Math.max(10, left), // Minimum 10px from left edge
+            });
+        }
+    }, [isOpen, triggerRef]);
 
     // Filter custom emojis that are visible in picker
     const visibleCustomEmojis = customEmojis.filter((e) => e.visibleInPicker);
@@ -416,10 +433,14 @@ export function EmojiPalette({
 
     if (!isOpen) return null;
 
-    return (
+    const palette = (
         <div
             ref={paletteRef}
-            className="absolute bottom-full left-0 mb-2 w-80 max-h-96 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden flex flex-col"
+            className="fixed w-80 max-h-96 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-[60] overflow-hidden flex flex-col"
+            style={{
+                bottom: `${window.innerHeight - position.top + 8}px`, // Position above button with 8px gap
+                left: `${position.left}px`,
+            }}
             role="dialog"
             aria-label="絵文字を選択"
             onKeyDown={handleKeyDown}
@@ -520,4 +541,6 @@ export function EmojiPalette({
             </div>
         </div>
     );
+
+    return createPortal(palette, document.body);
 }
