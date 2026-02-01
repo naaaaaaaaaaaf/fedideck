@@ -19,8 +19,8 @@ describe('escapeHtml', () => {
             expect(escapeHtml('He said "hello"')).toBe('He said &quot;hello&quot;');
         });
 
-        it('should escape single quote \' to &#039;', () => {
-            expect(escapeHtml('It\'s great')).toBe('It&#039;s great');
+        it("should escape single quote ' to &#039;", () => {
+            expect(escapeHtml("It's great")).toBe('It&#039;s great');
         });
     });
 
@@ -30,7 +30,7 @@ describe('escapeHtml', () => {
         });
 
         it('should prevent script tag injection', () => {
-            const input = '<script>alert(\'xss\')</script>';
+            const input = "<script>alert('xss')</script>";
             const result = escapeHtml(input);
             expect(result).toContain('&lt;script&gt;');
             expect(result).toContain('&lt;/script&gt;');
@@ -45,7 +45,7 @@ describe('escapeHtml', () => {
         });
 
         it('should prevent iframe tag injection', () => {
-            const input = '<iframe src=\'evil.com\'></iframe>';
+            const input = "<iframe src='evil.com'></iframe>";
             const result = escapeHtml(input);
             expect(result).toContain('&lt;iframe');
             expect(result).not.toContain('<iframe>');
@@ -56,7 +56,7 @@ describe('escapeHtml', () => {
         });
 
         it('should handle mixed case script tags', () => {
-            const input = '<Script>alert(\'xss\')</SCRIPT>';
+            const input = "<Script>alert('xss')</SCRIPT>";
             const result = escapeHtml(input);
             expect(result).toContain('&lt;Script&gt;');
             expect(result).toContain('&lt;/SCRIPT&gt;');
@@ -64,7 +64,7 @@ describe('escapeHtml', () => {
         });
 
         it('should prevent HTML entity encoding attacks', () => {
-            const input = '&#x3C;script&#x3E;alert(\'xss\')&#x3C;/script&#x3E;';
+            const input = "&#x3C;script&#x3E;alert('xss')&#x3C;/script&#x3E;";
             const result = escapeHtml(input);
             // The ampersands should be escaped
             expect(result).toContain('&amp;#x3C;');
@@ -109,7 +109,7 @@ describe('escapeHtml', () => {
 
     describe('combinations', () => {
         it('should escape complete HTML tags', () => {
-            const input = '<div class=\'test\'>Content</div>';
+            const input = "<div class='test'>Content</div>";
             const result = escapeHtml(input);
             expect(result).toContain('&lt;div');
             expect(result).toContain('&lt;/div&gt;');
@@ -176,9 +176,7 @@ describe('escapeRegExp', () => {
 
     describe('complex patterns', () => {
         it('should escape consecutive special characters', () => {
-            expect(escapeRegExp('a*b+c?d^e$f.g|h(i)')).toBe(
-                'a\\*b\\+c\\?d\\^e\\$f\\.g\\|h\\(i\\)'
-            );
+            expect(escapeRegExp('a*b+c?d^e$f.g|h(i)')).toBe('a\\*b\\+c\\?d\\^e\\$f\\.g\\|h\\(i\\)');
         });
 
         it('should escape square brackets []', () => {
@@ -208,15 +206,13 @@ describe('escapeRegExp', () => {
         });
 
         it('should handle string with only special characters', () => {
-            expect(escapeRegExp('.+?^${}()|[]\\')).toBe(
-                '\\.\\+\\?\\^\\$\\{\\}\\(\\)\\|\\[\\]\\\\'
+            expect(escapeRegExp('.*+?^${}()|[]\\')).toBe(
+                '\\.\\*\\+\\?\\^\\$\\{\\}\\(\\)\\|\\[\\]\\\\'
             );
         });
 
         it('should preserve normal characters', () => {
-            expect(escapeRegExp('abcdefghijklmnopqrstuvwxyz')).toBe(
-                'abcdefghijklmnopqrstuvwxyz'
-            );
+            expect(escapeRegExp('abcdefghijklmnopqrstuvwxyz')).toBe('abcdefghijklmnopqrstuvwxyz');
         });
 
         it('should escape all meta characters in complete pattern', () => {
