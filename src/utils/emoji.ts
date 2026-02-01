@@ -1,23 +1,9 @@
 import type { mastodon } from "masto";
-
-/**
- * Escapes special characters for use in RegExp
- */
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/**
- * Escapes special HTML characters to prevent XSS
- */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+import { escapeHtml, escapeRegExp } from "./html";
+import {
+  createTwemojiImgTag,
+  parseUnicodeEmojis,
+} from "./twemoji";
 
 /**
  * Validates and sanitizes emoji URL.
@@ -100,44 +86,142 @@ function isInsideHtmlTag(html: string, offset: number): boolean {
 }
 
 /**
+ * Splits HTML into text segments and tag segments.
+ * Returns an array of segments where each segment is either a text segment
+ * (outside tags) or a tag segment (inside tags).
+ *
+ * @param html - The HTML string to split
+ * @returns Array of segments with type and content
+ */
+function splitHtmlByTags(html: string): Array<{ type: "text" | "tag"; content: string }> {
+  const segments: Array<{ type: "text" | "tag"; content: string }> = [];
+  let currentSegment = "";
+  let insideTag = false;
+  let quoteChar: string | null = null;
+
+  for (let i = 0; i < html.length; i++) {
+    const char = html[i];
+
+    if (quoteChar) {
+      currentSegment += char;
+      if (char === quoteChar) {
+        quoteChar = null;
+      }
+    } else if (insideTag) {
+      currentSegment += char;
+      if (char === '"' || char === "'") {
+        quoteChar = char;
+      } else if (char === ">") {
+        insideTag = false;
+        segments.push({ type: "tag", content: currentSegment });
+        currentSegment = "";
+      }
+    } else {
+      if (char === "<") {
+        if (currentSegment) {
+          segments.push({ type: "text", content: currentSegment });
+        }
+        currentSegment = "<";
+        insideTag = true;
+      } else {
+        currentSegment += char;
+      }
+    }
+  }
+
+  // Add remaining segment
+  if (currentSegment) {
+    segments.push({ type: insideTag ? "tag" : "text", content: currentSegment });
+  }
+
+  return segments;
+}
+
+/**
+ * Replaces Unicode emojis with Twemoji img tags in HTML content.
+ * Only processes text segments outside of HTML tags to avoid breaking attributes.
+ * Handles BMP emoji, variation selectors, and surrogate pairs.
+ *
+ * @param html - The HTML string that may contain Unicode emojis
+ * @returns HTML with Unicode emojis replaced by img tags
+ */
+function replaceUnicodeEmojisInHtml(html: string): string {
+  if (!html) {
+    return "";
+  }
+
+  // Split HTML into text and tag segments
+  const segments = splitHtmlByTags(html);
+
+  // Process only text segments
+  return segments
+    .map((segment) => {
+      if (segment.type === "tag") {
+        return segment.content; // Preserve tags as-is
+      }
+
+      // Process text segment for emojis
+      const emojis = parseUnicodeEmojis(segment.content, { assetType: "svg" });
+      if (emojis.length === 0) {
+        return segment.content;
+      }
+
+      // Replace emojis from end to start to maintain offsets
+      let result = segment.content;
+      for (let i = emojis.length - 1; i >= 0; i--) {
+        const emoji = emojis[i];
+        const imgTag = createTwemojiImgTag(emoji);
+        const [startIndex, endIndex] = emoji.indices;
+        result = result.slice(0, startIndex) + imgTag + result.slice(endIndex);
+      }
+
+      return result;
+    })
+    .join("");
+}
+
+/**
  * Replaces emoji shortcodes (e.g., :shortcode:) with img tags in HTML content.
  * Uses a replacement callback and context checks to avoid replacing shortcodes inside HTML tag attributes.
+ * Also replaces Unicode emojis with Twemoji images after processing custom emojis.
  *
- * @param html - The HTML string containing emoji shortcodes
+ * Processing order:
+ * 1. Custom emojis (:shortcode:) - processed first to avoid conflicts
+ * 2. Unicode emojis (😀) - processed after custom emojis
+ *
+ * @param html - The HTML string containing emoji shortcodes and/or Unicode emojis
  * @param emojis - Array of custom emoji definitions from Mastodon API
- * @returns HTML with shortcodes replaced by img tags
+ * @returns HTML with shortcodes and Unicode emojis replaced by img tags
  */
 export function replaceEmojisWithImages(
   html: string,
   emojis: mastodon.v1.CustomEmoji[] | undefined
 ): string {
-  if (!html || !emojis || emojis.length === 0) {
-    return html ?? "";
-  }
-
-  // Early return if no colon in text (no possible shortcodes)
-  if (!html.includes(":")) {
-    return html;
+  if (!html) {
+    return "";
   }
 
   let result = html;
 
-  for (const emoji of emojis) {
-    const shortcode = escapeRegExp(emoji.shortcode);
-    // Match :shortcode: occurrences; actual avoidance of replacements inside
-    // HTML tags/attributes is handled in the replacement callback below.
-    const pattern = new RegExp(`:${shortcode}:`, "g");
-    const imgTag = createEmojiImgTag(emoji);
+  // Step 1: Process custom emojis (:shortcode:)
+  if (emojis && emojis.length > 0 && html.includes(":")) {
+    for (const emoji of emojis) {
+      const shortcode = escapeRegExp(emoji.shortcode);
+      const pattern = new RegExp(`:${shortcode}:`, "g");
+      const imgTag = createEmojiImgTag(emoji);
 
-    result = result.replace(pattern, (match, offset) => {
-      // Check if we're inside an HTML tag (handles quoted attributes properly)
-      if (isInsideHtmlTag(result, offset)) {
-        return match;
-      }
-
-      return imgTag;
-    });
+      result = result.replace(pattern, (match, offset) => {
+        // Check if we're inside an HTML tag (handles quoted attributes properly)
+        if (isInsideHtmlTag(result, offset)) {
+          return match;
+        }
+        return imgTag;
+      });
+    }
   }
+
+  // Step 2: Process Unicode emojis (😀)
+  result = replaceUnicodeEmojisInHtml(result);
 
   return result;
 }
@@ -145,10 +229,16 @@ export function replaceEmojisWithImages(
 /**
  * Replaces emoji shortcodes in plain text (like displayName).
  * Escapes the input text first to prevent XSS, then replaces emoji shortcodes.
+ * Also replaces Unicode emojis with Twemoji images after processing custom emojis.
  *
- * @param text - Plain text containing emoji shortcodes
+ * Processing order:
+ * 1. Escape HTML to prevent XSS
+ * 2. Custom emojis (:shortcode:) - processed first
+ * 3. Unicode emojis (😀) - processed after custom emojis
+ *
+ * @param text - Plain text containing emoji shortcodes and/or Unicode emojis
  * @param emojis - Array of custom emoji definitions from Mastodon API
- * @returns HTML string with text escaped and shortcodes replaced by img tags
+ * @returns HTML string with text escaped and emojis replaced by img tags
  */
 export function replaceEmojisInPlainText(
   text: string,
@@ -158,24 +248,30 @@ export function replaceEmojisInPlainText(
     return "";
   }
 
-  if (!emojis || emojis.length === 0) {
-    return escapeHtml(text);
-  }
-
-  // Early return if no colon in text (no possible shortcodes)
-  if (!text.includes(":")) {
-    return escapeHtml(text);
-  }
-
-  // First escape the text to prevent XSS
+  // Step 1: Always escape HTML first to prevent XSS
   let result = escapeHtml(text);
 
-  for (const emoji of emojis) {
-    // Use escaped shortcode for matching (since text is now escaped)
-    const shortcode = escapeRegExp(escapeHtml(emoji.shortcode));
-    const pattern = new RegExp(`:${shortcode}:`, "g");
-    const imgTag = createEmojiImgTag(emoji);
-    result = result.replace(pattern, imgTag);
+  // Step 2: Process custom emojis (:shortcode:)
+  if (emojis && emojis.length > 0) {
+    for (const emoji of emojis) {
+      const shortcode = escapeRegExp(escapeHtml(emoji.shortcode));
+      const pattern = new RegExp(`:${shortcode}:`, "g");
+      const imgTag = createEmojiImgTag(emoji);
+      result = result.replace(pattern, imgTag);
+    }
+  }
+
+  // Step 3: Process Unicode emojis (😀)
+  // Since text is already escaped, we can safely parse and replace Unicode emojis
+  const unicodeEmojis = parseUnicodeEmojis(result, { assetType: "svg" });
+  if (unicodeEmojis.length > 0) {
+    // Replace emojis from end to start to maintain offsets
+    for (let i = unicodeEmojis.length - 1; i >= 0; i--) {
+      const emoji = unicodeEmojis[i];
+      const imgTag = createTwemojiImgTag(emoji);
+      const [startIndex, endIndex] = emoji.indices;
+      result = result.slice(0, startIndex) + imgTag + result.slice(endIndex);
+    }
   }
 
   return result;

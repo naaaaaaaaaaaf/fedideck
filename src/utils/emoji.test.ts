@@ -301,6 +301,72 @@ describe("replaceEmojisWithImages", () => {
       expect(result).toBe(text);
     });
   });
+
+  // Unicode emoji integration tests
+  describe("Unicode emoji integration", () => {
+    it("should replace Unicode emojis when no custom emojis provided", () => {
+      const result = replaceEmojisWithImages("Hello 😀 World", undefined);
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="😀"');
+      expect(result).toContain("1f600.svg");
+    });
+
+    it("should replace Unicode emojis when custom emojis array is empty", () => {
+      const result = replaceEmojisWithImages("Party 🎉 time!", []);
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="🎉"');
+    });
+
+    it("should process both custom and Unicode emojis", () => {
+      const emojis = [createEmoji("blobcat")];
+      const result = replaceEmojisWithImages(":blobcat: 😀", emojis);
+
+      // Should have both custom emoji img tag and Unicode emoji img tag
+      const imgCount = (result.match(/<img class="emoji"/g) || []).length;
+      expect(imgCount).toBe(2);
+      expect(result).toContain('alt=":blobcat:"');
+      expect(result).toContain('alt="😀"');
+    });
+
+    it("should process Unicode emojis outside HTML tags only", () => {
+      const html = '<a href="😀">😀</a>';
+      const result = replaceEmojisWithImages(html, undefined);
+
+      // Count emoji img tags - should only have 1 (outside tag)
+      const imgCount = (result.match(/<img class="emoji"/g) || []).length;
+      expect(imgCount).toBe(1);
+      // The href attribute should preserve the emoji
+      expect(result).toContain('href="😀"');
+    });
+
+    it("should handle mixed custom and Unicode emojis with HTML", () => {
+      const emojis = [createEmoji("test")];
+      const html = '<p>:test: and 😀</p>';
+      const result = replaceEmojisWithImages(html, emojis);
+
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt=":test:"');
+      expect(result).toContain('alt="😀"');
+    });
+
+    it("should handle complex Unicode emojis (skin tone modifiers)", () => {
+      const result = replaceEmojisWithImages("Wave 👋🏽", undefined);
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="👋🏽"');
+    });
+
+    it("should handle flag emojis", () => {
+      const result = replaceEmojisWithImages("Japan 🇯🇵", undefined);
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="🇯🇵"');
+    });
+
+    it("should handle ZWJ sequence emojis", () => {
+      const result = replaceEmojisWithImages("Family 👨‍👩‍👧‍👦", undefined);
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="👨‍👩‍👧‍👦"');
+    });
+  });
 });
 
 describe("replaceEmojisInPlainText", () => {
@@ -363,5 +429,124 @@ describe("replaceEmojisInPlainText", () => {
 
     expect(result).not.toContain("javascript:");
     expect(result).toBe(":evil:");
+  });
+
+  // Unicode emoji integration tests for plain text
+  describe("Unicode emoji integration in plain text", () => {
+    it("should replace Unicode emojis when no custom emojis provided", () => {
+      const result = replaceEmojisInPlainText("Hello 😀 World", undefined);
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="😀"');
+      expect(result).toContain("1f600.svg");
+    });
+
+    it("should process both custom and Unicode emojis in plain text", () => {
+      const emojis = [createEmoji("blobcat")];
+      const result = replaceEmojisInPlainText(":blobcat: 😀", emojis);
+
+      // Should have both custom emoji img tag and Unicode emoji img tag
+      const imgCount = (result.match(/<img class="emoji"/g) || []).length;
+      expect(imgCount).toBe(2);
+      expect(result).toContain('alt=":blobcat:"');
+      expect(result).toContain('alt="😀"');
+    });
+
+    it("should handle multiple Unicode emojis in plain text", () => {
+      const result = replaceEmojisInPlainText("🎉😀👍", undefined);
+      const imgCount = (result.match(/<img class="emoji"/g) || []).length;
+      expect(imgCount).toBe(3);
+    });
+
+    it("should escape HTML while processing Unicode emojis", () => {
+      const result = replaceEmojisInPlainText("<b>😀</b>", undefined);
+      expect(result).toContain("&lt;b&gt;");
+      expect(result).toContain('<img class="emoji"');
+      expect(result).not.toContain("<b>");
+    });
+
+    it("should handle mixed HTML-like content with Unicode emojis", () => {
+      const result = replaceEmojisInPlainText("Hello 😀 & <script>", undefined);
+      expect(result).toContain('&lt;script&gt;');
+      expect(result).toContain('&amp;');
+      expect(result).toContain('<img class="emoji"');
+    });
+  });
+
+  // BMP emoji tests (Basic Multilingual Plane)
+  describe("BMP emoji in plain text", () => {
+    it("should replace BMP emoji with variation selector", () => {
+      // ❤️ = Black Heart Suit (U+2764) + Variation Selector-16 (U+FE0F)
+      const result = replaceEmojisInPlainText("I ❤️ coffee", undefined);
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="❤️"');
+    });
+
+    it("should replace BMP emoji without variation selector", () => {
+      // ☕ = Hot Beverage (U+2615)
+      const result = replaceEmojisInPlainText("Coffee ☕ time", undefined);
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="☕"');
+    });
+
+    it("should replace other BMP symbols", () => {
+      // ✈️ = Airplane (U+2708) + Variation Selector-16 (U+FE0F)
+      const result = replaceEmojisInPlainText("Flying ✈️", undefined);
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="✈️"');
+    });
+
+    it("should handle mixed BMP and surrogate pair emojis", () => {
+      const result = replaceEmojisInPlainText("☕ and 😀 and ❤️", undefined);
+      const imgCount = (result.match(/<img class="emoji"/g) || []).length;
+      expect(imgCount).toBe(3);
+    });
+
+    it("should handle BMP emoji with custom emoji shortcodes", () => {
+      const emojis = [createEmoji("coffee")];
+      const result = replaceEmojisInPlainText(":coffee: and ☕", emojis);
+      const imgCount = (result.match(/<img class="emoji"/g) || []).length;
+      expect(imgCount).toBe(2);
+      expect(result).toContain('alt=":coffee:"');
+      expect(result).toContain('alt="☕"');
+    });
+
+    it("should escape HTML and process BMP emoji", () => {
+      const result = replaceEmojisInPlainText("<b>☕</b>", undefined);
+      expect(result).toContain("&lt;b&gt;");
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="☕"');
+    });
+  });
+
+  // Edge cases for escaped HTML before emoji replacement
+  describe("escaped HTML edge cases", () => {
+    it("should correctly process emojis after escaped HTML tags", () => {
+      const result = replaceEmojisInPlainText("<script>😀</script>", undefined);
+      expect(result).toContain("&lt;script&gt;");
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain("&lt;/script&gt;");
+    });
+
+    it("should handle multiple emojis in escaped HTML context", () => {
+      const result = replaceEmojisInPlainText("<div>😀🎉</div>", undefined);
+      expect(result).toContain("&lt;div&gt;");
+      expect(result).toContain("&lt;/div&gt;");
+      const imgCount = (result.match(/<img class="emoji"/g) || []).length;
+      expect(imgCount).toBe(2);
+    });
+
+    it("should handle escaped ampersands before emojis", () => {
+      const result = replaceEmojisInPlainText("A & B 😀", undefined);
+      expect(result).toContain("A &amp; B");
+      expect(result).toContain('<img class="emoji"');
+    });
+
+    it("should handle mixed special characters and emojis", () => {
+      const result = replaceEmojisInPlainText("<>😀&\"", undefined);
+      expect(result).toContain("&lt;&gt;");
+      expect(result).toContain("&amp;");
+      expect(result).toContain("&quot;");
+      expect(result).toContain('<img class="emoji"');
+    });
   });
 });

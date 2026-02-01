@@ -13,6 +13,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@twemoji/parser": "^17.0.1",
     "masto": "^7.10.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
