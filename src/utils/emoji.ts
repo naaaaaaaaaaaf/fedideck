@@ -1,5 +1,9 @@
 import type { mastodon } from "masto";
-import { hasLikelyEmoji, parseUnicodeEmojis, type EmojiEntity } from "./twemoji";
+import {
+  createTwemojiImgTag,
+  hasLikelyEmoji,
+  parseUnicodeEmojis,
+} from "./twemoji";
 
 /**
  * Escapes special characters for use in RegExp
@@ -150,19 +154,6 @@ function splitHtmlByTags(html: string): Array<{ type: "text" | "tag"; content: s
   }
 
   return segments;
-}
-
-/**
- * Creates an img tag for a Twemoji (Unicode emoji).
- * Safely escapes the emoji text and URL.
- *
- * @param emoji - Emoji entity from @twemoji/parser
- * @returns HTML img tag string
- */
-function createTwemojiImgTag(emoji: EmojiEntity): string {
-  const escapedText = escapeHtml(emoji.text);
-  const escapedUrl = escapeHtml(emoji.url);
-  return `<img class="emoji" src="${escapedUrl}" alt="${escapedText}" title="${escapedText}">`;
 }
 
 /**

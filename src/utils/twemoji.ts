@@ -62,7 +62,7 @@ export function hasLikelyEmoji(text: string): boolean {
  * @param emoji - Emoji entity from @twemoji/parser
  * @returns HTML img tag string
  */
-function createTwemojiImgTag(emoji: EmojiEntity): string {
+export function createTwemojiImgTag(emoji: EmojiEntity): string {
   const escapedText = escapeHtml(emoji.text);
   const escapedUrl = escapeHtml(emoji.url);
   return `<img class="emoji" src="${escapedUrl}" alt="${escapedText}" title="${escapedText}">`;
