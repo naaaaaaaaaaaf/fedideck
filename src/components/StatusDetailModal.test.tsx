@@ -1636,10 +1636,14 @@ describe('StatusDetailModal', () => {
             // Should show loading indicator
             expect(screen.getByText('スレッドを読み込み中...')).toBeInTheDocument();
 
-            // Resolve the context
+            // Resolve the context and wait for loading to complete
             await act(async () => {
                 resolveContext!({ ancestors: [], descendants: [] });
+                await contextPromise;
             });
+
+            // Loading indicator should no longer be present
+            expect(screen.queryByText('スレッドを読み込み中...')).not.toBeInTheDocument();
         });
 
         it('should display ancestors when present', async () => {

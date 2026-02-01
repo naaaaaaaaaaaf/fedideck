@@ -222,8 +222,9 @@ describe("escapeRegExp", () => {
     it("should escape all meta characters in complete pattern", () => {
       const input = "https://example.com/path?query=value&sort=asc";
       const result = escapeRegExp(input);
-      // : / ? = & . should all be escaped except : and /
+      // ? and . should be escaped; : / & = are not regex meta characters
       expect(result).toContain("example\\.com");
+      expect(result).toContain("\\?");
     });
   });
 
