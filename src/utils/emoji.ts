@@ -1,5 +1,5 @@
 import type { mastodon } from "masto";
-import { parseUnicodeEmojis, type EmojiEntity } from "./twemoji";
+import { hasLikelyEmoji, parseUnicodeEmojis, type EmojiEntity } from "./twemoji";
 
 /**
  * Escapes special characters for use in RegExp
@@ -177,17 +177,8 @@ function replaceUnicodeEmojisInHtml(html: string): string {
     return html ?? "";
   }
 
-  // Fast check for surrogate pairs (indicates potential emoji)
-  let hasPotentialEmoji = false;
-  for (let i = 0; i < html.length; i++) {
-    const code = html.charCodeAt(i);
-    if (code >= 0xd800 && code <= 0xdbff) {
-      hasPotentialEmoji = true;
-      break;
-    }
-  }
-
-  if (!hasPotentialEmoji) {
+  // Fast check for potential emoji using shared heuristic
+  if (!hasLikelyEmoji(html)) {
     return html;
   }
 
