@@ -725,14 +725,16 @@ describe('StatusDetailModal', () => {
             vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             vi.spyOn(mastoClient, 'favouriteStatus').mockReturnValue(favouritePromise);
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             // Initial count should be 5 (in stats section)
             expect(screen.getByText((_content, element) => {
@@ -740,7 +742,9 @@ describe('StatusDetailModal', () => {
             })).toBeInTheDocument();
 
             const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
-            await user.click(favouriteButton);
+            await act(async () => {
+                await user.click(favouriteButton);
+            });
 
             // Count should optimistically update to 6 before API completes
             await waitFor(() => {
@@ -750,7 +754,9 @@ describe('StatusDetailModal', () => {
             });
 
             // Resolve the API call
-            resolvePromise!(createMockStatus({ favourited: true, favouritesCount: 6 }));
+            await act(async () => {
+                resolvePromise!(createMockStatus({ favourited: true, favouritesCount: 6 }));
+            });
         });
 
         it('should revert optimistic update on API failure', async () => {
@@ -819,27 +825,33 @@ describe('StatusDetailModal', () => {
             vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             const favouriteSpy = vi.spyOn(mastoClient, 'favouriteStatus').mockReturnValue(favouritePromise);
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
 
             // Click multiple times rapidly
-            await user.click(favouriteButton);
-            await user.click(favouriteButton);
-            await user.click(favouriteButton);
+            await act(async () => {
+                await user.click(favouriteButton);
+                await user.click(favouriteButton);
+                await user.click(favouriteButton);
+            });
 
             // Should only call the API once
             expect(favouriteSpy).toHaveBeenCalledTimes(1);
 
             // Resolve the promise
-            resolvePromise!(createMockStatus({ favourited: true, favouritesCount: 6 }));
+            await act(async () => {
+                resolvePromise!(createMockStatus({ favourited: true, favouritesCount: 6 }));
+            });
         });
     });
 
