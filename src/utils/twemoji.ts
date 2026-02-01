@@ -1,4 +1,7 @@
-import { parse, toCodePoints, type EmojiEntity } from "@twemoji/parser";
+import { parse, type EmojiEntity, type ParsingOptions } from "@twemoji/parser";
+
+// Re-export EmojiEntity for use in other modules
+export type { EmojiEntity };
 
 /**
  * Escapes special HTML characters to prevent XSS
@@ -35,10 +38,11 @@ export function buildTwemojiUrl(
  * - Emoji 17.0 support (Unicode 17.0)
  *
  * @param text - Text to parse for emojis
+ * @param options - Optional parsing options (e.g., assetType for URL generation)
  * @returns Array of emoji entities with text, url, and position info
  */
-export function parseUnicodeEmojis(text: string): EmojiEntity[] {
-  return parse(text);
+export function parseUnicodeEmojis(text: string, options?: ParsingOptions): EmojiEntity[] {
+  return parse(text, options);
 }
 
 /**
