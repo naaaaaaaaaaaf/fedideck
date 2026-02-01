@@ -41,13 +41,7 @@ function TestModal({
 }
 
 // Test component without close button (closeButtonRef is null)
-function TestModalNoCloseButton({
-    isOpen,
-    onClose,
-}: {
-    isOpen: boolean;
-    onClose: () => void;
-}) {
+function TestModalNoCloseButton({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -67,6 +61,33 @@ function TestModalNoCloseButton({
                 {/* No close button rendered - closeButtonRef will be null */}
                 <input data-testid="first-input" type="text" />
                 <button data-testid="submit-button">送信</button>
+            </div>
+        </div>
+    );
+}
+
+// Test component with an extra data attribute for pointer event targeting.
+function TestModalWithPointer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+    const modalRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+    const { handleKeyDown } = useModalAccessibility({
+        isOpen,
+        onClose,
+        closeButtonRef,
+        modalRef,
+    });
+
+    if (!isOpen) return null;
+
+    return (
+        <div onKeyDown={handleKeyDown} role="dialog" aria-modal="true" data-testid="modal-wrapper">
+            <div ref={modalRef} data-testid="modal-content">
+                <button ref={closeButtonRef} data-testid="close-button">
+                    閉じる
+                </button>
+                <div data-testid="drag-target">ドラッグ対象</div>
+                <button data-testid="action-button">アクション</button>
             </div>
         </div>
     );
@@ -198,6 +219,30 @@ describe('useModalAccessibility', () => {
             // 最初の要素（input）にフォーカスが戻る
             const firstInput = screen.getByTestId('first-input');
             expect(document.activeElement).toBe(firstInput);
+        });
+    });
+
+    describe('pointer drag behavior', () => {
+        it('pointerdown中はfocusoutでフォーカス復帰しない', () => {
+            render(<TestModalWithPointer isOpen={true} onClose={onClose} />);
+
+            const modalContent = screen.getByTestId('modal-content');
+            const actionButton = screen.getByTestId('action-button');
+            const dragTarget = screen.getByTestId('drag-target');
+
+            actionButton.focus();
+            expect(document.activeElement).toBe(actionButton);
+
+            fireEvent.pointerDown(modalContent);
+            fireEvent.pointerDown(dragTarget);
+            actionButton.blur();
+            fireEvent.focusOut(modalContent);
+
+            // During pointerdown, focus should not be forced to close button.
+            const closeButton = screen.getByTestId('close-button');
+            expect(document.activeElement).not.toBe(closeButton);
+
+            fireEvent.pointerUp(window);
         });
     });
 
