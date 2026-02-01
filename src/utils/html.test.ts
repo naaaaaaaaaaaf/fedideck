@@ -77,4 +77,64 @@ describe("escapeHtml", () => {
       expect(result).not.toContain("<div");
     });
   });
+
+  describe("edge cases", () => {
+    it("should handle empty string", () => {
+      expect(escapeHtml("")).toBe("");
+    });
+
+    it("should handle string with only special characters", () => {
+      expect(escapeHtml("<>\"'&")).toBe("&lt;&gt;&quot;&#039;&amp;");
+    });
+
+    it("should preserve safe characters", () => {
+      const input = "Hello World 123 !@#$%()*+-./:;=?[_]^{|}~";
+      expect(escapeHtml(input)).toBe(input);
+    });
+
+    it("should handle Unicode characters correctly", () => {
+      expect(escapeHtml("Hello 世界 🎉")).toBe("Hello 世界 🎉");
+    });
+
+    it("should escape special characters in the middle of string", () => {
+      expect(escapeHtml("Hello <world> test")).toBe("Hello &lt;world&gt; test");
+    });
+
+    it("should handle already escaped content (double escape)", () => {
+      // Note: This will double-escape &amp; to &amp;amp;
+      const input = "&lt;script&gt;";
+      expect(escapeHtml(input)).toBe("&amp;lt;script&amp;gt;");
+    });
+  });
+
+  describe("combinations", () => {
+    it("should escape complete HTML tags", () => {
+      const input = "<div class='test'>Content</div>";
+      const result = escapeHtml(input);
+      expect(result).toContain("&lt;div");
+      expect(result).toContain("&lt;/div&gt;");
+    });
+
+    it("should escape HTML attributes with quotes", () => {
+      const input = '<a href="http://example.com" title=\'test\'>Link</a>';
+      const result = escapeHtml(input);
+      expect(result).toContain("&lt;a");
+      expect(result).toContain("&quot;http://example.com&quot;");
+      expect(result).toContain("&#039;test&#039;");
+    });
+
+    it("should escape HTML comments", () => {
+      const input = "<!-- comment -->";
+      const result = escapeHtml(input);
+      expect(result).toContain("&lt;!-- comment --&gt;");
+    });
+
+    it("should escape all special characters in complex string", () => {
+      const input = '<div data-value="1 & 2">Test < > " \' &</div>';
+      const result = escapeHtml(input);
+      expect(result).toContain("&lt;div");
+      expect(result).toContain("&quot;1 &amp; 2&quot;");
+      expect(result).toContain("&lt; &gt; &quot; &#039; &amp;");
+    });
+  });
 });
