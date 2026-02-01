@@ -71,6 +71,7 @@ export function createTwemojiImgTag(emoji: EmojiEntity): string {
 /**
  * Replaces all Unicode emojis in text with Twemoji img tags.
  * Preserves all other text and handles complex emojis correctly.
+ * Includes BMP emoji, variation selectors, and surrogate pairs.
  *
  * @param text - Text containing Unicode emojis
  * @returns HTML string with emojis replaced by img tags
@@ -78,11 +79,6 @@ export function createTwemojiImgTag(emoji: EmojiEntity): string {
 export function replaceUnicodeEmojisWithImages(text: string): string {
   if (!text) {
     return "";
-  }
-
-  // Fast check - return early if no emojis detected
-  if (!hasLikelyEmoji(text)) {
-    return text;
   }
 
   const emojis = parse(text, { assetType: "svg" });

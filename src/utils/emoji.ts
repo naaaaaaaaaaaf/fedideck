@@ -1,7 +1,6 @@
 import type { mastodon } from "masto";
 import {
   createTwemojiImgTag,
-  hasLikelyEmoji,
   parseUnicodeEmojis,
 } from "./twemoji";
 
@@ -159,6 +158,7 @@ function splitHtmlByTags(html: string): Array<{ type: "text" | "tag"; content: s
 /**
  * Replaces Unicode emojis with Twemoji img tags in HTML content.
  * Only processes text segments outside of HTML tags to avoid breaking attributes.
+ * Handles BMP emoji, variation selectors, and surrogate pairs.
  *
  * @param html - The HTML string that may contain Unicode emojis
  * @returns HTML with Unicode emojis replaced by img tags
@@ -166,11 +166,6 @@ function splitHtmlByTags(html: string): Array<{ type: "text" | "tag"; content: s
 function replaceUnicodeEmojisInHtml(html: string): string {
   if (!html) {
     return "";
-  }
-
-  // Fast check for potential emoji using shared heuristic
-  if (!hasLikelyEmoji(html)) {
-    return html;
   }
 
   // Split HTML into text and tag segments

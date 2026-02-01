@@ -185,4 +185,34 @@ describe("replaceUnicodeEmojisWithImages", () => {
     const result = replaceUnicodeEmojisWithImages("<script>alert('xss')</script>");
     expect(result).toBe("<script>alert('xss')</script>");
   });
+
+  // BMP emoji tests (Basic Multilingual Plane)
+  describe("BMP emoji handling", () => {
+    it("should replace BMP emoji with variation selector", () => {
+      // ❤️ = Black Heart Suit (U+2764) + Variation Selector-16 (U+FE0F)
+      const result = replaceUnicodeEmojisWithImages("I ❤️ you");
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="❤️"');
+    });
+
+    it("should replace BMP emoji without variation selector", () => {
+      // ☕ = Hot Beverage (U+2615)
+      const result = replaceUnicodeEmojisWithImages("Coffee ☕ time");
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="☕"');
+    });
+
+    it("should replace other BMP symbols", () => {
+      // ✈️ = Airplane (U+2708) + Variation Selector-16 (U+FE0F)
+      const result = replaceUnicodeEmojisWithImages("Flying ✈️");
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="✈️"');
+    });
+
+    it("should handle mixed BMP and surrogate pair emojis", () => {
+      const result = replaceUnicodeEmojisWithImages("☕ and 😀");
+      const imgCount = (result.match(/<img class="emoji"/g) || []).length;
+      expect(imgCount).toBe(2);
+    });
+  });
 });
