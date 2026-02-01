@@ -87,6 +87,7 @@ function TestModalWithPointer({ isOpen, onClose }: { isOpen: boolean; onClose: (
                     閉じる
                 </button>
                 <div data-testid="drag-target">ドラッグ対象</div>
+                <p data-testid="selectable-text">これは選択可能なテキストです</p>
                 <button data-testid="action-button">アクション</button>
             </div>
         </div>
@@ -246,6 +247,40 @@ describe('useModalAccessibility', () => {
             });
 
             fireEvent.pointerUp(window);
+        });
+
+        it('テキスト選択中はfocusoutでフォーカス復帰しない', async () => {
+            render(<TestModalWithPointer isOpen={true} onClose={onClose} />);
+
+            const modalContent = screen.getByTestId('modal-content');
+            const actionButton = screen.getByTestId('action-button');
+            const selectableText = screen.getByTestId('selectable-text');
+
+            actionButton.focus();
+            expect(document.activeElement).toBe(actionButton);
+
+            // Simulate text selection by creating a range
+            const range = document.createRange();
+            range.selectNodeContents(selectableText);
+            const selection = window.getSelection();
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+
+            // Verify text is actually selected
+            expect(selection?.rangeCount).toBeGreaterThan(0);
+            expect(selection?.isCollapsed).toBe(false);
+
+            actionButton.blur();
+            fireEvent.focusOut(modalContent);
+
+            // During text selection, focus should not be forced to close button
+            await waitFor(() => {
+                const closeButton = screen.getByTestId('close-button');
+                expect(document.activeElement).not.toBe(closeButton);
+            });
+
+            // Clean up selection
+            selection?.removeAllRanges();
         });
     });
 
