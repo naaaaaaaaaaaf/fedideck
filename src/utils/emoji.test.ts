@@ -471,4 +471,50 @@ describe("replaceEmojisInPlainText", () => {
       expect(result).toContain('<img class="emoji"');
     });
   });
+
+  // BMP emoji tests (Basic Multilingual Plane)
+  describe("BMP emoji in plain text", () => {
+    it("should replace BMP emoji with variation selector", () => {
+      // ❤️ = Black Heart Suit (U+2764) + Variation Selector-16 (U+FE0F)
+      const result = replaceEmojisInPlainText("I ❤️ coffee", undefined);
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="❤️"');
+    });
+
+    it("should replace BMP emoji without variation selector", () => {
+      // ☕ = Hot Beverage (U+2615)
+      const result = replaceEmojisInPlainText("Coffee ☕ time", undefined);
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="☕"');
+    });
+
+    it("should replace other BMP symbols", () => {
+      // ✈️ = Airplane (U+2708) + Variation Selector-16 (U+FE0F)
+      const result = replaceEmojisInPlainText("Flying ✈️", undefined);
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="✈️"');
+    });
+
+    it("should handle mixed BMP and surrogate pair emojis", () => {
+      const result = replaceEmojisInPlainText("☕ and 😀 and ❤️", undefined);
+      const imgCount = (result.match(/<img class="emoji"/g) || []).length;
+      expect(imgCount).toBe(3);
+    });
+
+    it("should handle BMP emoji with custom emoji shortcodes", () => {
+      const emojis = [createEmoji("coffee")];
+      const result = replaceEmojisInPlainText(":coffee: and ☕", emojis);
+      const imgCount = (result.match(/<img class="emoji"/g) || []).length;
+      expect(imgCount).toBe(2);
+      expect(result).toContain('alt=":coffee:"');
+      expect(result).toContain('alt="☕"');
+    });
+
+    it("should escape HTML and process BMP emoji", () => {
+      const result = replaceEmojisInPlainText("<b>☕</b>", undefined);
+      expect(result).toContain("&lt;b&gt;");
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain('alt="☕"');
+    });
+  });
 });

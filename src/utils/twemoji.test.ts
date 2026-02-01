@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   buildTwemojiUrl,
   parseUnicodeEmojis,
-  hasLikelyEmoji,
   replaceUnicodeEmojisWithImages,
 } from "./twemoji";
 
@@ -30,42 +29,6 @@ describe("buildTwemojiUrl", () => {
   it("should default to SVG format", () => {
     const url = buildTwemojiUrl(["1f600"]);
     expect(url).toContain(".svg");
-  });
-});
-
-describe("hasLikelyEmoji", () => {
-  it("should return true for text with basic emoji", () => {
-    expect(hasLikelyEmoji("Hello 😀 World")).toBe(true);
-  });
-
-  it("should return true for text with only emoji", () => {
-    // Note: 🎉 uses surrogate pair (U+1F389), so it should be detected
-    expect(hasLikelyEmoji("🎉")).toBe(true);
-  });
-
-  it("should return false for text without emoji", () => {
-    expect(hasLikelyEmoji("Hello World")).toBe(false);
-  });
-
-  it("should return false for empty string", () => {
-    expect(hasLikelyEmoji("")).toBe(false);
-  });
-
-  it("should return true for skin tone modifier emoji", () => {
-    expect(hasLikelyEmoji("👋🏽")).toBe(true);
-  });
-
-  it("should return true for ZWJ sequence emoji", () => {
-    expect(hasLikelyEmoji("👨‍👩‍👧‍👦")).toBe(true);
-  });
-
-  it("may return false for flag emoji (limitation of simple heuristic)", () => {
-    // Flag emojis use Regional Indicator Symbols (U+1F1E6-1F1FF), which are surrogate pairs
-    // but this heuristic might miss them. The parse() function will handle correctly.
-    // This is acceptable since hasLikelyEmoji is just for optimization.
-    expect(
-      hasLikelyEmoji("🇯🇵") === true || hasLikelyEmoji("🇯🇵") === false
-    ).toBe(true);
   });
 });
 

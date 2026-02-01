@@ -35,28 +35,6 @@ export function parseUnicodeEmojis(text: string, options?: ParsingOptions): Emoj
 }
 
 /**
- * Checks if text likely contains any Unicode emojis.
- * This is a simple heuristic check for early return optimization.
- *
- * @param text - Text to check
- * @returns true if text likely contains emojis
- */
-export function hasLikelyEmoji(text: string): boolean {
-  // Simple heuristic: check for UTF-16 surrogate pairs used for emoji
-  // High surrogates: U+D800-U+DBFF
-  // Low surrogates: U+DC00-U+DFFF
-  // Most emoji are in the range starting with U+D83x
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    // Check for high surrogate (indicates potential emoji)
-    if (code >= 0xd800 && code <= 0xdbff) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
  * Creates an img tag for a Twemoji emoji.
  *
  * @param emoji - Emoji entity from @twemoji/parser
