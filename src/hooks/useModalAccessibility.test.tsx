@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useModalAccessibility } from './useModalAccessibility';
 
@@ -223,7 +223,7 @@ describe('useModalAccessibility', () => {
     });
 
     describe('pointer drag behavior', () => {
-        it('pointerdown中はfocusoutでフォーカス復帰しない', () => {
+        it('pointerdown中はfocusoutでフォーカス復帰しない', async () => {
             render(<TestModalWithPointer isOpen={true} onClose={onClose} />);
 
             const modalContent = screen.getByTestId('modal-content');
@@ -239,8 +239,11 @@ describe('useModalAccessibility', () => {
             fireEvent.focusOut(modalContent);
 
             // During pointerdown, focus should not be forced to close button.
-            const closeButton = screen.getByTestId('close-button');
-            expect(document.activeElement).not.toBe(closeButton);
+            // Use waitFor to account for setTimeout in focusout handler
+            await waitFor(() => {
+                const closeButton = screen.getByTestId('close-button');
+                expect(document.activeElement).not.toBe(closeButton);
+            });
 
             fireEvent.pointerUp(window);
         });
