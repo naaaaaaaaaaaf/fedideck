@@ -209,7 +209,7 @@ describe('escapeRegExp', () => {
 
         it('should handle string with only special characters', () => {
             expect(escapeRegExp('.+?^${}()|[]\\')).toBe(
-                '\\.\\*\\+\\?\\^\\$\\{\\}\\(\\)\\|\\[\\]\\\\'
+                '\\.\\+\\?\\^\\$\\{\\}\\(\\)\\|\\[\\]\\\\'
             );
         });
 
