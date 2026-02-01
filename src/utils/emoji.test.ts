@@ -218,6 +218,77 @@ describe("replaceEmojisWithImages", () => {
       expect(result).toContain("<p>Hello");
       expect(result).toContain("world</p>");
     });
+
+    it("should handle > character inside attribute values", () => {
+      const emojis = [createEmoji("emoji")];
+      // The > inside alt=">" should not close the tag
+      const html = '<img alt=">" src=":emoji:"> :emoji:';
+      const result = replaceEmojisWithImages(html, emojis);
+
+      // Should NOT replace :emoji: inside src attribute
+      expect(result).toContain('src=":emoji:"');
+      // Should replace :emoji: outside the tag
+      const imgCount = (result.match(/<img/g) || []).length;
+      expect(imgCount).toBe(2);
+    });
+
+    it("should handle < character inside attribute values", () => {
+      const emojis = [createEmoji("emoji")];
+      // The < inside alt="<" should not open a new tag
+      const html = '<img alt="<" src=":emoji:"> :emoji:';
+      const result = replaceEmojisWithImages(html, emojis);
+
+      // Should NOT replace :emoji: inside src attribute
+      expect(result).toContain('src=":emoji:"');
+      // Should replace :emoji: outside the tag
+      const imgCount = (result.match(/<img/g) || []).length;
+      expect(imgCount).toBe(2);
+    });
+
+    it("should handle both < and > inside attribute values", () => {
+      const emojis = [createEmoji("test")];
+      const html = '<a title="click > here < now" href=":test:">:test:</a>';
+      const result = replaceEmojisWithImages(html, emojis);
+
+      // Should NOT replace :test: inside href attribute
+      expect(result).toContain('href=":test:"');
+      // Should replace :test: in the text content
+      expect(result).toContain('<img class="emoji"');
+    });
+
+    it("should handle single quotes in attributes", () => {
+      const emojis = [createEmoji("emoji")];
+      const html = "<img alt='>' src=':emoji:'> :emoji:";
+      const result = replaceEmojisWithImages(html, emojis);
+
+      // Should NOT replace :emoji: inside src attribute
+      expect(result).toContain("src=':emoji:'");
+      // Should replace :emoji: outside the tag
+      const imgCount = (result.match(/<img/g) || []).length;
+      expect(imgCount).toBe(2);
+    });
+
+    it("should handle mixed quotes with special characters", () => {
+      const emojis = [createEmoji("emoji")];
+      const html = `<a href=":emoji:" title='say ">hello<"'>:emoji:</a>`;
+      const result = replaceEmojisWithImages(html, emojis);
+
+      // Should NOT replace :emoji: inside href attribute
+      expect(result).toContain('href=":emoji:"');
+      // Should replace :emoji: in text content
+      expect(result).toContain('<img class="emoji"');
+    });
+
+    it("should handle nested angle brackets in attributes", () => {
+      const emojis = [createEmoji("test")];
+      const html = '<span data-html="<b>:test:</b>">:test:</span>';
+      const result = replaceEmojisWithImages(html, emojis);
+
+      // Should NOT replace :test: inside data-html attribute
+      expect(result).toContain('data-html="<b>:test:</b>"');
+      // Should replace :test: in text content
+      expect(result).toContain('<img class="emoji"');
+    });
   });
 
   // Performance optimization tests

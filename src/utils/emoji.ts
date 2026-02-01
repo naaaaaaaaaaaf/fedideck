@@ -61,6 +61,45 @@ function createEmojiImgTag(emoji: mastodon.v1.CustomEmoji): string {
 }
 
 /**
+ * Checks if a given offset in an HTML string is inside an HTML tag.
+ * Properly handles quoted attribute values that may contain < or > characters.
+ *
+ * @param html - The HTML string to check
+ * @param offset - The character offset to check
+ * @returns true if the offset is inside an HTML tag, false otherwise
+ */
+function isInsideHtmlTag(html: string, offset: number): boolean {
+  let insideTag = false;
+  let quoteChar: string | null = null;
+
+  for (let i = 0; i < offset && i < html.length; i++) {
+    const char = html[i];
+
+    if (quoteChar) {
+      // Inside quotes - only exit when we see the matching quote
+      if (char === quoteChar) {
+        quoteChar = null;
+      }
+      // Ignore < and > inside quotes
+    } else if (insideTag) {
+      // Inside a tag but not in quotes
+      if (char === '"' || char === "'") {
+        quoteChar = char;
+      } else if (char === ">") {
+        insideTag = false;
+      }
+    } else {
+      // Outside a tag
+      if (char === "<") {
+        insideTag = true;
+      }
+    }
+  }
+
+  return insideTag;
+}
+
+/**
  * Replaces emoji shortcodes (e.g., :shortcode:) with img tags in HTML content.
  * Uses a replacement callback and context checks to avoid replacing shortcodes inside HTML tag attributes.
  *
@@ -91,13 +130,8 @@ export function replaceEmojisWithImages(
     const imgTag = createEmojiImgTag(emoji);
 
     result = result.replace(pattern, (match, offset) => {
-      // Check if we're inside an HTML tag by looking for unbalanced < and >
-      const before = result.substring(0, offset);
-      const lastOpenTag = before.lastIndexOf("<");
-      const lastCloseTag = before.lastIndexOf(">");
-
-      // If we're inside a tag (last < is after last >), don't replace
-      if (lastOpenTag > lastCloseTag) {
+      // Check if we're inside an HTML tag (handles quoted attributes properly)
+      if (isInsideHtmlTag(result, offset)) {
         return match;
       }
 
