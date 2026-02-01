@@ -174,7 +174,7 @@ function createTwemojiImgTag(emoji: EmojiEntity): string {
  */
 function replaceUnicodeEmojisInHtml(html: string): string {
   if (!html) {
-    return html ?? "";
+    return "";
   }
 
   // Fast check for potential emoji using shared heuristic
