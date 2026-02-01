@@ -1,4 +1,4 @@
-import { parse, type EmojiEntity, type ParsingOptions } from "@twemoji/parser";
+import { parse, toCodePoints, type EmojiEntity, type ParsingOptions } from "@twemoji/parser";
 import { escapeHtml } from "./html";
 
 // Re-export EmojiEntity for use in other modules
@@ -35,14 +35,46 @@ export function parseUnicodeEmojis(text: string, options?: ParsingOptions): Emoj
 }
 
 /**
+ * Validates that a URL is a safe Twemoji CDN URL.
+ * Only allows HTTPS URLs from cdn.jsdelivr.net with the correct path format.
+ *
+ * @param url - URL to validate
+ * @returns true if URL is safe, false otherwise
+ */
+export function validateTwemojiUrl(url: string): boolean {
+  if (!url) return false;
+
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === "https:" &&
+      parsed.hostname === "cdn.jsdelivr.net" &&
+      parsed.pathname.startsWith("/gh/jdecked/twemoji@")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Creates an img tag for a Twemoji emoji.
+ * Uses toCodePoints() to build the URL from emoji text instead of trusting emoji.url.
  *
  * @param emoji - Emoji entity from @twemoji/parser
- * @returns HTML img tag string
+ * @returns HTML img tag string, or escaped text if URL validation fails
  */
 export function createTwemojiImgTag(emoji: EmojiEntity): string {
   const escapedText = escapeHtml(emoji.text);
-  const escapedUrl = escapeHtml(emoji.url);
+  // Build URL from codepoints instead of trusting emoji.url
+  const codepoints = toCodePoints(emoji.text);
+  const url = buildTwemojiUrl(codepoints, "svg");
+
+  // Validate URL before using it
+  if (!validateTwemojiUrl(url)) {
+    return escapedText;
+  }
+
+  const escapedUrl = escapeHtml(url);
   return `<img class="emoji" src="${escapedUrl}" alt="${escapedText}" title="${escapedText}">`;
 }
 
@@ -50,6 +82,10 @@ export function createTwemojiImgTag(emoji: EmojiEntity): string {
  * Replaces all Unicode emojis in text with Twemoji img tags.
  * Preserves all other text and handles complex emojis correctly.
  * Includes BMP emoji, variation selectors, and surrogate pairs.
+ *
+ * @warning SECURITY: This function does NOT escape HTML. Only use with
+ * trusted plain text, or combine with HTML escaping. For user-generated
+ * content, use `replaceEmojisInPlainText` from `emoji.ts` instead.
  *
  * @param text - Text containing Unicode emojis
  * @returns HTML string with emojis replaced by img tags

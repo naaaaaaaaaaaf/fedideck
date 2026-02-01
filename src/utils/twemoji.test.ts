@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
   buildTwemojiUrl,
+  createTwemojiImgTag,
   parseUnicodeEmojis,
   replaceUnicodeEmojisWithImages,
+  validateTwemojiUrl,
 } from "./twemoji";
 
 describe("buildTwemojiUrl", () => {
@@ -177,5 +179,79 @@ describe("replaceUnicodeEmojisWithImages", () => {
       const imgCount = (result.match(/<img class="emoji"/g) || []).length;
       expect(imgCount).toBe(2);
     });
+  });
+});
+
+describe("validateTwemojiUrl", () => {
+  it("should accept valid jsDelivr HTTPS URLs", () => {
+    expect(
+      validateTwemojiUrl("https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/1f600.svg")
+    ).toBe(true);
+  });
+
+  it("should reject HTTP URLs", () => {
+    expect(
+      validateTwemojiUrl("http://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/1f600.svg")
+    ).toBe(false);
+  });
+
+  it("should reject URLs with different hostname", () => {
+    expect(validateTwemojiUrl("https://evil.com/emoji.svg")).toBe(false);
+    expect(validateTwemojiUrl("https://example.com/gh/jdecked/twemoji@latest/assets/svg/1f600.svg")).toBe(false);
+  });
+
+  it("should reject URLs with incorrect path format", () => {
+    expect(validateTwemojiUrl("https://cdn.jsdelivr.net/gh/evil/twemoji@latest/assets/svg/1f600.svg")).toBe(false);
+    expect(validateTwemojiUrl("https://cdn.jsdelivr.net/other/path/1f600.svg")).toBe(false);
+  });
+
+  it("should reject empty string", () => {
+    expect(validateTwemojiUrl("")).toBe(false);
+  });
+
+  it("should reject invalid URLs", () => {
+    expect(validateTwemojiUrl("not-a-url")).toBe(false);
+    expect(validateTwemojiUrl("javascript:alert('xss')")).toBe(false);
+  });
+});
+
+describe("createTwemojiImgTag security", () => {
+  it("should use buildTwemojiUrl instead of trusting emoji.url", () => {
+    const emojis = parseUnicodeEmojis("Test 😀");
+    const tag = createTwemojiImgTag(emojis[0]);
+
+    // Should contain the CDN URL built from codepoints
+    expect(tag).toContain("https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/1f600.svg");
+  });
+
+  it("should escape HTML in emoji text", () => {
+    const emojis = parseUnicodeEmojis("Test 😀");
+    const tag = createTwemojiImgTag(emojis[0]);
+
+    // alt and title should have escaped HTML
+    expect(tag).toContain('alt="😀"');
+    expect(tag).toContain('title="😀"');
+  });
+
+  it("should build correct URL for complex emoji", () => {
+    // 👨‍👩‍👧‍👦 family emoji
+    const emojis = parseUnicodeEmojis("👨‍👩‍👧‍👦");
+    const tag = createTwemojiImgTag(emojis[0]);
+
+    expect(tag).toContain("1f468-200d-1f469-200d-1f467-200d-1f466.svg");
+  });
+
+  it("should handle flag emojis", () => {
+    const emojis = parseUnicodeEmojis("🇯🇵");
+    const tag = createTwemojiImgTag(emojis[0]);
+
+    expect(tag).toContain("1f1ef-1f1f5.svg");
+  });
+
+  it("should handle emojis with skin tone modifiers", () => {
+    const emojis = parseUnicodeEmojis("👋🏽");
+    const tag = createTwemojiImgTag(emojis[0]);
+
+    expect(tag).toContain("1f44b-1f3fd.svg");
   });
 });

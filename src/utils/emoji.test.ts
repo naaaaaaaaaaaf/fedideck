@@ -517,4 +517,36 @@ describe("replaceEmojisInPlainText", () => {
       expect(result).toContain('alt="☕"');
     });
   });
+
+  // Edge cases for escaped HTML before emoji replacement
+  describe("escaped HTML edge cases", () => {
+    it("should correctly process emojis after escaped HTML tags", () => {
+      const result = replaceEmojisInPlainText("<script>😀</script>", undefined);
+      expect(result).toContain("&lt;script&gt;");
+      expect(result).toContain('<img class="emoji"');
+      expect(result).toContain("&lt;/script&gt;");
+    });
+
+    it("should handle multiple emojis in escaped HTML context", () => {
+      const result = replaceEmojisInPlainText("<div>😀🎉</div>", undefined);
+      expect(result).toContain("&lt;div&gt;");
+      expect(result).toContain("&lt;/div&gt;");
+      const imgCount = (result.match(/<img class="emoji"/g) || []).length;
+      expect(imgCount).toBe(2);
+    });
+
+    it("should handle escaped ampersands before emojis", () => {
+      const result = replaceEmojisInPlainText("A & B 😀", undefined);
+      expect(result).toContain("A &amp; B");
+      expect(result).toContain('<img class="emoji"');
+    });
+
+    it("should handle mixed special characters and emojis", () => {
+      const result = replaceEmojisInPlainText("<>😀&\"", undefined);
+      expect(result).toContain("&lt;&gt;");
+      expect(result).toContain("&amp;");
+      expect(result).toContain("&quot;");
+      expect(result).toContain('<img class="emoji"');
+    });
+  });
 });
