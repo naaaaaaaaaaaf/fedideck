@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StatusDetailModal } from './StatusDetailModal';
 import type { mastodon } from 'masto';
@@ -608,39 +608,43 @@ describe('StatusDetailModal', () => {
             vi.clearAllMocks();
         });
 
-        it('should not show favourite button as active when status is not favourited', () => {
+        it('should not show favourite button as active when status is not favourited', async () => {
             const status = createMockStatus({ favourited: false });
             const accountSession = createMockAccountSession();
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             // Find all buttons and locate favourite button by checking for star icon
             const buttons = screen.getAllByRole('button');
             const favouriteButton = buttons.find(btn => btn.querySelector('svg'));
-            
+
             // The button should not have the filled star or active color class
             expect(favouriteButton?.className).not.toMatch(/text-amber-400/);
         });
 
-        it('should show favourite button as active when status is favourited', () => {
+        it('should show favourite button as active when status is favourited', async () => {
             const status = createMockStatus({ favourited: true, favouritesCount: 10 });
             const accountSession = createMockAccountSession();
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             // Favourite count should be visible
             expect(screen.getByText('10')).toBeInTheDocument();
@@ -721,14 +725,16 @@ describe('StatusDetailModal', () => {
             vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             vi.spyOn(mastoClient, 'favouriteStatus').mockReturnValue(favouritePromise);
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             // Initial count should be 5 (in stats section)
             expect(screen.getByText((_content, element) => {
@@ -736,7 +742,9 @@ describe('StatusDetailModal', () => {
             })).toBeInTheDocument();
 
             const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
-            await user.click(favouriteButton);
+            await act(async () => {
+                await user.click(favouriteButton);
+            });
 
             // Count should optimistically update to 6 before API completes
             await waitFor(() => {
@@ -746,7 +754,9 @@ describe('StatusDetailModal', () => {
             });
 
             // Resolve the API call
-            resolvePromise!(createMockStatus({ favourited: true, favouritesCount: 6 }));
+            await act(async () => {
+                resolvePromise!(createMockStatus({ favourited: true, favouritesCount: 6 }));
+            });
         });
 
         it('should revert optimistic update on API failure', async () => {
@@ -815,27 +825,33 @@ describe('StatusDetailModal', () => {
             vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             const favouriteSpy = vi.spyOn(mastoClient, 'favouriteStatus').mockReturnValue(favouritePromise);
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
 
             // Click multiple times rapidly
-            await user.click(favouriteButton);
-            await user.click(favouriteButton);
-            await user.click(favouriteButton);
+            await act(async () => {
+                await user.click(favouriteButton);
+                await user.click(favouriteButton);
+                await user.click(favouriteButton);
+            });
 
             // Should only call the API once
             expect(favouriteSpy).toHaveBeenCalledTimes(1);
 
             // Resolve the promise
-            resolvePromise!(createMockStatus({ favourited: true, favouritesCount: 6 }));
+            await act(async () => {
+                resolvePromise!(createMockStatus({ favourited: true, favouritesCount: 6 }));
+            });
         });
     });
 
@@ -993,17 +1009,21 @@ describe('StatusDetailModal', () => {
             vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             vi.spyOn(mastoClient, 'reblogStatus').mockReturnValue(reblogPromise);
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             const reblogButton = screen.getByRole('button', { name: /ブースト/ });
-            await user.click(reblogButton);
+            await act(async () => {
+                await user.click(reblogButton);
+            });
 
             // Count should optimistically update to 6
             await waitFor(() => {
@@ -1012,7 +1032,9 @@ describe('StatusDetailModal', () => {
                 })).toBeInTheDocument();
             });
 
-            resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 6 }));
+            await act(async () => {
+                resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 6 }));
+            });
         });
 
         it('should revert optimistic reblog update on API failure', async () => {
@@ -1079,26 +1101,32 @@ describe('StatusDetailModal', () => {
             vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
             const reblogSpy = vi.spyOn(mastoClient, 'reblogStatus').mockReturnValue(reblogPromise);
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             const reblogButton = screen.getByRole('button', { name: /ブースト/ });
 
             // Click multiple times rapidly
-            await user.click(reblogButton);
-            await user.click(reblogButton);
-            await user.click(reblogButton);
+            await act(async () => {
+                await user.click(reblogButton);
+                await user.click(reblogButton);
+                await user.click(reblogButton);
+            });
 
             // Should only call once
             expect(reblogSpy).toHaveBeenCalledTimes(1);
 
-            resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 6 }));
+            await act(async () => {
+                resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 6 }));
+            });
         });
     });
 
@@ -1594,20 +1622,28 @@ describe('StatusDetailModal', () => {
 
             vi.mocked(mastoClient.getStatusContext).mockReturnValue(contextPromise);
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                    accountSession={accountSession}
-                />
-            );
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
 
             // Should show loading indicator
             expect(screen.getByText('スレッドを読み込み中...')).toBeInTheDocument();
 
-            // Resolve the context
-            resolveContext!({ ancestors: [], descendants: [] });
+            // Resolve the context and wait for loading to complete
+            await act(async () => {
+                resolveContext!({ ancestors: [], descendants: [] });
+                await contextPromise;
+            });
+
+            // Loading indicator should no longer be present
+            expect(screen.queryByText('スレッドを読み込み中...')).not.toBeInTheDocument();
         });
 
         it('should display ancestors when present', async () => {
