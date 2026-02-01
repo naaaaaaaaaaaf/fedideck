@@ -3,9 +3,13 @@ import { useRef, useCallback } from 'react';
 /**
  * Hook for inserting text at cursor position in a textarea
  * @param textareaRef - Reference to the textarea element
+ * @param onValueChange - Callback to update the React state with new value
  * @returns Object with insertAtCursor function
  */
-export function useTextareaCursor(textareaRef: React.RefObject<HTMLTextAreaElement | null>) {
+export function useTextareaCursor(
+    textareaRef: React.RefObject<HTMLTextAreaElement | null>,
+    onValueChange?: (newValue: string) => void
+) {
     // Track cursor position to restore after re-renders
     const cursorPositionRef = useRef<number>(0);
 
@@ -26,7 +30,12 @@ export function useTextareaCursor(textareaRef: React.RefObject<HTMLTextAreaEleme
             // Insert the text at cursor position
             const newValue = currentValue.substring(0, start) + text + currentValue.substring(end);
 
-            // Create and dispatch input event to trigger React state updates
+            // Update React state if callback provided
+            if (onValueChange) {
+                onValueChange(newValue);
+            }
+
+            // Update DOM directly and dispatch input event
             const inputEvent = new Event('input', { bubbles: true });
             textarea.value = newValue;
             textarea.dispatchEvent(inputEvent);
@@ -39,7 +48,7 @@ export function useTextareaCursor(textareaRef: React.RefObject<HTMLTextAreaEleme
             // Focus the textarea
             textarea.focus();
         },
-        [textareaRef]
+        [textareaRef, onValueChange]
     );
 
     return { insertAtCursor };

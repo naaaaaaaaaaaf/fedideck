@@ -145,8 +145,8 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     // Emoji palette state
     const [showEmojiPalette, setShowEmojiPalette] = useState(false);
 
-    // Textarea cursor hook
-    const { insertAtCursor } = useTextareaCursor(textareaRef);
+    // Textarea cursor hook - pass setContent to update React state
+    const { insertAtCursor } = useTextareaCursor(textareaRef, setContent);
 
     // Get the account to compose from (for replies, use locked accountId; for new posts, use selected)
     const composingAccount = isAccountLocked
