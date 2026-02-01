@@ -1,5 +1,5 @@
 import { parse, type EmojiEntity, type ParsingOptions } from "@twemoji/parser";
-import { escapeHtml } from "./emoji";
+import { escapeHtml } from "./html";
 
 // Re-export EmojiEntity for use in other modules
 export type { EmojiEntity };

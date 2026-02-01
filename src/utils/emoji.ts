@@ -1,27 +1,10 @@
 import type { mastodon } from "masto";
+import { escapeHtml, escapeRegExp } from "./html";
 import {
   createTwemojiImgTag,
+  hasLikelyEmoji,
   parseUnicodeEmojis,
 } from "./twemoji";
-
-/**
- * Escapes special characters for use in RegExp
- */
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/**
- * Escapes special HTML characters to prevent XSS
- */
-export function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
 
 /**
  * Validates and sanitizes emoji URL.
@@ -280,6 +263,10 @@ export function replaceEmojisInPlainText(
   }
 
   // Step 3: Process Unicode emojis (😀)
+  // Fast path: skip expensive parsing if no emoji detected
+  if (!hasLikelyEmoji(result)) {
+    return result;
+  }
   // Since text is already escaped, we can safely parse and replace Unicode emojis
   const unicodeEmojis = parseUnicodeEmojis(result, { assetType: "svg" });
   if (unicodeEmojis.length > 0) {
