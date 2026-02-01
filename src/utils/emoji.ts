@@ -85,8 +85,8 @@ export function replaceEmojisWithImages(
 
   for (const emoji of emojis) {
     const shortcode = escapeRegExp(emoji.shortcode);
-    // Match :shortcode: but not inside HTML tags
-    // This regex avoids matching inside attribute values by checking we're not after ="
+    // Match :shortcode: occurrences; actual avoidance of replacements inside
+    // HTML tags/attributes is handled in the replacement callback below.
     const pattern = new RegExp(`:${shortcode}:`, "g");
     const imgTag = createEmojiImgTag(emoji);
 
