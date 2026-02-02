@@ -656,7 +656,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     isOpen={showEmojiPalette}
                                     onClose={() => setShowEmojiPalette(false)}
                                     onSelect={insertAtCursor}
-                                    customEmojis={composingAccount.account.emojis ?? []}
+                                    customEmojis={composingAccount.emojis ?? []}
                                     triggerRef={emojiButtonRef}
                                     textareaRef={textareaRef}
                                 />
