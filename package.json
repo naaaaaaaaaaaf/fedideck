@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@twemoji/parser": "^17.0.1",
+    "emoji-picker-element": "^1.28.1",
     "masto": "^7.10.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -41,6 +42,7 @@
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
     "jsdom": "^27.4.0",
