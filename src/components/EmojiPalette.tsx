@@ -59,9 +59,39 @@ export function EmojiPalette({
         // Position picker above the trigger button
         if (triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
+            const pickerWidth = 320; // emoji-picker-element default width
+            const pickerHeight = 400; // approximate height
+            const padding = 10; // padding from viewport edges
+
             picker.style.position = 'fixed';
-            picker.style.bottom = `${window.innerHeight - rect.top + 8}px`;
-            picker.style.left = `${Math.max(10, Math.min(rect.left, window.innerWidth - 340))}px`;
+
+            // Center picker horizontally on the button, but keep it within viewport
+            let left = rect.left + rect.width / 2 - pickerWidth / 2;
+
+            // Ensure picker doesn't go off the left edge
+            if (left < padding) {
+                left = padding;
+            }
+            // Ensure picker doesn't go off the right edge
+            if (left + pickerWidth > window.innerWidth - padding) {
+                left = window.innerWidth - pickerWidth - padding;
+            }
+
+            picker.style.left = `${left}px`;
+
+            // Position above the button if there's enough space, otherwise below
+            const spaceAbove = rect.top;
+            const spaceBelow = window.innerHeight - rect.bottom;
+
+            if (spaceAbove >= pickerHeight + padding || spaceAbove >= spaceBelow) {
+                // Place above the button
+                picker.style.bottom = `${window.innerHeight - rect.top + 8}px`;
+            } else {
+                // Place below the button
+                picker.style.top = `${rect.bottom + 8}px`;
+                picker.style.bottom = 'auto';
+            }
+
             picker.style.zIndex = '60';
         }
 
