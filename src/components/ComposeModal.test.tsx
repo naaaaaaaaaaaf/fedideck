@@ -442,111 +442,47 @@ describe('ComposeModal', () => {
     });
 
     // Emoji palette tests
+    // Note: emoji-picker-element uses Shadow DOM which React Testing Library cannot access.
+    // The library itself is well-tested, so we only test our integration points here.
+
     it('shows emoji button in modal', () => {
         render(<ComposeModal isOpen={true} onClose={() => {}} />);
         expect(screen.getByRole('button', { name: '絵文字を挿入' })).toBeInTheDocument();
     });
 
-    it('opens emoji palette when clicking emoji button', async () => {
+    it('toggles emoji palette state when clicking button', async () => {
         const user = userEvent.setup();
         render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
         const emojiButton = screen.getByRole('button', { name: '絵文字を挿入' });
-        await user.click(emojiButton);
 
-        expect(screen.getByLabelText('絵文字を選択')).toBeInTheDocument();
+        // Click to open - picker element should be created in document.body
+        await user.click(emojiButton);
+        const picker = document.body.querySelector('emoji-picker');
+        expect(picker).toBeInTheDocument();
+
+        // Click to close - picker should be removed
+        await user.click(emojiButton);
+        const pickerAfterClose = document.body.querySelector('emoji-picker');
+        expect(pickerAfterClose).not.toBeInTheDocument();
     });
 
-    it('inserts unicode emoji when clicking emoji in palette', async () => {
+    it('removes picker when modal is closed', async () => {
         const user = userEvent.setup();
-        render(<ComposeModal isOpen={true} onClose={() => {}} />);
+        const { unmount } = render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
         // Open emoji palette
         const emojiButton = screen.getByRole('button', { name: '絵文字を挿入' });
         await user.click(emojiButton);
 
-        // Verify palette opened and emoji is available
-        expect(screen.getByLabelText('絵文字を選択')).toBeInTheDocument();
-        const emoji = screen.getByLabelText('😀');
+        const picker = document.body.querySelector('emoji-picker');
+        expect(picker).toBeInTheDocument();
 
-        // Click the emoji - the useTextareaCursor hook should insert it
-        // (actual insertion is tested in useTextareaCursor.test.ts)
-        await user.click(emoji);
+        // Unmount modal
+        unmount();
 
-        // Palette should close after selection
-        expect(screen.queryByLabelText('絵文字を選択')).not.toBeInTheDocument();
-    });
-
-    it('closes emoji palette after selecting emoji', async () => {
-        const user = userEvent.setup();
-        render(<ComposeModal isOpen={true} onClose={() => {}} />);
-
-        // Open emoji palette
-        const emojiButton = screen.getByRole('button', { name: '絵文字を挿入' });
-        await user.click(emojiButton);
-
-        expect(screen.getByLabelText('絵文字を選択')).toBeInTheDocument();
-
-        // Click an emoji
-        const emoji = screen.getByLabelText('😀');
-        await user.click(emoji);
-
-        // Palette should be closed
-        expect(screen.queryByLabelText('絵文字を選択')).not.toBeInTheDocument();
-    });
-
-    it('displays custom emojis from account', async () => {
-        const user = userEvent.setup();
-
-        // Add custom emojis to mock account
-        const mockAccountWithEmojis = {
-            ...mockAccount,
-            account: {
-                ...mockAccount.account,
-                emojis: [
-                    {
-                        shortcode: 'custom_test',
-                        url: 'https://example.com/custom.png',
-                        staticUrl: 'https://example.com/custom_static.png',
-                        visibleInPicker: true,
-                        category: 'Test',
-                    },
-                ] as mastodon.v1.CustomEmoji[],
-            },
-        } as Session;
-
-        useAccountsStore.setState({
-            accounts: [mockAccountWithEmojis],
-            activeAccountId: mockAccountWithEmojis.id,
-        });
-
-        render(<ComposeModal isOpen={true} onClose={() => {}} />);
-
-        // Open emoji palette
-        const emojiButton = screen.getByRole('button', { name: '絵文字を挿入' });
-        await user.click(emojiButton);
-
-        // Should show custom emoji category
-        expect(screen.getByText('Test')).toBeInTheDocument();
-        expect(screen.getByAltText('custom_test')).toBeInTheDocument();
-    });
-
-    it('toggles emoji palette when clicking button multiple times', async () => {
-        const user = userEvent.setup();
-        render(<ComposeModal isOpen={true} onClose={() => {}} />);
-
-        const emojiButton = screen.getByRole('button', { name: '絵文字を挿入' });
-
-        // Open
-        await user.click(emojiButton);
-        expect(screen.getByLabelText('絵文字を選択')).toBeInTheDocument();
-
-        // Close
-        await user.click(emojiButton);
-        expect(screen.queryByLabelText('絵文字を選択')).not.toBeInTheDocument();
-
-        // Open again
-        await user.click(emojiButton);
-        expect(screen.getByLabelText('絵文字を選択')).toBeInTheDocument();
+        // Picker should be cleaned up
+        const pickerAfterUnmount = document.body.querySelector('emoji-picker');
+        expect(pickerAfterUnmount).not.toBeInTheDocument();
     });
 });
