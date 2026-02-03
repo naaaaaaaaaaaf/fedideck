@@ -86,6 +86,54 @@ describe('instanceConfig', () => {
             expect(mockClient2.v1.instance.fetch).toHaveBeenCalledTimes(1);
         });
 
+        describe('URL normalization', () => {
+            it('should normalize URLs with trailing slashes', async () => {
+                const mockClient = createMockClient({
+                    maxCharacters: 5000,
+                    maxMediaAttachments: 5,
+                    supportedMimeTypes: ['image/jpeg'],
+                });
+
+                // Same instance with different URL formats
+                await getInstanceConfig(mockClient, 'https://example.com/');
+                await getInstanceConfig(mockClient, 'https://example.com');
+
+                // Should only fetch once due to normalization
+                expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(1);
+            });
+
+            it('should normalize URLs with paths', async () => {
+                const mockClient = createMockClient({
+                    maxCharacters: 5000,
+                    maxMediaAttachments: 5,
+                    supportedMimeTypes: ['image/jpeg'],
+                });
+
+                // Same instance with URL paths
+                await getInstanceConfig(mockClient, 'https://example.com/path');
+                await getInstanceConfig(mockClient, 'https://example.com/other');
+
+                // Should only fetch once due to origin normalization
+                expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(1);
+            });
+
+            it('should treat different URL formats as same instance', async () => {
+                const mockClient = createMockClient({
+                    maxCharacters: 5000,
+                    maxMediaAttachments: 5,
+                    supportedMimeTypes: ['image/jpeg'],
+                });
+
+                // Various formats of the same instance
+                await getInstanceConfig(mockClient, 'https://example.com');
+                await getInstanceConfig(mockClient, 'https://example.com/');
+                await getInstanceConfig(mockClient, 'https://example.com/api');
+
+                // Should only fetch once
+                expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(1);
+            });
+        });
+
         it('should fetch again after cache expires', async () => {
             // Mock Date to control time
             const now = Date.now();
@@ -336,6 +384,26 @@ describe('instanceConfig', () => {
             // First instance fetched twice (initial + after clear)
             // Second instance fetched once (cached)
             expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(3);
+        });
+
+        it('should clear cache for specific instance with normalized URL', async () => {
+            const mockClient = createMockClient({
+                maxCharacters: 5000,
+                maxMediaAttachments: 5,
+                supportedMimeTypes: ['image/jpeg'],
+            });
+
+            // Cache config with one URL format
+            await getInstanceConfig(mockClient, 'https://example.com/');
+
+            // Clear cache with different URL format (same origin)
+            clearInstanceConfigCache('https://example.com');
+
+            // Should fetch again due to cache clear
+            await getInstanceConfig(mockClient, 'https://example.com');
+
+            // Should have fetched twice (original + after clear)
+            expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(2);
         });
     });
 

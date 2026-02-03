@@ -45,8 +45,11 @@ export async function getInstanceConfig(
     client: MastoClient,
     instanceUrl: string
 ): Promise<InstanceConfig> {
+    // Normalize instance URL for consistent cache keys (matches emojiCache pattern)
+    const instanceKey = new URL(instanceUrl).origin;
+
     // Check cache first
-    const cached = configCache.get(instanceUrl);
+    const cached = configCache.get(instanceKey);
     if (cached && cached.expiresAt > Date.now()) {
         return cached.config;
     }
@@ -67,7 +70,7 @@ export async function getInstanceConfig(
     };
 
     // Cache the result
-    configCache.set(instanceUrl, {
+    configCache.set(instanceKey, {
         config,
         expiresAt: Date.now() + CACHE_TTL,
     });
@@ -81,7 +84,8 @@ export async function getInstanceConfig(
  */
 export function clearInstanceConfigCache(instanceUrl?: string): void {
     if (instanceUrl) {
-        configCache.delete(instanceUrl);
+        const instanceKey = new URL(instanceUrl).origin;
+        configCache.delete(instanceKey);
     } else {
         configCache.clear();
     }
