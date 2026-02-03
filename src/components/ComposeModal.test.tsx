@@ -78,21 +78,24 @@ describe('ComposeModal', () => {
         expect(container.firstChild).toBeNull();
     });
 
-    it('renders the modal when isOpen is true', () => {
+    it('renders the modal when isOpen is true', async () => {
         render(<ComposeModal isOpen={true} onClose={() => {}} />);
-        expect(screen.getByText('新しい投稿')).toBeInTheDocument();
+        // Use findBy* to wait for async instance config fetching to complete
+        expect(await screen.findByText('新しい投稿')).toBeInTheDocument();
         expect(screen.getByPlaceholderText('今なにしてる？')).toBeInTheDocument();
     });
 
-    it('displays the active account info', () => {
+    it('displays the active account info', async () => {
         render(<ComposeModal isOpen={true} onClose={() => {}} />);
-        expect(screen.getByText('Test User')).toBeInTheDocument();
+        // Use findBy* to wait for async instance config fetching to complete
+        expect(await screen.findByText('Test User')).toBeInTheDocument();
         expect(screen.getByText('@testuser')).toBeInTheDocument();
     });
 
-    it('shows character count', () => {
+    it('shows character count', async () => {
         render(<ComposeModal isOpen={true} onClose={() => {}} />);
-        expect(screen.getByText('500')).toBeInTheDocument();
+        // Use findBy* to wait for async instance config fetching to complete
+        expect(await screen.findByText('500')).toBeInTheDocument();
     });
 
     it('updates character count when typing', async () => {
@@ -105,9 +108,10 @@ describe('ComposeModal', () => {
         expect(screen.getByText('489')).toBeInTheDocument();
     });
 
-    it('disables submit button when content is empty', () => {
+    it('disables submit button when content is empty', async () => {
         render(<ComposeModal isOpen={true} onClose={() => {}} />);
-        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
+        // Use findBy* to wait for async instance config fetching to complete
+        const submitButton = await screen.findByRole('button', { name: /投稿を送信/ });
         expect(submitButton).toBeDisabled();
     });
 
@@ -137,9 +141,10 @@ describe('ComposeModal', () => {
         expect(screen.getByPlaceholderText('警告文を入力...')).toBeInTheDocument();
     });
 
-    it('displays visibility options', () => {
+    it('displays visibility options', async () => {
         render(<ComposeModal isOpen={true} onClose={() => {}} />);
-        expect(screen.getByText('公開')).toBeInTheDocument();
+        // Use findBy* to wait for async instance config fetching to complete
+        expect(await screen.findByText('公開')).toBeInTheDocument();
         expect(screen.getByText('未収載')).toBeInTheDocument();
         expect(screen.getByText('フォロワーのみ')).toBeInTheDocument();
         expect(screen.getByText('ダイレクト')).toBeInTheDocument();
@@ -150,7 +155,8 @@ describe('ComposeModal', () => {
         const onClose = vi.fn();
         render(<ComposeModal isOpen={true} onClose={onClose} />);
 
-        const cancelButton = screen.getByRole('button', { name: 'キャンセル' });
+        // Use findBy* to wait for async instance config fetching to complete
+        const cancelButton = await screen.findByRole('button', { name: 'キャンセル' });
         await user.click(cancelButton);
 
         expect(onClose).toHaveBeenCalled();
@@ -160,6 +166,9 @@ describe('ComposeModal', () => {
         const user = userEvent.setup();
         const onClose = vi.fn();
         render(<ComposeModal isOpen={true} onClose={onClose} />);
+
+        // Use findBy* to wait for async instance config fetching to complete
+        await screen.findByRole('button', { name: 'キャンセル' });
 
         // Click the backdrop (the first div with absolute positioning)
         const backdrop = document.querySelector('.bg-black\\/60');
@@ -285,9 +294,10 @@ describe('ComposeModal', () => {
     });
 
     // Poll tests
-    it('shows poll button', () => {
+    it('shows poll button', async () => {
         render(<ComposeModal isOpen={true} onClose={() => {}} />);
-        expect(screen.getByRole('button', { name: /投票/i })).toBeInTheDocument();
+        // Use findBy* to wait for async instance config fetching to complete
+        expect(await screen.findByRole('button', { name: /投票/i })).toBeInTheDocument();
     });
 
     it('toggles poll UI when clicking poll button', async () => {
@@ -418,8 +428,10 @@ describe('ComposeModal', () => {
 
     // NSFW tests - Note: NSFW toggle only shows when media is attached
     // Since mocking file uploads is complex, we test the state logic indirectly
-    it('does not show NSFW toggle when no media is attached', () => {
+    it('does not show NSFW toggle when no media is attached', async () => {
         render(<ComposeModal isOpen={true} onClose={() => {}} />);
+        // Use findBy* to wait for async instance config fetching to complete
+        await screen.findByRole('button', { name: /投票/i });
         expect(screen.queryByText('閲覧注意 (NSFW)')).not.toBeInTheDocument();
     });
 
@@ -432,22 +444,26 @@ describe('ComposeModal', () => {
         avatar: 'https://example.com/other-avatar.png',
     };
 
-    it('shows reply header when replyToStatus is provided', () => {
+    it('shows reply header when replyToStatus is provided', async () => {
         render(<ComposeModal isOpen={true} onClose={() => {}} replyToStatus={mockReplyToStatus} />);
-        expect(screen.getByText('返信')).toBeInTheDocument();
+        // Use findBy* to wait for async instance config fetching to complete
+        expect(await screen.findByText('返信')).toBeInTheDocument();
         expect(screen.queryByText('新しい投稿')).not.toBeInTheDocument();
     });
 
-    it('displays reply indicator with target user info', () => {
+    it('displays reply indicator with target user info', async () => {
         render(<ComposeModal isOpen={true} onClose={() => {}} replyToStatus={mockReplyToStatus} />);
-        expect(screen.getByText('返信先:')).toBeInTheDocument();
+        // Use findBy* to wait for async instance config fetching to complete
+        expect(await screen.findByText('返信先:')).toBeInTheDocument();
         // Reply indicator contains the target user info - use getAllByText since text may appear multiple places
         expect(screen.getAllByText('Other User').length).toBeGreaterThanOrEqual(1);
         expect(screen.getAllByText('@otheruser@example.com').length).toBeGreaterThanOrEqual(1);
     });
 
-    it('prefills content with mention when replying', () => {
+    it('prefills content with mention when replying', async () => {
         render(<ComposeModal isOpen={true} onClose={() => {}} replyToStatus={mockReplyToStatus} />);
+        // Use findBy* to wait for async instance config fetching to complete
+        await screen.findByText('返信先:');
         const textarea = screen.getByPlaceholderText('今なにしてる？') as HTMLTextAreaElement;
         expect(textarea.value).toBe('@otheruser@example.com ');
     });
@@ -480,9 +496,10 @@ describe('ComposeModal', () => {
     // Note: emoji-picker-element uses Shadow DOM which React Testing Library cannot access.
     // The library itself is well-tested, so we only test our integration points here.
 
-    it('shows emoji button in modal', () => {
+    it('shows emoji button in modal', async () => {
         render(<ComposeModal isOpen={true} onClose={() => {}} />);
-        expect(screen.getByRole('button', { name: '絵文字を挿入' })).toBeInTheDocument();
+        // Use findBy* to wait for async instance config fetching to complete
+        expect(await screen.findByRole('button', { name: '絵文字を挿入' })).toBeInTheDocument();
     });
 
     it('toggles emoji palette state when clicking button', async () => {
@@ -522,8 +539,10 @@ describe('ComposeModal', () => {
     });
 
     // Layout alignment tests
-    it('has consistent horizontal padding between account selector and textarea', () => {
+    it('has consistent horizontal padding between account selector and textarea', async () => {
         render(<ComposeModal isOpen={true} onClose={() => {}} />);
+        // Use findBy* to wait for async instance config fetching to complete
+        await screen.findByRole('button', { name: /投稿を送信/ });
 
         // Find account selector button by its label (contains display name)
         const accountSelector = screen.getByRole('button', {
