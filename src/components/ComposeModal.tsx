@@ -651,16 +651,14 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                             </button>
 
                             {/* Emoji palette */}
-                            {composingAccount && (
-                                <EmojiPalette
-                                    isOpen={showEmojiPalette}
-                                    onClose={() => setShowEmojiPalette(false)}
-                                    onSelect={insertAtCursor}
-                                    customEmojis={composingAccount.emojis ?? []}
-                                    triggerRef={emojiButtonRef}
-                                    textareaRef={textareaRef}
-                                />
-                            )}
+                            <EmojiPalette
+                                isOpen={showEmojiPalette}
+                                onClose={() => setShowEmojiPalette(false)}
+                                onSelect={insertAtCursor}
+                                session={composingAccount ?? null}
+                                triggerRef={emojiButtonRef}
+                                textareaRef={textareaRef}
+                            />
                         </div>
 
                         <button

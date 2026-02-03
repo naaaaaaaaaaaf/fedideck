@@ -147,8 +147,8 @@ describe('replaceUnicodeEmojisWithImages', () => {
     });
 
     it('should handle text with HTML-like content but no emoji', () => {
-        const result = replaceUnicodeEmojisWithImages('<script>alert(\'xss\')</script>');
-        expect(result).toBe('<script>alert(\'xss\')</script>');
+        const result = replaceUnicodeEmojisWithImages("<script>alert('xss')</script>");
+        expect(result).toBe("<script>alert('xss')</script>");
     });
 
     // BMP emoji tests (Basic Multilingual Plane)
@@ -185,23 +185,33 @@ describe('replaceUnicodeEmojisWithImages', () => {
 describe('validateTwemojiUrl', () => {
     it('should accept valid jsDelivr HTTPS URLs', () => {
         expect(
-            validateTwemojiUrl('https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/1f600.svg')
+            validateTwemojiUrl(
+                'https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/1f600.svg'
+            )
         ).toBe(true);
     });
 
     it('should reject HTTP URLs', () => {
         expect(
-            validateTwemojiUrl('http://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/1f600.svg')
+            validateTwemojiUrl(
+                'http://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/1f600.svg'
+            )
         ).toBe(false);
     });
 
     it('should reject URLs with different hostname', () => {
         expect(validateTwemojiUrl('https://evil.com/emoji.svg')).toBe(false);
-        expect(validateTwemojiUrl('https://example.com/gh/jdecked/twemoji@latest/assets/svg/1f600.svg')).toBe(false);
+        expect(
+            validateTwemojiUrl('https://example.com/gh/jdecked/twemoji@latest/assets/svg/1f600.svg')
+        ).toBe(false);
     });
 
     it('should reject URLs with incorrect path format', () => {
-        expect(validateTwemojiUrl('https://cdn.jsdelivr.net/gh/evil/twemoji@latest/assets/svg/1f600.svg')).toBe(false);
+        expect(
+            validateTwemojiUrl(
+                'https://cdn.jsdelivr.net/gh/evil/twemoji@latest/assets/svg/1f600.svg'
+            )
+        ).toBe(false);
         expect(validateTwemojiUrl('https://cdn.jsdelivr.net/other/path/1f600.svg')).toBe(false);
     });
 
@@ -211,7 +221,7 @@ describe('validateTwemojiUrl', () => {
 
     it('should reject invalid URLs', () => {
         expect(validateTwemojiUrl('not-a-url')).toBe(false);
-        expect(validateTwemojiUrl('javascript:alert(\'xss\')')).toBe(false);
+        expect(validateTwemojiUrl("javascript:alert('xss')")).toBe(false);
     });
 });
 
@@ -221,7 +231,9 @@ describe('createTwemojiImgTag security', () => {
         const tag = createTwemojiImgTag(emojis[0]);
 
         // Should contain the CDN URL built from codepoints
-        expect(tag).toContain('https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/1f600.svg');
+        expect(tag).toContain(
+            'https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/1f600.svg'
+        );
     });
 
     it('should escape HTML in emoji text', () => {

@@ -50,7 +50,11 @@ vi.mock('./Column', () => ({
     Column: ({ id, onRemove }: { id: string; onRemove?: () => void }) => (
         <div data-testid={`column-${id}`}>
             <span>Column {id}</span>
-            {onRemove && <button onClick={onRemove} data-testid={`remove-${id}`}>Remove</button>}
+            {onRemove && (
+                <button onClick={onRemove} data-testid={`remove-${id}`}>
+                    Remove
+                </button>
+            )}
         </div>
     ),
 }));

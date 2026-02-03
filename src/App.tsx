@@ -15,187 +15,188 @@ import { useStreamsStore, getStreamKey } from './store/streams';
 import { initStreamManager } from './streaming/streamManager';
 
 function App() {
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
-  const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
-  const [replyToStatus, setReplyToStatus] = useState<ReplyToStatus | undefined>(undefined);
-  const [replyAccountId, setReplyAccountId] = useState<string | undefined>(undefined);
-  const [isStatusDetailOpen, setIsStatusDetailOpen] = useState(false);
-  const [detailStatus, setDetailStatus] = useState<mastodon.v1.Status | null>(null);
-  const [detailAccountSession, setDetailAccountSession] = useState<AccountSession | undefined>();
+    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
+    const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
+    const [replyToStatus, setReplyToStatus] = useState<ReplyToStatus | undefined>(undefined);
+    const [replyAccountId, setReplyAccountId] = useState<string | undefined>(undefined);
+    const [isStatusDetailOpen, setIsStatusDetailOpen] = useState(false);
+    const [detailStatus, setDetailStatus] = useState<mastodon.v1.Status | null>(null);
+    const [detailAccountSession, setDetailAccountSession] = useState<AccountSession | undefined>();
 
-  // ImageViewer state
-  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
-  const [viewerImages, setViewerImages] = useState<ImageViewerImage[]>([]);
-  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
-  const [imageViewerKey, setImageViewerKey] = useState(0);
+    // ImageViewer state
+    const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+    const [viewerImages, setViewerImages] = useState<ImageViewerImage[]>([]);
+    const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
+    const [imageViewerKey, setImageViewerKey] = useState(0);
 
-  const loadFromStorage = useAccountsStore(state => state.loadFromStorage);
-  const accounts = useAccountsStore(state => state.accounts);
-  const columns = useColumnsStore(state => state.columns);
-  const addColumn = useColumnsStore(state => state.addColumn);
-  const { prependStatus, removeStatus, updateStatus, updateStatusGlobal, prependNotification } = useStreamsStore();
+    const loadFromStorage = useAccountsStore((state) => state.loadFromStorage);
+    const accounts = useAccountsStore((state) => state.accounts);
+    const columns = useColumnsStore((state) => state.columns);
+    const addColumn = useColumnsStore((state) => state.addColumn);
+    const { prependStatus, removeStatus, updateStatus, updateStatusGlobal, prependNotification } =
+        useStreamsStore();
 
-  // Ref to track if default columns have been added
-  const hasAddedDefaultColumns = useRef(false);
+    // Ref to track if default columns have been added
+    const hasAddedDefaultColumns = useRef(false);
 
-  // Load accounts from storage on mount
-  useEffect(() => {
-    loadFromStorage();
-  }, [loadFromStorage]);
+    // Load accounts from storage on mount
+    useEffect(() => {
+        loadFromStorage();
+    }, [loadFromStorage]);
 
-  // Initialize stream manager with real callbacks
-  useEffect(() => {
-    initStreamManager({
-      onUpdate: (accountId, status) => {
-        // Update home timeline for this account
-        const homeKey = getStreamKey(accountId, 'home');
-        prependStatus(homeKey, status);
-      },
-      onDelete: (accountId, statusId) => {
-        // Remove from all streams for this account
-        const homeKey = getStreamKey(accountId, 'home');
-        removeStatus(homeKey, statusId);
-      },
-      onNotification: (accountId, notification) => {
-        const notifKey = getStreamKey(accountId, 'notifications');
-        prependNotification(notifKey, notification);
-      },
-      onStatusUpdate: (accountId, status) => {
-        const homeKey = getStreamKey(accountId, 'home');
-        updateStatus(homeKey, status);
-      },
-      onConnect: (accountId) => {
-        console.log(`✅ Streaming connected for ${accountId}`);
-      },
-      onDisconnect: (accountId) => {
-        console.log(`❌ Streaming disconnected for ${accountId}`);
-      },
-      onError: (accountId, error) => {
-        console.error(`Streaming error for ${accountId}:`, error);
-      },
-    });
-  }, [prependStatus, removeStatus, updateStatus, prependNotification]);
+    // Initialize stream manager with real callbacks
+    useEffect(() => {
+        initStreamManager({
+            onUpdate: (accountId, status) => {
+                // Update home timeline for this account
+                const homeKey = getStreamKey(accountId, 'home');
+                prependStatus(homeKey, status);
+            },
+            onDelete: (accountId, statusId) => {
+                // Remove from all streams for this account
+                const homeKey = getStreamKey(accountId, 'home');
+                removeStatus(homeKey, statusId);
+            },
+            onNotification: (accountId, notification) => {
+                const notifKey = getStreamKey(accountId, 'notifications');
+                prependNotification(notifKey, notification);
+            },
+            onStatusUpdate: (accountId, status) => {
+                const homeKey = getStreamKey(accountId, 'home');
+                updateStatus(homeKey, status);
+            },
+            onConnect: (accountId) => {
+                console.log(`✅ Streaming connected for ${accountId}`);
+            },
+            onDisconnect: (accountId) => {
+                console.log(`❌ Streaming disconnected for ${accountId}`);
+            },
+            onError: (accountId, error) => {
+                console.error(`Streaming error for ${accountId}:`, error);
+            },
+        });
+    }, [prependStatus, removeStatus, updateStatus, prependNotification]);
 
-  // Mark as initialized if columns already exist (from storage or manual addition)
-  useEffect(() => {
-    if (columns.length > 0) {
-      hasAddedDefaultColumns.current = true;
-    }
-  }, [columns.length]);
+    // Mark as initialized if columns already exist (from storage or manual addition)
+    useEffect(() => {
+        if (columns.length > 0) {
+            hasAddedDefaultColumns.current = true;
+        }
+    }, [columns.length]);
 
-  // Add default columns for new accounts (only if never initialized)
-  useEffect(() => {
-    if (!hasAddedDefaultColumns.current && accounts.length > 0 && columns.length === 0) {
-      hasAddedDefaultColumns.current = true;
-      const firstAccount = accounts[0];
-      addColumn({ accountId: firstAccount.id, stream: { type: 'home' } });
-      addColumn({ accountId: firstAccount.id, stream: { type: 'notifications' } });
-    }
-  }, [accounts, columns.length, addColumn]);
+    // Add default columns for new accounts (only if never initialized)
+    useEffect(() => {
+        if (!hasAddedDefaultColumns.current && accounts.length > 0 && columns.length === 0) {
+            hasAddedDefaultColumns.current = true;
+            const firstAccount = accounts[0];
+            addColumn({ accountId: firstAccount.id, stream: { type: 'home' } });
+            addColumn({ accountId: firstAccount.id, stream: { type: 'notifications' } });
+        }
+    }, [accounts, columns.length, addColumn]);
 
-  // Derive login modal open state - show when no accounts exist or user explicitly opens it
-  const shouldShowLoginModal = isLoginModalOpen || accounts.length === 0;
+    // Derive login modal open state - show when no accounts exist or user explicitly opens it
+    const shouldShowLoginModal = isLoginModalOpen || accounts.length === 0;
 
-  const handleReply = (status: mastodon.v1.Status, accountId: string) => {
-    const account = status.account;
-    setReplyToStatus({
-      id: status.id,
-      acct: account.acct,
-      displayName: account.displayName || account.username,
-      content: status.content,
-      avatar: account.avatar,
-    });
-    setReplyAccountId(accountId);
-    setIsComposeModalOpen(true);
-  };
+    const handleReply = (status: mastodon.v1.Status, accountId: string) => {
+        const account = status.account;
+        setReplyToStatus({
+            id: status.id,
+            acct: account.acct,
+            displayName: account.displayName || account.username,
+            content: status.content,
+            avatar: account.avatar,
+        });
+        setReplyAccountId(accountId);
+        setIsComposeModalOpen(true);
+    };
 
-  const handleStatusClick = (status: mastodon.v1.Status, accountId: string) => {
-    const accountSession = accounts.find(a => a.id === accountId);
-    setDetailStatus(status);
-    setDetailAccountSession(accountSession);
-    setIsStatusDetailOpen(true);
-  };
+    const handleStatusClick = (status: mastodon.v1.Status, accountId: string) => {
+        const accountSession = accounts.find((a) => a.id === accountId);
+        setDetailStatus(status);
+        setDetailAccountSession(accountSession);
+        setIsStatusDetailOpen(true);
+    };
 
-  const handleStatusDetailReply = (status: mastodon.v1.Status) => {
-    if (detailAccountSession) {
-      handleReply(status, detailAccountSession.id);
-    }
-  };
+    const handleStatusDetailReply = (status: mastodon.v1.Status) => {
+        if (detailAccountSession) {
+            handleReply(status, detailAccountSession.id);
+        }
+    };
 
-  const handleDetailModalClose = () => {
-    setIsStatusDetailOpen(false);
-    setDetailStatus(null);
-    setDetailAccountSession(undefined);
-  };
+    const handleDetailModalClose = () => {
+        setIsStatusDetailOpen(false);
+        setDetailStatus(null);
+        setDetailAccountSession(undefined);
+    };
 
-  const handleComposeClose = () => {
-    setIsComposeModalOpen(false);
-    setReplyToStatus(undefined);
-    setReplyAccountId(undefined);
-  };
+    const handleComposeClose = () => {
+        setIsComposeModalOpen(false);
+        setReplyToStatus(undefined);
+        setReplyAccountId(undefined);
+    };
 
-  const handleImageClick = useCallback((images: ImageViewerImage[], index: number) => {
-    setViewerImages(images);
-    setViewerInitialIndex(index);
-    setImageViewerKey(k => k + 1); // Force remount to reset index
-    setIsImageViewerOpen(true);
-  }, []);
+    const handleImageClick = useCallback((images: ImageViewerImage[], index: number) => {
+        setViewerImages(images);
+        setViewerInitialIndex(index);
+        setImageViewerKey((k) => k + 1); // Force remount to reset index
+        setIsImageViewerOpen(true);
+    }, []);
 
-  const handleImageViewerClose = useCallback(() => {
-    setIsImageViewerOpen(false);
-  }, []);
+    const handleImageViewerClose = useCallback(() => {
+        setIsImageViewerOpen(false);
+    }, []);
 
-  return (
-    <div className="h-screen flex overflow-hidden">
-      <Sidebar
-        onAddAccount={() => setIsLoginModalOpen(true)}
-        onCompose={() => setIsComposeModalOpen(true)}
-      />
+    return (
+        <div className="h-screen flex overflow-hidden">
+            <Sidebar
+                onAddAccount={() => setIsLoginModalOpen(true)}
+                onCompose={() => setIsComposeModalOpen(true)}
+            />
 
-      <main className="flex-1 flex overflow-hidden">
-        <ColumnContainer
-          onAddColumn={() => setIsAddColumnModalOpen(true)}
-          onReply={handleReply}
-          onStatusClick={handleStatusClick}
-          onImageClick={handleImageClick}
-        />
-      </main>
+            <main className="flex-1 flex overflow-hidden">
+                <ColumnContainer
+                    onAddColumn={() => setIsAddColumnModalOpen(true)}
+                    onReply={handleReply}
+                    onStatusClick={handleStatusClick}
+                    onImageClick={handleImageClick}
+                />
+            </main>
 
-      <LoginModal
-        isOpen={shouldShowLoginModal}
-        onClose={() => setIsLoginModalOpen(false)}
-        canClose={accounts.length > 0}
-      />
-      <AddColumnModal
-        key={isAddColumnModalOpen ? 'open' : 'closed'}
-        isOpen={isAddColumnModalOpen}
-        onClose={() => setIsAddColumnModalOpen(false)}
-      />
-      <ComposeModal
-        isOpen={isComposeModalOpen}
-        onClose={handleComposeClose}
-        replyToStatus={replyToStatus}
-        accountId={replyAccountId}
-      />
-      <StatusDetailModal
-        isOpen={isStatusDetailOpen}
-        onClose={handleDetailModalClose}
-        status={detailStatus}
-        accountSession={detailAccountSession}
-        onReply={handleStatusDetailReply}
-        onStatusUpdate={updateStatusGlobal}
-        onImageClick={handleImageClick}
-      />
-      <ImageViewer
-        key={imageViewerKey}
-        isOpen={isImageViewerOpen}
-        onClose={handleImageViewerClose}
-        images={viewerImages}
-        initialIndex={viewerInitialIndex}
-      />
-    </div>
-  );
+            <LoginModal
+                isOpen={shouldShowLoginModal}
+                onClose={() => setIsLoginModalOpen(false)}
+                canClose={accounts.length > 0}
+            />
+            <AddColumnModal
+                key={isAddColumnModalOpen ? 'open' : 'closed'}
+                isOpen={isAddColumnModalOpen}
+                onClose={() => setIsAddColumnModalOpen(false)}
+            />
+            <ComposeModal
+                isOpen={isComposeModalOpen}
+                onClose={handleComposeClose}
+                replyToStatus={replyToStatus}
+                accountId={replyAccountId}
+            />
+            <StatusDetailModal
+                isOpen={isStatusDetailOpen}
+                onClose={handleDetailModalClose}
+                status={detailStatus}
+                accountSession={detailAccountSession}
+                onReply={handleStatusDetailReply}
+                onStatusUpdate={updateStatusGlobal}
+                onImageClick={handleImageClick}
+            />
+            <ImageViewer
+                key={imageViewerKey}
+                isOpen={isImageViewerOpen}
+                onClose={handleImageViewerClose}
+                images={viewerImages}
+                initialIndex={viewerInitialIndex}
+            />
+        </div>
+    );
 }
 
 export default App;

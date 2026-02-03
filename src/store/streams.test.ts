@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { mastodon } from 'masto';
 import { getStreamKey, useStreamsStore } from './streams';
 
-const makeStatus = (id: string) => ({ id } as mastodon.v1.Status);
-const makeNotification = (id: string) => ({ id } as mastodon.v1.Notification);
+const makeStatus = (id: string) => ({ id }) as mastodon.v1.Status;
+const makeNotification = (id: string) => ({ id }) as mastodon.v1.Notification;
 
 describe('useStreamsStore', () => {
     beforeEach(() => {
@@ -47,15 +47,17 @@ describe('useStreamsStore', () => {
         useStreamsStore.getState().prependStatus('account:home', makeStatus('2'));
 
         const stream = useStreamsStore.getState().data['account:home'];
-        expect(stream.statuses.map(status => status.id)).toEqual(['2', '1']);
+        expect(stream.statuses.map((status) => status.id)).toEqual(['2', '1']);
     });
 
     it('appends statuses without duplicates', () => {
         useStreamsStore.getState().setStatuses('account:home', [makeStatus('1')]);
-        useStreamsStore.getState().appendStatuses('account:home', [makeStatus('1'), makeStatus('2')]);
+        useStreamsStore
+            .getState()
+            .appendStatuses('account:home', [makeStatus('1'), makeStatus('2')]);
 
         const stream = useStreamsStore.getState().data['account:home'];
-        expect(stream.statuses.map(status => status.id)).toEqual(['1', '2']);
+        expect(stream.statuses.map((status) => status.id)).toEqual(['1', '2']);
         expect(stream.hasMore).toBe(true);
     });
 
@@ -65,17 +67,32 @@ describe('useStreamsStore', () => {
         useStreamsStore.getState().updateStatus('account:home', makeStatus('2'));
 
         const stream = useStreamsStore.getState().data['account:home'];
-        expect(stream.statuses.map(status => status.id)).toEqual(['2']);
+        expect(stream.statuses.map((status) => status.id)).toEqual(['2']);
     });
 
     it('manages notifications with dedupe', () => {
-        useStreamsStore.getState().setNotifications('account:notifications', [makeNotification('a')]);
-        useStreamsStore.getState().prependNotification('account:notifications', makeNotification('a'));
-        useStreamsStore.getState().prependNotification('account:notifications', makeNotification('b'));
-        useStreamsStore.getState().appendNotifications('account:notifications', [makeNotification('a'), makeNotification('c')]);
+        useStreamsStore
+            .getState()
+            .setNotifications('account:notifications', [makeNotification('a')]);
+        useStreamsStore
+            .getState()
+            .prependNotification('account:notifications', makeNotification('a'));
+        useStreamsStore
+            .getState()
+            .prependNotification('account:notifications', makeNotification('b'));
+        useStreamsStore
+            .getState()
+            .appendNotifications('account:notifications', [
+                makeNotification('a'),
+                makeNotification('c'),
+            ]);
 
         const stream = useStreamsStore.getState().data['account:notifications'];
-        expect(stream.notifications.map(notification => notification.id)).toEqual(['b', 'a', 'c']);
+        expect(stream.notifications.map((notification) => notification.id)).toEqual([
+            'b',
+            'a',
+            'c',
+        ]);
     });
 
     it('clears streams by key', () => {
@@ -90,8 +107,12 @@ describe('useStreamsStore', () => {
             const originalStatus = { id: '1', favourited: false } as mastodon.v1.Status;
             const updatedStatus = { id: '1', favourited: true } as mastodon.v1.Status;
 
-            useStreamsStore.getState().setStatuses('account:home', [originalStatus, makeStatus('2')]);
-            useStreamsStore.getState().setStatuses('account:public', [makeStatus('3'), originalStatus]);
+            useStreamsStore
+                .getState()
+                .setStatuses('account:home', [originalStatus, makeStatus('2')]);
+            useStreamsStore
+                .getState()
+                .setStatuses('account:public', [makeStatus('3'), originalStatus]);
 
             useStreamsStore.getState().updateStatusGlobal(updatedStatus);
 
@@ -176,7 +197,9 @@ describe('useStreamsStore', () => {
 describe('getStreamKey', () => {
     it('returns list and hashtag keys when params are provided', () => {
         expect(getStreamKey('account', 'list', { listId: '123' })).toBe('account:list:123');
-        expect(getStreamKey('account', 'hashtag', { hashtag: 'fediverse' })).toBe('account:hashtag:fediverse');
+        expect(getStreamKey('account', 'hashtag', { hashtag: 'fediverse' })).toBe(
+            'account:hashtag:fediverse'
+        );
     });
 
     it('falls back to stream type when no params are provided', () => {

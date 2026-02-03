@@ -5,7 +5,6 @@ import { exchangeCodeForToken, verifyCredentials } from '../auth/oauthOob';
 import { createSession } from '../auth/sessions';
 import { useAccountsStore } from '../store/accounts';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
-import { getClient, fetchCustomEmojis } from '../api/mastoClient';
 
 interface LoginModalProps {
     isOpen: boolean;
@@ -75,12 +74,7 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
             const token = await exchangeCodeForToken(credentials, code);
             const account = await verifyCredentials(instanceUrl, token.accessToken);
 
-            // Create temporary client to fetch custom emojis
-            const tempSession = { id: '', instanceUrl, accessToken: token.accessToken, account };
-            const client = getClient(tempSession);
-            const emojis = await fetchCustomEmojis(client);
-
-            const session = createSession(instanceUrl, token.accessToken, account, emojis);
+            const session = createSession(instanceUrl, token.accessToken, account);
             addAccount(session);
 
             // Reset and close

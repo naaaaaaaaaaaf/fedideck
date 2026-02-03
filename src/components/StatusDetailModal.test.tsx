@@ -85,44 +85,29 @@ vi.mock('../api/mastoClient', async (importOriginal) => {
 
 describe('StatusDetailModal', () => {
     beforeEach(() => {
-        vi.mocked(mastoClient.getStatusContext).mockResolvedValue({ ancestors: [], descendants: [] });
+        vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+            ancestors: [],
+            descendants: [],
+        });
     });
 
     describe('rendering', () => {
         it('should not render when isOpen is false', () => {
             const status = createMockStatus();
-            render(
-                <StatusDetailModal
-                    isOpen={false}
-                    onClose={() => {}}
-                    status={status}
-                />
-            );
+            render(<StatusDetailModal isOpen={false} onClose={() => {}} status={status} />);
 
             expect(screen.queryByText('投稿の詳細')).not.toBeInTheDocument();
         });
 
         it('should not render when status is null', () => {
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={null}
-                />
-            );
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={null} />);
 
             expect(screen.queryByText('投稿の詳細')).not.toBeInTheDocument();
         });
 
         it('should render modal when isOpen is true and status is provided', () => {
             const status = createMockStatus();
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                />
-            );
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={status} />);
 
             expect(screen.getByText('投稿の詳細')).toBeInTheDocument();
             expect(screen.getByText('Test content for detail modal')).toBeInTheDocument();
@@ -135,13 +120,7 @@ describe('StatusDetailModal', () => {
                 reblogsCount: 5,
                 favouritesCount: 10,
             });
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                />
-            );
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={status} />);
 
             expect(screen.getByText('5')).toBeInTheDocument();
             expect(screen.getByText('10')).toBeInTheDocument();
@@ -152,13 +131,7 @@ describe('StatusDetailModal', () => {
                 spoilerText: 'Warning: sensitive content',
                 content: '<p>Hidden content</p>',
             });
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                />
-            );
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={status} />);
 
             expect(screen.getByText(/Warning: sensitive content/)).toBeInTheDocument();
         });
@@ -181,13 +154,7 @@ describe('StatusDetailModal', () => {
                 },
             });
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={reblogStatus}
-                />
-            );
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={reblogStatus} />);
 
             expect(screen.getByText(/がブースト/)).toBeInTheDocument();
             expect(screen.getByText('Original Author')).toBeInTheDocument();
@@ -200,17 +167,11 @@ describe('StatusDetailModal', () => {
             const onClose = vi.fn();
             const status = createMockStatus();
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={onClose}
-                    status={status}
-                />
-            );
+            render(<StatusDetailModal isOpen={true} onClose={onClose} status={status} />);
 
-            const closeButton = screen.getAllByRole('button').find(
-                btn => btn.querySelector('svg')
-            );
+            const closeButton = screen
+                .getAllByRole('button')
+                .find((btn) => btn.querySelector('svg'));
             expect(closeButton).toBeDefined();
             await user.click(closeButton!);
 
@@ -222,13 +183,7 @@ describe('StatusDetailModal', () => {
             const onClose = vi.fn();
             const status = createMockStatus();
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={onClose}
-                    status={status}
-                />
-            );
+            render(<StatusDetailModal isOpen={true} onClose={onClose} status={status} />);
 
             // Click on the backdrop (first div after fixed container)
             const backdrop = document.querySelector('.fixed > .absolute');
@@ -279,13 +234,7 @@ describe('StatusDetailModal', () => {
                 ],
             });
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                />
-            );
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={status} />);
 
             const img = screen.getByAltText('Test image');
             expect(img).toBeInTheDocument();
@@ -323,7 +272,13 @@ describe('StatusDetailModal', () => {
 
             expect(onImageClick).toHaveBeenCalledTimes(1);
             expect(onImageClick).toHaveBeenCalledWith(
-                [{ url: 'https://example.com/image1.png', previewUrl: 'https://example.com/preview1.png', description: 'First image' }],
+                [
+                    {
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        description: 'First image',
+                    },
+                ],
                 0
             );
         });
@@ -452,8 +407,16 @@ describe('StatusDetailModal', () => {
             // The images array passed to onImageClick should only contain images
             expect(onImageClick).toHaveBeenCalledWith(
                 [
-                    { url: 'https://example.com/image1.png', previewUrl: 'https://example.com/preview1.png', description: 'First image' },
-                    { url: 'https://example.com/image2.png', previewUrl: 'https://example.com/preview2.png', description: 'Second image' },
+                    {
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        description: 'First image',
+                    },
+                    {
+                        url: 'https://example.com/image2.png',
+                        previewUrl: 'https://example.com/preview2.png',
+                        description: 'Second image',
+                    },
                 ],
                 1 // Second image is at index 1 in the images-only array
             );
@@ -480,13 +443,7 @@ describe('StatusDetailModal', () => {
                 } as unknown as mastodon.v1.Poll,
             });
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                />
-            );
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={status} />);
 
             expect(screen.getByText('Option A')).toBeInTheDocument();
             expect(screen.getByText('Option B')).toBeInTheDocument();
@@ -498,13 +455,7 @@ describe('StatusDetailModal', () => {
     describe('focus management', () => {
         it('should have proper ARIA attributes for accessibility', () => {
             const status = createMockStatus();
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                />
-            );
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={status} />);
 
             const dialog = screen.getByRole('dialog');
             expect(dialog).toHaveAttribute('aria-modal', 'true');
@@ -513,13 +464,7 @@ describe('StatusDetailModal', () => {
 
         it('should focus close button when modal opens', () => {
             const status = createMockStatus();
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                />
-            );
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={status} />);
 
             const closeButton = screen.getByRole('button', { name: '閉じる' });
             expect(closeButton).toHaveFocus();
@@ -530,13 +475,7 @@ describe('StatusDetailModal', () => {
             const onClose = vi.fn();
             const status = createMockStatus();
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={onClose}
-                    status={status}
-                />
-            );
+            render(<StatusDetailModal isOpen={true} onClose={onClose} status={status} />);
 
             await user.keyboard('{Escape}');
 
@@ -547,13 +486,7 @@ describe('StatusDetailModal', () => {
             const user = userEvent.setup();
             const status = createMockStatus();
 
-            render(
-                <StatusDetailModal
-                    isOpen={true}
-                    onClose={() => {}}
-                    status={status}
-                />
-            );
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={status} />);
 
             const closeButton = screen.getByRole('button', { name: '閉じる' });
             expect(closeButton).toHaveFocus();
@@ -625,7 +558,7 @@ describe('StatusDetailModal', () => {
 
             // Find all buttons and locate favourite button by checking for star icon
             const buttons = screen.getAllByRole('button');
-            const favouriteButton = buttons.find(btn => btn.querySelector('svg'));
+            const favouriteButton = buttons.find((btn) => btn.querySelector('svg'));
 
             // The button should not have the filled star or active color class
             expect(favouriteButton?.className).not.toMatch(/text-amber-400/);
@@ -657,8 +590,10 @@ describe('StatusDetailModal', () => {
             const onStatusUpdate = vi.fn();
 
             const updatedStatus = createMockStatus({ favourited: true, favouritesCount: 6 });
-            
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
             vi.spyOn(mastoClient, 'favouriteStatus').mockResolvedValue(updatedStatus);
 
             render(
@@ -689,8 +624,10 @@ describe('StatusDetailModal', () => {
             const onStatusUpdate = vi.fn();
 
             const updatedStatus = createMockStatus({ favourited: false, favouritesCount: 9 });
-            
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
             vi.spyOn(mastoClient, 'unfavouriteStatus').mockResolvedValue(updatedStatus);
 
             render(
@@ -722,7 +659,9 @@ describe('StatusDetailModal', () => {
                 resolvePromise = resolve;
             });
 
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
             vi.spyOn(mastoClient, 'favouriteStatus').mockReturnValue(favouritePromise);
 
             await act(async () => {
@@ -737,9 +676,11 @@ describe('StatusDetailModal', () => {
             });
 
             // Initial count should be 5 (in stats section)
-            expect(screen.getByText((_content, element) => {
-                return element?.textContent === '5 お気に入り';
-            })).toBeInTheDocument();
+            expect(
+                screen.getByText((_content, element) => {
+                    return element?.textContent === '5 お気に入り';
+                })
+            ).toBeInTheDocument();
 
             const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
             await act(async () => {
@@ -748,9 +689,11 @@ describe('StatusDetailModal', () => {
 
             // Count should optimistically update to 6 before API completes
             await waitFor(() => {
-                expect(screen.getByText((_content, element) => {
-                    return element?.textContent === '6 お気に入り';
-                })).toBeInTheDocument();
+                expect(
+                    screen.getByText((_content, element) => {
+                        return element?.textContent === '6 お気に入り';
+                    })
+                ).toBeInTheDocument();
             });
 
             // Resolve the API call
@@ -765,7 +708,9 @@ describe('StatusDetailModal', () => {
             const accountSession = createMockAccountSession();
             const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
             vi.spyOn(mastoClient, 'favouriteStatus').mockRejectedValue(new Error('API Error'));
 
             render(
@@ -782,13 +727,18 @@ describe('StatusDetailModal', () => {
 
             // Wait for error and revert
             await waitFor(() => {
-                expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to toggle favourite:', expect.any(Error));
+                expect(consoleErrorSpy).toHaveBeenCalledWith(
+                    'Failed to toggle favourite:',
+                    expect.any(Error)
+                );
             });
 
             // Count should be back to 5
-            expect(screen.getByText((_content, element) => {
-                return element?.textContent === '5 お気に入り';
-            })).toBeInTheDocument();
+            expect(
+                screen.getByText((_content, element) => {
+                    return element?.textContent === '5 お気に入り';
+                })
+            ).toBeInTheDocument();
 
             consoleErrorSpy.mockRestore();
         });
@@ -822,8 +772,12 @@ describe('StatusDetailModal', () => {
                 resolvePromise = resolve;
             });
 
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
-            const favouriteSpy = vi.spyOn(mastoClient, 'favouriteStatus').mockReturnValue(favouritePromise);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
+            const favouriteSpy = vi
+                .spyOn(mastoClient, 'favouriteStatus')
+                .mockReturnValue(favouritePromise);
 
             await act(async () => {
                 render(
@@ -862,13 +816,19 @@ describe('StatusDetailModal', () => {
 
         it('should call reblogStatus API when unreblogged status is clicked', async () => {
             const user = userEvent.setup();
-            const status = createMockStatus({ reblogged: false, reblogsCount: 3, visibility: 'public' });
+            const status = createMockStatus({
+                reblogged: false,
+                reblogsCount: 3,
+                visibility: 'public',
+            });
             const accountSession = createMockAccountSession();
             const onStatusUpdate = vi.fn();
 
             const updatedStatus = createMockStatus({ reblogged: true, reblogsCount: 4 });
-            
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
             vi.spyOn(mastoClient, 'reblogStatus').mockResolvedValue(updatedStatus);
 
             render(
@@ -892,13 +852,19 @@ describe('StatusDetailModal', () => {
 
         it('should call unreblogStatus API when reblogged status is clicked', async () => {
             const user = userEvent.setup();
-            const status = createMockStatus({ reblogged: true, reblogsCount: 8, visibility: 'public' });
+            const status = createMockStatus({
+                reblogged: true,
+                reblogsCount: 8,
+                visibility: 'public',
+            });
             const accountSession = createMockAccountSession();
             const onStatusUpdate = vi.fn();
 
             const updatedStatus = createMockStatus({ reblogged: false, reblogsCount: 7 });
-            
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
             vi.spyOn(mastoClient, 'unreblogStatus').mockResolvedValue(updatedStatus);
 
             render(
@@ -971,8 +937,10 @@ describe('StatusDetailModal', () => {
                 id: 'wrapper-id',
                 reblog: createMockStatus({ id: '12345', reblogged: true, reblogsCount: 4 }),
             });
-            
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
             vi.spyOn(mastoClient, 'reblogStatus').mockResolvedValue(wrapperStatus);
 
             render(
@@ -1006,7 +974,9 @@ describe('StatusDetailModal', () => {
                 resolvePromise = resolve;
             });
 
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
             vi.spyOn(mastoClient, 'reblogStatus').mockReturnValue(reblogPromise);
 
             await act(async () => {
@@ -1027,9 +997,11 @@ describe('StatusDetailModal', () => {
 
             // Count should optimistically update to 6
             await waitFor(() => {
-                expect(screen.getByText((_content, element) => {
-                    return element?.textContent === '6 ブースト';
-                })).toBeInTheDocument();
+                expect(
+                    screen.getByText((_content, element) => {
+                        return element?.textContent === '6 ブースト';
+                    })
+                ).toBeInTheDocument();
             });
 
             await act(async () => {
@@ -1043,7 +1015,9 @@ describe('StatusDetailModal', () => {
             const accountSession = createMockAccountSession();
             const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
             vi.spyOn(mastoClient, 'reblogStatus').mockRejectedValue(new Error('Network error'));
 
             render(
@@ -1060,12 +1034,17 @@ describe('StatusDetailModal', () => {
 
             // Should revert back to 5 after error
             await waitFor(() => {
-                expect(screen.getByText((_content, element) => {
-                    return element?.textContent === '5 ブースト';
-                })).toBeInTheDocument();
+                expect(
+                    screen.getByText((_content, element) => {
+                        return element?.textContent === '5 ブースト';
+                    })
+                ).toBeInTheDocument();
             });
 
-            expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to toggle reblog:', expect.any(Error));
+            expect(consoleErrorSpy).toHaveBeenCalledWith(
+                'Failed to toggle reblog:',
+                expect.any(Error)
+            );
             consoleErrorSpy.mockRestore();
         });
 
@@ -1098,7 +1077,9 @@ describe('StatusDetailModal', () => {
                 resolvePromise = resolve;
             });
 
-            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
             const reblogSpy = vi.spyOn(mastoClient, 'reblogStatus').mockReturnValue(reblogPromise);
 
             await act(async () => {
@@ -1135,28 +1116,30 @@ describe('StatusDetailModal', () => {
             vi.clearAllMocks();
         });
 
-        const createAncestorStatus = () => createMockStatus({
-            id: 'ancestor-1',
-            content: '<p>Ancestor post content</p>',
-            account: {
-                ...createMockStatus().account,
-                id: 'ancestor-user',
-                displayName: 'Ancestor User',
-                acct: 'ancestoruser',
-            },
-        });
+        const createAncestorStatus = () =>
+            createMockStatus({
+                id: 'ancestor-1',
+                content: '<p>Ancestor post content</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'ancestor-user',
+                    displayName: 'Ancestor User',
+                    acct: 'ancestoruser',
+                },
+            });
 
-        const createDescendantStatus = () => createMockStatus({
-            id: 'descendant-1',
-            content: '<p>Descendant post content</p>',
-            inReplyToId: '12345',
-            account: {
-                ...createMockStatus().account,
-                id: 'descendant-user',
-                displayName: 'Descendant User',
-                acct: 'descendantuser',
-            },
-        });
+        const createDescendantStatus = () =>
+            createMockStatus({
+                id: 'descendant-1',
+                content: '<p>Descendant post content</p>',
+                inReplyToId: '12345',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'descendant-user',
+                    displayName: 'Descendant User',
+                    acct: 'descendantuser',
+                },
+            });
 
         it('should re-fetch context when an ancestor is clicked', async () => {
             const user = userEvent.setup();
@@ -1198,7 +1181,10 @@ describe('StatusDetailModal', () => {
 
             // Should re-fetch with the ancestor's ID
             await waitFor(() => {
-                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'ancestor-1');
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'ancestor-1'
+                );
             });
         });
 
@@ -1235,7 +1221,10 @@ describe('StatusDetailModal', () => {
             await user.click(descendantContent);
 
             await waitFor(() => {
-                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'descendant-1');
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'descendant-1'
+                );
             });
         });
 
@@ -1313,7 +1302,9 @@ describe('StatusDetailModal', () => {
             await user.click(avatarLink);
 
             // Should NOT re-fetch context - call count should remain the same
-            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(initialCallCount);
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(
+                initialCallCount
+            );
         });
 
         it('should navigate when Enter key is pressed on ThreadItem', async () => {
@@ -1346,12 +1337,17 @@ describe('StatusDetailModal', () => {
             });
 
             // Find the ThreadItem button and press Enter
-            const threadItemButton = screen.getByRole('button', { name: /Ancestor Userの投稿を表示/ });
+            const threadItemButton = screen.getByRole('button', {
+                name: /Ancestor Userの投稿を表示/,
+            });
             threadItemButton.focus();
             await user.keyboard('{Enter}');
 
             await waitFor(() => {
-                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'ancestor-1');
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'ancestor-1'
+                );
             });
         });
 
@@ -1384,12 +1380,17 @@ describe('StatusDetailModal', () => {
                 descendants: [],
             });
 
-            const threadItemButton = screen.getByRole('button', { name: /Ancestor Userの投稿を表示/ });
+            const threadItemButton = screen.getByRole('button', {
+                name: /Ancestor Userの投稿を表示/,
+            });
             threadItemButton.focus();
             await user.keyboard(' ');
 
             await waitFor(() => {
-                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'ancestor-1');
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'ancestor-1'
+                );
             });
         });
 
@@ -1397,7 +1398,7 @@ describe('StatusDetailModal', () => {
             const user = userEvent.setup();
             const status = createMockStatus();
             const accountSession = createMockAccountSession();
-            
+
             const ancestor = createMockStatus({
                 id: 'ancestor-1',
                 content: '<p>Check this <a href="https://example.com">link</a></p>',
@@ -1431,13 +1432,15 @@ describe('StatusDetailModal', () => {
             // Find the link within the ThreadItem
             const link = screen.getByRole('link', { name: /link/ });
             link.focus();
-            
+
             // Press Enter on the link - should not trigger navigation
             await user.keyboard('{Enter}');
 
             // getStatusContext should not be called again (navigation didn't happen)
             // Assert synchronously - no need to wait as the interaction is synchronous
-            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(initialCallCount);
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(
+                initialCallCount
+            );
         });
 
         it('should reset navigation state when modal is closed and reopened', async () => {
@@ -1455,7 +1458,9 @@ describe('StatusDetailModal', () => {
                 const [isOpen, setIsOpen] = useState(true);
                 return (
                     <>
-                        <button data-testid="toggle" onClick={() => setIsOpen(prev => !prev)}>Toggle</button>
+                        <button data-testid="toggle" onClick={() => setIsOpen((prev) => !prev)}>
+                            Toggle
+                        </button>
                         <StatusDetailModal
                             isOpen={isOpen}
                             onClose={() => setIsOpen(false)}
@@ -1482,7 +1487,10 @@ describe('StatusDetailModal', () => {
             await user.click(ancestorContent);
 
             await waitFor(() => {
-                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), 'ancestor-1');
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'ancestor-1'
+                );
             });
 
             // Close and reopen
@@ -1586,19 +1594,23 @@ describe('StatusDetailModal', () => {
             });
 
             // Both ThreadItems should have button role
-            const threadButtons = screen.getAllByRole('button').filter(
-                btn => btn.getAttribute('aria-label')?.includes('の投稿を表示')
-            );
+            const threadButtons = screen
+                .getAllByRole('button')
+                .filter((btn) => btn.getAttribute('aria-label')?.includes('の投稿を表示'));
             expect(threadButtons).toHaveLength(2);
 
             // Check ancestor ThreadItem - div with role="button" and tabIndex
-            const ancestorButton = screen.getByRole('button', { name: /Ancestor Userの投稿を表示/ });
+            const ancestorButton = screen.getByRole('button', {
+                name: /Ancestor Userの投稿を表示/,
+            });
             expect(ancestorButton).toBeInTheDocument();
             expect(ancestorButton).toHaveAttribute('role', 'button');
             expect(ancestorButton).toHaveAttribute('tabindex', '0');
 
             // Check descendant ThreadItem
-            const descendantButton = screen.getByRole('button', { name: /Descendant Userの投稿を表示/ });
+            const descendantButton = screen.getByRole('button', {
+                name: /Descendant Userの投稿を表示/,
+            });
             expect(descendantButton).toBeInTheDocument();
             expect(descendantButton).toHaveAttribute('role', 'button');
             expect(descendantButton).toHaveAttribute('tabindex', '0');
@@ -1615,8 +1627,14 @@ describe('StatusDetailModal', () => {
             const accountSession = createMockAccountSession();
 
             // Create a promise that doesn't resolve immediately
-            let resolveContext: (value: { ancestors: mastodon.v1.Status[]; descendants: mastodon.v1.Status[] }) => void;
-            const contextPromise = new Promise<{ ancestors: mastodon.v1.Status[]; descendants: mastodon.v1.Status[] }>((resolve) => {
+            let resolveContext: (value: {
+                ancestors: mastodon.v1.Status[];
+                descendants: mastodon.v1.Status[];
+            }) => void;
+            const contextPromise = new Promise<{
+                ancestors: mastodon.v1.Status[];
+                descendants: mastodon.v1.Status[];
+            }>((resolve) => {
                 resolveContext = resolve;
             });
 
@@ -1827,11 +1845,17 @@ describe('StatusDetailModal', () => {
             // reply-2 should have marginLeft: 16px (depth 1)
             // reply-3 should have marginLeft: 32px (depth 2)
             const replyElements = container.querySelectorAll('[role="button"]');
-            
+
             // Find each reply by checking for the user name
-            const reply1Element = Array.from(replyElements).find(el => el.textContent?.includes('User 1'));
-            const reply2Element = Array.from(replyElements).find(el => el.textContent?.includes('User 2'));
-            const reply3Element = Array.from(replyElements).find(el => el.textContent?.includes('User 3'));
+            const reply1Element = Array.from(replyElements).find((el) =>
+                el.textContent?.includes('User 1')
+            );
+            const reply2Element = Array.from(replyElements).find((el) =>
+                el.textContent?.includes('User 2')
+            );
+            const reply3Element = Array.from(replyElements).find((el) =>
+                el.textContent?.includes('User 3')
+            );
 
             expect(reply1Element).toHaveStyle({ marginLeft: '0px' });
             expect(reply2Element).toHaveStyle({ marginLeft: '16px' });
@@ -1854,7 +1878,9 @@ describe('StatusDetailModal', () => {
             });
 
             // First fetch fails
-            vi.mocked(mastoClient.getStatusContext).mockRejectedValueOnce(new Error('Network error'));
+            vi.mocked(mastoClient.getStatusContext).mockRejectedValueOnce(
+                new Error('Network error')
+            );
 
             const { rerender } = render(
                 <StatusDetailModal
@@ -2006,8 +2032,10 @@ describe('StatusDetailModal', () => {
             // So the deepest reply should have marginLeft = 3 * 16 = 48px
             const container = screen.getByRole('dialog');
             const replyElements = container.querySelectorAll('[role="button"]');
-            const deepestReply = Array.from(replyElements).find(el => el.textContent?.includes('User 99'));
-            
+            const deepestReply = Array.from(replyElements).find((el) =>
+                el.textContent?.includes('User 99')
+            );
+
             // UI caps indentation at maxDepth=3, so marginLeft should be 48px
             expect(deepestReply).toHaveStyle({ marginLeft: '48px' });
         });

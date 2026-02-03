@@ -7,7 +7,7 @@ import {
     getSession,
     clearAllSessions,
     createSession,
-    type Session
+    type Session,
 } from '../auth/sessions';
 
 // Mock account data for testing - cast to mastodon.v1.Account once
@@ -96,7 +96,10 @@ describe('sessions', () => {
 
         it('should handle multiple sessions', () => {
             const session1 = createSession('https://mastodon.social', 'token1', mockAccount);
-            const session2 = createSession('https://mstdn.jp', 'token2', { ...mockAccount, id: '67890' } as unknown as mastodon.v1.Account);
+            const session2 = createSession('https://mstdn.jp', 'token2', {
+                ...mockAccount,
+                id: '67890',
+            } as unknown as mastodon.v1.Account);
 
             saveSession(session1);
             saveSession(session2);
@@ -136,7 +139,10 @@ describe('sessions', () => {
 
         it('should not affect other sessions when removing one', () => {
             const session1 = createSession('https://mastodon.social', 'token1', mockAccount);
-            const session2 = createSession('https://mstdn.jp', 'token2', { ...mockAccount, id: '67890' } as unknown as mastodon.v1.Account);
+            const session2 = createSession('https://mstdn.jp', 'token2', {
+                ...mockAccount,
+                id: '67890',
+            } as unknown as mastodon.v1.Account);
 
             saveSession(session1);
             saveSession(session2);
@@ -152,7 +158,10 @@ describe('sessions', () => {
     describe('clearAllSessions', () => {
         it('should remove all sessions', () => {
             const session1 = createSession('https://mastodon.social', 'token1', mockAccount);
-            const session2 = createSession('https://mstdn.jp', 'token2', { ...mockAccount, id: '67890' } as unknown as mastodon.v1.Account);
+            const session2 = createSession('https://mstdn.jp', 'token2', {
+                ...mockAccount,
+                id: '67890',
+            } as unknown as mastodon.v1.Account);
 
             saveSession(session1);
             saveSession(session2);

@@ -38,7 +38,7 @@ describe('useColumnsStore', () => {
 
         useColumnsStore.getState().moveColumn(firstId, 1);
 
-        const ids = useColumnsStore.getState().columns.map(column => column.id);
+        const ids = useColumnsStore.getState().columns.map((column) => column.id);
         expect(ids).toEqual([secondId, firstId]);
 
         vi.restoreAllMocks();
@@ -57,7 +57,9 @@ describe('useColumnsStore', () => {
 
         useColumnsStore.getState().updateColumn(firstId, { width: 480 });
 
-        const firstColumn = useColumnsStore.getState().columns.find(column => column.id === firstId);
+        const firstColumn = useColumnsStore
+            .getState()
+            .columns.find((column) => column.id === firstId);
         expect(firstColumn?.width).toBe(480);
 
         const accountColumns = useColumnsStore.getState().getColumnsForAccount('account-1');

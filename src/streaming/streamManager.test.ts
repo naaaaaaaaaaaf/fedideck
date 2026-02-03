@@ -60,8 +60,14 @@ describe('streamManager', () => {
 
     it('subscribes to public, list, and hashtag streams', () => {
         subscribeToStream('account-1', 'https://example.com', 'token', { type: 'public:local' });
-        subscribeToStream('account-1', 'https://example.com', 'token', { type: 'list', listId: '123' });
-        subscribeToStream('account-1', 'https://example.com', 'token', { type: 'hashtag', hashtag: 'fediverse' });
+        subscribeToStream('account-1', 'https://example.com', 'token', {
+            type: 'list',
+            listId: '123',
+        });
+        subscribeToStream('account-1', 'https://example.com', 'token', {
+            type: 'hashtag',
+            hashtag: 'fediverse',
+        });
 
         const client = MockStreamingClient.instances[0];
         expect(client.subscribePublic).toHaveBeenCalledWith(true);

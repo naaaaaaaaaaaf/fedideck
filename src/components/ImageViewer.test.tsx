@@ -16,38 +16,20 @@ describe('ImageViewer', () => {
     describe('rendering', () => {
         it('should not render when isOpen is false', () => {
             const images = createMockImages(1);
-            render(
-                <ImageViewer
-                    isOpen={false}
-                    onClose={() => {}}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={false} onClose={() => {}} images={images} />);
 
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         });
 
         it('should not render when images array is empty', () => {
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={[]}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={() => {}} images={[]} />);
 
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         });
 
         it('should render when isOpen is true and images are provided', () => {
             const images = createMockImages(1);
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={() => {}} images={images} />);
 
             expect(screen.getByRole('dialog')).toBeInTheDocument();
             const img = screen.getByRole('img');
@@ -57,13 +39,7 @@ describe('ImageViewer', () => {
 
         it('should display image description when provided', () => {
             const images = createMockImages(1);
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={() => {}} images={images} />);
 
             expect(screen.getByText('Image 1 description')).toBeInTheDocument();
         });
@@ -71,11 +47,7 @@ describe('ImageViewer', () => {
         it('should not display description text when not provided', () => {
             const images: ImageViewerImage[] = [{ url: 'https://example.com/image.png' }];
             const { container } = render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                />
+                <ImageViewer isOpen={true} onClose={() => {}} images={images} />
             );
 
             // The alt attribute should be empty string (img with empty alt has presentation role)
@@ -89,13 +61,7 @@ describe('ImageViewer', () => {
 
         it('should not show navigation buttons for single image', () => {
             const images = createMockImages(1);
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={() => {}} images={images} />);
 
             expect(screen.queryByRole('button', { name: '前の画像' })).not.toBeInTheDocument();
             expect(screen.queryByRole('button', { name: '次の画像' })).not.toBeInTheDocument();
@@ -103,26 +69,14 @@ describe('ImageViewer', () => {
 
         it('should not show counter for single image', () => {
             const images = createMockImages(1);
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={() => {}} images={images} />);
 
             expect(screen.queryByText(/1 \/ 1/)).not.toBeInTheDocument();
         });
 
         it('should show navigation buttons for multiple images', () => {
             const images = createMockImages(3);
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={() => {}} images={images} />);
 
             expect(screen.getByRole('button', { name: '前の画像' })).toBeInTheDocument();
             expect(screen.getByRole('button', { name: '次の画像' })).toBeInTheDocument();
@@ -130,13 +84,7 @@ describe('ImageViewer', () => {
 
         it('should show image counter for multiple images', () => {
             const images = createMockImages(4);
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={() => {}} images={images} />);
 
             expect(screen.getByText('1 / 4')).toBeInTheDocument();
         });
@@ -144,12 +92,7 @@ describe('ImageViewer', () => {
         it('should start at initialIndex', () => {
             const images = createMockImages(4);
             render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                    initialIndex={2}
-                />
+                <ImageViewer isOpen={true} onClose={() => {}} images={images} initialIndex={2} />
             );
 
             expect(screen.getByText('3 / 4')).toBeInTheDocument();
@@ -162,13 +105,7 @@ describe('ImageViewer', () => {
         it('should navigate to next image when next button is clicked', async () => {
             const user = userEvent.setup();
             const images = createMockImages(3);
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={() => {}} images={images} />);
 
             // Initial state: first image
             expect(screen.getByText('1 / 3')).toBeInTheDocument();
@@ -178,19 +115,17 @@ describe('ImageViewer', () => {
 
             // Should be on second image
             expect(screen.getByText('2 / 3')).toBeInTheDocument();
-            expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/image2.png');
+            expect(screen.getByRole('img')).toHaveAttribute(
+                'src',
+                'https://example.com/image2.png'
+            );
         });
 
         it('should navigate to previous image when previous button is clicked', async () => {
             const user = userEvent.setup();
             const images = createMockImages(3);
             render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                    initialIndex={1}
-                />
+                <ImageViewer isOpen={true} onClose={() => {}} images={images} initialIndex={1} />
             );
 
             // Initial state: second image
@@ -201,19 +136,16 @@ describe('ImageViewer', () => {
 
             // Should be on first image
             expect(screen.getByText('1 / 3')).toBeInTheDocument();
-            expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/image1.png');
+            expect(screen.getByRole('img')).toHaveAttribute(
+                'src',
+                'https://example.com/image1.png'
+            );
         });
 
         it('should wrap around to last image when previous is clicked on first image', async () => {
             const user = userEvent.setup();
             const images = createMockImages(3);
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={() => {}} images={images} />);
 
             // Initial state: first image
             expect(screen.getByText('1 / 3')).toBeInTheDocument();
@@ -229,12 +161,7 @@ describe('ImageViewer', () => {
             const user = userEvent.setup();
             const images = createMockImages(3);
             render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                    initialIndex={2}
-                />
+                <ImageViewer isOpen={true} onClose={() => {}} images={images} initialIndex={2} />
             );
 
             // Initial state: last image
@@ -251,12 +178,7 @@ describe('ImageViewer', () => {
             const user = userEvent.setup();
             const images = createMockImages(3);
             render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                    initialIndex={1}
-                />
+                <ImageViewer isOpen={true} onClose={() => {}} images={images} initialIndex={1} />
             );
 
             expect(screen.getByText('2 / 3')).toBeInTheDocument();
@@ -269,13 +191,7 @@ describe('ImageViewer', () => {
         it('should navigate with right arrow key', async () => {
             const user = userEvent.setup();
             const images = createMockImages(3);
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={() => {}} images={images} />);
 
             expect(screen.getByText('1 / 3')).toBeInTheDocument();
 
@@ -288,23 +204,23 @@ describe('ImageViewer', () => {
             const user = userEvent.setup();
             const images = createMockImages(1);
             const onClose = vi.fn();
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={onClose}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={onClose} images={images} />);
 
             // Verify single image
-            expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/image1.png');
+            expect(screen.getByRole('img')).toHaveAttribute(
+                'src',
+                'https://example.com/image1.png'
+            );
 
             // Press arrow keys - should not change anything or close
             await user.keyboard('{ArrowLeft}');
             await user.keyboard('{ArrowRight}');
 
             // Image should still be the same
-            expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/image1.png');
+            expect(screen.getByRole('img')).toHaveAttribute(
+                'src',
+                'https://example.com/image1.png'
+            );
             // Modal should still be open
             expect(onClose).not.toHaveBeenCalled();
         });
@@ -316,13 +232,7 @@ describe('ImageViewer', () => {
             const onClose = vi.fn();
             const images = createMockImages(1);
 
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={onClose}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={onClose} images={images} />);
 
             await user.click(screen.getByRole('button', { name: '閉じる' }));
 
@@ -334,13 +244,7 @@ describe('ImageViewer', () => {
             const onClose = vi.fn();
             const images = createMockImages(1);
 
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={onClose}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={onClose} images={images} />);
 
             // Click on backdrop
             const backdrop = document.querySelector('.bg-black\\/90');
@@ -355,13 +259,7 @@ describe('ImageViewer', () => {
             const onClose = vi.fn();
             const images = createMockImages(1);
 
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={onClose}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={onClose} images={images} />);
 
             await user.click(screen.getByTestId('image-viewer-content'));
 
@@ -373,13 +271,7 @@ describe('ImageViewer', () => {
             const onClose = vi.fn();
             const images = createMockImages(1);
 
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={onClose}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={onClose} images={images} />);
 
             await user.keyboard('{Escape}');
 
@@ -391,13 +283,7 @@ describe('ImageViewer', () => {
             const onClose = vi.fn();
             const images = createMockImages(1);
 
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={onClose}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={onClose} images={images} />);
 
             await user.click(screen.getByRole('img'));
 
@@ -408,13 +294,7 @@ describe('ImageViewer', () => {
     describe('accessibility', () => {
         it('should have proper ARIA attributes', () => {
             const images = createMockImages(1);
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={() => {}} images={images} />);
 
             const dialog = screen.getByRole('dialog');
             expect(dialog).toHaveAttribute('aria-modal', 'true');
@@ -423,13 +303,7 @@ describe('ImageViewer', () => {
 
         it('should focus close button when modal opens', () => {
             const images = createMockImages(1);
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={() => {}} images={images} />);
 
             const closeButton = screen.getByRole('button', { name: '閉じる' });
             expect(closeButton).toHaveFocus();
@@ -438,13 +312,7 @@ describe('ImageViewer', () => {
         it('should trap focus within modal when Tab is pressed', async () => {
             const user = userEvent.setup();
             const images = createMockImages(3);
-            render(
-                <ImageViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    images={images}
-                />
-            );
+            render(<ImageViewer isOpen={true} onClose={() => {}} images={images} />);
 
             // Focus should be on close button
             const closeButton = screen.getByRole('button', { name: '閉じる' });
@@ -508,7 +376,7 @@ describe('ImageViewer', () => {
                 const [viewerKey, setViewerKey] = useState(0);
 
                 const handleOpen = () => {
-                    setViewerKey(k => k + 1); // Increment key to force remount
+                    setViewerKey((k) => k + 1); // Increment key to force remount
                     setIsOpen(true);
                 };
 

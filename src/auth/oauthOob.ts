@@ -66,10 +66,7 @@ export async function verifyCredentials(
 /**
  * Revoke an access token
  */
-export async function revokeToken(
-    credentials: AppCredentials,
-    accessToken: string
-): Promise<void> {
+export async function revokeToken(credentials: AppCredentials, accessToken: string): Promise<void> {
     const response = await fetch(`${credentials.instanceUrl}/oauth/revoke`, {
         method: 'POST',
         headers: {

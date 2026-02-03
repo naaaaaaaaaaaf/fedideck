@@ -1,6 +1,6 @@
 /**
  * Streaming Client using native WebSocket for Mastodon Streaming API
- * 
+ *
  * masto.js streaming uses async iterators which don't fit well with React's
  * event-driven model. We use native WebSocket with masto.js types for better control.
  */
@@ -8,7 +8,12 @@
 import type { mastodon } from 'masto';
 import { convertKeysToCamelCase } from '../utils/snakeToCamel';
 
-export type StreamEventType = 'update' | 'delete' | 'notification' | 'status.update' | 'filters_changed';
+export type StreamEventType =
+    | 'update'
+    | 'delete'
+    | 'notification'
+    | 'status.update'
+    | 'filters_changed';
 
 export interface StreamEvent<T = unknown> {
     stream: string[];
@@ -130,9 +135,12 @@ export class StreamingClient {
 
             switch (event.event) {
                 case 'update': {
-                    const status = typeof event.payload === 'string'
-                        ? convertKeysToCamelCase(JSON.parse(event.payload)) as mastodon.v1.Status
-                        : event.payload as mastodon.v1.Status;
+                    const status =
+                        typeof event.payload === 'string'
+                            ? (convertKeysToCamelCase(
+                                  JSON.parse(event.payload)
+                              ) as mastodon.v1.Status)
+                            : (event.payload as mastodon.v1.Status);
                     this.options.onUpdate?.(status);
                     break;
                 }
@@ -142,16 +150,22 @@ export class StreamingClient {
                     break;
                 }
                 case 'notification': {
-                    const notification = typeof event.payload === 'string'
-                        ? convertKeysToCamelCase(JSON.parse(event.payload)) as mastodon.v1.Notification
-                        : event.payload as mastodon.v1.Notification;
+                    const notification =
+                        typeof event.payload === 'string'
+                            ? (convertKeysToCamelCase(
+                                  JSON.parse(event.payload)
+                              ) as mastodon.v1.Notification)
+                            : (event.payload as mastodon.v1.Notification);
                     this.options.onNotification?.(notification);
                     break;
                 }
                 case 'status.update': {
-                    const status = typeof event.payload === 'string'
-                        ? convertKeysToCamelCase(JSON.parse(event.payload)) as mastodon.v1.Status
-                        : event.payload as mastodon.v1.Status;
+                    const status =
+                        typeof event.payload === 'string'
+                            ? (convertKeysToCamelCase(
+                                  JSON.parse(event.payload)
+                              ) as mastodon.v1.Status)
+                            : (event.payload as mastodon.v1.Status);
                     this.options.onStatusUpdate?.(status);
                     break;
                 }
@@ -185,10 +199,12 @@ export class StreamingClient {
     private sendUnsubscribe(stream: string): void {
         if (this.ws?.readyState !== WebSocket.OPEN) return;
 
-        this.ws.send(JSON.stringify({
-            type: 'unsubscribe',
-            stream,
-        }));
+        this.ws.send(
+            JSON.stringify({
+                type: 'unsubscribe',
+                stream,
+            })
+        );
     }
 
     /**

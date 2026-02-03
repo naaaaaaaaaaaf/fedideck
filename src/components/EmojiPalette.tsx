@@ -1,20 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Picker } from 'emoji-picker-element';
-
-// Custom emoji type matching Mastodon's CustomEmoji entity
-export interface CustomEmoji {
-    shortcode: string;
-    url: string;
-    staticUrl: string;
-    visibleInPicker: boolean;
-    category?: string | null;
-}
+import { getCustomEmojis, type CustomEmoji } from '../api/emojiCache';
+import type { Session } from '../auth/sessions';
 
 interface EmojiPaletteProps {
     isOpen: boolean;
     onClose: () => void;
     onSelect: (emoji: string) => void;
-    customEmojis: CustomEmoji[];
+    session: Session | null;
     triggerRef: React.RefObject<HTMLElement | null>;
     textareaRef: React.RefObject<HTMLTextAreaElement | null>;
 }
@@ -23,11 +16,40 @@ export function EmojiPalette({
     isOpen,
     onClose,
     onSelect,
-    customEmojis,
+    session,
     triggerRef,
     textareaRef,
 }: EmojiPaletteProps) {
     const pickerRef = useRef<Picker | null>(null);
+    const [customEmojis, setCustomEmojis] = useState<CustomEmoji[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const hasFetchedRef = useRef(false);
+
+    // Reset loading state when palette closes
+    useEffect(() => {
+        if (!isOpen) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setIsLoading(false);
+            hasFetchedRef.current = false;
+        }
+    }, [isOpen]);
+
+    // Fetch custom emojis when palette opens
+    useEffect(() => {
+        if (!isOpen || !session || hasFetchedRef.current) return;
+
+        hasFetchedRef.current = true;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setIsLoading(true);
+        getCustomEmojis(session)
+            .then((emojis) => setCustomEmojis(emojis))
+            .catch((err) => {
+                console.error('Failed to fetch custom emojis:', err);
+            })
+            .finally(() => {
+                setIsLoading(false);
+            });
+    }, [isOpen, session]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -96,6 +118,7 @@ export function EmojiPalette({
         }
 
         // Handle emoji selection
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const handleEmojiClick = (event: any) => {
             const { emoji, unicode } = event.detail;
             onSelect(unicode || `:${emoji.shortcodes[0]}:`);
@@ -138,6 +161,29 @@ export function EmojiPalette({
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isOpen, onClose, triggerRef]);
+
+    // Show loading indicator if fetching
+    if (isLoading) {
+        return (
+            <div
+                style={{
+                    position: 'fixed',
+                    bottom: '50%',
+                    right: '50%',
+                    transform: 'translate(50%, 50%)',
+                    zIndex: 60,
+                    padding: '12px 16px',
+                    background: '#1e293b',
+                    border: '1px solid rgba(51, 65, 85, 0.5)',
+                    borderRadius: '8px',
+                    color: '#94a3b8',
+                    fontSize: '14px',
+                }}
+            >
+                絵文字を読み込み中...
+            </div>
+        );
+    }
 
     return null; // Picker is managed via side effects
 }

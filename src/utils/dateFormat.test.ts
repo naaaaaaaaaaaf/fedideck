@@ -85,7 +85,9 @@ describe('formatDate', () => {
 
         it('should transition from hours to days at 24 hours', () => {
             // 23 hours 59 minutes ago
-            const date23h = new Date(mockNow.getTime() - 23 * 60 * 60 * 1000 - 59 * 60 * 1000).toISOString();
+            const date23h = new Date(
+                mockNow.getTime() - 23 * 60 * 60 * 1000 - 59 * 60 * 1000
+            ).toISOString();
             expect(formatDate(date23h)).toBe('23時間');
 
             // 24 hours ago
@@ -105,7 +107,9 @@ describe('formatDate', () => {
 
         it('should transition from days to formatted date at 7 days', () => {
             // 6 days 23 hours ago
-            const date6d = new Date(mockNow.getTime() - 6 * 24 * 60 * 60 * 1000 - 23 * 60 * 60 * 1000).toISOString();
+            const date6d = new Date(
+                mockNow.getTime() - 6 * 24 * 60 * 60 * 1000 - 23 * 60 * 60 * 1000
+            ).toISOString();
             expect(formatDate(date6d)).toBe('6日');
 
             // 7 days ago
@@ -155,7 +159,7 @@ describe('formatDate', () => {
             // Mock a specific old date to test format consistency
             const oldDate = new Date('2023-12-01T12:00:00.000Z');
             const formatted = formatDate(oldDate.toISOString());
-            
+
             // Verify it returns a date string (not relative time)
             expect(formatted).not.toMatch(/分|時間|日/);
             expect(formatted).toBe(oldDate.toLocaleDateString('ja-JP'));
@@ -171,13 +175,17 @@ describe('formatDate', () => {
 
         it('should floor hours (not round up)', () => {
             // 1 hour 59 minutes ago
-            const date = new Date(mockNow.getTime() - 1 * 60 * 60 * 1000 - 59 * 60 * 1000).toISOString();
+            const date = new Date(
+                mockNow.getTime() - 1 * 60 * 60 * 1000 - 59 * 60 * 1000
+            ).toISOString();
             expect(formatDate(date)).toBe('1時間'); // Should be 1, not 2
         });
 
         it('should floor days (not round up)', () => {
             // 1 day 23 hours ago
-            const date = new Date(mockNow.getTime() - 1 * 24 * 60 * 60 * 1000 - 23 * 60 * 60 * 1000).toISOString();
+            const date = new Date(
+                mockNow.getTime() - 1 * 24 * 60 * 60 * 1000 - 23 * 60 * 60 * 1000
+            ).toISOString();
             expect(formatDate(date)).toBe('1日'); // Should be 1, not 2
         });
     });

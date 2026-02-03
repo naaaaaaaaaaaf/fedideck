@@ -31,9 +31,8 @@ export function ImageViewer({ isOpen, onClose, images, initialIndex = 0 }: Image
     const hasMultipleImages = images.length > 1;
     // Clamp currentIndex to valid range to prevent out-of-bounds access
     // This handles cases where images array changes while viewer is open
-    const safeIndex = images.length > 0
-        ? Math.max(0, Math.min(currentIndex, images.length - 1))
-        : 0;
+    const safeIndex =
+        images.length > 0 ? Math.max(0, Math.min(currentIndex, images.length - 1)) : 0;
     const currentImage = images[safeIndex];
 
     const goToPrevious = useCallback(() => {

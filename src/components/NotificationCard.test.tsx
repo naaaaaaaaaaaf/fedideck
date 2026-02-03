@@ -4,75 +4,78 @@ import userEvent from '@testing-library/user-event';
 import { NotificationCard } from './NotificationCard';
 import type { mastodon } from 'masto';
 
-const createMockAccount = (overrides: Partial<mastodon.v1.Account> = {}): mastodon.v1.Account => ({
-    id: '1',
-    username: 'testuser',
-    acct: 'testuser',
-    displayName: 'Test User',
-    locked: false,
-    bot: false,
-    group: false,
-    createdAt: new Date().toISOString(),
-    note: '<p>Hello world</p>',
-    url: 'https://mastodon.social/@testuser',
-    avatar: 'https://example.com/avatar.png',
-    avatarStatic: 'https://example.com/avatar.png',
-    header: 'https://example.com/header.png',
-    headerStatic: 'https://example.com/header.png',
-    followersCount: 100,
-    followingCount: 50,
-    statusesCount: 200,
-    lastStatusAt: null,
-    emojis: [],
-    fields: [],
-    roles: [],
-    ...overrides,
-} as mastodon.v1.Account);
+const createMockAccount = (overrides: Partial<mastodon.v1.Account> = {}): mastodon.v1.Account =>
+    ({
+        id: '1',
+        username: 'testuser',
+        acct: 'testuser',
+        displayName: 'Test User',
+        locked: false,
+        bot: false,
+        group: false,
+        createdAt: new Date().toISOString(),
+        note: '<p>Hello world</p>',
+        url: 'https://mastodon.social/@testuser',
+        avatar: 'https://example.com/avatar.png',
+        avatarStatic: 'https://example.com/avatar.png',
+        header: 'https://example.com/header.png',
+        headerStatic: 'https://example.com/header.png',
+        followersCount: 100,
+        followingCount: 50,
+        statusesCount: 200,
+        lastStatusAt: null,
+        emojis: [],
+        fields: [],
+        roles: [],
+        ...overrides,
+    }) as mastodon.v1.Account;
 
-const createMockStatus = (overrides: Partial<mastodon.v1.Status> = {}): mastodon.v1.Status => ({
-    id: '1',
-    createdAt: new Date().toISOString(),
-    inReplyToId: null,
-    inReplyToAccountId: null,
-    sensitive: false,
-    spoilerText: '',
-    visibility: 'public',
-    language: 'ja',
-    uri: 'https://mastodon.social/statuses/1',
-    url: 'https://mastodon.social/@testuser/1',
-    repliesCount: 0,
-    reblogsCount: 0,
-    favouritesCount: 0,
-    editedAt: null,
-    favourited: false,
-    reblogged: false,
-    muted: false,
-    bookmarked: false,
-    pinned: false,
-    content: '<p>Test content</p>',
-    filtered: [],
-    reblog: null,
-    application: null,
-    account: createMockAccount(),
-    mediaAttachments: [],
-    mentions: [],
-    tags: [],
-    emojis: [],
-    card: null,
-    poll: null,
-    ...overrides,
-} as unknown as mastodon.v1.Status);
+const createMockStatus = (overrides: Partial<mastodon.v1.Status> = {}): mastodon.v1.Status =>
+    ({
+        id: '1',
+        createdAt: new Date().toISOString(),
+        inReplyToId: null,
+        inReplyToAccountId: null,
+        sensitive: false,
+        spoilerText: '',
+        visibility: 'public',
+        language: 'ja',
+        uri: 'https://mastodon.social/statuses/1',
+        url: 'https://mastodon.social/@testuser/1',
+        repliesCount: 0,
+        reblogsCount: 0,
+        favouritesCount: 0,
+        editedAt: null,
+        favourited: false,
+        reblogged: false,
+        muted: false,
+        bookmarked: false,
+        pinned: false,
+        content: '<p>Test content</p>',
+        filtered: [],
+        reblog: null,
+        application: null,
+        account: createMockAccount(),
+        mediaAttachments: [],
+        mentions: [],
+        tags: [],
+        emojis: [],
+        card: null,
+        poll: null,
+        ...overrides,
+    }) as unknown as mastodon.v1.Status;
 
 const createMockNotification = (
     type: string,
     overrides: Partial<mastodon.v1.Notification> = {}
-): mastodon.v1.Notification => ({
-    id: '1',
-    type,
-    createdAt: new Date().toISOString(),
-    account: createMockAccount(),
-    ...overrides,
-} as mastodon.v1.Notification);
+): mastodon.v1.Notification =>
+    ({
+        id: '1',
+        type,
+        createdAt: new Date().toISOString(),
+        account: createMockAccount(),
+        ...overrides,
+    }) as mastodon.v1.Notification;
 
 describe('NotificationCard', () => {
     describe('notification types', () => {
@@ -278,8 +281,12 @@ describe('NotificationCard', () => {
                 account: createMockAccount({ displayName: 'Requester' }),
             });
             render(<NotificationCard notification={notification} />);
-            expect(screen.getByLabelText('Requesterのフォローリクエストを承認')).toBeInTheDocument();
-            expect(screen.getByLabelText('Requesterのフォローリクエストを拒否')).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Requesterのフォローリクエストを承認')
+            ).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Requesterのフォローリクエストを拒否')
+            ).toBeInTheDocument();
         });
     });
 
@@ -408,7 +415,9 @@ describe('NotificationCard', () => {
             const notification = createMockNotification('follow');
             render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
 
-            expect(screen.queryByRole('button', { name: '投稿の詳細を表示' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: '投稿の詳細を表示' })
+            ).not.toBeInTheDocument();
         });
 
         it('should not have clickable status area for follow_request notification (no status)', () => {
@@ -416,7 +425,9 @@ describe('NotificationCard', () => {
             const notification = createMockNotification('follow_request');
             render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
 
-            expect(screen.queryByRole('button', { name: '投稿の詳細を表示' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: '投稿の詳細を表示' })
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -424,7 +435,9 @@ describe('NotificationCard', () => {
         it('should not call onStatusClick when clicking on a link', async () => {
             const onStatusClick = vi.fn();
             const notification = createMockNotification('mention', {
-                status: createMockStatus({ content: '<p><a href="https://example.com">Link</a></p>' }),
+                status: createMockStatus({
+                    content: '<p><a href="https://example.com">Link</a></p>',
+                }),
             });
             render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
 
@@ -496,7 +509,9 @@ describe('NotificationCard', () => {
         it('should not call onStatusClick when Enter is pressed on a link', () => {
             const onStatusClick = vi.fn();
             const notification = createMockNotification('mention', {
-                status: createMockStatus({ content: '<p><a href="https://example.com">Link</a></p>' }),
+                status: createMockStatus({
+                    content: '<p><a href="https://example.com">Link</a></p>',
+                }),
             });
             render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
 
@@ -509,7 +524,9 @@ describe('NotificationCard', () => {
         it('should not call onStatusClick when Space is pressed on a link', () => {
             const onStatusClick = vi.fn();
             const notification = createMockNotification('mention', {
-                status: createMockStatus({ content: '<p><a href="https://example.com">Link</a></p>' }),
+                status: createMockStatus({
+                    content: '<p><a href="https://example.com">Link</a></p>',
+                }),
             });
             render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
 
@@ -587,7 +604,9 @@ describe('NotificationCard', () => {
             });
             render(<NotificationCard notification={notification} />);
 
-            expect(screen.queryByRole('button', { name: '投稿の詳細を表示' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: '投稿の詳細を表示' })
+            ).not.toBeInTheDocument();
         });
 
         it('should not have tabIndex when onStatusClick is not provided', () => {

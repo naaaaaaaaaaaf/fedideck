@@ -33,9 +33,12 @@ describe('oauthOob', () => {
 
         const result = await exchangeCodeForToken(credentials, '  code ');
 
-        expect(fetchMock).toHaveBeenCalledWith('https://example.com/oauth/token', expect.objectContaining({
-            method: 'POST',
-        }));
+        expect(fetchMock).toHaveBeenCalledWith(
+            'https://example.com/oauth/token',
+            expect.objectContaining({
+                method: 'POST',
+            })
+        );
         expect(result).toEqual({
             accessToken: 'token',
             tokenType: 'Bearer',
@@ -82,7 +85,10 @@ describe('oauthOob', () => {
 
         await revokeToken(credentials, 'token');
 
-        expect(fetchMock).toHaveBeenCalledWith('https://example.com/oauth/revoke', expect.any(Object));
+        expect(fetchMock).toHaveBeenCalledWith(
+            'https://example.com/oauth/revoke',
+            expect.any(Object)
+        );
         expect(consoleSpy).toHaveBeenCalledWith('Failed to revoke token');
         consoleSpy.mockRestore();
     });

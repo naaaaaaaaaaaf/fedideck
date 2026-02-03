@@ -23,7 +23,11 @@ interface StreamsState {
     removeStatus: (key: string, statusId: string) => void;
     updateStatus: (key: string, status: mastodon.v1.Status) => void;
     updateStatusGlobal: (status: mastodon.v1.Status) => void;
-    setNotifications: (key: string, notifications: mastodon.v1.Notification[], hasMore?: boolean) => void;
+    setNotifications: (
+        key: string,
+        notifications: mastodon.v1.Notification[],
+        hasMore?: boolean
+    ) => void;
     prependNotification: (key: string, notification: mastodon.v1.Notification) => void;
     appendNotifications: (key: string, notifications: mastodon.v1.Notification[]) => void;
     clearStream: (key: string) => void;
@@ -85,7 +89,7 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
         set((state) => {
             const current = state.data[key] ?? initialStreamData;
             // Avoid duplicates
-            if (current.statuses.some(s => s.id === status.id)) {
+            if (current.statuses.some((s) => s.id === status.id)) {
                 return state;
             }
             return {
@@ -103,8 +107,8 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
     appendStatuses: (key, statuses) => {
         set((state) => {
             const current = state.data[key] ?? initialStreamData;
-            const existingIds = new Set(current.statuses.map(s => s.id));
-            const newStatuses = statuses.filter(s => !existingIds.has(s.id));
+            const existingIds = new Set(current.statuses.map((s) => s.id));
+            const newStatuses = statuses.filter((s) => !existingIds.has(s.id));
             return {
                 data: {
                     ...state.data,
@@ -128,7 +132,7 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                     ...state.data,
                     [key]: {
                         ...current,
-                        statuses: current.statuses.filter(s => s.id !== statusId),
+                        statuses: current.statuses.filter((s) => s.id !== statusId),
                     },
                 },
             };
@@ -144,7 +148,7 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                     ...state.data,
                     [key]: {
                         ...current,
-                        statuses: current.statuses.map(s => s.id === status.id ? status : s),
+                        statuses: current.statuses.map((s) => (s.id === status.id ? status : s)),
                     },
                 },
             };
@@ -161,7 +165,7 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                 const current = newData[key];
                 let streamHasChanges = false;
 
-                const updatedStatuses = current.statuses.map(s => {
+                const updatedStatuses = current.statuses.map((s) => {
                     // Direct match
                     if (s.id === status.id) {
                         streamHasChanges = true;
@@ -206,7 +210,7 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
     prependNotification: (key, notification) => {
         set((state) => {
             const current = state.data[key] ?? initialStreamData;
-            if (current.notifications.some(n => n.id === notification.id)) {
+            if (current.notifications.some((n) => n.id === notification.id)) {
                 return state;
             }
             return {
@@ -224,8 +228,8 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
     appendNotifications: (key, notifications) => {
         set((state) => {
             const current = state.data[key] ?? initialStreamData;
-            const existingIds = new Set(current.notifications.map(n => n.id));
-            const newNotifications = notifications.filter(n => !existingIds.has(n.id));
+            const existingIds = new Set(current.notifications.map((n) => n.id));
+            const newNotifications = notifications.filter((n) => !existingIds.has(n.id));
             return {
                 data: {
                     ...state.data,
@@ -252,7 +256,11 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
 /**
  * Generate stream key from account ID and stream config
  */
-export function getStreamKey(accountId: string, streamType: string, params?: { listId?: string; hashtag?: string }): string {
+export function getStreamKey(
+    accountId: string,
+    streamType: string,
+    params?: { listId?: string; hashtag?: string }
+): string {
     if (params?.listId) {
         return `${accountId}:list:${params.listId}`;
     }

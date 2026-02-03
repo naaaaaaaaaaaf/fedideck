@@ -13,16 +13,19 @@ interface ColumnContainerProps {
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
 }
 
-export function ColumnContainer({ onAddColumn, onReply, onStatusClick, onImageClick }: ColumnContainerProps) {
-    const columns = useColumnsStore(state => state.columns);
-    const removeColumn = useColumnsStore(state => state.removeColumn);
-    const activeAccountId = useAccountsStore(state => state.activeAccountId);
-    const accounts = useAccountsStore(state => state.accounts);
+export function ColumnContainer({
+    onAddColumn,
+    onReply,
+    onStatusClick,
+    onImageClick,
+}: ColumnContainerProps) {
+    const columns = useColumnsStore((state) => state.columns);
+    const removeColumn = useColumnsStore((state) => state.removeColumn);
+    const activeAccountId = useAccountsStore((state) => state.activeAccountId);
+    const accounts = useAccountsStore((state) => state.accounts);
 
     // Filter columns for accounts that exist
-    const validColumns = columns.filter(col =>
-        accounts.some(acc => acc.id === col.accountId)
-    );
+    const validColumns = columns.filter((col) => accounts.some((acc) => acc.id === col.accountId));
 
     return (
         <div className="flex-1 flex overflow-x-auto">
@@ -58,7 +61,9 @@ export function ColumnContainer({ onAddColumn, onReply, onStatusClick, onImageCl
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center text-slate-400">
                         <SiMastodon className="text-6xl mb-4" />
-                        <h2 className="text-xl font-semibold text-slate-200 mb-2">FediDeckへようこそ</h2>
+                        <h2 className="text-xl font-semibold text-slate-200 mb-2">
+                            FediDeckへようこそ
+                        </h2>
                         <p className="mb-4">まずはアカウントを追加してください</p>
                     </div>
                 </div>
@@ -69,7 +74,9 @@ export function ColumnContainer({ onAddColumn, onReply, onStatusClick, onImageCl
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center text-slate-400">
                         <LuList className="text-6xl mb-4" />
-                        <h2 className="text-xl font-semibold text-slate-200 mb-2">カラムがありません</h2>
+                        <h2 className="text-xl font-semibold text-slate-200 mb-2">
+                            カラムがありません
+                        </h2>
                         <p className="mb-4">+ボタンからカラムを追加してください</p>
                     </div>
                 </div>

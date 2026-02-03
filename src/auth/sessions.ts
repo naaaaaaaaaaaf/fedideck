@@ -1,12 +1,10 @@
 import type { mastodon } from 'masto';
-import type { CustomEmoji } from '../api/mastoClient';
 
 export interface Session {
     id: string;
     instanceUrl: string;
     accessToken: string;
     account: mastodon.v1.Account;
-    emojis: CustomEmoji[];
     createdAt: number;
 }
 
@@ -68,15 +66,13 @@ export function clearAllSessions(): void {
 export function createSession(
     instanceUrl: string,
     accessToken: string,
-    account: mastodon.v1.Account,
-    emojis: CustomEmoji[] = []
+    account: mastodon.v1.Account
 ): Session {
     return {
         id: `${account.id}@${new URL(instanceUrl).hostname}`,
         instanceUrl,
         accessToken,
         account,
-        emojis,
         createdAt: Date.now(),
     };
 }
