@@ -58,15 +58,15 @@ export async function getInstanceConfig(
     const instance = await client.v1.instance.fetch();
 
     // Extract configuration values with defensive fallbacks
+    const apiMimeTypes = instance.configuration?.mediaAttachments?.supportedMimeTypes;
     const config: InstanceConfig = {
         maxCharacters:
             instance.configuration?.statuses?.maxCharacters ?? DEFAULT_CONFIG.maxCharacters,
         maxMediaAttachments:
             instance.configuration?.statuses?.maxMediaAttachments ??
             DEFAULT_CONFIG.maxMediaAttachments,
-        supportedMimeTypes:
-            instance.configuration?.mediaAttachments?.supportedMimeTypes ??
-            DEFAULT_CONFIG.supportedMimeTypes,
+        // Create a copy to prevent mutations to the cached value
+        supportedMimeTypes: apiMimeTypes ? [...apiMimeTypes] : DEFAULT_CONFIG.supportedMimeTypes,
     };
 
     // Cache the result
