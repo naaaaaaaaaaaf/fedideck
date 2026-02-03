@@ -344,6 +344,30 @@ describe('instanceConfig', () => {
                 expect(caughtError.message).toBe('Service unavailable');
                 expect(caughtError.statusCode).toBe(503);
             });
+
+            it('should return default config for invalid URL', async () => {
+                const mockClient = createMockClient({
+                    maxCharacters: 5000,
+                    maxMediaAttachments: 5,
+                    supportedMimeTypes: ['image/jpeg'],
+                });
+
+                // Invalid URL should return default config without calling API
+                const config = await getInstanceConfig(mockClient, 'not-a-valid-url');
+
+                expect(config.maxCharacters).toBe(500);
+                expect(config.maxMediaAttachments).toBe(4);
+                expect(config.supportedMimeTypes).toEqual([
+                    'image/jpeg',
+                    'image/png',
+                    'image/gif',
+                    'image/webp',
+                    'video/mp4',
+                    'video/webm',
+                ]);
+                // API should not be called for invalid URLs
+                expect(mockClient.v1.instance.fetch).not.toHaveBeenCalled();
+            });
         });
     });
 
@@ -404,6 +428,23 @@ describe('instanceConfig', () => {
 
             // Should have fetched twice (original + after clear)
             expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(2);
+        });
+
+        it('should handle invalid URL gracefully when clearing cache', async () => {
+            const mockClient = createMockClient({
+                maxCharacters: 5000,
+                maxMediaAttachments: 5,
+                supportedMimeTypes: ['image/jpeg'],
+            });
+
+            await getInstanceConfig(mockClient, 'https://example.com');
+
+            // Should not throw when clearing with invalid URL
+            expect(() => clearInstanceConfigCache('not-a-valid-url')).not.toThrow();
+
+            // Original cache should still be intact
+            await getInstanceConfig(mockClient, 'https://example.com');
+            expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(1);
         });
     });
 

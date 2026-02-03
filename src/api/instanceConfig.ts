@@ -40,13 +40,23 @@ const DEFAULT_CONFIG: InstanceConfig = {
 /**
  * Fetch instance configuration from Mastodon API
  * Uses in-memory cache with 1-hour TTL
+ * @throws {TypeError} If instanceUrl is not a valid URL string
  */
 export async function getInstanceConfig(
     client: MastoClient,
     instanceUrl: string
 ): Promise<InstanceConfig> {
     // Normalize instance URL for consistent cache keys (matches emojiCache pattern)
-    const instanceKey = new URL(instanceUrl).origin;
+    let instanceKey: string;
+    try {
+        instanceKey = new URL(instanceUrl).origin;
+    } catch (e) {
+        if (e instanceof TypeError) {
+            console.warn(`Invalid instance URL: ${instanceUrl}, using default config`);
+            return getDefaultConfig();
+        }
+        throw e;
+    }
 
     // Check cache first
     const cached = configCache.get(instanceKey);
@@ -84,8 +94,15 @@ export async function getInstanceConfig(
  */
 export function clearInstanceConfigCache(instanceUrl?: string): void {
     if (instanceUrl) {
-        const instanceKey = new URL(instanceUrl).origin;
-        configCache.delete(instanceKey);
+        try {
+            const instanceKey = new URL(instanceUrl).origin;
+            configCache.delete(instanceKey);
+        } catch {
+            // If URL is invalid, silently ignore - no cache entry would exist for it
+            console.debug(
+                `Invalid instance URL provided to clearInstanceConfigCache: ${instanceUrl}`
+            );
+        }
     } else {
         configCache.clear();
     }
