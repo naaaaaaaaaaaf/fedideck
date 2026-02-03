@@ -206,22 +206,28 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
         // Increment request generation for this effect run
         const requestGen = ++configRequestRef.current;
+        const ref = configRequestRef;
 
         const client = getClient(composingAccount);
         getInstanceConfig(client, instanceUrl)
             .then((config) => {
                 // Only update if this is still the latest request
-                if (requestGen === configRequestRef.current) {
+                if (requestGen === ref.current) {
                     setInstanceConfig(config);
                 }
             })
             .catch((err) => {
                 // Ignore errors from stale requests
-                if (requestGen !== configRequestRef.current) return;
+                if (requestGen !== ref.current) return;
                 console.error('Failed to fetch instance config:', err);
                 // Use default config as fallback
                 setInstanceConfig(getDefaultConfig());
             });
+
+        // Cleanup: invalidate pending requests on unmount or dependency change
+        return () => {
+            ref.current++;
+        };
     }, [composingAccount, isOpen]);
 
     const remainingChars = (instanceConfig?.maxCharacters ?? 500) - content.length;
