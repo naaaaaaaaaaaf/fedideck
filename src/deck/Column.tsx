@@ -12,7 +12,7 @@ import {
     fetchPublicTimeline,
     fetchNotifications as fetchNotificationsAPI,
     fetchListTimeline,
-    fetchHashtagTimeline
+    fetchHashtagTimeline,
 } from '../api/mastoClient';
 import { subscribeToStream, unsubscribeFromStream } from '../streaming/streamManager';
 import type { ImageViewerImage } from '../components/ImageViewer';
@@ -27,10 +27,17 @@ interface ColumnProps {
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
 }
 
-export function Column({ accountId, stream, onRemove, onReply, onStatusClick, onImageClick }: ColumnProps) {
-    const account = useAccountsStore(state => state.accounts.find(a => a.id === accountId));
+export function Column({
+    accountId,
+    stream,
+    onRemove,
+    onReply,
+    onStatusClick,
+    onImageClick,
+}: ColumnProps) {
+    const account = useAccountsStore((state) => state.accounts.find((a) => a.id === accountId));
     const streamKey = getStreamKey(accountId, stream.type, stream);
-    const data = useStreamsStore(state => state.data[streamKey]);
+    const data = useStreamsStore((state) => state.data[streamKey]);
     const {
         initStream,
         setLoading,
@@ -39,7 +46,7 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick, on
         appendStatuses,
         appendNotifications,
         setError,
-        updateStatusGlobal
+        updateStatusGlobal,
     } = useStreamsStore();
 
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -90,7 +97,16 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick, on
             console.error('Failed to load timeline:', error);
             setError(streamKey, (error as Error).message);
         }
-    }, [account, streamKey, stream, isNotificationColumn, setLoading, setNotifications, setStatuses, setError]);
+    }, [
+        account,
+        streamKey,
+        stream,
+        isNotificationColumn,
+        setLoading,
+        setNotifications,
+        setStatuses,
+        setError,
+    ]);
 
     const loadMore = useCallback(async () => {
         if (!account || !data || data.isLoading || !data.hasMore) return;
@@ -117,19 +133,29 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick, on
                         statuses = await fetchHomeTimeline(client, { maxId: lastId });
                         break;
                     case 'public':
-                        statuses = await fetchPublicTimeline(client, { local: false, maxId: lastId });
+                        statuses = await fetchPublicTimeline(client, {
+                            local: false,
+                            maxId: lastId,
+                        });
                         break;
                     case 'public:local':
-                        statuses = await fetchPublicTimeline(client, { local: true, maxId: lastId });
+                        statuses = await fetchPublicTimeline(client, {
+                            local: true,
+                            maxId: lastId,
+                        });
                         break;
                     case 'list':
                         if (stream.listId) {
-                            statuses = await fetchListTimeline(client, stream.listId, { maxId: lastId });
+                            statuses = await fetchListTimeline(client, stream.listId, {
+                                maxId: lastId,
+                            });
                         }
                         break;
                     case 'hashtag':
                         if (stream.hashtag) {
-                            statuses = await fetchHashtagTimeline(client, stream.hashtag, { maxId: lastId });
+                            statuses = await fetchHashtagTimeline(client, stream.hashtag, {
+                                maxId: lastId,
+                            });
                         }
                         break;
                 }
@@ -139,7 +165,16 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick, on
         } catch (error) {
             console.error('Failed to load more:', error);
         }
-    }, [account, data, streamKey, stream, isNotificationColumn, setLoading, appendNotifications, appendStatuses]);
+    }, [
+        account,
+        data,
+        streamKey,
+        stream,
+        isNotificationColumn,
+        setLoading,
+        appendNotifications,
+        appendStatuses,
+    ]);
 
     // Initialize and load data
     useEffect(() => {
@@ -149,12 +184,7 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick, on
         loadInitialData();
 
         // Subscribe to streaming
-        subscribeToStream(
-            accountId,
-            account.instanceUrl,
-            account.accessToken,
-            stream
-        );
+        subscribeToStream(accountId, account.instanceUrl, account.accessToken, stream);
 
         return () => {
             unsubscribeFromStream(accountId, stream);
@@ -210,14 +240,13 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick, on
             </div>
 
             {/* Content */}
-            <div
-                ref={scrollRef}
-                className="flex-1 overflow-y-auto overflow-x-hidden"
-            >
+            <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden">
                 {/* Error state */}
                 {data?.error && (
                     <div className="p-4 text-center">
-                        <div className="text-red-400 mb-2 flex items-center gap-2"><LuTriangleAlert /> エラー</div>
+                        <div className="text-red-400 mb-2 flex items-center gap-2">
+                            <LuTriangleAlert /> エラー
+                        </div>
                         <div className="text-sm text-slate-400">{data.error}</div>
                         <button
                             onClick={loadInitialData}
@@ -229,7 +258,7 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick, on
                 )}
 
                 {/* Loading state */}
-                {data?.isLoading && (!data.statuses.length && !data.notifications.length) && (
+                {data?.isLoading && !data.statuses.length && !data.notifications.length && (
                     <div className="p-4 text-center text-slate-400">
                         <div className="animate-spin inline-block w-6 h-6 border-2 border-slate-600 border-t-indigo-500 rounded-full"></div>
                         <div className="mt-2 text-sm">読み込み中...</div>
@@ -237,26 +266,32 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick, on
                 )}
 
                 {/* Notifications */}
-                {isNotificationColumn && data?.notifications.map((notification) => (
-                    <NotificationCard
-                        key={notification.id}
-                        notification={notification}
-                        onStatusClick={onStatusClick ? (s) => onStatusClick(s, accountId) : undefined}
-                    />
-                ))}
+                {isNotificationColumn &&
+                    data?.notifications.map((notification) => (
+                        <NotificationCard
+                            key={notification.id}
+                            notification={notification}
+                            onStatusClick={
+                                onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
+                            }
+                        />
+                    ))}
 
                 {/* Statuses */}
-                {!isNotificationColumn && data?.statuses.map((status) => (
-                    <StatusCard
-                        key={status.id}
-                        status={status}
-                        accountSession={account}
-                        onStatusUpdate={updateStatusGlobal}
-                        onReply={onReply ? (s) => onReply(s, accountId) : undefined}
-                        onStatusClick={onStatusClick ? (s) => onStatusClick(s, accountId) : undefined}
-                        onImageClick={onImageClick}
-                    />
-                ))}
+                {!isNotificationColumn &&
+                    data?.statuses.map((status) => (
+                        <StatusCard
+                            key={status.id}
+                            status={status}
+                            accountSession={account}
+                            onStatusUpdate={updateStatusGlobal}
+                            onReply={onReply ? (s) => onReply(s, accountId) : undefined}
+                            onStatusClick={
+                                onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
+                            }
+                            onImageClick={onImageClick}
+                        />
+                    ))}
 
                 {/* Load more trigger */}
                 {data?.hasMore && (data.statuses.length > 0 || data.notifications.length > 0) && (
@@ -275,7 +310,8 @@ export function Column({ accountId, stream, onRemove, onReply, onStatusClick, on
                 )}
 
                 {/* Empty state */}
-                {!data?.isLoading && !data?.error &&
+                {!data?.isLoading &&
+                    !data?.error &&
                     ((isNotificationColumn && !data?.notifications.length) ||
                         (!isNotificationColumn && !data?.statuses.length)) && (
                         <div className="p-8 text-center text-slate-400">

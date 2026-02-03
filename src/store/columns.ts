@@ -41,14 +41,14 @@ export const useColumnsStore = create<ColumnsState>()(
 
             removeColumn: (columnId) => {
                 set((state) => ({
-                    columns: state.columns.filter(c => c.id !== columnId),
+                    columns: state.columns.filter((c) => c.id !== columnId),
                 }));
             },
 
             moveColumn: (columnId, newIndex) => {
                 set((state) => {
                     const columns = [...state.columns];
-                    const currentIndex = columns.findIndex(c => c.id === columnId);
+                    const currentIndex = columns.findIndex((c) => c.id === columnId);
                     if (currentIndex === -1 || currentIndex === newIndex) return state;
 
                     const [column] = columns.splice(currentIndex, 1);
@@ -60,14 +60,14 @@ export const useColumnsStore = create<ColumnsState>()(
 
             updateColumn: (columnId, updates) => {
                 set((state) => ({
-                    columns: state.columns.map(c =>
+                    columns: state.columns.map((c) =>
                         c.id === columnId ? { ...c, ...updates } : c
                     ),
                 }));
             },
 
             getColumnsForAccount: (accountId) => {
-                return get().columns.filter(c => c.accountId === accountId);
+                return get().columns.filter((c) => c.accountId === accountId);
             },
         }),
         {

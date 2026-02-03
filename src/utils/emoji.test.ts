@@ -2,10 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { replaceEmojisWithImages, replaceEmojisInPlainText } from './emoji';
 import type { mastodon } from 'masto';
 
-const createEmoji = (
-    shortcode: string,
-    url?: string
-): mastodon.v1.CustomEmoji => ({
+const createEmoji = (shortcode: string, url?: string): mastodon.v1.CustomEmoji => ({
     shortcode,
     url: url ?? `https://example.com/emoji/${shortcode}.png`,
     staticUrl: url ?? `https://example.com/emoji/${shortcode}.png`,
@@ -24,25 +21,15 @@ describe('replaceEmojisWithImages', () => {
 
     it('should replace multiple different emoji shortcodes', () => {
         const emojis = [createEmoji('blobcat'), createEmoji('fire')];
-        const result = replaceEmojisWithImages(
-            ':blobcat: is on :fire:',
-            emojis
-        );
+        const result = replaceEmojisWithImages(':blobcat: is on :fire:', emojis);
 
-        expect(result).toContain(
-            '<img class="emoji" src="https://example.com/emoji/blobcat.png"'
-        );
-        expect(result).toContain(
-            '<img class="emoji" src="https://example.com/emoji/fire.png"'
-        );
+        expect(result).toContain('<img class="emoji" src="https://example.com/emoji/blobcat.png"');
+        expect(result).toContain('<img class="emoji" src="https://example.com/emoji/fire.png"');
     });
 
     it('should replace the same emoji multiple times', () => {
         const emojis = [createEmoji('star')];
-        const result = replaceEmojisWithImages(
-            ':star: :star: :star:',
-            emojis
-        );
+        const result = replaceEmojisWithImages(':star: :star: :star:', emojis);
 
         const imgCount = (result.match(/<img/g) || []).length;
         expect(imgCount).toBe(3);
@@ -66,10 +53,7 @@ describe('replaceEmojisWithImages', () => {
 
     it('should not replace unknown shortcodes', () => {
         const emojis = [createEmoji('blobcat')];
-        const result = replaceEmojisWithImages(
-            ':unknown: emoji :blobcat:',
-            emojis
-        );
+        const result = replaceEmojisWithImages(':unknown: emoji :blobcat:', emojis);
 
         expect(result).toContain(':unknown:');
         expect(result).toContain('<img class="emoji"');
@@ -96,10 +80,7 @@ describe('replaceEmojisWithImages', () => {
             staticUrl: 'https://example.com/emoji/safe.png',
             visibleInPicker: true,
         };
-        const result = replaceEmojisWithImages(
-            ':<script>alert("xss")</script>:',
-            [maliciousEmoji]
-        );
+        const result = replaceEmojisWithImages(':<script>alert("xss")</script>:', [maliciousEmoji]);
 
         // alt and title attributes should have escaped HTML
         expect(result).toContain('&lt;script&gt;');
@@ -117,20 +98,14 @@ describe('replaceEmojisWithImages', () => {
 
     it('should not affect text without shortcode format', () => {
         const emojis = [createEmoji('blobcat')];
-        const result = replaceEmojisWithImages(
-            'Just text without colons',
-            emojis
-        );
+        const result = replaceEmojisWithImages('Just text without colons', emojis);
 
         expect(result).toBe('Just text without colons');
     });
 
     it('should handle partial shortcode matches correctly', () => {
         const emojis = [createEmoji('cat')];
-        const result = replaceEmojisWithImages(
-            ':cat: and :category:',
-            emojis
-        );
+        const result = replaceEmojisWithImages(':cat: and :category:', emojis);
 
         expect(result).toContain('<img class="emoji"');
         expect(result).toContain(':category:');
@@ -139,7 +114,7 @@ describe('replaceEmojisWithImages', () => {
     // Security tests for URL validation
     describe('URL security', () => {
         it('should reject javascript: URLs', () => {
-            const maliciousEmoji = createEmoji('evil', 'javascript:alert(\'xss\')');
+            const maliciousEmoji = createEmoji('evil', "javascript:alert('xss')");
             const result = replaceEmojisWithImages(':evil:', [maliciousEmoji]);
 
             expect(result).not.toContain('javascript:');
@@ -147,7 +122,10 @@ describe('replaceEmojisWithImages', () => {
         });
 
         it('should reject data: URLs', () => {
-            const maliciousEmoji = createEmoji('evil', 'data:text/html,<script>alert(\'xss\')</script>');
+            const maliciousEmoji = createEmoji(
+                'evil',
+                "data:text/html,<script>alert('xss')</script>"
+            );
             const result = replaceEmojisWithImages(':evil:', [maliciousEmoji]);
 
             expect(result).not.toContain('data:');
@@ -372,7 +350,7 @@ describe('replaceEmojisWithImages', () => {
 describe('replaceEmojisInPlainText', () => {
     it('should escape HTML in plain text before replacing emojis', () => {
         const emojis = [createEmoji('smile')];
-        const result = replaceEmojisInPlainText('<script>alert(\'xss\')</script> :smile:', emojis);
+        const result = replaceEmojisInPlainText("<script>alert('xss')</script> :smile:", emojis);
 
         expect(result).toContain('&lt;script&gt;');
         expect(result).toContain('&lt;/script&gt;');
@@ -424,7 +402,7 @@ describe('replaceEmojisInPlainText', () => {
     });
 
     it('should reject javascript URLs in plain text mode', () => {
-        const maliciousEmoji = createEmoji('evil', 'javascript:alert(\'xss\')');
+        const maliciousEmoji = createEmoji('evil', "javascript:alert('xss')");
         const result = replaceEmojisInPlainText(':evil:', [maliciousEmoji]);
 
         expect(result).not.toContain('javascript:');

@@ -12,7 +12,7 @@ import {
     LuPartyPopper,
     LuCircleAlert,
     LuBell,
-    LuTriangleAlert
+    LuTriangleAlert,
 } from 'react-icons/lu';
 import { formatDate } from '../utils/dateFormat';
 import { replaceEmojisWithImages } from '../utils/emoji';
@@ -24,7 +24,6 @@ interface NotificationCardProps {
 }
 
 export function NotificationCard({ notification, onStatusClick }: NotificationCardProps) {
-
     const getNotificationInfo = (): { icon: ReactNode; label: string; color: string } => {
         switch (notification.type) {
             case 'mention':
@@ -36,7 +35,11 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
             case 'follow':
                 return { icon: <LuUserPlus />, label: 'フォロー', color: 'text-purple-400' };
             case 'follow_request':
-                return { icon: <LuUserCheck />, label: 'フォローリクエスト', color: 'text-purple-400' };
+                return {
+                    icon: <LuUserCheck />,
+                    label: 'フォローリクエスト',
+                    color: 'text-purple-400',
+                };
             case 'poll':
                 return { icon: <LuChartBar />, label: '投票終了', color: 'text-indigo-400' };
             case 'status':
@@ -101,7 +104,9 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
         <article className="p-4 border-b border-slate-700/50 card-hover animate-fade-in">
             {/* Notification header */}
             <div className="flex items-center gap-3 mb-2">
-                <span className={`text-lg ${info.color}`} aria-hidden="true">{info.icon}</span>
+                <span className={`text-lg ${info.color}`} aria-hidden="true">
+                    {info.icon}
+                </span>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                     <a
                         href={account.url}
@@ -146,9 +151,7 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
                                 account={account}
                                 className="font-semibold text-slate-100 truncate block"
                             />
-                            <div className="text-sm text-slate-400 truncate">
-                                @{account.acct}
-                            </div>
+                            <div className="text-sm text-slate-400 truncate">@{account.acct}</div>
                             {account.note && (
                                 <div
                                     className="text-sm text-slate-300 mt-1 line-clamp-2"
@@ -193,13 +196,17 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
                             </summary>
                             <div
                                 className="mt-2 text-sm text-slate-300 wrap-break-word"
-                                dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(status.content, status.emojis) }}
+                                dangerouslySetInnerHTML={{
+                                    __html: replaceEmojisWithImages(status.content, status.emojis),
+                                }}
                             />
                         </details>
                     ) : (
                         <div
                             className="text-sm text-slate-300 wrap-break-word line-clamp-4"
-                            dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(status.content, status.emojis) }}
+                            dangerouslySetInnerHTML={{
+                                __html: replaceEmojisWithImages(status.content, status.emojis),
+                            }}
                         />
                     )}
 

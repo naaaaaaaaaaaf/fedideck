@@ -111,17 +111,19 @@ describe('AddColumnModal', () => {
         it('should open dropdown when account button is clicked', async () => {
             const user = userEvent.setup();
             mockAccounts.push(createMockSession());
-            mockAccounts.push(createMockSession({
-                id: '2@mstdn.jp',
-                instanceUrl: 'https://mstdn.jp',
-                account: {
-                    id: '2',
-                    username: 'user2',
-                    acct: 'user2',
-                    displayName: 'User Two',
-                    avatar: 'https://example.com/avatar2.png',
-                } as mastodon.v1.Account,
-            }));
+            mockAccounts.push(
+                createMockSession({
+                    id: '2@mstdn.jp',
+                    instanceUrl: 'https://mstdn.jp',
+                    account: {
+                        id: '2',
+                        username: 'user2',
+                        acct: 'user2',
+                        displayName: 'User Two',
+                        avatar: 'https://example.com/avatar2.png',
+                    } as mastodon.v1.Account,
+                })
+            );
             mockActiveAccountId = '1@mastodon.social';
             render(<AddColumnModal isOpen={true} onClose={vi.fn()} />);
 
@@ -134,17 +136,19 @@ describe('AddColumnModal', () => {
         it('should update selectedAccountId when account is selected from dropdown', async () => {
             const user = userEvent.setup();
             mockAccounts.push(createMockSession());
-            mockAccounts.push(createMockSession({
-                id: '2@mstdn.jp',
-                instanceUrl: 'https://mstdn.jp',
-                account: {
-                    id: '2',
-                    username: 'user2',
-                    acct: 'user2',
-                    displayName: 'User Two',
-                    avatar: 'https://example.com/avatar2.png',
-                } as mastodon.v1.Account,
-            }));
+            mockAccounts.push(
+                createMockSession({
+                    id: '2@mstdn.jp',
+                    instanceUrl: 'https://mstdn.jp',
+                    account: {
+                        id: '2',
+                        username: 'user2',
+                        acct: 'user2',
+                        displayName: 'User Two',
+                        avatar: 'https://example.com/avatar2.png',
+                    } as mastodon.v1.Account,
+                })
+            );
             mockActiveAccountId = '1@mastodon.social';
             render(<AddColumnModal isOpen={true} onClose={vi.fn()} />);
 

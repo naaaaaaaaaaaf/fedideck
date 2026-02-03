@@ -39,7 +39,7 @@ describe('useAccountsStore', () => {
         // Reset the store state
         const { result } = renderHook(() => useAccountsStore());
         act(() => {
-            result.current.accounts.forEach(acc => {
+            result.current.accounts.forEach((acc) => {
                 result.current.removeAccount(acc.id);
             });
         });

@@ -7,7 +7,7 @@ import {
     unreblogStatus,
     getStatusContext,
     type CreateStatusParams,
-    type MastoClient
+    type MastoClient,
 } from './mastoClient';
 
 describe('createStatus', () => {

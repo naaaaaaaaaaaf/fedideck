@@ -1,132 +1,139 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Base styles for Mastodon Deck */
 :root {
-  --color-bg-primary: #0f172a;
-  --color-bg-secondary: #1e293b;
-  --color-bg-tertiary: #334155;
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #94a3b8;
-  --color-accent: #6366f1;
-  --color-accent-hover: #818cf8;
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-  --color-border: #475569;
+    --color-bg-primary: #0f172a;
+    --color-bg-secondary: #1e293b;
+    --color-bg-tertiary: #334155;
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #94a3b8;
+    --color-accent: #6366f1;
+    --color-accent-hover: #818cf8;
+    --color-success: #22c55e;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-border: #475569;
 }
 
 body {
-  margin: 0;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
-  min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    font-family:
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    min-height: 100vh;
 }
 
 #root {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+    width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-secondary);
+    background: var(--color-bg-secondary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-bg-tertiary);
-  border-radius: 4px;
+    background: var(--color-bg-tertiary);
+    border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-border);
+    background: var(--color-border);
 }
 
 /* Custom utilities */
 .glass {
-  background: rgba(30, 41, 59, 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(71, 85, 105, 0.5);
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(71, 85, 105, 0.5);
 }
 
 .card-hover {
-  transition: all 0.2s ease-in-out;
+    transition: all 0.2s ease-in-out;
 }
 
 .card-hover:hover {
-  background: rgba(51, 65, 85, 0.5);
+    background: rgba(51, 65, 85, 0.5);
 }
 
 /* Avatar ring for boost/favorite */
 .avatar-ring {
-  box-shadow: 0 0 0 3px var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent);
 }
 
 /* Fade in animation */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
+    animation: fadeIn 0.3s ease-out;
 }
 
 /* Status content styling */
 .status-content p {
-  margin: 0 0 0.75em 0;
+    margin: 0 0 0.75em 0;
 }
 .status-content p:last-child {
-  margin-bottom: 0;
+    margin-bottom: 0;
 }
 
 /* リンク共通 */
 .status-content a {
-  color: var(--color-accent);
-  text-decoration: none;
-  transition: color 0.15s ease;
+    color: var(--color-accent);
+    text-decoration: none;
+    transition: color 0.15s ease;
 }
 .status-content a:hover {
-  color: var(--color-accent-hover);
-  text-decoration: underline;
+    color: var(--color-accent-hover);
+    text-decoration: underline;
 }
 
 /* メンション */
 .status-content a.mention {
-  color: #60a5fa; /* blue-400 */
+    color: #60a5fa; /* blue-400 */
 }
 .status-content a.mention:hover {
-  color: #93c5fd; /* blue-300 */
+    color: #93c5fd; /* blue-300 */
 }
 
 /* ハッシュタグ */
-.status-content a[rel*="tag"] {
-  color: #a78bfa; /* violet-400 */
+.status-content a[rel*='tag'] {
+    color: #a78bfa; /* violet-400 */
 }
-.status-content a[rel*="tag"]:hover {
-  color: #c4b5fd; /* violet-300 */
+.status-content a[rel*='tag']:hover {
+    color: #c4b5fd; /* violet-300 */
 }
 
 /* Mastodonのリンク短縮用 */
 .status-content .invisible {
-  display: none;
+    display: none;
 }
 .status-content .ellipsis::after {
-  content: "...";
+    content: '...';
 }
 
 /* カスタム絵文字 */
 .emoji {
-  display: inline;
-  height: 1.2em;
-  width: auto;
-  vertical-align: middle;
-  margin: 0 0.1em;
+    display: inline;
+    height: 1.2em;
+    width: auto;
+    vertical-align: middle;
+    margin: 0 0.1em;
 }

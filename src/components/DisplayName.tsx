@@ -20,12 +20,7 @@ export function DisplayName({ account, className }: DisplayNameProps) {
     // This function escapes the text first, then replaces emoji shortcodes
     if (hasEmojis) {
         const html = replaceEmojisInPlainText(displayName, account.emojis);
-        return (
-            <span
-                className={className}
-                dangerouslySetInnerHTML={{ __html: html }}
-            />
-        );
+        return <span className={className} dangerouslySetInnerHTML={{ __html: html }} />;
     }
 
     // No emojis - render as plain text (React will escape automatically)

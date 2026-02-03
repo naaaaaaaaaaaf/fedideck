@@ -11,16 +11,36 @@ interface AddColumnModalProps {
 }
 
 const COLUMN_TYPES: { type: StreamType; icon: ReactNode; label: string; description: string }[] = [
-    { type: 'home', icon: <LuHouse aria-hidden="true" />, label: 'ホーム', description: 'フォロー中のユーザーの投稿' },
-    { type: 'notifications', icon: <LuBell aria-hidden="true" />, label: '通知', description: 'メンション、ブースト、お気に入りなど' },
-    { type: 'public:local', icon: <LuUsers aria-hidden="true" />, label: 'ローカル', description: 'このサーバーの投稿' },
-    { type: 'public', icon: <LuGlobe aria-hidden="true" />, label: '連合', description: 'すべての連合サーバーの投稿' },
+    {
+        type: 'home',
+        icon: <LuHouse aria-hidden="true" />,
+        label: 'ホーム',
+        description: 'フォロー中のユーザーの投稿',
+    },
+    {
+        type: 'notifications',
+        icon: <LuBell aria-hidden="true" />,
+        label: '通知',
+        description: 'メンション、ブースト、お気に入りなど',
+    },
+    {
+        type: 'public:local',
+        icon: <LuUsers aria-hidden="true" />,
+        label: 'ローカル',
+        description: 'このサーバーの投稿',
+    },
+    {
+        type: 'public',
+        icon: <LuGlobe aria-hidden="true" />,
+        label: '連合',
+        description: 'すべての連合サーバーの投稿',
+    },
 ];
 
 export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
-    const accounts = useAccountsStore(state => state.accounts);
-    const activeAccountId = useAccountsStore(state => state.activeAccountId);
-    const addColumn = useColumnsStore(state => state.addColumn);
+    const accounts = useAccountsStore((state) => state.accounts);
+    const activeAccountId = useAccountsStore((state) => state.activeAccountId);
+    const addColumn = useColumnsStore((state) => state.addColumn);
 
     // State for selected account - initialized with activeAccountId or first account
     // Component is remounted when modal opens (via key prop), so initial values are recalculated
@@ -48,7 +68,7 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
         }
     }, [showAccountSelector]);
 
-    const selectedAccount = accounts.find(a => a.id === selectedAccountId);
+    const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
 
     const handleAddColumn = (type: StreamType) => {
         if (!selectedAccountId) return;
@@ -85,7 +105,12 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
             >
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
-                    <h2 id="add-column-modal-title" className="text-lg font-semibold text-slate-100">カラムを追加</h2>
+                    <h2
+                        id="add-column-modal-title"
+                        className="text-lg font-semibold text-slate-100"
+                    >
+                        カラムを追加
+                    </h2>
                     <button
                         ref={closeButtonRef}
                         onClick={onClose}
@@ -105,7 +130,9 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                                 setShowAccountSelector(newState);
                                 if (newState) {
                                     // Reset focused index to current account when opening
-                                    const currentIndex = accounts.findIndex(a => a.id === selectedAccountId);
+                                    const currentIndex = accounts.findIndex(
+                                        (a) => a.id === selectedAccountId
+                                    );
                                     setFocusedAccountIndex(currentIndex >= 0 ? currentIndex : 0);
                                 }
                             }}
@@ -121,14 +148,19 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                             />
                             <div className="min-w-0 flex-1">
                                 <div className="text-sm font-medium text-slate-200 truncate">
-                                    {selectedAccount.account.displayName || selectedAccount.account.username}
+                                    {selectedAccount.account.displayName ||
+                                        selectedAccount.account.username}
                                 </div>
                                 <div className="text-xs text-slate-400 truncate">
-                                    @{selectedAccount.account.acct}@{new URL(selectedAccount.instanceUrl).hostname}
+                                    @{selectedAccount.account.acct}@
+                                    {new URL(selectedAccount.instanceUrl).hostname}
                                 </div>
                             </div>
                             {accounts.length > 1 && (
-                                <LuChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showAccountSelector ? 'rotate-180' : ''}`} aria-hidden="true" />
+                                <LuChevronDown
+                                    className={`w-4 h-4 text-slate-400 transition-transform ${showAccountSelector ? 'rotate-180' : ''}`}
+                                    aria-hidden="true"
+                                />
                             )}
                         </button>
 
@@ -150,10 +182,14 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                                 onKeyDown={(e) => {
                                     if (e.key === 'ArrowDown') {
                                         e.preventDefault();
-                                        setFocusedAccountIndex(prev => (prev + 1) % accounts.length);
+                                        setFocusedAccountIndex(
+                                            (prev) => (prev + 1) % accounts.length
+                                        );
                                     } else if (e.key === 'ArrowUp') {
                                         e.preventDefault();
-                                        setFocusedAccountIndex(prev => (prev - 1 + accounts.length) % accounts.length);
+                                        setFocusedAccountIndex(
+                                            (prev) => (prev - 1 + accounts.length) % accounts.length
+                                        );
                                     } else if (e.key === 'Enter' || e.key === ' ') {
                                         e.preventDefault();
                                         e.stopPropagation();
@@ -195,11 +231,15 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                                                 {acc.account.displayName || acc.account.username}
                                             </div>
                                             <div className="text-xs text-slate-400 truncate">
-                                                @{acc.account.acct}@{new URL(acc.instanceUrl).hostname}
+                                                @{acc.account.acct}@
+                                                {new URL(acc.instanceUrl).hostname}
                                             </div>
                                         </div>
                                         {acc.id === selectedAccountId && (
-                                            <div className="w-2 h-2 rounded-full bg-indigo-400" aria-hidden="true"></div>
+                                            <div
+                                                className="w-2 h-2 rounded-full bg-indigo-400"
+                                                aria-hidden="true"
+                                            ></div>
                                         )}
                                     </button>
                                 ))}

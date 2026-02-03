@@ -1,18 +1,12 @@
 import type { ReactNode } from 'react';
 import { LuHouse, LuBell, LuGlobe, LuUsers, LuList, LuHash, LuFileText } from 'react-icons/lu';
 
-export type StreamType =
-    | 'home'
-    | 'notifications'
-    | 'public'
-    | 'public:local'
-    | 'list'
-    | 'hashtag';
+export type StreamType = 'home' | 'notifications' | 'public' | 'public:local' | 'list' | 'hashtag';
 
 export interface StreamConfig {
     type: StreamType;
-    listId?: string;     // Required for 'list' type
-    hashtag?: string;    // Used for 'hashtag' type (displays 'ハッシュタグ' as fallback when rendering)
+    listId?: string; // Required for 'list' type
+    hashtag?: string; // Used for 'hashtag' type (displays 'ハッシュタグ' as fallback when rendering)
 }
 
 export interface StreamEvent {

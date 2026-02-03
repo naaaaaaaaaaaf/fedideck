@@ -1,9 +1,6 @@
 import type { mastodon } from 'masto';
 import { escapeHtml, escapeRegExp } from './html';
-import {
-    createTwemojiImgTag,
-    parseUnicodeEmojis,
-} from './twemoji';
+import { createTwemojiImgTag, parseUnicodeEmojis } from './twemoji';
 
 /**
  * Validates and sanitizes emoji URL.

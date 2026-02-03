@@ -12,10 +12,7 @@ export type { EmojiEntity };
  * @param format - File format (svg or png)
  * @returns CDN URL for the Twemoji image
  */
-export function buildTwemojiUrl(
-    codepoints: string[],
-    format: 'svg' | 'png' = 'svg'
-): string {
+export function buildTwemojiUrl(codepoints: string[], format: 'svg' | 'png' = 'svg'): string {
     const fileName = codepoints.join('-');
     return `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/${format}/${fileName}.${format}`;
 }

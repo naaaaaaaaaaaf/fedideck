@@ -76,8 +76,15 @@ describe('getStreamIcon', () => {
     });
 
     it('should render different icons for each stream type', () => {
-        const types = ['home', 'notifications', 'public', 'public:local', 'list', 'hashtag'] as const;
-        const icons = types.map(type => {
+        const types = [
+            'home',
+            'notifications',
+            'public',
+            'public:local',
+            'list',
+            'hashtag',
+        ] as const;
+        const icons = types.map((type) => {
             const { container } = render(<>{getStreamIcon(type)}</>);
             return container.innerHTML;
         });

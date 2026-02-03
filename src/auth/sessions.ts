@@ -30,7 +30,7 @@ export function saveSession(session: Session): void {
     const sessions = loadSessions();
 
     // Remove existing session for the same account if present
-    const filtered = sessions.filter(s => s.id !== session.id);
+    const filtered = sessions.filter((s) => s.id !== session.id);
     filtered.push(session);
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
@@ -41,7 +41,7 @@ export function saveSession(session: Session): void {
  */
 export function removeSession(sessionId: string): void {
     const sessions = loadSessions();
-    const filtered = sessions.filter(s => s.id !== sessionId);
+    const filtered = sessions.filter((s) => s.id !== sessionId);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
 }
 
@@ -50,7 +50,7 @@ export function removeSession(sessionId: string): void {
  */
 export function getSession(sessionId: string): Session | undefined {
     const sessions = loadSessions();
-    return sessions.find(s => s.id === sessionId);
+    return sessions.find((s) => s.id === sessionId);
 }
 
 /**

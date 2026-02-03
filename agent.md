@@ -16,12 +16,12 @@ callback / redirect URL は使用しません。
 
 ## Tech Stack
 
-* React
-* Vite
-* TypeScript
-* masto.js（REST / Streaming 両方）
-* Tailwind CSS
-* WebSocket
+- React
+- Vite
+- TypeScript
+- masto.js（REST / Streaming 両方）
+- Tailwind CSS
+- WebSocket
 
 ---
 
@@ -31,12 +31,12 @@ callback / redirect URL は使用しません。
 
 以下のストリームを **第一級機能**として扱う。
 
-* home
-* notifications
-* public
-* public:local
-* list
-* hashtag
+- home
+- notifications
+- public
+- public:local
+- list
+- hashtag
 
 Streaming API は **初期ロード後の差分更新**として使用し、
 初期データ取得は REST API を用いる。
@@ -47,27 +47,27 @@ Streaming API は **初期ロード後の差分更新**として使用し、
 
 ### Basic Rules
 
-* Streaming API は **WebSocket** を使用
-* アカウントごとに接続を管理する
-* カラム単位で購読する stream を切り替え可能にする
+- Streaming API は **WebSocket** を使用
+- アカウントごとに接続を管理する
+- カラム単位で購読する stream を切り替え可能にする
 
 ### REST + Streaming の役割分担
 
-* 初回ロード: REST API
-* 新着・削除・更新通知: Streaming API
-* 再接続時: REST API で差分補完
+- 初回ロード: REST API
+- 新着・削除・更新通知: Streaming API
+- 再接続時: REST API で差分補完
 
 ---
 
 ## masto.js Streaming Usage Rules
 
-* Streaming 接続は **masto.js の streaming client を使用**
-* WebSocket を直接扱わない（例外を除く）
+- Streaming 接続は **masto.js の streaming client を使用**
+- WebSocket を直接扱わない（例外を除く）
 
 Streaming client は **アカウント単位で生成**する。
 
-* instanceUrl
-* accessToken
+- instanceUrl
+- accessToken
 
 ---
 
@@ -75,19 +75,18 @@ Streaming client は **アカウント単位で生成**する。
 
 ### Required Design
 
-* アカウントごとに Streaming Client を保持
-* アクティブでないアカウントの stream は停止 or 最小化
-* 同一アカウントで複数ストリームを同時購読可能
+- アカウントごとに Streaming Client を保持
+- アクティブでないアカウントの stream は停止 or 最小化
+- 同一アカウントで複数ストリームを同時購読可能
 
 例：
 
-* account A
+- account A
+    - home
+    - notifications
 
-  * home
-  * notifications
-* account B
-
-  * home
+- account B
+    - home
 
 ---
 
@@ -95,15 +94,15 @@ Streaming client は **アカウント単位で生成**する。
 
 各 Deck カラムは、以下のいずれかの更新方式を持つ。
 
-* REST only（静的）
-* Streaming only（特殊用途）
-* REST + Streaming（標準）
+- REST only（静的）
+- Streaming only（特殊用途）
+- REST + Streaming（標準）
 
 カラムは以下の情報を持つ：
 
-* accountId
-* streamType
-* streamParams（listId / hashtag 等）
+- accountId
+- streamType
+- streamParams（listId / hashtag 等）
 
 ---
 
@@ -113,10 +112,10 @@ Streaming client は **アカウント単位で生成**する。
 
 処理対象とするイベント：
 
-* update（新規ステータス）
-* delete（削除）
-* notification
-* status.update（編集）
+- update（新規ステータス）
+- delete（削除）
+- notification
+- status.update（編集）
 
 イベントは **カラム単位でフィルタ**して反映する。
 
@@ -126,15 +125,15 @@ Streaming client は **アカウント単位で生成**する。
 
 ### Required Behavior
 
-* WebSocket 切断時は自動再接続
-* 再接続は指数バックオフ
-* 再接続後は REST API で最新状態を再同期
+- WebSocket 切断時は自動再接続
+- 再接続は指数バックオフ
+- 再接続後は REST API で最新状態を再同期
 
 以下の場合は再接続を試みる：
 
-* ネットワーク切断
-* サーバー切断
-* ブラウザ復帰（visibilitychange）
+- ネットワーク切断
+- サーバー切断
+- ブラウザ復帰（visibilitychange）
 
 ---
 
@@ -142,9 +141,9 @@ Streaming client は **アカウント単位で生成**する。
 
 ### Performance Rules
 
-* 表示されていないカラムの stream は停止可能
-* タブ非アクティブ時は stream を一時停止可
-* 不要な stream の多重接続を禁止
+- 表示されていないカラムの stream は停止可能
+- タブ非アクティブ時は stream を一時停止可
+- 不要な stream の多重接続を禁止
 
 ---
 
@@ -159,15 +158,15 @@ appRegistration.ts
 oauthOob.ts
 sessions.ts
 streaming/
-streamManager.ts      # 接続管理・再接続
-streamTypes.ts        # home / notifications etc
+streamManager.ts # 接続管理・再接続
+streamTypes.ts # home / notifications etc
 deck/
 Column.tsx
 ColumnContainer.tsx
 columns/
 store/
 accounts.ts
-streams.ts            # column ↔ stream mapping
+streams.ts # column ↔ stream mapping
 components/
 
 ---
@@ -176,47 +175,46 @@ components/
 
 ### DO
 
-* Streaming と REST を明確に分離
-* ストリームは必ず管理レイヤー経由で扱う
-* 再接続・破棄を必ず実装
-* 複数アカウント前提で設計
+- Streaming と REST を明確に分離
+- ストリームは必ず管理レイヤー経由で扱う
+- 再接続・破棄を必ず実装
+- 複数アカウント前提で設計
 
 ### DON'T
 
-* WebSocket 直叩き
-* カラムごとに無秩序な stream 接続
-* REST を使わず Streaming のみで初期表示
-* 単一アカウント前提の設計
+- WebSocket 直叩き
+- カラムごとに無秩序な stream 接続
+- REST を使わず Streaming のみで初期表示
+- 単一アカウント前提の設計
 
 ---
 
 ## Required Features (Streaming)
 
-* Home timeline のリアルタイム更新
-* Notifications のリアルタイム更新
-* ステータス削除イベント反映
-* 再接続時の整合性維持
+- Home timeline のリアルタイム更新
+- Notifications のリアルタイム更新
+- ステータス削除イベント反映
+- 再接続時の整合性維持
 
 ## Git Policy
 
 ### Branch Strategy
 
-* `main`
+- `main`
+    - 常に動作する状態を保つ
+    - 直接 push 禁止
 
-  * 常に動作する状態を保つ
-  * 直接 push 禁止
-* `develop`
+- `develop`
+    - 通常の作業ブランチのマージ先
 
-  * 通常の作業ブランチのマージ先
-* `feature/*`
+- `feature/*`
+    - 機能追加（例: `feature/streaming-home`）
 
-  * 機能追加（例: `feature/streaming-home`）
-* `fix/*`
+- `fix/*`
+    - バグ修正
 
-  * バグ修正
-* `chore/*`
-
-  * 依存更新・設定変更
+- `chore/*`
+    - 依存更新・設定変更
 
 Agent は **必ず feature / fix ブランチ前提**で作業する。
 
@@ -224,17 +222,17 @@ Agent は **必ず feature / fix ブランチ前提**で作業する。
 
 ### Commit Rules
 
-* 小さく、意味のある単位で commit
-* 1 commit = 1 意図
-* 破壊的変更は禁止（別途合意がない限り）
+- 小さく、意味のある単位で commit
+- 1 commit = 1 意図
+- 破壊的変更は禁止（別途合意がない限り）
 
 推奨フォーマット：
 
-* feat: add home timeline streaming
-* fix: handle reconnect on ws close
-* refactor: extract stream manager
-* test: add oauth oob tests
-* chore: update deps
+- feat: add home timeline streaming
+- fix: handle reconnect on ws close
+- refactor: extract stream manager
+- test: add oauth oob tests
+- chore: update deps
 
 ---
 
@@ -242,38 +240,38 @@ Agent は **必ず feature / fix ブランチ前提**で作業する。
 
 ### Required
 
-* **ロジックは必ずテスト可能な形で分離する**
-* UI と API ロジックを密結合させない
+- **ロジックは必ずテスト可能な形で分離する**
+- UI と API ロジックを密結合させない
 
 ### Unit Tests
 
 対象：
 
-* OAuth OOB フロー
-* App Registration
-* Streaming reconnect logic
-* Store（accounts / streams）
+- OAuth OOB フロー
+- App Registration
+- Streaming reconnect logic
+- Store（accounts / streams）
 
 推奨ツール：
 
-* Vitest
-* Testing Library（UI）
+- Vitest
+- Testing Library（UI）
 
 ---
 
 ### Mocking
 
-* Mastodon API は **実通信しない**
-* msw などを用いて mock する
-* Streaming は Event 単位で mock 可能にする
+- Mastodon API は **実通信しない**
+- msw などを用いて mock する
+- Streaming は Event 単位で mock 可能にする
 
 ---
 
 ### Test Rules for Agents
 
-* 新しいロジックを追加したら **最低1つはテストを書く**
-* 修正系は **失敗再現テスト → 修正**
-* テストが書けない設計は禁止
+- 新しいロジックを追加したら **最低1つはテストを書く**
+- 修正系は **失敗再現テスト → 修正**
+- テストが書けない設計は禁止
 
 ---
 
@@ -283,17 +281,16 @@ CI が存在する前提でコードを書く。
 
 最低限満たすこと：
 
-* `npm run build` が通る
-* `npm run test` が通る
-* 型エラーがない
-
+- `npm run build` が通る
+- `npm run test` が通る
+- 型エラーがない
 
 ## Quality Bar
 
 このプロジェクトは以下を満たすこと：
 
-* 読める
-* 壊れにくい
-* テストできる
-* Streaming で暴走しない
-* Deck UI を壊さない
+- 読める
+- 壊れにくい
+- テストできる
+- Streaming で暴走しない
+- Deck UI を壊さない

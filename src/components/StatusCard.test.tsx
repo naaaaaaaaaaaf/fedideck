@@ -245,9 +245,11 @@ describe('StatusCard', () => {
             await user.click(content);
 
             expect(onStatusClick).toHaveBeenCalledTimes(1);
-            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
-                id: '12345',
-            }));
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                })
+            );
         });
 
         it('should NOT call onStatusClick when clicking a link', async () => {
@@ -302,9 +304,11 @@ describe('StatusCard', () => {
             await user.click(content);
 
             // Should pass original status, not the reblog wrapper
-            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
-                id: 'original-123',
-            }));
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: 'original-123',
+                })
+            );
         });
 
         it('should call onStatusClick when pressing Enter on focusable card', async () => {
@@ -321,9 +325,11 @@ describe('StatusCard', () => {
             await user.keyboard('{Enter}');
 
             expect(onStatusClick).toHaveBeenCalledTimes(1);
-            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
-                id: '12345',
-            }));
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                })
+            );
         });
 
         it('should call onStatusClick when pressing Space on focusable card', async () => {
@@ -340,9 +346,11 @@ describe('StatusCard', () => {
             await user.keyboard(' ');
 
             expect(onStatusClick).toHaveBeenCalledTimes(1);
-            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
-                id: '12345',
-            }));
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                })
+            );
         });
 
         it('should not have keyboard handler when onStatusClick is not provided', () => {
@@ -353,11 +361,11 @@ describe('StatusCard', () => {
             render(<StatusCard status={status} />);
 
             const article = screen.getByRole('article');
-            
+
             // When onStatusClick is not provided, the card should not be keyboard-interactive
             // Check that tabIndex is not set (making it non-focusable via keyboard)
             expect(article).not.toHaveAttribute('tabindex');
-            
+
             // Alternatively, verify that attempting keyboard interaction does nothing
             // (no focus is actually set since tabIndex is undefined)
             article.focus();
@@ -430,9 +438,11 @@ describe('StatusCard', () => {
             await user.click(replyIndicator);
 
             expect(onStatusClick).toHaveBeenCalledTimes(1);
-            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
-                id: '12345',
-            }));
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                })
+            );
         });
 
         it('should call onStatusClick when pressing Enter on reply indicator', async () => {
@@ -484,7 +494,13 @@ describe('StatusCard', () => {
 
             expect(onImageClick).toHaveBeenCalledTimes(1);
             expect(onImageClick).toHaveBeenCalledWith(
-                [{ url: 'https://example.com/image1.png', previewUrl: 'https://example.com/preview1.png', description: 'First image' }],
+                [
+                    {
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        description: 'First image',
+                    },
+                ],
                 0
             );
         });
@@ -552,7 +568,9 @@ describe('StatusCard', () => {
                 ],
             });
 
-            const { container } = render(<StatusCard status={status} onImageClick={onImageClick} />);
+            const { container } = render(
+                <StatusCard status={status} onImageClick={onImageClick} />
+            );
 
             // Video should be in an anchor tag, not a button
             const videoLink = container.querySelector('a[href="https://example.com/video.mp4"]');
@@ -583,7 +601,9 @@ describe('StatusCard', () => {
                 ],
             });
 
-            const { container } = render(<StatusCard status={status} onImageClick={onImageClick} />);
+            const { container } = render(
+                <StatusCard status={status} onImageClick={onImageClick} />
+            );
 
             // gifv should be in an anchor tag, not a button
             const gifvLink = container.querySelector('a[href="https://example.com/animation.mp4"]');
@@ -612,7 +632,13 @@ describe('StatusCard', () => {
                 ],
             });
 
-            render(<StatusCard status={status} onImageClick={onImageClick} onStatusClick={onStatusClick} />);
+            render(
+                <StatusCard
+                    status={status}
+                    onImageClick={onImageClick}
+                    onStatusClick={onStatusClick}
+                />
+            );
 
             const img = screen.getByAltText('Test image');
             await user.click(img);
@@ -661,8 +687,16 @@ describe('StatusCard', () => {
             // The images array passed to onImageClick should only contain images
             expect(onImageClick).toHaveBeenCalledWith(
                 [
-                    { url: 'https://example.com/image1.png', previewUrl: 'https://example.com/preview1.png', description: 'First image' },
-                    { url: 'https://example.com/image2.png', previewUrl: 'https://example.com/preview2.png', description: 'Second image' },
+                    {
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        description: 'First image',
+                    },
+                    {
+                        url: 'https://example.com/image2.png',
+                        previewUrl: 'https://example.com/preview2.png',
+                        description: 'Second image',
+                    },
                 ],
                 1 // Second image is at index 1 in the images-only array
             );
@@ -820,10 +854,12 @@ describe('StatusCard', () => {
             await user.click(replyButton);
 
             expect(onReply).toHaveBeenCalledTimes(1);
-            expect(onReply).toHaveBeenCalledWith(expect.objectContaining({
-                id: '12345',
-                content: '<p>Test post</p>',
-            }));
+            expect(onReply).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                    content: '<p>Test post</p>',
+                })
+            );
         });
 
         it('should call onReply with original status when clicking reblog reply button', async () => {
@@ -849,10 +885,12 @@ describe('StatusCard', () => {
             await user.click(replyButton);
 
             // Should reply to original status, not the reblog wrapper
-            expect(onReply).toHaveBeenCalledWith(expect.objectContaining({
-                id: 'original-123',
-                content: '<p>Original content</p>',
-            }));
+            expect(onReply).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: 'original-123',
+                    content: '<p>Original content</p>',
+                })
+            );
         });
     });
 });
