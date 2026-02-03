@@ -978,5 +978,41 @@ describe('StatusCard', () => {
 
             expect(onStatusClick).toHaveBeenCalledTimes(1);
         });
+
+        it('should NOT call onStatusClick when pressing Enter on CW summary', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler warning!',
+                content: '<p>Hidden content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/Spoiler warning!/);
+            summary.focus();
+            await user.keyboard('{Enter}');
+
+            // Should NOT navigate - CW toggle only
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should NOT call onStatusClick when pressing Space on CW summary', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler warning!',
+                content: '<p>Hidden content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/Spoiler warning!/);
+            summary.focus();
+            await user.keyboard(' ');
+
+            // Should NOT navigate - CW toggle only
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
     });
 });

@@ -181,7 +181,14 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
                 >
                     {status.spoilerText ? (
                         <details>
-                            <summary className="cursor-pointer text-amber-400 text-sm">
+                            <summary
+                                className="cursor-pointer text-amber-400 text-sm"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.stopPropagation();
+                                    }
+                                }}
+                            >
                                 <LuTriangleAlert className="inline mr-1" /> {status.spoilerText}
                             </summary>
                             <div

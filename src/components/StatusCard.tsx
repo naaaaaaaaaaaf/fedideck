@@ -353,7 +353,15 @@ export function StatusCard({
                     {/* Content Warning */}
                     {displayStatus.spoilerText && (
                         <details className="mt-2">
-                            <summary className="cursor-pointer text-amber-400 text-sm">
+                            <summary
+                                className="cursor-pointer text-amber-400 text-sm"
+                                onKeyDown={(e) => {
+                                    // Stop Enter/Space from propagating to card keyboard handler
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.stopPropagation();
+                                    }
+                                }}
+                            >
                                 <LuTriangleAlert className="inline mr-1" />{' '}
                                 {displayStatus.spoilerText}
                             </summary>

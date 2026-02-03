@@ -130,7 +130,14 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
                     {/* Content warning */}
                     {status.spoilerText ? (
                         <details className="text-sm">
-                            <summary className="cursor-pointer text-amber-400 text-xs">
+                            <summary
+                                className="cursor-pointer text-amber-400 text-xs"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.stopPropagation();
+                                    }
+                                }}
+                            >
                                 CW: {status.spoilerText}
                             </summary>
                             <div
