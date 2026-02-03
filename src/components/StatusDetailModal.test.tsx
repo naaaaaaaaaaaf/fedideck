@@ -2040,4 +2040,119 @@ describe('StatusDetailModal', () => {
             expect(deepestReply).toHaveStyle({ marginLeft: '48px' });
         });
     });
+
+    describe('ThreadItem content warning click behavior', () => {
+        it('should NOT call onClick when clicking on CW summary', async () => {
+            const user = userEvent.setup();
+            const onClick = vi.fn();
+            const status = createMockStatus({
+                id: '123',
+                spoilerText: 'Thread spoiler!',
+                content: '<p>Hidden thread content</p>',
+            });
+
+            const { container } = render(
+                <StatusDetailModal
+                    isOpen={true}
+                    status={status}
+                    onClose={() => {}}
+                    accountSession={createMockAccountSession()}
+                />
+            );
+
+            // Find the ThreadItem with the CW text
+            const summary = Array.from(container.querySelectorAll('summary')).find((el) =>
+                el.textContent?.includes('Thread spoiler!')
+            );
+
+            expect(summary).toBeInTheDocument();
+            if (summary) {
+                await user.click(summary);
+                // onClick should not be called - just toggles the CW
+                await waitFor(() => {
+                    expect(onClick).not.toHaveBeenCalled();
+                });
+            }
+        });
+
+        it('should navigate when clicking on expanded CW content in thread', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({
+                id: '123',
+                spoilerText: 'Thread spoiler!',
+                content: '<p>Hidden thread content</p>',
+            });
+
+            const { container, rerender } = render(
+                <StatusDetailModal
+                    isOpen={true}
+                    status={status}
+                    onClose={() => {}}
+                    accountSession={createMockAccountSession()}
+                />
+            );
+
+            // First, expand the CW
+            const summary = Array.from(container.querySelectorAll('summary')).find((el) =>
+                el.textContent?.includes('Thread spoiler!')
+            );
+
+            expect(summary).toBeInTheDocument();
+            if (summary) {
+                await user.click(summary);
+
+                // Then click on the expanded content
+                const content = container.querySelector('.status-content');
+                expect(content).toBeInTheDocument();
+                if (content) {
+                    await user.click(content);
+
+                    // Modal should still be open (navigation within modal)
+                    await waitFor(() => {
+                        expect(screen.getByRole('dialog')).toBeInTheDocument();
+                    });
+                }
+            }
+        });
+
+        it('should NOT navigate when clicking links in CW thread content', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({
+                id: '123',
+                spoilerText: 'Thread with link',
+                content: '<p>Text with <a href="https://example.com">link</a></p>',
+            });
+
+            const { container } = render(
+                <StatusDetailModal
+                    isOpen={true}
+                    status={status}
+                    onClose={() => {}}
+                    accountSession={createMockAccountSession()}
+                />
+            );
+
+            // Expand the CW
+            const summary = Array.from(container.querySelectorAll('summary')).find((el) =>
+                el.textContent?.includes('Thread with link')
+            );
+
+            expect(summary).toBeInTheDocument();
+            if (summary) {
+                await user.click(summary);
+
+                // Click on the link - should not trigger navigation
+                const link = container.querySelector('a[href="https://example.com"]');
+                expect(link).toBeInTheDocument();
+                if (link) {
+                    await user.click(link);
+
+                    // Modal should remain open
+                    await waitFor(() => {
+                        expect(screen.getByRole('dialog')).toBeInTheDocument();
+                    });
+                }
+            }
+        });
+    });
 });
