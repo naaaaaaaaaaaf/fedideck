@@ -2083,7 +2083,7 @@ describe('StatusDetailModal', () => {
                 content: '<p>Hidden thread content</p>',
             });
 
-            const { container, rerender } = render(
+            const { container } = render(
                 <StatusDetailModal
                     isOpen={true}
                     status={status}
