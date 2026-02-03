@@ -680,5 +680,43 @@ describe('NotificationCard', () => {
 
             expect(onStatusClick).not.toHaveBeenCalled();
         });
+
+        it('should NOT call onStatusClick when pressing Enter on CW summary', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    spoilerText: 'Spoiler warning!',
+                    content: '<p>Hidden content</p>',
+                }),
+            });
+
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/Spoiler warning!/);
+            summary.focus();
+            await user.keyboard('{Enter}');
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should NOT call onStatusClick when pressing Space on CW summary', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    spoilerText: 'Spoiler warning!',
+                    content: '<p>Hidden content</p>',
+                }),
+            });
+
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/Spoiler warning!/);
+            summary.focus();
+            await user.keyboard(' ');
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
     });
 });

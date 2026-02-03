@@ -2224,5 +2224,105 @@ describe('StatusDetailModal', () => {
                 initialCallCount
             );
         });
+
+        it('should NOT navigate when pressing Enter on CW summary in ThreadItem', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            const ancestorWithCW = createMockStatus({
+                id: 'ancestor-with-cw-keyboard',
+                content: '<p>Hidden content</p>',
+                spoilerText: 'Keyboard test CW',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Ancestor With CW Keyboard',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestorWithCW],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    status={status}
+                    onClose={() => {}}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor With CW Keyboard')).toBeInTheDocument();
+            });
+
+            const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            const summary = Array.from(document.querySelectorAll('summary')).find((el) =>
+                el.textContent?.includes('Keyboard test CW')
+            );
+
+            expect(summary).toBeInTheDocument();
+            if (!summary) throw new Error('CW summary not found');
+
+            summary.focus();
+            await user.keyboard('{Enter}');
+
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(
+                initialCallCount
+            );
+        });
+
+        it('should NOT navigate when pressing Space on CW summary in ThreadItem', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            const descendantWithCW = createMockStatus({
+                id: 'descendant-with-cw-keyboard',
+                content: '<p>Hidden content</p>',
+                spoilerText: 'Space test CW',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Descendant With CW Keyboard',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [descendantWithCW],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    status={status}
+                    onClose={() => {}}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Descendant With CW Keyboard')).toBeInTheDocument();
+            });
+
+            const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            const summary = Array.from(document.querySelectorAll('summary')).find((el) =>
+                el.textContent?.includes('Space test CW')
+            );
+
+            expect(summary).toBeInTheDocument();
+            if (!summary) throw new Error('CW summary not found');
+
+            summary.focus();
+            await user.keyboard(' ');
+
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(
+                initialCallCount
+            );
+        });
     });
 });
