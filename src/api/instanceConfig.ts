@@ -40,7 +40,15 @@ const DEFAULT_CONFIG: InstanceConfig = {
 /**
  * Fetch instance configuration from Mastodon API
  * Uses in-memory cache with 1-hour TTL
- * @throws {TypeError} If instanceUrl is not a valid URL string
+ *
+ * @param client - Mastodon API client
+ * @param instanceUrl - Instance URL to fetch configuration from
+ * @returns Instance configuration with limits and supported MIME types
+ *
+ * @remarks
+ * - Invalid URLs are handled gracefully - default config is returned with a console warning
+ * - Returns cached value if available and not expired (1 hour TTL)
+ * - Network errors from the API call will propagate to the caller
  */
 export async function getInstanceConfig(
     client: MastoClient,
