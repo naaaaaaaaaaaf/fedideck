@@ -67,6 +67,42 @@ describe('instanceConfig', () => {
             expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(1);
         });
 
+        it('should not pollute cache when returned config is mutated', async () => {
+            const mockClient = createMockClient({
+                maxCharacters: 5000,
+                maxMediaAttachments: 5,
+                supportedMimeTypes: ['image/jpeg', 'image/png'],
+            });
+
+            // First call - get config and mutate it
+            const config1 = await getInstanceConfig(mockClient, 'https://example.com');
+            config1.maxCharacters = 9999;
+            config1.supportedMimeTypes.push('image/mutated');
+
+            // Second call - should return original cached values, not mutated ones
+            const config2 = await getInstanceConfig(mockClient, 'https://example.com');
+
+            expect(config2.maxCharacters).toBe(5000);
+            expect(config2.supportedMimeTypes).toEqual(['image/jpeg', 'image/png']);
+            expect(config2.supportedMimeTypes).not.toContain('image/mutated');
+        });
+
+        it('should return new object on each call even when cached', async () => {
+            const mockClient = createMockClient({
+                maxCharacters: 5000,
+                maxMediaAttachments: 5,
+                supportedMimeTypes: ['image/jpeg', 'image/png'],
+            });
+
+            const config1 = await getInstanceConfig(mockClient, 'https://example.com');
+            const config2 = await getInstanceConfig(mockClient, 'https://example.com');
+
+            // Should be different object references
+            expect(config1).not.toBe(config2);
+            // But have the same values
+            expect(config1).toEqual(config2);
+        });
+
         it('should cache separately for different instances', async () => {
             const mockClient1 = createMockClient({
                 maxCharacters: 5000,

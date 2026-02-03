@@ -61,7 +61,11 @@ export async function getInstanceConfig(
     // Check cache first
     const cached = configCache.get(instanceKey);
     if (cached && cached.expiresAt > Date.now()) {
-        return cached.config;
+        // Return a copy to prevent cache pollution through mutation
+        return {
+            ...cached.config,
+            supportedMimeTypes: [...cached.config.supportedMimeTypes],
+        };
     }
 
     // Fetch from API
@@ -85,7 +89,11 @@ export async function getInstanceConfig(
         expiresAt: Date.now() + CACHE_TTL,
     });
 
-    return config;
+    // Return a copy to prevent cache pollution through mutation
+    return {
+        ...config,
+        supportedMimeTypes: [...config.supportedMimeTypes],
+    };
 }
 
 /**
