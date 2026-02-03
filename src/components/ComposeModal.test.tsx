@@ -496,12 +496,8 @@ describe('ComposeModal', () => {
         });
         const textarea = screen.getByPlaceholderText('今なにしてる？');
 
-        // Get computed padding-left values
-        const accountSelectorPadding = window.getComputedStyle(accountSelector).paddingLeft;
-        const textareaPadding = window.getComputedStyle(textarea).paddingLeft;
-
-        // Both should have px-3 (0.75rem = 12px)
-        expect(accountSelectorPadding).toBe('12px');
-        expect(textareaPadding).toBe('12px');
+        // Both should have px-3 class for consistent horizontal padding
+        expect(accountSelector).toHaveClass('px-3');
+        expect(textarea).toHaveClass('px-3');
     });
 });
