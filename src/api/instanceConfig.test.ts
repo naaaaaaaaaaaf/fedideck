@@ -108,6 +108,97 @@ describe('instanceConfig', () => {
 
             expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(2);
         });
+
+        it('should use default values when configuration is missing', async () => {
+            const malformedClient = {
+                v1: {
+                    instance: {
+                        fetch: vi.fn().mockResolvedValue({
+                            configuration: undefined,
+                        }),
+                    },
+                },
+            } as unknown as MastoClient;
+
+            const config = await getInstanceConfig(malformedClient, 'https://example.com');
+
+            // Should fall back to defaults
+            expect(config).toEqual({
+                maxCharacters: 500,
+                maxMediaAttachments: 4,
+                supportedMimeTypes: [
+                    'image/jpeg',
+                    'image/png',
+                    'image/gif',
+                    'image/webp',
+                    'video/mp4',
+                    'video/webm',
+                ],
+            });
+        });
+
+        it('should use default values when nested properties are missing', async () => {
+            const malformedClient = {
+                v1: {
+                    instance: {
+                        fetch: vi.fn().mockResolvedValue({
+                            configuration: {
+                                statuses: undefined,
+                                mediaAttachments: undefined,
+                            },
+                        }),
+                    },
+                },
+            } as unknown as MastoClient;
+
+            const config = await getInstanceConfig(malformedClient, 'https://example.com');
+
+            // Should fall back to defaults
+            expect(config.maxCharacters).toBe(500);
+            expect(config.maxMediaAttachments).toBe(4);
+            expect(config.supportedMimeTypes).toEqual([
+                'image/jpeg',
+                'image/png',
+                'image/gif',
+                'image/webp',
+                'video/mp4',
+                'video/webm',
+            ]);
+        });
+
+        it('should use default values when individual properties are missing', async () => {
+            const partialClient = {
+                v1: {
+                    instance: {
+                        fetch: vi.fn().mockResolvedValue({
+                            configuration: {
+                                statuses: {
+                                    maxCharacters: 1000,
+                                    // maxMediaAttachments missing
+                                },
+                                mediaAttachments: {
+                                    // supportedMimeTypes missing
+                                },
+                            },
+                        }),
+                    },
+                },
+            } as unknown as MastoClient;
+
+            const config = await getInstanceConfig(partialClient, 'https://example.com');
+
+            // Should mix API values with defaults
+            expect(config.maxCharacters).toBe(1000);
+            expect(config.maxMediaAttachments).toBe(4); // default
+            expect(config.supportedMimeTypes).toEqual([
+                'image/jpeg',
+                'image/png',
+                'image/gif',
+                'image/webp',
+                'video/mp4',
+                'video/webm',
+            ]); // default
+        });
     });
 
     describe('clearInstanceConfigCache', () => {
