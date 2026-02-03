@@ -2079,11 +2079,14 @@ describe('StatusDetailModal', () => {
 
             const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
 
-            // Find the ThreadItem's CW summary and click it
-            const summary = Array.from(document.querySelectorAll('summary')).find((el) =>
-                el.textContent?.includes('Thread spoiler!')
-            );
+            // Find the ThreadItem container and get the CW summary within it
+            const threadItem = screen
+                .getByText('Ancestor With CW Summary')
+                .closest('[role="button"]');
+            expect(threadItem).toBeInTheDocument();
+            if (!threadItem) throw new Error('ThreadItem not found');
 
+            const summary = threadItem.querySelector('summary');
             expect(summary).toBeInTheDocument();
             if (!summary) throw new Error('CW summary not found in ThreadItem');
 
@@ -2150,9 +2153,14 @@ describe('StatusDetailModal', () => {
             await user.click(summary);
 
             // Click on the expanded CW content to navigate
-            const cwContent = document.querySelector('.status-content');
+            // Find the ThreadItem container and get the status-content within it
+            const threadItem = screen.getByText('Ancestor With CW').closest('[role="button"]');
+            expect(threadItem).toBeInTheDocument();
+            if (!threadItem) throw new Error('ThreadItem not found');
+
+            const cwContent = threadItem.querySelector('.status-content');
             expect(cwContent).toBeInTheDocument();
-            if (!cwContent) throw new Error('CW content not found');
+            if (!cwContent) throw new Error('CW content not found in ThreadItem');
 
             await user.click(cwContent);
 
@@ -2213,9 +2221,14 @@ describe('StatusDetailModal', () => {
             await user.click(summary);
 
             // Click on the link inside the expanded CW content
-            const link = document.querySelector('a[href="https://example.com"]');
+            // Find the ThreadItem container and get the link within it
+            const threadItem = screen.getByText('Ancestor With CW Link').closest('[role="button"]');
+            expect(threadItem).toBeInTheDocument();
+            if (!threadItem) throw new Error('ThreadItem not found');
+
+            const link = threadItem.querySelector('a[href="https://example.com"]');
             expect(link).toBeInTheDocument();
-            if (!link) throw new Error('Link not found');
+            if (!link) throw new Error('Link not found in ThreadItem');
 
             await user.click(link);
 
@@ -2260,12 +2273,16 @@ describe('StatusDetailModal', () => {
 
             const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
 
-            const summary = Array.from(document.querySelectorAll('summary')).find((el) =>
-                el.textContent?.includes('Keyboard test CW')
-            );
+            // Find the ThreadItem container and get the CW summary within it
+            const threadItem = screen
+                .getByText('Ancestor With CW Keyboard')
+                .closest('[role="button"]');
+            expect(threadItem).toBeInTheDocument();
+            if (!threadItem) throw new Error('ThreadItem not found');
 
+            const summary = threadItem.querySelector('summary');
             expect(summary).toBeInTheDocument();
-            if (!summary) throw new Error('CW summary not found');
+            if (!summary) throw new Error('CW summary not found in ThreadItem');
 
             summary.focus();
             await user.keyboard('{Enter}');
@@ -2310,12 +2327,16 @@ describe('StatusDetailModal', () => {
 
             const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
 
-            const summary = Array.from(document.querySelectorAll('summary')).find((el) =>
-                el.textContent?.includes('Space test CW')
-            );
+            // Find the ThreadItem container and get the CW summary within it
+            const threadItem = screen
+                .getByText('Descendant With CW Keyboard')
+                .closest('[role="button"]');
+            expect(threadItem).toBeInTheDocument();
+            if (!threadItem) throw new Error('ThreadItem not found');
 
+            const summary = threadItem.querySelector('summary');
             expect(summary).toBeInTheDocument();
-            if (!summary) throw new Error('CW summary not found');
+            if (!summary) throw new Error('CW summary not found in ThreadItem');
 
             summary.focus();
             await user.keyboard(' ');
