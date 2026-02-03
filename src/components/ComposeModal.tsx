@@ -475,7 +475,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     }
                                 }}
                                 disabled={isAccountLocked}
-                                className={`flex items-center gap-2 p-2 -m-2 rounded-lg transition-colors w-full text-left ${
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors w-full text-left ${
                                     isAccountLocked ? 'cursor-default' : 'hover:bg-slate-700/50'
                                 }`}
                                 aria-expanded={showAccountSelector}
