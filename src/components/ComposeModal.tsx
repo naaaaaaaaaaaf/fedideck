@@ -23,6 +23,7 @@ import {
     updateMediaDescription,
     type CreateStatusParams,
 } from '../api/mastoClient';
+import { getInstanceConfig, getDefaultConfig, type InstanceConfig } from '../api/instanceConfig';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { useTextareaCursor } from '../hooks/useTextareaCursor';
 import { DisplayName } from './DisplayName';
@@ -91,11 +92,8 @@ const VISIBILITY_OPTIONS: VisibilityOption[] = [
     },
 ];
 
-const MAX_CHARS = 500;
-const MAX_MEDIA = 4;
 const MAX_POLL_OPTIONS = 4;
 const MIN_POLL_OPTIONS = 2;
-const ACCEPTED_MEDIA_TYPES = 'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm';
 
 const POLL_DURATION_OPTIONS = [
     { value: 300, label: '5分' },
@@ -145,6 +143,11 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     // Emoji palette state
     const [showEmojiPalette, setShowEmojiPalette] = useState(false);
 
+    // Instance configuration state
+    const [instanceConfig, setInstanceConfig] = useState<InstanceConfig | null>(null);
+    // Track the current request generation to ignore stale responses
+    const configRequestRef = useRef<number>(0);
+
     // Textarea cursor hook - pass setContent to update React state
     const { insertAtCursor } = useTextareaCursor(textareaRef, setContent);
 
@@ -190,7 +193,44 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         }
     }, [replyToStatus, isOpen]);
 
-    const remainingChars = MAX_CHARS - content.length;
+    // Fetch instance configuration when composing account changes
+    useEffect(() => {
+        // Don't fetch if modal is closed or no account selected
+        if (!composingAccount || !isOpen) {
+            return;
+        }
+
+        const instanceUrl = composingAccount.instanceUrl;
+        // Reset config when account changes
+        setInstanceConfig(null);
+
+        // Increment request generation for this effect run
+        const requestGen = ++configRequestRef.current;
+        const ref = configRequestRef;
+
+        const client = getClient(composingAccount);
+        getInstanceConfig(client, instanceUrl)
+            .then((config) => {
+                // Only update if this is still the latest request
+                if (requestGen === ref.current) {
+                    setInstanceConfig(config);
+                }
+            })
+            .catch((err) => {
+                // Ignore errors from stale requests
+                if (requestGen !== ref.current) return;
+                console.error('Failed to fetch instance config:', err);
+                // Use default config as fallback
+                setInstanceConfig(getDefaultConfig());
+            });
+
+        // Cleanup: invalidate pending requests on unmount or dependency change
+        return () => {
+            ref.current++;
+        };
+    }, [composingAccount, isOpen]);
+
+    const remainingChars = (instanceConfig?.maxCharacters ?? 500) - content.length;
     const isOverLimit = remainingChars < 0;
     const hasMedia = mediaFiles.length > 0;
     const allMediaUploaded = mediaFiles.every((m) => m.uploadedId && !m.uploading);
@@ -244,7 +284,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         const files = e.target.files;
         if (!files || !composingAccount) return;
 
-        const remainingSlots = MAX_MEDIA - mediaFiles.length;
+        const remainingSlots = (instanceConfig?.maxMediaAttachments ?? 4) - mediaFiles.length;
         const filesToAdd = Array.from(files).slice(0, remainingSlots);
 
         if (filesToAdd.length === 0) return;
@@ -666,19 +706,27 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
                         <button
                             onClick={() => fileInputRef.current?.click()}
-                            disabled={mediaFiles.length >= MAX_MEDIA || isUploading || showPoll}
+                            disabled={
+                                mediaFiles.length >= (instanceConfig?.maxMediaAttachments ?? 4) ||
+                                isUploading ||
+                                showPoll
+                            }
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
                                 hasMedia
                                     ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
                                     : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
-                            aria-label={`画像/動画を追加${hasMedia ? ` (${mediaFiles.length}/${MAX_MEDIA})` : ''}`}
+                            aria-label={`画像/動画を追加${
+                                hasMedia
+                                    ? ` (${mediaFiles.length}/${instanceConfig?.maxMediaAttachments ?? 4})`
+                                    : ''
+                            }`}
                         >
                             <LuImage className="w-4 h-4" aria-hidden="true" />
                             画像/動画
                             {hasMedia && (
                                 <span className="text-xs">
-                                    ({mediaFiles.length}/{MAX_MEDIA})
+                                    ({mediaFiles.length}/{instanceConfig?.maxMediaAttachments ?? 4})
                                 </span>
                             )}
                         </button>
@@ -700,7 +748,10 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept={ACCEPTED_MEDIA_TYPES}
+                            accept={
+                                instanceConfig?.supportedMimeTypes?.join(',') ??
+                                'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm'
+                            }
                             multiple
                             onChange={handleFileSelect}
                             className="hidden"
