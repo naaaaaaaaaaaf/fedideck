@@ -2075,44 +2075,74 @@ describe('StatusDetailModal', () => {
             }
         });
 
-        it('should navigate when clicking on expanded CW content in thread', async () => {
+        it('should re-fetch context when clicking on expanded CW content in thread', async () => {
             const user = userEvent.setup();
-            const status = createMockStatus({
-                id: '123',
-                spoilerText: 'Thread spoiler!',
-                content: '<p>Hidden thread content</p>',
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            // Create an ancestor with CW
+            const ancestorWithCW = createMockStatus({
+                id: 'ancestor-with-cw',
+                content: '<p>This content is hidden</p>',
+                spoilerText: 'Spoiler warning!',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Ancestor With CW',
+                },
             });
 
-            const { container } = render(
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestorWithCW],
+                descendants: [],
+            });
+
+            render(
                 <StatusDetailModal
                     isOpen={true}
                     status={status}
                     onClose={() => {}}
-                    accountSession={createMockAccountSession()}
+                    accountSession={accountSession}
                 />
             );
 
-            // First, expand the CW
-            const summary = Array.from(container.querySelectorAll('summary')).find((el) =>
-                el.textContent?.includes('Thread spoiler!')
+            // Wait for initial context to load
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor With CW')).toBeInTheDocument();
+            });
+
+            // Initial fetch was for status '12345'
+            expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), '12345');
+
+            // Setup mock for the next fetch
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            // Find and expand the CW
+            const summary = Array.from(document.querySelectorAll('summary')).find((el) =>
+                el.textContent?.includes('Spoiler warning!')
             );
 
             expect(summary).toBeInTheDocument();
-            if (summary) {
-                await user.click(summary);
+            if (!summary) throw new Error('Summary not found');
 
-                // Then click on the expanded content
-                const content = container.querySelector('.status-content');
-                expect(content).toBeInTheDocument();
-                if (content) {
-                    await user.click(content);
+            await user.click(summary);
 
-                    // Modal should still be open (navigation within modal)
-                    await waitFor(() => {
-                        expect(screen.getByRole('dialog')).toBeInTheDocument();
-                    });
-                }
-            }
+            // Click on the expanded CW content to navigate
+            const cwContent = document.querySelector('.status-content');
+            expect(cwContent).toBeInTheDocument();
+            if (!cwContent) throw new Error('CW content not found');
+
+            await user.click(cwContent);
+
+            // Should re-fetch context with the ancestor's ID
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'ancestor-with-cw'
+                );
+            });
         });
 
         it('should NOT navigate when clicking links in CW thread content', async () => {
