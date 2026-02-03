@@ -2040,4 +2040,310 @@ describe('StatusDetailModal', () => {
             expect(deepestReply).toHaveStyle({ marginLeft: '48px' });
         });
     });
+
+    describe('ThreadItem content warning click behavior', () => {
+        it('should NOT navigate when clicking on CW summary', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            // Create an ancestor with CW
+            const ancestorWithCW = createMockStatus({
+                id: 'ancestor-with-cw-summary',
+                content: '<p>Hidden content</p>',
+                spoilerText: 'Thread spoiler!',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Ancestor With CW Summary',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestorWithCW],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    status={status}
+                    onClose={() => {}}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Wait for initial context to load
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor With CW Summary')).toBeInTheDocument();
+            });
+
+            const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            // Find the ThreadItem container and get the CW summary within it
+            const threadItem = screen
+                .getByText('Ancestor With CW Summary')
+                .closest('[role="button"]');
+            expect(threadItem).toBeInTheDocument();
+            if (!threadItem) throw new Error('ThreadItem not found');
+
+            const summary = threadItem.querySelector('summary');
+            expect(summary).toBeInTheDocument();
+            if (!summary) throw new Error('CW summary not found in ThreadItem');
+
+            await user.click(summary);
+
+            // Should NOT navigate - getStatusContext call count should remain the same
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(
+                initialCallCount
+            );
+        });
+
+        it('should re-fetch context when clicking on expanded CW content in thread', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            // Create an ancestor with CW
+            const ancestorWithCW = createMockStatus({
+                id: 'ancestor-with-cw',
+                content: '<p>This content is hidden</p>',
+                spoilerText: 'Spoiler warning!',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Ancestor With CW',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestorWithCW],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    status={status}
+                    onClose={() => {}}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Wait for initial context to load
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor With CW')).toBeInTheDocument();
+            });
+
+            // Initial fetch was for status '12345'
+            expect(mastoClient.getStatusContext).toHaveBeenCalledWith(expect.anything(), '12345');
+
+            // Setup mock for the next fetch
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+
+            // Find and expand the CW
+            const summary = Array.from(document.querySelectorAll('summary')).find((el) =>
+                el.textContent?.includes('Spoiler warning!')
+            );
+
+            expect(summary).toBeInTheDocument();
+            if (!summary) throw new Error('Summary not found');
+
+            await user.click(summary);
+
+            // Click on the expanded CW content to navigate
+            // Find the ThreadItem container and get the status-content within it
+            const threadItem = screen.getByText('Ancestor With CW').closest('[role="button"]');
+            expect(threadItem).toBeInTheDocument();
+            if (!threadItem) throw new Error('ThreadItem not found');
+
+            const cwContent = threadItem.querySelector('.status-content');
+            expect(cwContent).toBeInTheDocument();
+            if (!cwContent) throw new Error('CW content not found in ThreadItem');
+
+            await user.click(cwContent);
+
+            // Should re-fetch context with the ancestor's ID
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'ancestor-with-cw'
+                );
+            });
+        });
+
+        it('should NOT navigate when clicking links in CW thread content', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            // Create an ancestor with CW containing a link
+            const ancestorWithCW = createMockStatus({
+                id: 'ancestor-with-cw-link',
+                content: '<p>Text with <a href="https://example.com">link</a></p>',
+                spoilerText: 'CW with link',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Ancestor With CW Link',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestorWithCW],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    status={status}
+                    onClose={() => {}}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Wait for initial context to load
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor With CW Link')).toBeInTheDocument();
+            });
+
+            const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            // Find and expand the CW
+            const summary = Array.from(document.querySelectorAll('summary')).find((el) =>
+                el.textContent?.includes('CW with link')
+            );
+
+            expect(summary).toBeInTheDocument();
+            if (!summary) throw new Error('Summary not found');
+
+            await user.click(summary);
+
+            // Click on the link inside the expanded CW content
+            // Find the ThreadItem container and get the link within it
+            const threadItem = screen.getByText('Ancestor With CW Link').closest('[role="button"]');
+            expect(threadItem).toBeInTheDocument();
+            if (!threadItem) throw new Error('ThreadItem not found');
+
+            const link = threadItem.querySelector('a[href="https://example.com"]');
+            expect(link).toBeInTheDocument();
+            if (!link) throw new Error('Link not found in ThreadItem');
+
+            await user.click(link);
+
+            // Should NOT re-fetch context - call count should remain the same
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(
+                initialCallCount
+            );
+        });
+
+        it('should NOT navigate when pressing Enter on CW summary in ThreadItem', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            const ancestorWithCW = createMockStatus({
+                id: 'ancestor-with-cw-keyboard',
+                content: '<p>Hidden content</p>',
+                spoilerText: 'Keyboard test CW',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Ancestor With CW Keyboard',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestorWithCW],
+                descendants: [],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    status={status}
+                    onClose={() => {}}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor With CW Keyboard')).toBeInTheDocument();
+            });
+
+            const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            // Find the ThreadItem container and get the CW summary within it
+            const threadItem = screen
+                .getByText('Ancestor With CW Keyboard')
+                .closest('[role="button"]');
+            expect(threadItem).toBeInTheDocument();
+            if (!threadItem) throw new Error('ThreadItem not found');
+
+            const summary = threadItem.querySelector('summary');
+            expect(summary).toBeInTheDocument();
+            if (!summary) throw new Error('CW summary not found in ThreadItem');
+
+            summary.focus();
+            await user.keyboard('{Enter}');
+
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(
+                initialCallCount
+            );
+        });
+
+        it('should NOT navigate when pressing Space on CW summary in ThreadItem', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            const descendantWithCW = createMockStatus({
+                id: 'descendant-with-cw-keyboard',
+                content: '<p>Hidden content</p>',
+                spoilerText: 'Space test CW',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Descendant With CW Keyboard',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [descendantWithCW],
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    status={status}
+                    onClose={() => {}}
+                    accountSession={accountSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Descendant With CW Keyboard')).toBeInTheDocument();
+            });
+
+            const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            // Find the ThreadItem container and get the CW summary within it
+            const threadItem = screen
+                .getByText('Descendant With CW Keyboard')
+                .closest('[role="button"]');
+            expect(threadItem).toBeInTheDocument();
+            if (!threadItem) throw new Error('ThreadItem not found');
+
+            const summary = threadItem.querySelector('summary');
+            expect(summary).toBeInTheDocument();
+            if (!summary) throw new Error('CW summary not found in ThreadItem');
+
+            summary.focus();
+            await user.keyboard(' ');
+
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(
+                initialCallCount
+            );
+        });
+    });
 });

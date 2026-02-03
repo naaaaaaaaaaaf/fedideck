@@ -893,4 +893,126 @@ describe('StatusCard', () => {
             );
         });
     });
+
+    describe('content warning click behavior', () => {
+        it('should NOT call onStatusClick when clicking on CW summary', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler warning!',
+                content: '<p>Hidden content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            // Click on the summary (the spoiler warning text)
+            const summary = screen.getByText(/Spoiler warning!/);
+            await user.click(summary);
+
+            // Should NOT navigate - just toggles the CW
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should call onStatusClick when clicking on expanded CW content', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler warning!',
+                content: '<p>Hidden content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            // First, expand the CW by clicking the summary
+            const summary = screen.getByText(/Spoiler warning!/);
+            await user.click(summary);
+
+            // Then click on the expanded content
+            const content = screen.getByText('Hidden content');
+            await user.click(content);
+
+            // Should navigate to detail view
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                })
+            );
+        });
+
+        it('should NOT call onStatusClick when clicking links in CW content', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler with link',
+                content: '<p>Text with <a href="https://example.com">link</a></p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            // Expand the CW
+            const summary = screen.getByText(/Spoiler with link/);
+            await user.click(summary);
+
+            // Click on the link inside the CW content
+            const link = screen.getByRole('link', { name: 'link' });
+            await user.click(link);
+
+            // Should NOT navigate - link should handle the click
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should call onStatusClick when pressing Enter on card with CW', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler warning!',
+                content: '<p>Hidden content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const article = screen.getByRole('article');
+            article.focus();
+            await user.keyboard('{Enter}');
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+        });
+
+        it('should NOT call onStatusClick when pressing Enter on CW summary', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler warning!',
+                content: '<p>Hidden content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/Spoiler warning!/);
+            summary.focus();
+            await user.keyboard('{Enter}');
+
+            // Should NOT navigate - CW toggle only
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should NOT call onStatusClick when pressing Space on CW summary', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler warning!',
+                content: '<p>Hidden content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/Spoiler warning!/);
+            summary.focus();
+            await user.keyboard(' ');
+
+            // Should NOT navigate - CW toggle only
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+    });
 });

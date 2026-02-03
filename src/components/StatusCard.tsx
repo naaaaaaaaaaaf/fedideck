@@ -213,7 +213,7 @@ export function StatusCard({
             target.closest('a') ||
             target.closest('button') ||
             target.closest('video') ||
-            target.closest('details')
+            target.closest('summary')
         ) {
             return;
         }
@@ -223,6 +223,16 @@ export function StatusCard({
     // Handle keyboard navigation for card
     const handleCardKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ' ') {
+            const target = e.target as HTMLElement;
+            // Ignore keyboard events on interactive elements
+            if (
+                target.closest('a') ||
+                target.closest('button') ||
+                target.closest('video') ||
+                target.closest('summary')
+            ) {
+                return;
+            }
             e.preventDefault();
             openStatusDetail();
         }

@@ -353,12 +353,11 @@ describe('instanceConfig', () => {
 
             it('should preserve original error type and message', async () => {
                 class CustomApiError extends Error {
-                    constructor(
-                        message: string,
-                        public statusCode: number
-                    ) {
+                    statusCode: number;
+                    constructor(message: string, statusCode: number) {
                         super(message);
                         this.name = 'CustomApiError';
+                        this.statusCode = statusCode;
                     }
                 }
 
