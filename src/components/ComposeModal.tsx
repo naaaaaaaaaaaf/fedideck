@@ -145,6 +145,8 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
     // Instance configuration state
     const [instanceConfig, setInstanceConfig] = useState<InstanceConfig | null>(null);
+    // Track the current request generation to ignore stale responses
+    const configRequestRef = useRef<number>(0);
 
     // Textarea cursor hook - pass setContent to update React state
     const { insertAtCursor } = useTextareaCursor(textareaRef, setContent);
@@ -193,21 +195,34 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
     // Fetch instance configuration when composing account changes
     useEffect(() => {
-        if (!composingAccount) return;
+        // Don't fetch if modal is closed or no account selected
+        if (!composingAccount || !isOpen) {
+            return;
+        }
 
         const instanceUrl = composingAccount.instanceUrl;
         // Reset config when account changes
         setInstanceConfig(null);
 
+        // Increment request generation for this effect run
+        const requestGen = ++configRequestRef.current;
+
         const client = getClient(composingAccount);
         getInstanceConfig(client, instanceUrl)
-            .then(setInstanceConfig)
+            .then((config) => {
+                // Only update if this is still the latest request
+                if (requestGen === configRequestRef.current) {
+                    setInstanceConfig(config);
+                }
+            })
             .catch((err) => {
+                // Ignore errors from stale requests
+                if (requestGen !== configRequestRef.current) return;
                 console.error('Failed to fetch instance config:', err);
                 // Use default config as fallback
                 setInstanceConfig(getDefaultConfig());
             });
-    }, [composingAccount]);
+    }, [composingAccount, isOpen]);
 
     const remainingChars = (instanceConfig?.maxCharacters ?? 500) - content.length;
     const isOverLimit = remainingChars < 0;

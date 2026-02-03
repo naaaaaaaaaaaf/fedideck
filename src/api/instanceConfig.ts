@@ -84,7 +84,11 @@ export function clearInstanceConfigCache(instanceUrl?: string): void {
 
 /**
  * Get default configuration for fallback
+ * Returns a deep copy to prevent shared array references
  */
 export function getDefaultConfig(): InstanceConfig {
-    return { ...DEFAULT_CONFIG };
+    return {
+        ...DEFAULT_CONFIG,
+        supportedMimeTypes: [...DEFAULT_CONFIG.supportedMimeTypes],
+    };
 }
