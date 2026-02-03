@@ -213,7 +213,7 @@ export function StatusCard({
             target.closest('a') ||
             target.closest('button') ||
             target.closest('video') ||
-            target.closest('details')
+            target.closest('summary')
         ) {
             return;
         }
