@@ -291,3 +291,10 @@ export async function fetchCustomEmojis(client: MastoClient): Promise<CustomEmoj
         category: emoji.category ?? null,
     }));
 }
+
+/**
+ * Fetch instance configuration
+ */
+export async function fetchInstanceConfig(client: MastoClient): Promise<mastodon.v1.Instance> {
+    return await client.v1.instance.fetch();
+}
