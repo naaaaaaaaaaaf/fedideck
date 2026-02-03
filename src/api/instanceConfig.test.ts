@@ -199,6 +199,104 @@ describe('instanceConfig', () => {
                 'video/webm',
             ]); // default
         });
+
+        describe('error handling', () => {
+            it('should propagate network errors to caller', async () => {
+                const networkError = new Error('Network request failed');
+                const errorClient = {
+                    v1: {
+                        instance: {
+                            fetch: vi.fn().mockRejectedValue(networkError),
+                        },
+                    },
+                } as unknown as MastoClient;
+
+                await expect(getInstanceConfig(errorClient, 'https://example.com')).rejects.toThrow(
+                    'Network request failed'
+                );
+            });
+
+            it('should propagate HTTP errors from API', async () => {
+                const httpError = new Error('Request failed with status code 503');
+                const errorClient = {
+                    v1: {
+                        instance: {
+                            fetch: vi.fn().mockRejectedValue(httpError),
+                        },
+                    },
+                } as unknown as MastoClient;
+
+                await expect(getInstanceConfig(errorClient, 'https://example.com')).rejects.toThrow(
+                    'Request failed with status code 503'
+                );
+            });
+
+            it('should not cache failed requests', async () => {
+                const networkError = new Error('Network error');
+                const errorClient = {
+                    v1: {
+                        instance: {
+                            fetch: vi
+                                .fn()
+                                .mockRejectedValueOnce(networkError)
+                                .mockResolvedValueOnce({
+                                    configuration: {
+                                        statuses: {
+                                            maxCharacters: 5000,
+                                            maxMediaAttachments: 5,
+                                        },
+                                        mediaAttachments: {
+                                            supportedMimeTypes: ['image/jpeg'],
+                                        },
+                                    },
+                                }),
+                        },
+                    },
+                } as unknown as MastoClient;
+
+                // First call fails
+                await expect(getInstanceConfig(errorClient, 'https://example.com')).rejects.toThrow(
+                    'Network error'
+                );
+
+                // Second call should try fetching again (not use cache)
+                const config = await getInstanceConfig(errorClient, 'https://example.com');
+                expect(config.maxCharacters).toBe(5000);
+
+                // Verify fetch was called twice (once for failed, once for success)
+                expect(errorClient.v1.instance.fetch).toHaveBeenCalledTimes(2);
+            });
+
+            it('should preserve original error type and message', async () => {
+                class CustomApiError extends Error {
+                    constructor(
+                        message: string,
+                        public statusCode: number
+                    ) {
+                        super(message);
+                        this.name = 'CustomApiError';
+                    }
+                }
+
+                const customError = new CustomApiError('Service unavailable', 503);
+                const errorClient = {
+                    v1: {
+                        instance: {
+                            fetch: vi.fn().mockRejectedValue(customError),
+                        },
+                    },
+                } as unknown as MastoClient;
+
+                const caughtError = await getInstanceConfig(
+                    errorClient,
+                    'https://example.com'
+                ).catch((e) => e);
+
+                expect(caughtError).toBeInstanceOf(CustomApiError);
+                expect(caughtError.message).toBe('Service unavailable');
+                expect(caughtError.statusCode).toBe(503);
+            });
+        });
     });
 
     describe('clearInstanceConfigCache', () => {
