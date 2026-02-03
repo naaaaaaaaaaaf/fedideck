@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Picker } from 'emoji-picker-element';
+import type { EmojiClickEvent } from 'emoji-picker-element/shared';
 import { getCustomEmojis, type CustomEmoji } from '../api/emojiCache';
 import type { Session } from '../auth/sessions';
 
@@ -23,33 +24,43 @@ export function EmojiPalette({
     const pickerRef = useRef<Picker | null>(null);
     const [customEmojis, setCustomEmojis] = useState<CustomEmoji[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const hasFetchedRef = useRef(false);
+    const requestIdRef = useRef(0);
+    const prevSessionIdRef = useRef<string | null>(null);
 
-    // Reset loading state when palette closes
+    // Clear emojis when session changes
     useEffect(() => {
-        if (!isOpen) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setIsLoading(false);
-            hasFetchedRef.current = false;
+        const currentSessionId = session ? `${session.id}@${session.instanceUrl}` : null;
+        if (prevSessionIdRef.current !== null && prevSessionIdRef.current !== currentSessionId) {
+            setCustomEmojis([]);
         }
-    }, [isOpen]);
+        prevSessionIdRef.current = currentSessionId;
+    }, [session]);
 
     // Fetch custom emojis when palette opens
     useEffect(() => {
-        if (!isOpen || !session || hasFetchedRef.current) return;
+        if (!isOpen || !session) return;
 
-        hasFetchedRef.current = true;
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+        const reqId = ++requestIdRef.current;
         setIsLoading(true);
+
         getCustomEmojis(session)
-            .then((emojis) => setCustomEmojis(emojis))
+            .then((emojis) => {
+                if (reqId !== requestIdRef.current) return; // Ignore stale response
+                setCustomEmojis(emojis);
+            })
             .catch((err) => {
                 console.error('Failed to fetch custom emojis:', err);
             })
             .finally(() => {
-                setIsLoading(false);
+                if (reqId === requestIdRef.current) {
+                    setIsLoading(false);
+                }
             });
-    }, [isOpen, session]);
+
+        return () => {
+            requestIdRef.current++; // Cancel previous generation on cleanup
+        };
+    }, [isOpen, session?.id, session?.instanceUrl]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -118,10 +129,10 @@ export function EmojiPalette({
         }
 
         // Handle emoji selection
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const handleEmojiClick = (event: any) => {
-            const { emoji, unicode } = event.detail;
-            onSelect(unicode || `:${emoji.shortcodes[0]}:`);
+        const handleEmojiClick = (event: Event) => {
+            const emojiEvent = event as EmojiClickEvent;
+            const { emoji, unicode } = emojiEvent.detail;
+            onSelect(unicode || `:${emoji.shortcodes?.[0] ?? emoji.name}:`);
             onClose();
             // Return focus to textarea
             textareaRef.current?.focus();
@@ -145,14 +156,14 @@ export function EmojiPalette({
         if (!isOpen) return;
 
         const handleClickOutside = (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
+            const path = e.composedPath();
             const picker = pickerRef.current;
 
             if (
                 picker &&
-                !picker.contains(target) &&
+                !path.includes(picker) &&
                 triggerRef.current &&
-                !triggerRef.current.contains(target)
+                !path.includes(triggerRef.current)
             ) {
                 onClose();
             }

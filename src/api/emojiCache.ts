@@ -27,8 +27,8 @@ const CACHE_TTL = 60 * 60 * 1000;
  * Get custom emojis for an instance, using cache if available
  */
 export async function getCustomEmojis(session: Session): Promise<CustomEmoji[]> {
-    const instanceUrl = new URL(session.instanceUrl).hostname;
-    const cached = emojiCache.get(instanceUrl);
+    const instanceKey = new URL(session.instanceUrl).origin;
+    const cached = emojiCache.get(instanceKey);
 
     // Return cached emojis if still valid
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -48,7 +48,7 @@ export async function getCustomEmojis(session: Session): Promise<CustomEmoji[]> 
     }));
 
     // Update cache
-    emojiCache.set(instanceUrl, {
+    emojiCache.set(instanceKey, {
         emojis: transformed,
         timestamp: Date.now(),
     });
@@ -60,8 +60,8 @@ export async function getCustomEmojis(session: Session): Promise<CustomEmoji[]> 
  * Clear emoji cache for a specific instance
  */
 export function clearEmojiCache(instanceUrl: string): void {
-    const hostname = new URL(instanceUrl).hostname;
-    emojiCache.delete(hostname);
+    const instanceKey = new URL(instanceUrl).origin;
+    emojiCache.delete(instanceKey);
 }
 
 /**
