@@ -4,13 +4,49 @@ import userEvent from '@testing-library/user-event';
 import type { mastodon } from 'masto';
 import { ComposeModal } from './ComposeModal';
 import * as mastoClient from '../api/mastoClient';
+import * as instanceConfig from '../api/instanceConfig';
 import { useAccountsStore } from '../store/accounts';
 import type { Session } from '../auth/sessions';
 
 // Mock the mastoClient module
 vi.mock('../api/mastoClient', () => ({
-    getClient: vi.fn(() => ({})),
+    getClient: vi.fn(() => ({
+        v1: {
+            instance: {
+                fetch: vi.fn(),
+            },
+        },
+    })),
     createStatus: vi.fn(),
+}));
+
+// Mock the instanceConfig module
+vi.mock('../api/instanceConfig', () => ({
+    getInstanceConfig: vi.fn().mockResolvedValue({
+        maxCharacters: 500,
+        maxMediaAttachments: 4,
+        supportedMimeTypes: [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'video/mp4',
+            'video/webm',
+        ],
+    }),
+    getDefaultConfig: vi.fn(() => ({
+        maxCharacters: 500,
+        maxMediaAttachments: 4,
+        supportedMimeTypes: [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'video/mp4',
+            'video/webm',
+        ],
+    })),
+    clearInstanceConfigCache: vi.fn(),
 }));
 
 // Mock account data - using type assertion for test mock
