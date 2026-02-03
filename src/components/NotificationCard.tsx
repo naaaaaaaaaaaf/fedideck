@@ -68,12 +68,7 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
 
         const target = e.target as HTMLElement;
         // Ignore clicks on interactive elements
-        if (
-            target.closest('a') ||
-            target.closest('button') ||
-            target.closest('details') ||
-            target.closest('summary')
-        ) {
+        if (target.closest('a') || target.closest('button') || target.closest('summary')) {
             return;
         }
         onStatusClick(status);
@@ -85,12 +80,7 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
 
         // Ignore keyboard events on interactive elements
         const target = e.target as HTMLElement;
-        if (
-            target.closest('a') ||
-            target.closest('button') ||
-            target.closest('details') ||
-            target.closest('summary')
-        ) {
+        if (target.closest('a') || target.closest('button') || target.closest('summary')) {
             return;
         }
 
