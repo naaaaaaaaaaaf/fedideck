@@ -78,13 +78,17 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
     const handleStatusKeyDown = (e: React.KeyboardEvent) => {
         if (!isStatusClickable) return;
 
-        // Ignore keyboard events on interactive elements
-        const target = e.target as HTMLElement;
-        if (target.closest('a') || target.closest('button') || target.closest('summary')) {
-            return;
-        }
-
         if (e.key === 'Enter' || e.key === ' ') {
+            // Ignore keyboard events on interactive elements
+            const target = e.target as HTMLElement;
+            if (
+                target.closest('a') ||
+                target.closest('button') ||
+                target.closest('video') ||
+                target.closest('summary')
+            ) {
+                return;
+            }
             e.preventDefault();
             onStatusClick(status);
         }
@@ -181,14 +185,7 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
                 >
                     {status.spoilerText ? (
                         <details>
-                            <summary
-                                className="cursor-pointer text-amber-400 text-sm"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                        e.stopPropagation();
-                                    }
-                                }}
-                            >
+                            <summary className="cursor-pointer text-amber-400 text-sm">
                                 <LuTriangleAlert className="inline mr-1" /> {status.spoilerText}
                             </summary>
                             <div

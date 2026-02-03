@@ -223,6 +223,16 @@ export function StatusCard({
     // Handle keyboard navigation for card
     const handleCardKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ' ') {
+            const target = e.target as HTMLElement;
+            // Ignore keyboard events on interactive elements
+            if (
+                target.closest('a') ||
+                target.closest('button') ||
+                target.closest('video') ||
+                target.closest('summary')
+            ) {
+                return;
+            }
             e.preventDefault();
             openStatusDetail();
         }
@@ -353,15 +363,7 @@ export function StatusCard({
                     {/* Content Warning */}
                     {displayStatus.spoilerText && (
                         <details className="mt-2">
-                            <summary
-                                className="cursor-pointer text-amber-400 text-sm"
-                                onKeyDown={(e) => {
-                                    // Stop Enter/Space from propagating to card keyboard handler
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                        e.stopPropagation();
-                                    }
-                                }}
-                            >
+                            <summary className="cursor-pointer text-amber-400 text-sm">
                                 <LuTriangleAlert className="inline mr-1" />{' '}
                                 {displayStatus.spoilerText}
                             </summary>
