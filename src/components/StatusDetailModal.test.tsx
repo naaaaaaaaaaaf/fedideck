@@ -2042,37 +2042,57 @@ describe('StatusDetailModal', () => {
     });
 
     describe('ThreadItem content warning click behavior', () => {
-        it('should NOT call onClick when clicking on CW summary', async () => {
+        it('should NOT navigate when clicking on CW summary', async () => {
             const user = userEvent.setup();
-            const onClick = vi.fn();
-            const status = createMockStatus({
-                id: '123',
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            // Create an ancestor with CW
+            const ancestorWithCW = createMockStatus({
+                id: 'ancestor-with-cw-summary',
+                content: '<p>Hidden content</p>',
                 spoilerText: 'Thread spoiler!',
-                content: '<p>Hidden thread content</p>',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Ancestor With CW Summary',
+                },
             });
 
-            const { container } = render(
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestorWithCW],
+                descendants: [],
+            });
+
+            render(
                 <StatusDetailModal
                     isOpen={true}
                     status={status}
                     onClose={() => {}}
-                    accountSession={createMockAccountSession()}
+                    accountSession={accountSession}
                 />
             );
 
-            // Find the ThreadItem with the CW text
-            const summary = Array.from(container.querySelectorAll('summary')).find((el) =>
+            // Wait for initial context to load
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor With CW Summary')).toBeInTheDocument();
+            });
+
+            const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            // Find the ThreadItem's CW summary and click it
+            const summary = Array.from(document.querySelectorAll('summary')).find((el) =>
                 el.textContent?.includes('Thread spoiler!')
             );
 
             expect(summary).toBeInTheDocument();
-            if (summary) {
-                await user.click(summary);
-                // onClick should not be called - just toggles the CW
-                await waitFor(() => {
-                    expect(onClick).not.toHaveBeenCalled();
-                });
-            }
+            if (!summary) throw new Error('CW summary not found in ThreadItem');
+
+            await user.click(summary);
+
+            // Should NOT navigate - getStatusContext call count should remain the same
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(
+                initialCallCount
+            );
         });
 
         it('should re-fetch context when clicking on expanded CW content in thread', async () => {
