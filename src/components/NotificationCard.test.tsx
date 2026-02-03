@@ -462,6 +462,48 @@ describe('NotificationCard', () => {
 
             expect(onStatusClick).not.toHaveBeenCalled();
         });
+
+        it('should call onStatusClick when clicking on expanded CW content', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    spoilerText: 'Spoiler warning!',
+                    content: '<p>Hidden content</p>',
+                }),
+            });
+
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/Spoiler warning!/);
+            await user.click(summary);
+
+            const content = screen.getByText('Hidden content');
+            await user.click(content);
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+        });
+
+        it('should NOT call onStatusClick when clicking links in CW content', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    spoilerText: 'Spoiler with link',
+                    content: '<p>Text with <a href="https://example.com">link</a></p>',
+                }),
+            });
+
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/Spoiler with link/);
+            await user.click(summary);
+
+            const link = screen.getByRole('link', { name: 'link' });
+            await user.click(link);
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
     });
 
     describe('keyboard navigation', () => {
@@ -617,106 +659,6 @@ describe('NotificationCard', () => {
 
             const statusArea = container.querySelector('.ml-9.p-3');
             expect(statusArea).not.toHaveAttribute('tabIndex');
-        });
-    });
-
-    describe('content warning click behavior', () => {
-        it('should NOT call onStatusClick when clicking on CW summary', async () => {
-            const user = userEvent.setup();
-            const onStatusClick = vi.fn();
-            const notification = createMockNotification('mention', {
-                status: createMockStatus({
-                    spoilerText: 'Spoiler warning!',
-                    content: '<p>Hidden content</p>',
-                }),
-            });
-
-            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
-
-            const summary = screen.getByText(/Spoiler warning!/);
-            await user.click(summary);
-
-            expect(onStatusClick).not.toHaveBeenCalled();
-        });
-
-        it('should call onStatusClick when clicking on expanded CW content', async () => {
-            const user = userEvent.setup();
-            const onStatusClick = vi.fn();
-            const notification = createMockNotification('mention', {
-                status: createMockStatus({
-                    spoilerText: 'Spoiler warning!',
-                    content: '<p>Hidden content</p>',
-                }),
-            });
-
-            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
-
-            const summary = screen.getByText(/Spoiler warning!/);
-            await user.click(summary);
-
-            const content = screen.getByText('Hidden content');
-            await user.click(content);
-
-            expect(onStatusClick).toHaveBeenCalledTimes(1);
-        });
-
-        it('should NOT call onStatusClick when clicking links in CW content', async () => {
-            const user = userEvent.setup();
-            const onStatusClick = vi.fn();
-            const notification = createMockNotification('mention', {
-                status: createMockStatus({
-                    spoilerText: 'Spoiler with link',
-                    content: '<p>Text with <a href="https://example.com">link</a></p>',
-                }),
-            });
-
-            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
-
-            const summary = screen.getByText(/Spoiler with link/);
-            await user.click(summary);
-
-            const link = screen.getByRole('link', { name: 'link' });
-            await user.click(link);
-
-            expect(onStatusClick).not.toHaveBeenCalled();
-        });
-
-        it('should NOT call onStatusClick when pressing Enter on CW summary', async () => {
-            const user = userEvent.setup();
-            const onStatusClick = vi.fn();
-            const notification = createMockNotification('mention', {
-                status: createMockStatus({
-                    spoilerText: 'Spoiler warning!',
-                    content: '<p>Hidden content</p>',
-                }),
-            });
-
-            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
-
-            const summary = screen.getByText(/Spoiler warning!/);
-            summary.focus();
-            await user.keyboard('{Enter}');
-
-            expect(onStatusClick).not.toHaveBeenCalled();
-        });
-
-        it('should NOT call onStatusClick when pressing Space on CW summary', async () => {
-            const user = userEvent.setup();
-            const onStatusClick = vi.fn();
-            const notification = createMockNotification('mention', {
-                status: createMockStatus({
-                    spoilerText: 'Spoiler warning!',
-                    content: '<p>Hidden content</p>',
-                }),
-            });
-
-            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
-
-            const summary = screen.getByText(/Spoiler warning!/);
-            summary.focus();
-            await user.keyboard(' ');
-
-            expect(onStatusClick).not.toHaveBeenCalled();
         });
     });
 });
