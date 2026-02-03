@@ -2147,42 +2147,62 @@ describe('StatusDetailModal', () => {
 
         it('should NOT navigate when clicking links in CW thread content', async () => {
             const user = userEvent.setup();
-            const status = createMockStatus({
-                id: '123',
-                spoilerText: 'Thread with link',
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            // Create an ancestor with CW containing a link
+            const ancestorWithCW = createMockStatus({
+                id: 'ancestor-with-cw-link',
                 content: '<p>Text with <a href="https://example.com">link</a></p>',
+                spoilerText: 'CW with link',
+                account: {
+                    ...createMockStatus().account,
+                    displayName: 'Ancestor With CW Link',
+                },
             });
 
-            const { container } = render(
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestorWithCW],
+                descendants: [],
+            });
+
+            render(
                 <StatusDetailModal
                     isOpen={true}
                     status={status}
                     onClose={() => {}}
-                    accountSession={createMockAccountSession()}
+                    accountSession={accountSession}
                 />
             );
 
-            // Expand the CW
-            const summary = Array.from(container.querySelectorAll('summary')).find((el) =>
-                el.textContent?.includes('Thread with link')
+            // Wait for initial context to load
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor With CW Link')).toBeInTheDocument();
+            });
+
+            const initialCallCount = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            // Find and expand the CW
+            const summary = Array.from(document.querySelectorAll('summary')).find((el) =>
+                el.textContent?.includes('CW with link')
             );
 
             expect(summary).toBeInTheDocument();
-            if (summary) {
-                await user.click(summary);
+            if (!summary) throw new Error('Summary not found');
 
-                // Click on the link - should not trigger navigation
-                const link = container.querySelector('a[href="https://example.com"]');
-                expect(link).toBeInTheDocument();
-                if (link) {
-                    await user.click(link);
+            await user.click(summary);
 
-                    // Modal should remain open
-                    await waitFor(() => {
-                        expect(screen.getByRole('dialog')).toBeInTheDocument();
-                    });
-                }
-            }
+            // Click on the link inside the expanded CW content
+            const link = document.querySelector('a[href="https://example.com"]');
+            expect(link).toBeInTheDocument();
+            if (!link) throw new Error('Link not found');
+
+            await user.click(link);
+
+            // Should NOT re-fetch context - call count should remain the same
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(
+                initialCallCount
+            );
         });
     });
 });
