@@ -485,4 +485,23 @@ describe('ComposeModal', () => {
         const pickerAfterUnmount = document.body.querySelector('emoji-picker');
         expect(pickerAfterUnmount).not.toBeInTheDocument();
     });
+
+    // Layout alignment tests
+    it('has consistent horizontal padding between account selector and textarea', () => {
+        render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+        // Find account selector button by its label (contains display name)
+        const accountSelector = screen.getByRole('button', {
+            name: /投稿アカウント:/i,
+        });
+        const textarea = screen.getByPlaceholderText('今なにしてる？');
+
+        // Get computed padding-left values
+        const accountSelectorPadding = window.getComputedStyle(accountSelector).paddingLeft;
+        const textareaPadding = window.getComputedStyle(textarea).paddingLeft;
+
+        // Both should have px-3 (0.75rem = 12px)
+        expect(accountSelectorPadding).toBe('12px');
+        expect(textareaPadding).toBe('12px');
+    });
 });
