@@ -195,12 +195,9 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     useEffect(() => {
         if (!composingAccount) return;
 
-        // Only fetch if we don't have config yet or account changed
         const instanceUrl = composingAccount.instanceUrl;
-        if (instanceConfig) {
-            // Config already loaded for this instance
-            return;
-        }
+        // Reset config when account changes
+        setInstanceConfig(null);
 
         const client = getClient(composingAccount);
         getInstanceConfig(client, instanceUrl)

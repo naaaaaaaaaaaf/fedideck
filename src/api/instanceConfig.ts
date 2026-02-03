@@ -1,4 +1,3 @@
-import type { mastodon } from 'masto';
 import type { MastoClient } from './mastoClient';
 
 /**

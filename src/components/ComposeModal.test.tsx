@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event';
 import type { mastodon } from 'masto';
 import { ComposeModal } from './ComposeModal';
 import * as mastoClient from '../api/mastoClient';
-import * as instanceConfig from '../api/instanceConfig';
 import { useAccountsStore } from '../store/accounts';
 import type { Session } from '../auth/sessions';
 
