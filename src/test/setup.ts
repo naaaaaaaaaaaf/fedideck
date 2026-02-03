@@ -24,17 +24,39 @@ globalThis.fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     return originalFetch(input, init);
 }) as typeof fetch;
 
-// Suppress console errors for blocked CDN requests in tests
+// Suppress console errors for blocked CDN requests and custom emoji fetch errors in tests
 const originalError = console.error;
 console.error = vi.fn((...args: unknown[]) => {
-    const message = args[0];
-    if (
-        typeof message === 'string' &&
-        (message.includes('Network request blocked in test environment') ||
-            message.includes('emoji-picker-element'))
-    ) {
-        return; // Suppress CDN-related errors
+    const firstArg = args[0];
+
+    // Check if this is an error we want to suppress
+    const shouldSuppress = (() => {
+        // String messages
+        if (typeof firstArg === 'string') {
+            return (
+                firstArg.includes('Network request blocked in test environment') ||
+                firstArg.includes('emoji-picker-element') ||
+                firstArg.includes('Failed to fetch custom emojis')
+            );
+        }
+
+        // Error objects (TypeError, Error, etc.)
+        if (firstArg instanceof Error) {
+            return (
+                firstArg.message.includes('Network request blocked in test environment') ||
+                firstArg.message.includes('emoji-picker-element') ||
+                firstArg.message.includes('customEmojis') ||
+                firstArg.name === 'AbortError'
+            );
+        }
+
+        return false;
+    })();
+
+    if (shouldSuppress) {
+        return; // Suppress the error
     }
+
     originalError(...args);
 });
 
