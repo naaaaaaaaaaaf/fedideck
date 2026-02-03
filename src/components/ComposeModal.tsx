@@ -178,6 +178,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
             // For replies, always use the provided accountId; for new posts, use active account
             setSelectedAccountId(accountId ?? activeAccountId);
             setShowAccountSelector(false);
+            setShowEmojiPalette(false);
         }
     }, [isOpen, activeAccountId, accountId]);
 
@@ -393,6 +394,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
             setPollOptions(['', '']);
             setPollExpiresIn(86400);
             setPollMultiple(false);
+            setShowEmojiPalette(false);
             onClose();
         } catch (err) {
             console.error('Failed to post status:', err);
@@ -410,6 +412,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
             if (m.preview) URL.revokeObjectURL(m.preview);
         });
         setMediaFiles([]);
+        setShowEmojiPalette(false);
         onClose();
     };
 

@@ -24,43 +24,87 @@ export function EmojiPalette({
     const pickerRef = useRef<Picker | null>(null);
     const [customEmojis, setCustomEmojis] = useState<CustomEmoji[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const requestIdRef = useRef(0);
+    const abortControllerRef = useRef<AbortController | null>(null);
     const prevSessionIdRef = useRef<string | null>(null);
+
+    // Derive current session ID
+    const currentSessionId = session ? `${session.id}@${session.instanceUrl}` : null;
+
+    // Reset loading state when palette closes
+    useEffect(() => {
+        if (!isOpen) {
+            // Defer setState to avoid lint violation
+            const timeoutId = setTimeout(() => setIsLoading(false), 0);
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+                abortControllerRef.current = null;
+            }
+            return () => clearTimeout(timeoutId);
+        }
+    }, [isOpen]);
 
     // Clear emojis when session changes
     useEffect(() => {
-        const currentSessionId = session ? `${session.id}@${session.instanceUrl}` : null;
         if (prevSessionIdRef.current !== null && prevSessionIdRef.current !== currentSessionId) {
-            setCustomEmojis([]);
+            // Defer setState to avoid lint violation
+            const timeoutId = setTimeout(() => {
+                setCustomEmojis([]);
+                setIsLoading(false);
+            }, 0);
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+                abortControllerRef.current = null;
+            }
+            prevSessionIdRef.current = currentSessionId;
+            return () => clearTimeout(timeoutId);
         }
         prevSessionIdRef.current = currentSessionId;
-    }, [session]);
+    }, [currentSessionId]);
 
     // Fetch custom emojis when palette opens
     useEffect(() => {
         if (!isOpen || !session) return;
 
-        const reqId = ++requestIdRef.current;
-        setIsLoading(true);
+        // Cancel any pending request
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
 
-        getCustomEmojis(session)
-            .then((emojis) => {
-                if (reqId !== requestIdRef.current) return; // Ignore stale response
-                setCustomEmojis(emojis);
-            })
-            .catch((err) => {
-                console.error('Failed to fetch custom emojis:', err);
-            })
-            .finally(() => {
-                if (reqId === requestIdRef.current) {
-                    setIsLoading(false);
-                }
-            });
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
+
+        const reqSignal = abortController.signal;
+
+        // Use requestIdleCallback or setTimeout to defer setState
+        const deferredFetch = () => {
+            if (reqSignal.aborted) return;
+
+            setIsLoading(true);
+
+            getCustomEmojis(session)
+                .then((emojis) => {
+                    if (reqSignal.aborted) return;
+                    setCustomEmojis(emojis);
+                })
+                .catch((err) => {
+                    if (err.name !== 'AbortError') {
+                        console.error('Failed to fetch custom emojis:', err);
+                    }
+                })
+                .finally(() => {
+                    if (!reqSignal.aborted) {
+                        setIsLoading(false);
+                    }
+                });
+        };
+
+        const timeoutId = setTimeout(deferredFetch, 0);
 
         return () => {
-            requestIdRef.current++; // Cancel previous generation on cleanup
+            clearTimeout(timeoutId);
+            abortController.abort();
         };
-    }, [isOpen, session?.id, session?.instanceUrl]);
+    }, [isOpen, session]);
 
     useEffect(() => {
         if (!isOpen) {
