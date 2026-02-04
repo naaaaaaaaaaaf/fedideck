@@ -468,12 +468,13 @@ export function StatusCard({
                                         return null; // Guard against mismatch
                                     }
 
-                                    const accessibleLabel =
-                                        media.description ||
-                                        `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
-
                                     const isSensitive = displayStatus.sensitive ?? false;
                                     const needsBlur = isSensitive && !nsfwRevealed;
+
+                                    const accessibleLabel = needsBlur
+                                        ? '閲覧注意の画像を表示'
+                                        : media.description ||
+                                          `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
 
                                     return (
                                         <button

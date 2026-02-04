@@ -372,8 +372,8 @@ export function NotificationCard({
                                                 e.stopPropagation();
                                                 handleNsfwToggle();
                                             }}
-                                            className="relative overflow-hidden rounded object-cover w-12 h-12"
-                                            aria-label={media.description || '添付メディア'}
+                                            className="nsfw-blur-container w-12 h-12"
+                                            aria-label="閲覧注意の画像を表示"
                                         >
                                             <img
                                                 src={media.previewUrl ?? media.url}
