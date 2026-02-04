@@ -359,17 +359,15 @@ export function NotificationCard({
                                 const isSensitive = status.sensitive ?? false;
                                 const needsBlur = isSensitive && !nsfwRevealed;
 
-                                // Sensitive images need a button for reveal interaction
-                                if (isSensitive) {
+                                // Sensitive & not yet revealed: use button for reveal interaction
+                                if (needsBlur) {
                                     return (
                                         <button
                                             type="button"
                                             key={media.id}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                if (!nsfwRevealed) {
-                                                    handleNsfwToggle();
-                                                }
+                                                handleNsfwToggle();
                                             }}
                                             className="relative overflow-hidden rounded object-cover w-12 h-12"
                                             aria-label={media.description || '添付メディア'}
@@ -377,22 +375,18 @@ export function NotificationCard({
                                             <img
                                                 src={media.previewUrl ?? media.url}
                                                 alt={media.description || '添付メディア'}
-                                                className={`w-12 h-12 rounded object-cover ${
-                                                    needsBlur ? 'nsfw-blur' : ''
-                                                }`}
+                                                className="w-12 h-12 rounded object-cover nsfw-blur"
                                             />
-                                            {needsBlur && (
-                                                <div className="nsfw-blur-overlay">
-                                                    <span className="text-white text-xs font-medium">
-                                                        閲覧注意
-                                                    </span>
-                                                </div>
-                                            )}
+                                            <div className="nsfw-blur-overlay">
+                                                <span className="text-white text-xs font-medium">
+                                                    閲覧注意
+                                                </span>
+                                            </div>
                                         </button>
                                     );
                                 }
 
-                                // Non-sensitive images: use plain img for normal click-through behavior
+                                // Non-sensitive or already revealed: use plain img for normal click-through behavior
                                 return (
                                     <img
                                         key={media.id}
