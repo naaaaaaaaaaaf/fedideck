@@ -129,6 +129,29 @@ body {
     content: '...';
 }
 
+/* プロフィールバイオグラフィ用リンクスタイル */
+.profile-bio a {
+    color: var(--color-accent);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+.profile-bio a:hover {
+    color: var(--color-accent-hover);
+    text-decoration: underline;
+}
+.profile-bio a.mention {
+    color: #60a5fa; /* blue-400 */
+}
+.profile-bio a.mention:hover {
+    color: #93c5fd; /* blue-300 */
+}
+.profile-bio a[rel*='tag'] {
+    color: #a78bfa; /* violet-400 */
+}
+.profile-bio a[rel*='tag']:hover {
+    color: #c4b5fd; /* violet-300 */
+}
+
 /* カスタム絵文字 */
 .emoji {
     display: inline;
