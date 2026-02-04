@@ -284,7 +284,12 @@ export function NotificationCard({
                             {account.note && (
                                 <div
                                     className="text-sm text-slate-300 mt-1 line-clamp-2 profile-bio"
-                                    dangerouslySetInnerHTML={{ __html: account.note }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: replaceEmojisWithImages(
+                                            account.note,
+                                            account.emojis ?? []
+                                        ),
+                                    }}
                                 />
                             )}
                         </div>
