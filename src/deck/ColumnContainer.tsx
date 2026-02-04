@@ -11,6 +11,7 @@ interface ColumnContainerProps {
     onReply?: (status: mastodon.v1.Status, accountId: string) => void;
     onStatusClick?: (status: mastodon.v1.Status, accountId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
+    onAccountClick?: (account: mastodon.v1.Account, accountId: string) => void;
 }
 
 export function ColumnContainer({
@@ -18,6 +19,7 @@ export function ColumnContainer({
     onReply,
     onStatusClick,
     onImageClick,
+    onAccountClick,
 }: ColumnContainerProps) {
     const columns = useColumnsStore((state) => state.columns);
     const removeColumn = useColumnsStore((state) => state.removeColumn);
@@ -40,6 +42,7 @@ export function ColumnContainer({
                     onReply={onReply}
                     onStatusClick={onStatusClick}
                     onImageClick={onImageClick}
+                    onAccountClick={onAccountClick}
                 />
             ))}
 

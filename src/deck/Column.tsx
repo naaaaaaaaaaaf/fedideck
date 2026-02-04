@@ -25,6 +25,7 @@ interface ColumnProps {
     onReply?: (status: mastodon.v1.Status, accountId: string) => void;
     onStatusClick?: (status: mastodon.v1.Status, accountId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
+    onAccountClick?: (account: mastodon.v1.Account, accountId: string) => void;
 }
 
 export function Column({
@@ -34,6 +35,7 @@ export function Column({
     onReply,
     onStatusClick,
     onImageClick,
+    onAccountClick,
 }: ColumnProps) {
     const account = useAccountsStore((state) => state.accounts.find((a) => a.id === accountId));
     const streamKey = getStreamKey(accountId, stream.type, stream);
@@ -274,6 +276,9 @@ export function Column({
                             onStatusClick={
                                 onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
                             }
+                            onAccountClick={
+                                onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
+                            }
                         />
                     ))}
 
@@ -290,6 +295,9 @@ export function Column({
                                 onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
                             }
                             onImageClick={onImageClick}
+                            onAccountClick={
+                                onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
+                            }
                         />
                     ))}
 
