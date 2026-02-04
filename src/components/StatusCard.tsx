@@ -55,6 +55,7 @@ export function StatusCard({
     const [localReblogged, setLocalReblogged] = useState(displayStatus.reblogged ?? false);
     const [localReblogsCount, setLocalReblogsCount] = useState(displayStatus.reblogsCount ?? 0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
+    const [nsfwRevealed, setNsfwRevealed] = useState(false);
 
     // Track pending props updates that arrived during loading
     const pendingPropsRef = useRef<{
@@ -201,6 +202,10 @@ export function StatusCard({
         } finally {
             setIsLoading((prev) => ({ ...prev, reblog: false }));
         }
+    };
+
+    const handleNsfwToggle = () => {
+        setNsfwRevealed((prev) => !prev);
     };
 
     // Check if reblog is allowed (not for private/direct messages)
@@ -464,22 +469,38 @@ export function StatusCard({
                                         media.description ||
                                         `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
 
+                                    const isSensitive = displayStatus.sensitive ?? false;
+                                    const needsBlur = isSensitive && !nsfwRevealed;
+
                                     return (
                                         <button
                                             type="button"
                                             key={media.id}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                onImageClick?.(imageViewerImages, imageIndex);
+                                                if (isSensitive && !nsfwRevealed) {
+                                                    handleNsfwToggle();
+                                                } else {
+                                                    onImageClick?.(imageViewerImages, imageIndex);
+                                                }
                                             }}
-                                            className="block overflow-hidden rounded-lg text-left"
+                                            className="block overflow-hidden rounded-lg text-left nsfw-blur-container"
                                             aria-label={accessibleLabel}
                                         >
                                             <img
                                                 src={media.previewUrl ?? media.url ?? ''}
                                                 alt={media.description ?? ''}
-                                                className="w-full h-36 object-cover hover:opacity-90 transition-opacity"
+                                                className={`w-full h-36 object-cover transition-opacity ${
+                                                    needsBlur ? 'nsfw-blur' : 'hover:opacity-90'
+                                                }`}
                                             />
+                                            {needsBlur && (
+                                                <div className="nsfw-blur-overlay">
+                                                    <span className="text-white text-sm font-medium">
+                                                        閲覧注意
+                                                    </span>
+                                                </div>
+                                            )}
                                         </button>
                                     );
                                 }
