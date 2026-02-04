@@ -65,11 +65,11 @@ export function NotificationCard({
     const status = notification.status;
 
     // Check if status area should be clickable
-    const isStatusClickable = status && onStatusClick;
+    const isStatusClickable = Boolean(status && onStatusClick);
 
     // Check if card itself should be clickable for profile
     // Note: follow_request has action buttons, so card should not be clickable
-    const isCardClickable = !status && onAccountClick && notification.type === 'follow';
+    const isCardClickable = Boolean(!status && onAccountClick && notification.type === 'follow');
 
     // Handle click on card (for notifications without status)
     const handleCardClick = (e: React.MouseEvent) => {
