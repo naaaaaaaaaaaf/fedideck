@@ -476,6 +476,9 @@ export function StatusCard({
                                         : media.description ||
                                           `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
 
+                                    const isSensitive = displayStatus.sensitive ?? false;
+                                    const needsBlur = isSensitive && !nsfwRevealed;
+
                                     return (
                                         <button
                                             type="button"
