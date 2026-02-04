@@ -6,6 +6,7 @@ import {
     reblogStatus,
     unreblogStatus,
     getStatusContext,
+    fetchAccount,
     type CreateStatusParams,
     type MastoClient,
 } from './mastoClient';
@@ -313,5 +314,54 @@ describe('getStatusContext', () => {
         } as unknown as MastoClient;
 
         await expect(getStatusContext(mockClient, '123')).rejects.toThrow('API Error');
+    });
+});
+
+describe('fetchAccount', () => {
+    it('fetches account by ID', async () => {
+        const mockAccount = {
+            id: '123',
+            username: 'testuser',
+            acct: 'testuser@mastodon.social',
+            displayName: 'Test User',
+            avatar: 'https://example.com/avatar.png',
+            avatarStatic: 'https://example.com/avatar-static.png',
+            note: '<p>Bio text</p>',
+            followersCount: 100,
+            followingCount: 50,
+            statusesCount: 200,
+        };
+        const mockFetch = vi.fn().mockResolvedValue(mockAccount);
+        const mockClient = {
+            v1: {
+                accounts: {
+                    $select: vi.fn().mockReturnValue({
+                        fetch: mockFetch,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await fetchAccount(mockClient, '123');
+
+        expect(mockClient.v1.accounts.$select).toHaveBeenCalledWith('123');
+        expect(mockFetch).toHaveBeenCalled();
+        expect(result.id).toBe('123');
+        expect(result.username).toBe('testuser');
+    });
+
+    it('throws an error when API call fails', async () => {
+        const mockFetch = vi.fn().mockRejectedValue(new Error('Account not found'));
+        const mockClient = {
+            v1: {
+                accounts: {
+                    $select: vi.fn().mockReturnValue({
+                        fetch: mockFetch,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(fetchAccount(mockClient, '999')).rejects.toThrow('Account not found');
     });
 });

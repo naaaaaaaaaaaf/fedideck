@@ -30,6 +30,7 @@ interface StatusCardProps {
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
+    onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
 }
 
 export function StatusCard({
@@ -40,6 +41,7 @@ export function StatusCard({
     onReply,
     onStatusClick,
     onImageClick,
+    onAccountClick,
 }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
@@ -315,40 +317,78 @@ export function StatusCard({
                 </div>
             )}
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 items-start">
                 {/* Avatar */}
-                <a
-                    href={account.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0"
-                >
-                    <img
-                        src={account.avatar}
-                        alt={account.displayName || account.username}
-                        className="w-12 h-12 rounded-lg hover:opacity-80 transition-opacity"
-                    />
-                </a>
+                {onAccountClick && accountSession ? (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onAccountClick(account, accountSession.id);
+                        }}
+                        className="shrink-0"
+                        aria-label={`${account.displayName || account.username}のプロフィールを表示`}
+                    >
+                        <img
+                            src={account.avatar}
+                            alt={account.displayName || account.username}
+                            className="w-12 h-12 rounded-lg hover:opacity-80 transition-opacity"
+                        />
+                    </button>
+                ) : (
+                    <a
+                        href={account.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0"
+                    >
+                        <img
+                            src={account.avatar}
+                            alt={account.displayName || account.username}
+                            className="w-12 h-12 rounded-lg hover:opacity-80 transition-opacity"
+                        />
+                    </a>
+                )}
 
                 {/* Content */}
                 <div className="min-w-0 flex-1">
                     {/* Header */}
                     <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                            <a
-                                href={account.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="hover:underline"
-                            >
-                                <DisplayName
-                                    account={account}
-                                    className="font-semibold text-slate-100 block truncate"
-                                />
-                                <span className="text-sm text-slate-400 block truncate">
-                                    @{account.acct}
-                                </span>
-                            </a>
+                        <div className="min-w-0 flex-1">
+                            {onAccountClick && accountSession ? (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onAccountClick(account, accountSession.id);
+                                    }}
+                                    className="hover:underline text-left min-w-0 max-w-full"
+                                    aria-label={`${account.displayName || account.username}のプロフィールを表示`}
+                                    type="button"
+                                >
+                                    <DisplayName
+                                        account={account}
+                                        className="font-semibold text-slate-100 block truncate"
+                                    />
+                                    <span className="text-sm text-slate-400 block truncate">
+                                        @{account.acct}
+                                    </span>
+                                </button>
+                            ) : (
+                                <a
+                                    href={account.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:underline block min-w-0 max-w-full"
+                                >
+                                    <DisplayName
+                                        account={account}
+                                        className="font-semibold text-slate-100 block truncate"
+                                    />
+                                    <span className="text-sm text-slate-400 block truncate">
+                                        @{account.acct}
+                                    </span>
+                                </a>
+                            )}
                         </div>
                         <a
                             href={displayStatus.url ?? '#'}
@@ -426,6 +466,7 @@ export function StatusCard({
 
                                     return (
                                         <button
+                                            type="button"
                                             key={media.id}
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -509,6 +550,7 @@ export function StatusCard({
                     {/* Action bar */}
                     <div className="flex items-center gap-6 mt-3 text-slate-400">
                         <button
+                            type="button"
                             onClick={() => onReply?.(displayStatus)}
                             className="flex items-center gap-1.5 hover:text-blue-400 transition-colors"
                             aria-label="返信"
@@ -517,6 +559,7 @@ export function StatusCard({
                             <span className="text-sm">{displayStatus.repliesCount || ''}</span>
                         </button>
                         <button
+                            type="button"
                             onClick={handleReblog}
                             disabled={!accountSession || isLoading.reblog || !canReblog}
                             tabIndex={!canReblog ? -1 : undefined}
@@ -535,6 +578,7 @@ export function StatusCard({
                             <span className="text-sm">{localReblogsCount || ''}</span>
                         </button>
                         <button
+                            type="button"
                             onClick={handleFavourite}
                             disabled={!accountSession || isLoading.favourite}
                             className={`flex items-center gap-1.5 transition-colors ${
@@ -551,6 +595,7 @@ export function StatusCard({
                             <span className="text-sm">{localFavouritesCount || ''}</span>
                         </button>
                         <button
+                            type="button"
                             className="hover:text-indigo-400 transition-colors"
                             aria-label="リンクをコピー"
                         >

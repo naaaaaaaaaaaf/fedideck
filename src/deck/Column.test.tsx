@@ -524,7 +524,7 @@ describe('Column', () => {
             expect(notification).toHaveAttribute('data-has-status-click', 'false');
         });
 
-        it('should call onStatusClick with accountId when NotificationCard callback is triggered', () => {
+        it('should call onStatusClick with accountSessionId when NotificationCard callback is triggered', () => {
             const onStatusClick = vi.fn();
             const mockStatus = createMockStatus('test-status');
             mockStreamDataMap['1@mastodon.social:notifications'] = {

@@ -87,45 +87,55 @@ body {
 }
 
 /* Status content styling */
-.status-content p {
+.status-content p,
+.profile-bio p {
     margin: 0 0 0.75em 0;
 }
-.status-content p:last-child {
+.status-content p:last-child,
+.profile-bio p:last-child {
     margin-bottom: 0;
 }
 
 /* リンク共通 */
-.status-content a {
+.status-content a,
+.profile-bio a {
     color: var(--color-accent);
     text-decoration: none;
     transition: color 0.15s ease;
 }
-.status-content a:hover {
+.status-content a:hover,
+.profile-bio a:hover {
     color: var(--color-accent-hover);
     text-decoration: underline;
 }
 
 /* メンション */
-.status-content a.mention {
+.status-content a.mention,
+.profile-bio a.mention {
     color: #60a5fa; /* blue-400 */
 }
-.status-content a.mention:hover {
+.status-content a.mention:hover,
+.profile-bio a.mention:hover {
     color: #93c5fd; /* blue-300 */
 }
 
 /* ハッシュタグ */
-.status-content a[rel*='tag'] {
+.status-content a[rel*='tag'],
+.profile-bio a[rel*='tag'] {
     color: #a78bfa; /* violet-400 */
 }
-.status-content a[rel*='tag']:hover {
+.status-content a[rel*='tag']:hover,
+.profile-bio a[rel*='tag']:hover {
     color: #c4b5fd; /* violet-300 */
 }
 
 /* Mastodonのリンク短縮用 */
-.status-content .invisible {
+.status-content .invisible,
+.profile-bio .invisible {
     display: none;
 }
-.status-content .ellipsis::after {
+.status-content .ellipsis::after,
+.profile-bio .ellipsis::after {
     content: '...';
 }
 

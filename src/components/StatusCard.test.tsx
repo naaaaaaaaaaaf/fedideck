@@ -1015,4 +1015,212 @@ describe('StatusCard', () => {
             expect(onStatusClick).not.toHaveBeenCalled();
         });
     });
+
+    describe('account click', () => {
+        it('should call onAccountClick when avatar is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const status = createMockStatus();
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
+
+            render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={onAccountClick}
+                    accountSession={accountSession}
+                />
+            );
+
+            const avatar = screen.getByAltText('Test User');
+            await user.click(avatar);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '1',
+                    username: 'testuser',
+                }),
+                'test-session-id'
+            );
+        });
+
+        it('should call onAccountClick when display name is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const status = createMockStatus();
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
+
+            render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={onAccountClick}
+                    accountSession={accountSession}
+                />
+            );
+
+            const displayName = screen.getByText('Test User');
+            await user.click(displayName);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '1',
+                    displayName: 'Test User',
+                }),
+                'test-session-id'
+            );
+        });
+
+        it('should call onAccountClick with correct accountSessionId when accountSession is provided', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const status = createMockStatus();
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
+
+            render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={onAccountClick}
+                    accountSession={accountSession}
+                />
+            );
+
+            const avatar = screen.getByAltText('Test User');
+            await user.click(avatar);
+
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({ id: '1' }),
+                'test-session-id'
+            );
+        });
+
+        it('should NOT trigger card click when avatar is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus();
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
+
+            render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={onAccountClick}
+                    onStatusClick={onStatusClick}
+                    accountSession={accountSession}
+                />
+            );
+
+            const avatar = screen.getByAltText('Test User');
+            await user.click(avatar);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should work with reblogged status - clicking original author', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const originalStatus = createMockStatus({
+                id: 'original-123',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'original-author',
+                    username: 'original',
+                    displayName: 'Original Author',
+                },
+            });
+
+            const reblogStatus = createMockStatus({
+                id: 'reblog-456',
+                reblog: originalStatus,
+                account: {
+                    ...createMockStatus().account,
+                    id: 'reblogger',
+                    username: 'reblogger',
+                    displayName: 'Reblogger',
+                },
+            });
+
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: originalStatus.account,
+            };
+
+            render(
+                <StatusCard
+                    status={reblogStatus}
+                    onAccountClick={onAccountClick}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Click on the original author's avatar (the one shown in the main content)
+            const originalAvatar = screen.getByAltText('Original Author');
+            await user.click(originalAvatar);
+
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: 'original-author',
+                    username: 'original',
+                }),
+                'test-session-id'
+            );
+        });
+
+        it('should apply truncation classes to account header links', () => {
+            const longAcct =
+                'very-long-account-name-that-should-be-truncated@example-very-long-domain.social';
+            const status = createMockStatus({
+                account: {
+                    ...createMockStatus().account,
+                    acct: longAcct,
+                },
+            });
+
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
+
+            const { rerender } = render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={vi.fn()}
+                    accountSession={accountSession}
+                />
+            );
+
+            const accountButton = screen.getByText(`@${longAcct}`).closest('button');
+            expect(accountButton).toHaveClass('min-w-0', 'max-w-full');
+
+            rerender(<StatusCard status={status} />);
+
+            const accountLink = screen.getByText(`@${longAcct}`).closest('a');
+            expect(accountLink).toHaveClass('min-w-0', 'max-w-full');
+        });
+    });
 });
