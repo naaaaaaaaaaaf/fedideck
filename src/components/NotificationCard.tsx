@@ -67,6 +67,40 @@ export function NotificationCard({
     // Check if status area should be clickable
     const isStatusClickable = status && onStatusClick;
 
+    // Check if card itself should be clickable for profile
+    const isCardClickable = !status && onAccountClick;
+
+    // Handle click on card (for notifications without status)
+    const handleCardClick = (e: React.MouseEvent) => {
+        if (!isCardClickable) return;
+
+        const target = e.target as HTMLElement;
+        // Ignore clicks on interactive elements
+        if (target.closest('a') || target.closest('button') || target.closest('summary')) {
+            return;
+        }
+        onAccountClick(account);
+    };
+
+    // Handle keyboard navigation for card
+    const handleCardKeyDown = (e: React.KeyboardEvent) => {
+        if (!isCardClickable) return;
+
+        if (e.key === 'Enter' || e.key === ' ') {
+            const target = e.target as HTMLElement;
+            if (
+                target.closest('a') ||
+                target.closest('button') ||
+                target.closest('video') ||
+                target.closest('summary')
+            ) {
+                return;
+            }
+            e.preventDefault();
+            onAccountClick(account);
+        }
+    };
+
     // Handle click on status area
     const handleStatusClick = (e: React.MouseEvent) => {
         if (!isStatusClickable) return;
@@ -100,7 +134,18 @@ export function NotificationCard({
     };
 
     return (
-        <article className="p-4 border-b border-slate-700/50 card-hover animate-fade-in">
+        <article
+            className={`p-4 border-b border-slate-700/50 card-hover animate-fade-in ${isCardClickable ? 'cursor-pointer hover:bg-slate-800/50 transition-colors' : ''}`}
+            onClick={isCardClickable ? handleCardClick : undefined}
+            onKeyDown={isCardClickable ? handleCardKeyDown : undefined}
+            role={isCardClickable ? 'button' : undefined}
+            tabIndex={isCardClickable ? 0 : undefined}
+            aria-label={
+                isCardClickable
+                    ? `${account.displayName || account.username}のプロフィールを表示`
+                    : undefined
+            }
+        >
             {/* Notification header */}
             <div className="flex items-center gap-3 mb-2">
                 <span className={`text-lg ${info.color}`} aria-hidden="true">
