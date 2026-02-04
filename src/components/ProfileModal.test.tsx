@@ -1,11 +1,25 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProfileModal } from './ProfileModal';
 import type { mastodon } from 'masto';
 import type { AccountSession } from '../api/mastoClient';
+import * as mastoClient from '../api/mastoClient';
+
+vi.mock('../api/mastoClient', async () => {
+    const actual = await vi.importActual('../api/mastoClient');
+    return {
+        ...actual,
+        fetchAccount: vi.fn(),
+    };
+});
+
+const mockFetchAccount = vi.mocked(mastoClient.fetchAccount);
 
 describe('ProfileModal', () => {
+    // Suppress console.error during tests to keep CI logs clean
+    let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
     const mockAccount: mastodon.v1.Account = {
         id: '123',
         username: 'testuser',
@@ -43,7 +57,15 @@ describe('ProfileModal', () => {
     const onClose = vi.fn();
 
     beforeEach(() => {
+        // Suppress console.error during tests to keep CI logs clean
+        consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        // Reset mocks for each test
         onClose.mockClear();
+        mockFetchAccount.mockResolvedValue(mockAccount);
+    });
+
+    afterEach(() => {
+        consoleErrorSpy.mockRestore();
     });
 
     it('does not render when isOpen is false', () => {
@@ -90,7 +112,11 @@ describe('ProfileModal', () => {
         );
 
         // Initially should show loading indicator
-        expect(screen.getByText(/プロフィールを読み込み中/)).toBeInTheDocument();
+        const loadingText = screen.getByText(/プロフィールを読み込み中/);
+        expect(loadingText).toBeInTheDocument();
+
+        // Wait for loading to complete
+        await waitForElementToBeRemoved(loadingText);
     });
 
     it('closes when close button is clicked', async () => {
@@ -125,6 +151,7 @@ describe('ProfileModal', () => {
             .getByText('プロフィール')
             .closest('div')
             ?.querySelector('[aria-hidden="true"]');
+        expect(backdrop).not.toBeNull();
         if (backdrop) {
             await user.click(backdrop);
             expect(onClose).toHaveBeenCalledTimes(1);
@@ -132,14 +159,7 @@ describe('ProfileModal', () => {
     });
 
     it('displays error message when fetch fails', async () => {
-        // Mock fetchAccount to throw an error
-        vi.mock('../api/mastoClient', async () => {
-            const actual = await vi.importActual('../api/mastoClient');
-            return {
-                ...actual,
-                fetchAccount: vi.fn().mockRejectedValue(new Error('Failed to fetch')),
-            };
-        });
+        mockFetchAccount.mockRejectedValueOnce(new Error('Failed to fetch'));
 
         render(
             <ProfileModal
@@ -150,11 +170,12 @@ describe('ProfileModal', () => {
             />
         );
 
-        // Note: This test would require proper mocking of the module
-        // For now, we'll skip this test
-        // await waitFor(() => {
-        //     expect(screen.getByText(/プロフィールの読み込みに失敗しました/)).toBeInTheDocument();
-        // });
+        await waitFor(() => {
+            expect(screen.getByText(/プロフィールの読み込みに失敗しました/)).toBeInTheDocument();
+        });
+
+        // Verify that console.error was called for the fetch failure
+        expect(consoleErrorSpy).toHaveBeenCalled();
     });
 
     it('handles missing optional account fields', async () => {
