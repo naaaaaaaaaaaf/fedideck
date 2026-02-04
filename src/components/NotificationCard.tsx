@@ -164,20 +164,44 @@ export function NotificationCard({
             {(notification.type === 'follow' || notification.type === 'follow_request') && (
                 <div className="ml-9 p-3 bg-slate-800/50 rounded-lg">
                     <div className="flex items-start gap-3">
-                        <img
-                            src={account.avatar}
-                            alt={account.displayName || account.username}
-                            className="w-12 h-12 rounded-lg"
-                        />
-                        <div className="min-w-0 flex-1">
-                            <DisplayName
-                                account={account}
-                                className="font-semibold text-slate-100 truncate block"
+                        {onAccountClick ? (
+                            <button
+                                onClick={() => onAccountClick(account)}
+                                className="shrink-0"
+                                aria-label={`${account.displayName || account.username}のプロフィールを表示`}
+                            >
+                                <img
+                                    src={account.avatar}
+                                    alt={account.displayName || account.username}
+                                    className="w-12 h-12 rounded-lg hover:opacity-80 transition-opacity"
+                                />
+                            </button>
+                        ) : (
+                            <img
+                                src={account.avatar}
+                                alt={account.displayName || account.username}
+                                className="w-12 h-12 rounded-lg"
                             />
+                        )}
+                        <div className="min-w-0 flex-1">
+                            {onAccountClick ? (
+                                <button
+                                    onClick={() => onAccountClick(account)}
+                                    className="font-semibold text-slate-100 truncate text-left w-full hover:underline"
+                                    aria-label={`${account.displayName || account.username}のプロフィールを表示`}
+                                >
+                                    <DisplayName account={account} />
+                                </button>
+                            ) : (
+                                <DisplayName
+                                    account={account}
+                                    className="font-semibold text-slate-100 truncate block"
+                                />
+                            )}
                             <div className="text-sm text-slate-400 truncate">@{account.acct}</div>
                             {account.note && (
                                 <div
-                                    className="text-sm text-slate-300 mt-1 line-clamp-2"
+                                    className="text-sm text-slate-300 mt-1 line-clamp-2 profile-bio"
                                     dangerouslySetInnerHTML={{ __html: account.note }}
                                 />
                             )}
