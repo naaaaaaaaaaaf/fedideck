@@ -10,6 +10,13 @@ vi.mock('../api/mastoClient', async () => {
     const actual = await vi.importActual('../api/mastoClient');
     return {
         ...actual,
+        getClient: vi.fn(() => ({
+            v1: {
+                accounts: {
+                    fetch: vi.fn(),
+                },
+            },
+        })),
         fetchAccount: vi.fn(),
     };
 });
