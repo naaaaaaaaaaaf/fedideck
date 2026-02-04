@@ -1015,4 +1015,134 @@ describe('StatusCard', () => {
             expect(onStatusClick).not.toHaveBeenCalled();
         });
     });
+
+    describe('account click', () => {
+        it('should call onAccountClick when avatar is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const status = createMockStatus();
+
+            render(<StatusCard status={status} onAccountClick={onAccountClick} />);
+
+            const avatar = screen.getByAltText('Test User');
+            await user.click(avatar);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '1',
+                    username: 'testuser',
+                }),
+                '' // accountId is empty string when accountSession is not provided
+            );
+        });
+
+        it('should call onAccountClick when display name is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const status = createMockStatus();
+
+            render(<StatusCard status={status} onAccountClick={onAccountClick} />);
+
+            const displayName = screen.getByText('Test User');
+            await user.click(displayName);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '1',
+                    displayName: 'Test User',
+                }),
+                ''
+            );
+        });
+
+        it('should call onAccountClick with correct accountId when accountSession is provided', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const status = createMockStatus();
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
+
+            render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={onAccountClick}
+                    accountSession={accountSession}
+                />
+            );
+
+            const avatar = screen.getByAltText('Test User');
+            await user.click(avatar);
+
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({ id: '1' }),
+                'test-session-id'
+            );
+        });
+
+        it('should NOT trigger card click when avatar is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus();
+
+            render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={onAccountClick}
+                    onStatusClick={onStatusClick}
+                />
+            );
+
+            const avatar = screen.getByAltText('Test User');
+            await user.click(avatar);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should work with reblogged status - clicking original author', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const originalStatus = createMockStatus({
+                id: 'original-123',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'original-author',
+                    username: 'original',
+                    displayName: 'Original Author',
+                },
+            });
+
+            const reblogStatus = createMockStatus({
+                id: 'reblog-456',
+                reblog: originalStatus,
+                account: {
+                    ...createMockStatus().account,
+                    id: 'reblogger',
+                    username: 'reblogger',
+                    displayName: 'Reblogger',
+                },
+            });
+
+            render(<StatusCard status={reblogStatus} onAccountClick={onAccountClick} />);
+
+            // Click on the original author's avatar (the one shown in the main content)
+            const originalAvatar = screen.getByAltText('Original Author');
+            await user.click(originalAvatar);
+
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: 'original-author',
+                    username: 'original',
+                }),
+                ''
+            );
+        });
+    });
 });

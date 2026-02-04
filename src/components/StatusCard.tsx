@@ -30,6 +30,7 @@ interface StatusCardProps {
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
+    onAccountClick?: (account: mastodon.v1.Account, accountId: string) => void;
 }
 
 export function StatusCard({
@@ -40,6 +41,7 @@ export function StatusCard({
     onReply,
     onStatusClick,
     onImageClick,
+    onAccountClick,
 }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
@@ -317,38 +319,74 @@ export function StatusCard({
 
             <div className="flex gap-3">
                 {/* Avatar */}
-                <a
-                    href={account.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0"
-                >
-                    <img
-                        src={account.avatar}
-                        alt={account.displayName || account.username}
-                        className="w-12 h-12 rounded-lg hover:opacity-80 transition-opacity"
-                    />
-                </a>
+                {onAccountClick ? (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onAccountClick(account, accountSession?.id ?? '');
+                        }}
+                        className="shrink-0"
+                        aria-label={`${account.displayName || account.username}のプロフィールを表示`}
+                    >
+                        <img
+                            src={account.avatar}
+                            alt={account.displayName || account.username}
+                            className="w-12 h-12 rounded-lg hover:opacity-80 transition-opacity"
+                        />
+                    </button>
+                ) : (
+                    <a
+                        href={account.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0"
+                    >
+                        <img
+                            src={account.avatar}
+                            alt={account.displayName || account.username}
+                            className="w-12 h-12 rounded-lg hover:opacity-80 transition-opacity"
+                        />
+                    </a>
+                )}
 
                 {/* Content */}
                 <div className="min-w-0 flex-1">
                     {/* Header */}
                     <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                            <a
-                                href={account.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="hover:underline"
-                            >
-                                <DisplayName
-                                    account={account}
-                                    className="font-semibold text-slate-100 block truncate"
-                                />
-                                <span className="text-sm text-slate-400 block truncate">
-                                    @{account.acct}
-                                </span>
-                            </a>
+                            {onAccountClick ? (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onAccountClick(account, accountSession?.id ?? '');
+                                    }}
+                                    className="hover:underline text-left"
+                                    aria-label={`${account.displayName || account.username}のプロフィールを表示`}
+                                >
+                                    <DisplayName
+                                        account={account}
+                                        className="font-semibold text-slate-100 block truncate"
+                                    />
+                                    <span className="text-sm text-slate-400 block truncate">
+                                        @{account.acct}
+                                    </span>
+                                </button>
+                            ) : (
+                                <a
+                                    href={account.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:underline"
+                                >
+                                    <DisplayName
+                                        account={account}
+                                        className="font-semibold text-slate-100 block truncate"
+                                    />
+                                    <span className="text-sm text-slate-400 block truncate">
+                                        @{account.acct}
+                                    </span>
+                                </a>
+                            )}
                         </div>
                         <a
                             href={displayStatus.url ?? '#'}
