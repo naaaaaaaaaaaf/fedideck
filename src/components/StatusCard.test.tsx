@@ -1384,5 +1384,52 @@ describe('StatusCard', () => {
             const button = screen.getByRole('button', { name: /画像を拡大/ });
             expect(button).toBeInTheDocument();
         });
+
+        it('should reset nsfwRevealed when status changes', async () => {
+            const user = userEvent.setup();
+            const status1 = createMockStatus({
+                id: 'status-1',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        description: 'Sensitive image 1',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const { rerender } = render(<StatusCard status={status1} />);
+
+            // Reveal the first image
+            const img1 = screen.getByAltText('Sensitive image 1');
+            expect(img1).toHaveClass('nsfw-blur');
+            const button1 = img1.closest('button');
+            await user.click(button1!);
+            expect(img1).not.toHaveClass('nsfw-blur');
+
+            // Change to a different status
+            const status2 = createMockStatus({
+                id: 'status-2',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '2',
+                        type: 'image',
+                        url: 'https://example.com/image2.png',
+                        previewUrl: 'https://example.com/preview2.png',
+                        description: 'Sensitive image 2',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            rerender(<StatusCard status={status2} />);
+
+            // New status should have blur again (reset)
+            const img2 = screen.getByAltText('Sensitive image 2');
+            expect(img2).toHaveClass('nsfw-blur');
+        });
     });
 });

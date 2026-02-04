@@ -159,10 +159,6 @@ body {
     filter: blur(28px);
 }
 
-.nsfw-blur.revealed {
-    filter: blur(0);
-}
-
 .nsfw-blur-container {
     position: relative;
     overflow: hidden;

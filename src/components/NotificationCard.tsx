@@ -1,5 +1,5 @@
 import type { mastodon } from 'masto';
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import {
     LuMessageCircle,
     LuRepeat2,
@@ -69,6 +69,11 @@ export function NotificationCard({
     const handleNsfwToggle = () => {
         setNsfwRevealed((prev) => !prev);
     };
+
+    // Reset nsfwRevealed when notification changes
+    useEffect(() => {
+        setNsfwRevealed(false);
+    }, [notification.id]);
 
     // Check if status area should be clickable
     const isStatusClickable = Boolean(status && onStatusClick);

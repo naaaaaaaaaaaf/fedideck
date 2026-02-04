@@ -109,6 +109,11 @@ export function StatusCard({
         }
     }, [isLoading.favourite, isLoading.reblog]);
 
+    // Reset nsfwRevealed when status changes
+    useEffect(() => {
+        setNsfwRevealed(false);
+    }, [displayStatus.id]);
+
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
     const poll = displayStatus.poll;
