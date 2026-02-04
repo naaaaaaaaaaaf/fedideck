@@ -16,7 +16,7 @@ interface ProfileModalProps {
 export function ProfileModal({ isOpen, onClose, account, accountSession }: ProfileModalProps) {
     const [fullAccount, setFullAccount] = useState<mastodon.v1.Account | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [hasError, setHasError] = useState(false);
 
     // Refs for focus management
     const modalRef = useRef<HTMLDivElement>(null);
@@ -34,14 +34,14 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
         // Reset state when modal closes
         if (!isOpen) {
             setFullAccount(null);
-            setError(null);
+            setHasError(false);
             setIsLoading(false);
             return;
         }
 
         // Reset state when account changes (modal stays open but different account)
         setFullAccount(null);
-        setError(null);
+        setHasError(false);
 
         // Only fetch if we have both account and session
         if (!account || !accountSession) {
@@ -63,7 +63,7 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
             } catch (err) {
                 if (!cancelled) {
                     console.error('Failed to fetch account:', err);
-                    setError('プロフィールの読み込みに失敗しました');
+                    setHasError(true);
                 }
             } finally {
                 if (!cancelled) {
@@ -132,7 +132,7 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
                     )}
 
                     {/* Error message */}
-                    {error && !fullAccount && account && (
+                    {hasError && !fullAccount && account && (
                         <div className="text-center py-2 text-amber-400 text-xs mb-4">
                             追加情報の取得に失敗しました
                         </div>
