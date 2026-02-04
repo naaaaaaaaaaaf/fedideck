@@ -7,6 +7,7 @@ import { LoginModal } from './components/LoginModal';
 import { AddColumnModal } from './components/AddColumnModal';
 import { ComposeModal, type ReplyToStatus } from './components/ComposeModal';
 import { StatusDetailModal } from './components/StatusDetailModal';
+import { ProfileModal } from './components/ProfileModal';
 import { ImageViewer, type ImageViewerImage } from './components/ImageViewer';
 import { useAccountsStore } from './store/accounts';
 import type { AccountSession } from './api/mastoClient';
@@ -23,6 +24,13 @@ function App() {
     const [isStatusDetailOpen, setIsStatusDetailOpen] = useState(false);
     const [detailStatus, setDetailStatus] = useState<mastodon.v1.Status | null>(null);
     const [detailAccountSession, setDetailAccountSession] = useState<AccountSession | undefined>();
+
+    // Profile modal state
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [profileAccount, setProfileAccount] = useState<mastodon.v1.Account | null>(null);
+    const [profileAccountSession, setProfileAccountSession] = useState<
+        AccountSession | undefined
+    >();
 
     // ImageViewer state
     const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
@@ -118,6 +126,13 @@ function App() {
         setIsStatusDetailOpen(true);
     };
 
+    const handleAccountClick = (account: mastodon.v1.Account, accountId: string) => {
+        const accountSession = accounts.find((a) => a.id === accountId);
+        setProfileAccount(account);
+        setProfileAccountSession(accountSession);
+        setIsProfileModalOpen(true);
+    };
+
     const handleStatusDetailReply = (status: mastodon.v1.Status) => {
         if (detailAccountSession) {
             handleReply(status, detailAccountSession.id);
@@ -128,6 +143,12 @@ function App() {
         setIsStatusDetailOpen(false);
         setDetailStatus(null);
         setDetailAccountSession(undefined);
+    };
+
+    const handleProfileModalClose = () => {
+        setIsProfileModalOpen(false);
+        setProfileAccount(null);
+        setProfileAccountSession(undefined);
     };
 
     const handleComposeClose = () => {
@@ -160,6 +181,7 @@ function App() {
                     onReply={handleReply}
                     onStatusClick={handleStatusClick}
                     onImageClick={handleImageClick}
+                    onAccountClick={handleAccountClick}
                 />
             </main>
 
@@ -187,6 +209,12 @@ function App() {
                 onReply={handleStatusDetailReply}
                 onStatusUpdate={updateStatusGlobal}
                 onImageClick={handleImageClick}
+            />
+            <ProfileModal
+                isOpen={isProfileModalOpen}
+                onClose={handleProfileModalClose}
+                account={profileAccount}
+                accountSession={profileAccountSession}
             />
             <ImageViewer
                 key={imageViewerKey}
