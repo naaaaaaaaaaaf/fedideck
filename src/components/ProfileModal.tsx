@@ -77,8 +77,7 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
         return () => {
             cancelled = true;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen, account?.id, accountSession?.id]);
+    }, [isOpen, account, accountSession]);
 
     if (!isOpen || !account) {
         return null;
