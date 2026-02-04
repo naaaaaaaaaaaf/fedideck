@@ -80,7 +80,7 @@ export function NotificationCard({
         if (target.closest('a') || target.closest('button') || target.closest('summary')) {
             return;
         }
-        onAccountClick(account);
+        onAccountClick?.(account);
     };
 
     // Handle keyboard navigation for card
@@ -98,13 +98,13 @@ export function NotificationCard({
                 return;
             }
             e.preventDefault();
-            onAccountClick(account);
+            onAccountClick?.(account);
         }
     };
 
     // Handle click on status area
     const handleStatusClick = (e: React.MouseEvent) => {
-        if (!isStatusClickable) return;
+        if (!status || !onStatusClick) return;
 
         const target = e.target as HTMLElement;
         // Ignore clicks on interactive elements
@@ -116,7 +116,7 @@ export function NotificationCard({
 
     // Handle keyboard navigation for status area
     const handleStatusKeyDown = (e: React.KeyboardEvent) => {
-        if (!isStatusClickable) return;
+        if (!status || !onStatusClick) return;
 
         if (e.key === 'Enter' || e.key === ' ') {
             // Ignore keyboard events on interactive elements
