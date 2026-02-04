@@ -109,10 +109,8 @@ export function StatusCard({
         }
     }, [isLoading.favourite, isLoading.reblog]);
 
-    // Reset nsfwRevealed when status changes
-    useEffect(() => {
-        setNsfwRevealed(false);
-    }, [displayStatus.id]);
+    // Note: nsfwRevealed state is automatically reset when status changes
+    // because StatusCard is rendered with key={status.id} in parent
 
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];

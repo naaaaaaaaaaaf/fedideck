@@ -1004,57 +1004,5 @@ describe('NotificationCard', () => {
             // Should have called onStatusClick for navigation
             expect(onStatusClick).toHaveBeenCalledTimes(1);
         });
-
-        it('should reset nsfwRevealed when notification changes', async () => {
-            const user = userEvent.setup();
-            const notification1 = createMockNotification('mention', {
-                id: 'notif-1',
-                status: createMockStatus({
-                    id: 'status-1',
-                    sensitive: true,
-                    mediaAttachments: [
-                        {
-                            id: 'media1',
-                            type: 'image',
-                            url: 'https://example.com/image1.png',
-                            previewUrl: 'https://example.com/preview1.png',
-                        } as mastodon.v1.MediaAttachment,
-                    ],
-                }),
-            });
-
-            const { rerender } = render(<NotificationCard notification={notification1} />);
-
-            // Reveal the first image
-            const button = screen.getByRole('button', { name: '添付メディア' });
-            expect(button).toBeInTheDocument();
-            await user.click(button);
-
-            // Button should be gone after reveal
-            expect(screen.queryByRole('button', { name: '添付メディア' })).not.toBeInTheDocument();
-
-            // Change to a different notification
-            const notification2 = createMockNotification('mention', {
-                id: 'notif-2',
-                status: createMockStatus({
-                    id: 'status-2',
-                    sensitive: true,
-                    mediaAttachments: [
-                        {
-                            id: 'media2',
-                            type: 'image',
-                            url: 'https://example.com/image2.png',
-                            previewUrl: 'https://example.com/preview2.png',
-                        } as mastodon.v1.MediaAttachment,
-                    ],
-                }),
-            });
-
-            rerender(<NotificationCard notification={notification2} />);
-
-            // New notification should have button again (reset)
-            const buttonAfter = screen.getByRole('button', { name: '添付メディア' });
-            expect(buttonAfter).toBeInTheDocument();
-        });
     });
 });
