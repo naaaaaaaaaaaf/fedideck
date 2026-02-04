@@ -321,6 +321,7 @@ export function StatusCard({
                 {/* Avatar */}
                 {onAccountClick ? (
                     <button
+                        type="button"
                         onClick={(e) => {
                             e.stopPropagation();
                             onAccountClick(account, accountSession?.id ?? '');
@@ -465,6 +466,7 @@ export function StatusCard({
 
                                     return (
                                         <button
+                                            type="button"
                                             key={media.id}
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -548,6 +550,7 @@ export function StatusCard({
                     {/* Action bar */}
                     <div className="flex items-center gap-6 mt-3 text-slate-400">
                         <button
+                            type="button"
                             onClick={() => onReply?.(displayStatus)}
                             className="flex items-center gap-1.5 hover:text-blue-400 transition-colors"
                             aria-label="返信"
@@ -556,6 +559,7 @@ export function StatusCard({
                             <span className="text-sm">{displayStatus.repliesCount || ''}</span>
                         </button>
                         <button
+                            type="button"
                             onClick={handleReblog}
                             disabled={!accountSession || isLoading.reblog || !canReblog}
                             tabIndex={!canReblog ? -1 : undefined}
@@ -574,6 +578,7 @@ export function StatusCard({
                             <span className="text-sm">{localReblogsCount || ''}</span>
                         </button>
                         <button
+                            type="button"
                             onClick={handleFavourite}
                             disabled={!accountSession || isLoading.favourite}
                             className={`flex items-center gap-1.5 transition-colors ${
@@ -590,6 +595,7 @@ export function StatusCard({
                             <span className="text-sm">{localFavouritesCount || ''}</span>
                         </button>
                         <button
+                            type="button"
                             className="hover:text-indigo-400 transition-colors"
                             aria-label="リンクをコピー"
                         >

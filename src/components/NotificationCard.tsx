@@ -154,6 +154,7 @@ export function NotificationCard({
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                     {onAccountClick ? (
                         <button
+                            type="button"
                             onClick={() => onAccountClick(account)}
                             className="shrink-0"
                             aria-label={`${account.displayName || account.username}のプロフィールを表示`}
@@ -181,6 +182,7 @@ export function NotificationCard({
                     <span className="text-sm truncate">
                         {onAccountClick ? (
                             <button
+                                type="button"
                                 onClick={() => onAccountClick(account)}
                                 className="font-semibold text-slate-100 hover:underline"
                                 aria-label={`${account.displayName || account.username}のプロフィールを表示`}
@@ -211,6 +213,7 @@ export function NotificationCard({
                     <div className="flex items-start gap-3">
                         {onAccountClick ? (
                             <button
+                                type="button"
                                 onClick={() => onAccountClick(account)}
                                 className="shrink-0"
                                 aria-label={`${account.displayName || account.username}のプロフィールを表示`}
@@ -231,6 +234,7 @@ export function NotificationCard({
                         <div className="min-w-0 flex-1">
                             {onAccountClick ? (
                                 <button
+                                    type="button"
                                     onClick={() => onAccountClick(account)}
                                     className="font-semibold text-slate-100 truncate text-left w-full hover:underline"
                                     aria-label={`${account.displayName || account.username}のプロフィールを表示`}
@@ -255,12 +259,14 @@ export function NotificationCard({
                     {notification.type === 'follow_request' && (
                         <div className="flex gap-2 mt-3 ml-15">
                             <button
+                                type="button"
                                 className="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm transition-colors"
                                 aria-label={`${account.displayName || account.username}のフォローリクエストを承認`}
                             >
                                 承認
                             </button>
                             <button
+                                type="button"
                                 className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors"
                                 aria-label={`${account.displayName || account.username}のフォローリクエストを拒否`}
                             >
