@@ -847,7 +847,7 @@ describe('NotificationCard', () => {
             expect(img).not.toHaveClass('nsfw-blur');
         });
 
-        it('should support keyboard navigation for reveal', async () => {
+        it('should support keyboard navigation (Enter key) for reveal', async () => {
             const user = userEvent.setup();
             const notification = createMockNotification('mention', {
                 status: createMockStatus({
@@ -866,10 +866,64 @@ describe('NotificationCard', () => {
             render(<NotificationCard notification={notification} />);
 
             const button = screen.getByRole('button', { name: '添付メディア' });
-            await user.click(button);
+            button.focus();
+            await user.keyboard('{Enter}');
 
             const img = screen.getByAltText('添付メディア');
             expect(img).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should support keyboard navigation (Space key) for reveal', async () => {
+            const user = userEvent.setup();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            render(<NotificationCard notification={notification} />);
+
+            const button = screen.getByRole('button', { name: '添付メディア' });
+            button.focus();
+            await user.keyboard(' ');
+
+            const img = screen.getByAltText('添付メディア');
+            expect(img).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should render plain img for non-sensitive media (not button)', () => {
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: false,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            render(<NotificationCard notification={notification} />);
+
+            // Should not have a button for non-sensitive media
+            const button = screen.queryByRole('button', { name: '添付メディア' });
+            expect(button).not.toBeInTheDocument();
+
+            // Should have a plain img element
+            const img = screen.getByAltText('添付メディア');
+            expect(img).toBeInTheDocument();
+            expect(img.tagName).toBe('IMG');
         });
     });
 });
