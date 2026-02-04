@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProfileModal } from './ProfileModal';
@@ -13,6 +13,8 @@ describe('ProfileModal', () => {
         displayName: 'Test User',
         avatar: 'https://example.com/avatar.png',
         avatarStatic: 'https://example.com/avatar-static.png',
+        header: 'https://example.com/header.png',
+        headerStatic: 'https://example.com/header.png',
         note: '<p>Test bio</p>',
         followersCount: 100,
         followingCount: 50,
@@ -22,7 +24,13 @@ describe('ProfileModal', () => {
         bot: false,
         discoverable: true,
         locked: false,
+        group: false,
+        lastStatusAt: '',
+        emojis: [],
         fields: [],
+        roles: [],
+        suspended: false,
+        limited: false,
     };
 
     const mockSession: AccountSession = {
