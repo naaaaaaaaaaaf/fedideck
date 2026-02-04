@@ -317,7 +317,7 @@ export function StatusCard({
                 </div>
             )}
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 items-start">
                 {/* Avatar */}
                 {onAccountClick ? (
                     <button
@@ -353,15 +353,16 @@ export function StatusCard({
                 <div className="min-w-0 flex-1">
                     {/* Header */}
                     <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                             {onAccountClick ? (
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         onAccountClick(account, accountSession?.id ?? '');
                                     }}
-                                    className="hover:underline text-left"
+                                    className="hover:underline text-left min-w-0 max-w-full"
                                     aria-label={`${account.displayName || account.username}のプロフィールを表示`}
+                                    type="button"
                                 >
                                     <DisplayName
                                         account={account}
@@ -376,7 +377,7 @@ export function StatusCard({
                                     href={account.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="hover:underline"
+                                    className="hover:underline block min-w-0 max-w-full"
                                 >
                                     <DisplayName
                                         account={account}

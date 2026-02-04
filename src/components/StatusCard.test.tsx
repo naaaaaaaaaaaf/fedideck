@@ -1144,5 +1144,26 @@ describe('StatusCard', () => {
                 ''
             );
         });
+
+        it('should apply truncation classes to account header links', () => {
+            const longAcct =
+                'very-long-account-name-that-should-be-truncated@example-very-long-domain.social';
+            const status = createMockStatus({
+                account: {
+                    ...createMockStatus().account,
+                    acct: longAcct,
+                },
+            });
+
+            const { rerender } = render(<StatusCard status={status} onAccountClick={vi.fn()} />);
+
+            const accountButton = screen.getByText(`@${longAcct}`).closest('button');
+            expect(accountButton).toHaveClass('min-w-0', 'max-w-full');
+
+            rerender(<StatusCard status={status} />);
+
+            const accountLink = screen.getByText(`@${longAcct}`).closest('a');
+            expect(accountLink).toHaveClass('min-w-0', 'max-w-full');
+        });
     });
 });
