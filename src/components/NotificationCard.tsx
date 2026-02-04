@@ -1,5 +1,5 @@
 import type { mastodon } from 'masto';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
     LuMessageCircle,
     LuRepeat2,
@@ -63,6 +63,12 @@ export function NotificationCard({
     const info = getNotificationInfo();
     const account = notification.account;
     const status = notification.status;
+
+    const [nsfwRevealed, setNsfwRevealed] = useState(false);
+
+    const handleNsfwToggle = () => {
+        setNsfwRevealed((prev) => !prev);
+    };
 
     // Check if status area should be clickable
     const isStatusClickable = Boolean(status && onStatusClick);
@@ -349,14 +355,40 @@ export function NotificationCard({
                     {/* Media indicator */}
                     {status.mediaAttachments.length > 0 && (
                         <div className="flex gap-1 mt-2">
-                            {status.mediaAttachments.slice(0, 4).map((media) => (
-                                <img
-                                    key={media.id}
-                                    src={media.previewUrl ?? media.url}
-                                    alt={media.description || '添付メディア'}
-                                    className="w-12 h-12 rounded object-cover"
-                                />
-                            ))}
+                            {status.mediaAttachments.slice(0, 4).map((media) => {
+                                const isSensitive = status.sensitive ?? false;
+                                const needsBlur = isSensitive && !nsfwRevealed;
+
+                                return (
+                                    <button
+                                        type="button"
+                                        key={media.id}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (isSensitive && !nsfwRevealed) {
+                                                handleNsfwToggle();
+                                            }
+                                        }}
+                                        className="relative overflow-hidden rounded object-cover w-12 h-12"
+                                        aria-label={media.description || '添付メディア'}
+                                    >
+                                        <img
+                                            src={media.previewUrl ?? media.url}
+                                            alt={media.description || '添付メディア'}
+                                            className={`w-12 h-12 rounded object-cover ${
+                                                needsBlur ? 'nsfw-blur' : ''
+                                            }`}
+                                        />
+                                        {needsBlur && (
+                                            <div className="nsfw-blur-overlay">
+                                                <span className="text-white text-xs font-medium">
+                                                    閲覧注意
+                                                </span>
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
