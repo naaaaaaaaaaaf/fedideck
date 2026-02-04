@@ -71,7 +71,7 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
         return () => {
             cancelled = true;
         };
-    }, [isOpen, account?.id, accountSession]);
+    }, [isOpen, account?.id, accountSession?.id]);
 
     if (!isOpen || !account) {
         return null;
