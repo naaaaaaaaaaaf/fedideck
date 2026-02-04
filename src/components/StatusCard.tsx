@@ -30,7 +30,7 @@ interface StatusCardProps {
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
-    onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string) => void;
+    onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
 }
 
 export function StatusCard({
@@ -319,12 +319,12 @@ export function StatusCard({
 
             <div className="flex gap-3 items-start">
                 {/* Avatar */}
-                {onAccountClick ? (
+                {onAccountClick && accountSession ? (
                     <button
                         type="button"
                         onClick={(e) => {
                             e.stopPropagation();
-                            onAccountClick(account, accountSession?.id ?? '');
+                            onAccountClick(account, accountSession.id);
                         }}
                         className="shrink-0"
                         aria-label={`${account.displayName || account.username}のプロフィールを表示`}
@@ -355,11 +355,11 @@ export function StatusCard({
                     {/* Header */}
                     <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                            {onAccountClick ? (
+                            {onAccountClick && accountSession ? (
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        onAccountClick(account, accountSession?.id ?? '');
+                                        onAccountClick(account, accountSession.id);
                                     }}
                                     className="hover:underline text-left min-w-0 max-w-full"
                                     aria-label={`${account.displayName || account.username}のプロフィールを表示`}

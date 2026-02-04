@@ -25,7 +25,7 @@ interface ColumnProps {
     onReply?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onStatusClick?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
-    onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string) => void;
+    onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
 }
 
 export function Column({

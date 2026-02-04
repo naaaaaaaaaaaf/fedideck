@@ -1021,8 +1021,20 @@ describe('StatusCard', () => {
             const user = userEvent.setup();
             const onAccountClick = vi.fn();
             const status = createMockStatus();
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
 
-            render(<StatusCard status={status} onAccountClick={onAccountClick} />);
+            render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={onAccountClick}
+                    accountSession={accountSession}
+                />
+            );
 
             const avatar = screen.getByAltText('Test User');
             await user.click(avatar);
@@ -1033,7 +1045,7 @@ describe('StatusCard', () => {
                     id: '1',
                     username: 'testuser',
                 }),
-                '' // accountId is empty string when accountSession is not provided
+                'test-session-id'
             );
         });
 
@@ -1041,8 +1053,20 @@ describe('StatusCard', () => {
             const user = userEvent.setup();
             const onAccountClick = vi.fn();
             const status = createMockStatus();
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
 
-            render(<StatusCard status={status} onAccountClick={onAccountClick} />);
+            render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={onAccountClick}
+                    accountSession={accountSession}
+                />
+            );
 
             const displayName = screen.getByText('Test User');
             await user.click(displayName);
@@ -1053,7 +1077,7 @@ describe('StatusCard', () => {
                     id: '1',
                     displayName: 'Test User',
                 }),
-                ''
+                'test-session-id'
             );
         });
 
@@ -1090,12 +1114,19 @@ describe('StatusCard', () => {
             const onAccountClick = vi.fn();
             const onStatusClick = vi.fn();
             const status = createMockStatus();
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
 
             render(
                 <StatusCard
                     status={status}
                     onAccountClick={onAccountClick}
                     onStatusClick={onStatusClick}
+                    accountSession={accountSession}
                 />
             );
 
@@ -1130,7 +1161,20 @@ describe('StatusCard', () => {
                 },
             });
 
-            render(<StatusCard status={reblogStatus} onAccountClick={onAccountClick} />);
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: originalStatus.account,
+            };
+
+            render(
+                <StatusCard
+                    status={reblogStatus}
+                    onAccountClick={onAccountClick}
+                    accountSession={accountSession}
+                />
+            );
 
             // Click on the original author's avatar (the one shown in the main content)
             const originalAvatar = screen.getByAltText('Original Author');
@@ -1141,7 +1185,7 @@ describe('StatusCard', () => {
                     id: 'original-author',
                     username: 'original',
                 }),
-                ''
+                'test-session-id'
             );
         });
 
@@ -1155,7 +1199,20 @@ describe('StatusCard', () => {
                 },
             });
 
-            const { rerender } = render(<StatusCard status={status} onAccountClick={vi.fn()} />);
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
+
+            const { rerender } = render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={vi.fn()}
+                    accountSession={accountSession}
+                />
+            );
 
             const accountButton = screen.getByText(`@${longAcct}`).closest('button');
             expect(accountButton).toHaveClass('min-w-0', 'max-w-full');

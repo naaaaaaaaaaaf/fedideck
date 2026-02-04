@@ -126,7 +126,10 @@ function App() {
         setIsStatusDetailOpen(true);
     };
 
-    const handleAccountClick = (account: mastodon.v1.Account, accountSessionId: string) => {
+    const handleAccountClick = (
+        account: mastodon.v1.Account,
+        accountSessionId: string | undefined
+    ) => {
         const accountSession = accounts.find((a) => a.id === accountSessionId);
         setProfileAccount(account);
         setProfileAccountSession(accountSession);
