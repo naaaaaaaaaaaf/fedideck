@@ -112,6 +112,7 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
                     </h2>
                     <button
                         ref={closeButtonRef}
+                        type="button"
                         onClick={onClose}
                         className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-slate-200"
                         aria-label="閉じる"
