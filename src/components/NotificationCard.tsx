@@ -358,6 +358,7 @@ export function NotificationCard({
                     {/* Media indicator */}
                     {status.mediaAttachments.length > 0 && (
                         <div className="flex gap-1 mt-2">
+<<<<<<< HEAD
                             {status.mediaAttachments.slice(0, 4).map((media, index) => {
                                 const isSensitive = status.sensitive ?? false;
                                 const needsBlur = isSensitive && !nsfwRevealed;
@@ -381,11 +382,39 @@ export function NotificationCard({
                                                 alt={media.description || '添付メディア'}
                                                 className="w-12 h-12 rounded object-cover nsfw-blur"
                                             />
+=======
+                            {status.mediaAttachments.slice(0, 4).map((media) => {
+                                const isSensitive = status.sensitive ?? false;
+                                const needsBlur = isSensitive && !nsfwRevealed;
+
+                                return (
+                                    <button
+                                        type="button"
+                                        key={media.id}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (isSensitive && !nsfwRevealed) {
+                                                handleNsfwToggle();
+                                            }
+                                        }}
+                                        className="relative overflow-hidden rounded object-cover w-12 h-12"
+                                        aria-label={media.description || '添付メディア'}
+                                    >
+                                        <img
+                                            src={media.previewUrl ?? media.url}
+                                            alt={media.description || '添付メディア'}
+                                            className={`w-12 h-12 rounded object-cover ${
+                                                needsBlur ? 'nsfw-blur' : ''
+                                            }`}
+                                        />
+                                        {needsBlur && (
+>>>>>>> 765c1b6 (feat: NotificationCardの閲覧注意画像にブラーを適用)
                                             <div className="nsfw-blur-overlay">
                                                 <span className="text-white text-xs font-medium">
                                                     閲覧注意
                                                 </span>
                                             </div>
+<<<<<<< HEAD
                                         </button>
                                     );
                                 }
@@ -398,6 +427,10 @@ export function NotificationCard({
                                         alt={media.description || '添付メディア'}
                                         className="w-12 h-12 rounded object-cover"
                                     />
+=======
+                                        )}
+                                    </button>
+>>>>>>> 765c1b6 (feat: NotificationCardの閲覧注意画像にブラーを適用)
                                 );
                             })}
                         </div>
