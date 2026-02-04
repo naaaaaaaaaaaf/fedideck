@@ -22,10 +22,10 @@ interface ColumnProps {
     accountId: string;
     stream: StreamConfig;
     onRemove?: () => void;
-    onReply?: (status: mastodon.v1.Status, accountId: string) => void;
-    onStatusClick?: (status: mastodon.v1.Status, accountId: string) => void;
+    onReply?: (status: mastodon.v1.Status, accountSessionId: string) => void;
+    onStatusClick?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
-    onAccountClick?: (account: mastodon.v1.Account, accountId: string) => void;
+    onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string) => void;
 }
 
 export function Column({
