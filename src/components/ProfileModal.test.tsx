@@ -120,7 +120,7 @@ describe('ProfileModal', () => {
 
     it('closes when backdrop is clicked', async () => {
         const user = userEvent.setup();
-        render(
+        const { container } = render(
             <ProfileModal
                 isOpen={true}
                 onClose={onClose}
@@ -129,10 +129,8 @@ describe('ProfileModal', () => {
             />
         );
 
-        const backdrop = screen
-            .getByText('プロフィール')
-            .closest('div')
-            ?.querySelector('[aria-hidden="true"]');
+        // Backdrop is a sibling of the modal, not a descendant of the header
+        const backdrop = container.querySelector('[aria-hidden="true"]');
         expect(backdrop).not.toBeNull();
         if (backdrop) {
             await user.click(backdrop);
