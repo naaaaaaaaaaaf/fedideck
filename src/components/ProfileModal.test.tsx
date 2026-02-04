@@ -158,7 +158,7 @@ describe('ProfileModal', () => {
         );
 
         await waitFor(() => {
-            expect(screen.getByText(/プロフィールの読み込みに失敗しました/)).toBeInTheDocument();
+            expect(screen.getByText(/追加情報の取得に失敗しました/)).toBeInTheDocument();
         });
 
         // Verify that console.error was called for the fetch failure

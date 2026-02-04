@@ -132,8 +132,10 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
                     )}
 
                     {/* Error message */}
-                    {error && !fullAccount && (
-                        <div className="text-center py-8 text-slate-500 text-sm">{error}</div>
+                    {error && !fullAccount && account && (
+                        <div className="text-center py-2 text-amber-400 text-xs mb-4">
+                            追加情報の取得に失敗しました
+                        </div>
                     )}
 
                     {/* Profile content */}
