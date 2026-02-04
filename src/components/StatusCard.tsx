@@ -109,8 +109,10 @@ export function StatusCard({
         }
     }, [isLoading.favourite, isLoading.reblog]);
 
-    // Note: nsfwRevealed state is automatically reset when status changes
-    // because StatusCard is rendered with key={status.id} in parent
+    // Reset nsfwRevealed when status changes
+    useEffect(() => {
+        setNsfwRevealed(false);
+    }, [displayStatus.id]);
 
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
@@ -468,13 +470,9 @@ export function StatusCard({
                                         return null; // Guard against mismatch
                                     }
 
-                                    const isSensitive = displayStatus.sensitive ?? false;
-                                    const needsBlur = isSensitive && !nsfwRevealed;
-
-                                    const accessibleLabel = needsBlur
-                                        ? `閲覧注意の画像を表示 (${imageIndex + 1}/${imageViewerImages.length})`
-                                        : media.description ||
-                                          `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
+                                    const accessibleLabel =
+                                        media.description ||
+                                        `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
 
                                     const isSensitive = displayStatus.sensitive ?? false;
                                     const needsBlur = isSensitive && !nsfwRevealed;
