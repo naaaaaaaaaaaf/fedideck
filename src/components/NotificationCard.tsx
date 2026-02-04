@@ -1,5 +1,5 @@
 import type { mastodon } from 'masto';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
     LuMessageCircle,
     LuRepeat2,
@@ -63,6 +63,15 @@ export function NotificationCard({
     const info = getNotificationInfo();
     const account = notification.account;
     const status = notification.status;
+
+    const [nsfwRevealed, setNsfwRevealed] = useState(false);
+
+    const handleNsfwToggle = () => {
+        setNsfwRevealed((prev) => !prev);
+    };
+
+    // Note: nsfwRevealed state is automatically reset when notification changes
+    // because NotificationCard is rendered with key={notification.id} in parent
 
     // Check if status area should be clickable
     const isStatusClickable = Boolean(status && onStatusClick);
@@ -349,14 +358,48 @@ export function NotificationCard({
                     {/* Media indicator */}
                     {status.mediaAttachments.length > 0 && (
                         <div className="flex gap-1 mt-2">
-                            {status.mediaAttachments.slice(0, 4).map((media) => (
-                                <img
-                                    key={media.id}
-                                    src={media.previewUrl ?? media.url}
-                                    alt={media.description || '添付メディア'}
-                                    className="w-12 h-12 rounded object-cover"
-                                />
-                            ))}
+                            {status.mediaAttachments.slice(0, 4).map((media, index) => {
+                                const isSensitive = status.sensitive ?? false;
+                                const needsBlur = isSensitive && !nsfwRevealed;
+                                const totalCount = status.mediaAttachments.length;
+
+                                // Sensitive & not yet revealed: use button for reveal interaction
+                                if (needsBlur) {
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={media.id}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleNsfwToggle();
+                                            }}
+                                            className="nsfw-blur-container w-12 h-12"
+                                            aria-label={`閲覧注意の画像を表示 (${index + 1}/${totalCount})`}
+                                        >
+                                            <img
+                                                src={media.previewUrl ?? media.url ?? ''}
+                                                alt={media.description || '添付メディア'}
+                                                className="w-12 h-12 rounded object-cover nsfw-blur"
+                                            />
+                                            <div className="nsfw-blur-overlay">
+                                                <span className="text-white text-xs font-medium">
+                                                    閲覧注意
+                                                </span>
+                                            </div>
+                                        </button>
+                                    );
+                                }
+
+                                // Non-sensitive or already revealed: use plain img for normal click-through behavior
+                                return (
+                                    <img
+                                        key={media.id}
+                                        src={media.previewUrl ?? media.url ?? ''}
+                                        alt={media.description || '添付メディア'}
+                                        className="w-12 h-12 rounded object-cover"
+                                    />
+                                );
+                            })}
                         </div>
                     )}
                 </div>

@@ -1223,4 +1223,167 @@ describe('StatusCard', () => {
             expect(accountLink).toHaveClass('min-w-0', 'max-w-full');
         });
     });
+
+    describe('NSFW blur', () => {
+        it('should apply blur class to sensitive images', () => {
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                        description: 'Sensitive image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            const img = screen.getByAltText('Sensitive image');
+            expect(img).toHaveClass('nsfw-blur');
+        });
+
+        it('should not apply blur to non-sensitive images', () => {
+            const status = createMockStatus({
+                sensitive: false,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                        description: 'Regular image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            const img = screen.getByAltText('Regular image');
+            expect(img).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should display overlay on sensitive images', () => {
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            expect(screen.getByText('閲覧注意')).toBeInTheDocument();
+        });
+
+        it('should reveal image on click when sensitive', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                        description: 'Sensitive image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            const img = screen.getByAltText('Sensitive image');
+            expect(img).toHaveClass('nsfw-blur');
+
+            const button = img.closest('button');
+            await user.click(button!);
+
+            expect(img).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should open ImageViewer on second click after reveal', async () => {
+            const user = userEvent.setup();
+            const onImageClick = vi.fn();
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                        description: 'Sensitive image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onImageClick={onImageClick} />);
+
+            // When blurred, button shows "閲覧注意の画像を表示 (1/1)"
+            const button = screen.getByRole('button', {
+                name: /閲覧注意の画像を表示/,
+            });
+
+            // First click reveals the image
+            await user.click(button);
+            expect(onImageClick).not.toHaveBeenCalled();
+
+            // Second click opens ImageViewer
+            await user.click(button);
+            expect(onImageClick).toHaveBeenCalledTimes(1);
+        });
+
+        it('should handle reblogged sensitive posts', () => {
+            const originalStatus = createMockStatus({
+                id: 'original-123',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                        description: 'Sensitive reblogged image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const reblogStatus = createMockStatus({
+                id: 'reblog-456',
+                reblog: originalStatus,
+            });
+
+            render(<StatusCard status={reblogStatus} />);
+
+            const img = screen.getByAltText('Sensitive reblogged image');
+            expect(img).toHaveClass('nsfw-blur');
+        });
+
+        it('should have proper ARIA labels for sensitive images', () => {
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            expect(button).toBeInTheDocument();
+        });
+    });
 });
