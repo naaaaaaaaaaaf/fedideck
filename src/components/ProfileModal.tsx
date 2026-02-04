@@ -157,7 +157,7 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
                             {/* Bio */}
                             {displayAccount.note && (
                                 <div
-                                    className="text-slate-300 text-sm mb-6 wrap-break-words profile-bio"
+                                    className="text-slate-300 text-sm mb-6 wrap-break-word profile-bio"
                                     dangerouslySetInnerHTML={{
                                         __html: replaceEmojisWithImages(
                                             displayAccount.note,
