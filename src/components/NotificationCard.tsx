@@ -21,9 +21,14 @@ import { DisplayName } from './DisplayName';
 interface NotificationCardProps {
     notification: mastodon.v1.Notification;
     onStatusClick?: (status: mastodon.v1.Status) => void;
+    onAccountClick?: (account: mastodon.v1.Account) => void;
 }
 
-export function NotificationCard({ notification, onStatusClick }: NotificationCardProps) {
+export function NotificationCard({
+    notification,
+    onStatusClick,
+    onAccountClick,
+}: NotificationCardProps) {
     const getNotificationInfo = (): { icon: ReactNode; label: string; color: string } => {
         switch (notification.type) {
             case 'mention':
@@ -102,27 +107,51 @@ export function NotificationCard({ notification, onStatusClick }: NotificationCa
                     {info.icon}
                 </span>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <a
-                        href={account.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0"
-                    >
-                        <img
-                            src={account.avatar}
-                            alt={account.displayName || account.username}
-                            className="w-6 h-6 rounded"
-                        />
-                    </a>
-                    <span className="text-sm truncate">
+                    {onAccountClick ? (
+                        <button
+                            onClick={() => onAccountClick(account)}
+                            className="shrink-0"
+                            aria-label={`${account.displayName || account.username}のプロフィールを表示`}
+                        >
+                            <img
+                                src={account.avatar}
+                                alt={account.displayName || account.username}
+                                className="w-6 h-6 rounded hover:opacity-80 transition-opacity"
+                            />
+                        </button>
+                    ) : (
                         <a
                             href={account.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="font-semibold text-slate-100 hover:underline"
+                            className="shrink-0"
                         >
-                            <DisplayName account={account} />
+                            <img
+                                src={account.avatar}
+                                alt={account.displayName || account.username}
+                                className="w-6 h-6 rounded"
+                            />
                         </a>
+                    )}
+                    <span className="text-sm truncate">
+                        {onAccountClick ? (
+                            <button
+                                onClick={() => onAccountClick(account)}
+                                className="font-semibold text-slate-100 hover:underline"
+                                aria-label={`${account.displayName || account.username}のプロフィールを表示`}
+                            >
+                                <DisplayName account={account} />
+                            </button>
+                        ) : (
+                            <a
+                                href={account.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-semibold text-slate-100 hover:underline"
+                            >
+                                <DisplayName account={account} />
+                            </a>
+                        )}
                         <span className="text-slate-400"> さんが{info.label}</span>
                     </span>
                 </div>

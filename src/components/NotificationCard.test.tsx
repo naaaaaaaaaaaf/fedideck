@@ -661,4 +661,99 @@ describe('NotificationCard', () => {
             expect(statusArea).not.toHaveAttribute('tabIndex');
         });
     });
+
+    describe('account click', () => {
+        it('should call onAccountClick when avatar is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus(),
+            });
+
+            render(
+                <NotificationCard notification={notification} onAccountClick={onAccountClick} />
+            );
+
+            const avatars = screen.getAllByAltText('Test User');
+            await user.click(avatars[0]);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '1',
+                    username: 'testuser',
+                })
+            );
+        });
+
+        it('should call onAccountClick when display name is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus(),
+            });
+
+            render(
+                <NotificationCard notification={notification} onAccountClick={onAccountClick} />
+            );
+
+            const displayName = screen.getByText('Test User');
+            await user.click(displayName);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '1',
+                    displayName: 'Test User',
+                })
+            );
+        });
+
+        it('should NOT trigger status click when avatar is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus(),
+            });
+
+            render(
+                <NotificationCard
+                    notification={notification}
+                    onAccountClick={onAccountClick}
+                    onStatusClick={onStatusClick}
+                />
+            );
+
+            const avatars = screen.getAllByAltText('Test User');
+            await user.click(avatars[0]);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should work with follow notification', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const notification = createMockNotification('follow', {
+                account: createMockAccount({
+                    displayName: 'Follower Name',
+                }),
+            });
+
+            render(
+                <NotificationCard notification={notification} onAccountClick={onAccountClick} />
+            );
+
+            // Click the avatar in header (first one)
+            const avatars = screen.getAllByAltText('Follower Name');
+            await user.click(avatars[0]);
+
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    displayName: 'Follower Name',
+                })
+            );
+        });
+    });
 });
