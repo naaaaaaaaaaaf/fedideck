@@ -29,8 +29,9 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
         modalRef,
     });
 
-    // Reset state when modal closes or account changes
+    // Reset state when modal closes or account changes, then fetch if available
     useEffect(() => {
+        // Reset state when modal closes
         if (!isOpen) {
             setFullAccount(null);
             setError(null);
@@ -38,7 +39,13 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
             return;
         }
 
+        // Reset state when account changes (modal stays open but different account)
+        setFullAccount(null);
+        setError(null);
+
+        // Only fetch if we have both account and session
         if (!account || !accountSession) {
+            setIsLoading(false);
             return;
         }
 
@@ -46,7 +53,6 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
 
         const fetchFullAccount = async () => {
             setIsLoading(true);
-            setError(null);
 
             try {
                 const client: MastoClient = getClient(accountSession);
