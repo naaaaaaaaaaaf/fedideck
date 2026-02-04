@@ -756,4 +756,120 @@ describe('NotificationCard', () => {
             );
         });
     });
+
+    describe('NSFW blur', () => {
+        it('should apply blur to sensitive media in notifications', () => {
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            render(<NotificationCard notification={notification} />);
+
+            const img = screen.getByAltText('添付メディア');
+            expect(img).toHaveClass('nsfw-blur');
+        });
+
+        it('should not apply blur to non-sensitive media', () => {
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: false,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            render(<NotificationCard notification={notification} />);
+
+            const img = screen.getByAltText('添付メディア');
+            expect(img).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should display overlay text on sensitive media', () => {
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            render(<NotificationCard notification={notification} />);
+
+            expect(screen.getByText('閲覧注意')).toBeInTheDocument();
+        });
+
+        it('should reveal media on click when sensitive', async () => {
+            const user = userEvent.setup();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            render(<NotificationCard notification={notification} />);
+
+            const img = screen.getByAltText('添付メディア');
+            expect(img).toHaveClass('nsfw-blur');
+
+            const button = img.closest('button');
+            await user.click(button!);
+
+            expect(img).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should support keyboard navigation for reveal', async () => {
+            const user = userEvent.setup();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            render(<NotificationCard notification={notification} />);
+
+            const button = screen.getByRole('button', { name: '添付メディア' });
+            await user.click(button);
+
+            const img = screen.getByAltText('添付メディア');
+            expect(img).not.toHaveClass('nsfw-blur');
+        });
+    });
 });
