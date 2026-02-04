@@ -87,10 +87,12 @@ body {
 }
 
 /* Status content styling */
-.status-content p {
+.status-content p,
+.profile-bio p {
     margin: 0 0 0.75em 0;
 }
-.status-content p:last-child {
+.status-content p:last-child,
+.profile-bio p:last-child {
     margin-bottom: 0;
 }
 
