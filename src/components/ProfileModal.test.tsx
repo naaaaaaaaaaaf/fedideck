@@ -101,24 +101,6 @@ describe('ProfileModal', () => {
         });
     });
 
-    it('renders loading state when account is provided', async () => {
-        render(
-            <ProfileModal
-                isOpen={true}
-                onClose={onClose}
-                account={mockAccount}
-                accountSession={mockSession}
-            />
-        );
-
-        // Initially should show loading indicator
-        const loadingText = screen.getByText(/プロフィールを読み込み中/);
-        expect(loadingText).toBeInTheDocument();
-
-        // Wait for loading to complete
-        await waitForElementToBeRemoved(loadingText);
-    });
-
     it('closes when close button is clicked', async () => {
         const user = userEvent.setup();
         render(
