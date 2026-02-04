@@ -147,3 +147,34 @@ body {
     vertical-align: middle;
     margin: 0 0.1em;
 }
+
+/* NSFW/Sensitive Image Blur */
+.nsfw-blur {
+    filter: blur(32px);
+    transition: filter 0.2s ease-in-out;
+    cursor: pointer;
+}
+
+.nsfw-blur:hover {
+    filter: blur(28px);
+}
+
+.nsfw-blur.revealed {
+    filter: blur(0);
+}
+
+.nsfw-blur-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.nsfw-blur-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.3);
+    pointer-events: none;
+    transition: opacity 0.2s ease-in-out;
+}
