@@ -291,3 +291,14 @@ export async function fetchCustomEmojis(client: MastoClient): Promise<CustomEmoj
         category: emoji.category ?? null,
     }));
 }
+
+/**
+ * Fetch account by ID
+ */
+export async function fetchAccount(
+    client: MastoClient,
+    accountId: string
+): Promise<mastodon.v1.Account> {
+    const account = await client.v1.accounts.$select(accountId).fetch();
+    return account;
+}
