@@ -1327,9 +1327,9 @@ describe('StatusCard', () => {
 
             render(<StatusCard status={status} onImageClick={onImageClick} />);
 
-            // When blurred, button shows "閲覧注意の画像を表示"
+            // When blurred, button shows "閲覧注意の画像を表示 (1/1)"
             const button = screen.getByRole('button', {
-                name: '閲覧注意の画像を表示',
+                name: /閲覧注意の画像を表示/,
             });
 
             // First click reveals the image
@@ -1382,7 +1382,7 @@ describe('StatusCard', () => {
 
             render(<StatusCard status={status} />);
 
-            const button = screen.getByRole('button', { name: '閲覧注意の画像を表示' });
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
             expect(button).toBeInTheDocument();
         });
     });

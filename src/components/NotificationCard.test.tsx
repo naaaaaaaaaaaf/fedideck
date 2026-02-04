@@ -839,7 +839,7 @@ describe('NotificationCard', () => {
             render(<NotificationCard notification={notification} />);
 
             // Initially should have button and blurred image
-            const button = screen.getByRole('button', { name: '閲覧注意の画像を表示' });
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
             expect(button).toBeInTheDocument();
             const img = screen.getByAltText('添付メディア');
             expect(img).toHaveClass('nsfw-blur');
@@ -871,7 +871,7 @@ describe('NotificationCard', () => {
 
             render(<NotificationCard notification={notification} />);
 
-            const button = screen.getByRole('button', { name: '閲覧注意の画像を表示' });
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
             button.focus();
             await user.keyboard('{Enter}');
 
@@ -899,7 +899,7 @@ describe('NotificationCard', () => {
 
             render(<NotificationCard notification={notification} />);
 
-            const button = screen.getByRole('button', { name: '閲覧注意の画像を表示' });
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
             button.focus();
             await user.keyboard(' ');
 
@@ -955,7 +955,7 @@ describe('NotificationCard', () => {
             render(<NotificationCard notification={notification} />);
 
             // Initially should have button for sensitive image
-            const button = screen.getByRole('button', { name: '閲覧注意の画像を表示' });
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
             expect(button).toBeInTheDocument();
 
             // Click to reveal
@@ -991,7 +991,7 @@ describe('NotificationCard', () => {
             render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
 
             // First, reveal the image
-            const button = screen.getByRole('button', { name: '閲覧注意の画像を表示' });
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
             await user.click(button);
 
             // Reset mock to clear the first click (which was on the button)

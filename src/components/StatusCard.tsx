@@ -472,7 +472,7 @@ export function StatusCard({
                                     const needsBlur = isSensitive && !nsfwRevealed;
 
                                     const accessibleLabel = needsBlur
-                                        ? '閲覧注意の画像を表示'
+                                        ? `閲覧注意の画像を表示 (${imageIndex + 1}/${imageViewerImages.length})`
                                         : media.description ||
                                           `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
 

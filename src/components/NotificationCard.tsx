@@ -358,9 +358,10 @@ export function NotificationCard({
                     {/* Media indicator */}
                     {status.mediaAttachments.length > 0 && (
                         <div className="flex gap-1 mt-2">
-                            {status.mediaAttachments.slice(0, 4).map((media) => {
+                            {status.mediaAttachments.slice(0, 4).map((media, index) => {
                                 const isSensitive = status.sensitive ?? false;
                                 const needsBlur = isSensitive && !nsfwRevealed;
+                                const totalCount = status.mediaAttachments.length;
 
                                 // Sensitive & not yet revealed: use button for reveal interaction
                                 if (needsBlur) {
@@ -373,10 +374,10 @@ export function NotificationCard({
                                                 handleNsfwToggle();
                                             }}
                                             className="nsfw-blur-container w-12 h-12"
-                                            aria-label="閲覧注意の画像を表示"
+                                            aria-label={`閲覧注意の画像を表示 (${index + 1}/${totalCount})`}
                                         >
                                             <img
-                                                src={media.previewUrl ?? media.url}
+                                                src={media.previewUrl ?? media.url ?? ''}
                                                 alt={media.description || '添付メディア'}
                                                 className="w-12 h-12 rounded object-cover nsfw-blur"
                                             />
@@ -393,7 +394,7 @@ export function NotificationCard({
                                 return (
                                     <img
                                         key={media.id}
-                                        src={media.previewUrl ?? media.url}
+                                        src={media.previewUrl ?? media.url ?? ''}
                                         alt={media.description || '添付メディア'}
                                         className="w-12 h-12 rounded object-cover"
                                     />
