@@ -152,7 +152,15 @@ export function NotificationCard({
                     {info.icon}
                 </span>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {onAccountClick ? (
+                    {isCardClickable ? (
+                        // Card is clickable - use non-interactive elements
+                        <img
+                            src={account.avatar}
+                            alt={account.displayName || account.username}
+                            className="w-6 h-6 rounded hover:opacity-80 transition-opacity shrink-0"
+                        />
+                    ) : onAccountClick ? (
+                        // Card not clickable but has onAccountClick - use button
                         <button
                             type="button"
                             onClick={() => onAccountClick(account)}
@@ -166,6 +174,7 @@ export function NotificationCard({
                             />
                         </button>
                     ) : (
+                        // No onAccountClick - use external link
                         <a
                             href={account.url}
                             target="_blank"
@@ -180,7 +189,13 @@ export function NotificationCard({
                         </a>
                     )}
                     <span className="text-sm truncate">
-                        {onAccountClick ? (
+                        {isCardClickable ? (
+                            // Card is clickable - use span with visual hover effect
+                            <span className="font-semibold text-slate-100 hover:underline">
+                                <DisplayName account={account} />
+                            </span>
+                        ) : onAccountClick ? (
+                            // Card not clickable but has onAccountClick - use button
                             <button
                                 type="button"
                                 onClick={() => onAccountClick(account)}
@@ -190,6 +205,7 @@ export function NotificationCard({
                                 <DisplayName account={account} />
                             </button>
                         ) : (
+                            // No onAccountClick - use external link
                             <a
                                 href={account.url}
                                 target="_blank"
@@ -211,7 +227,15 @@ export function NotificationCard({
             {(notification.type === 'follow' || notification.type === 'follow_request') && (
                 <div className="ml-9 p-3 bg-slate-800/50 rounded-lg">
                     <div className="flex items-start gap-3">
-                        {onAccountClick ? (
+                        {isCardClickable ? (
+                            // Card is clickable - use non-interactive img
+                            <img
+                                src={account.avatar}
+                                alt={account.displayName || account.username}
+                                className="w-12 h-12 rounded-lg hover:opacity-80 transition-opacity shrink-0"
+                            />
+                        ) : onAccountClick ? (
+                            // Card not clickable but has onAccountClick - use button
                             <button
                                 type="button"
                                 onClick={() => onAccountClick(account)}
@@ -225,6 +249,7 @@ export function NotificationCard({
                                 />
                             </button>
                         ) : (
+                            // No onAccountClick - plain img
                             <img
                                 src={account.avatar}
                                 alt={account.displayName || account.username}
@@ -232,7 +257,13 @@ export function NotificationCard({
                             />
                         )}
                         <div className="min-w-0 flex-1">
-                            {onAccountClick ? (
+                            {isCardClickable ? (
+                                // Card is clickable - use span with visual hover effect
+                                <span className="font-semibold text-slate-100 truncate text-left w-full hover:underline">
+                                    <DisplayName account={account} />
+                                </span>
+                            ) : onAccountClick ? (
+                                // Card not clickable but has onAccountClick - use button
                                 <button
                                     type="button"
                                     onClick={() => onAccountClick(account)}
@@ -242,6 +273,7 @@ export function NotificationCard({
                                     <DisplayName account={account} />
                                 </button>
                             ) : (
+                                // No onAccountClick - plain DisplayName
                                 <DisplayName
                                     account={account}
                                     className="font-semibold text-slate-100 truncate block"
