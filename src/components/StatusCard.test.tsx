@@ -1081,7 +1081,7 @@ describe('StatusCard', () => {
             );
         });
 
-        it('should call onAccountClick with correct accountId when accountSession is provided', async () => {
+        it('should call onAccountClick with correct accountSessionId when accountSession is provided', async () => {
             const user = userEvent.setup();
             const onAccountClick = vi.fn();
             const status = createMockStatus();

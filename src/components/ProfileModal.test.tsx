@@ -172,14 +172,8 @@ describe('ProfileModal', () => {
             note: '',
         };
 
-        render(
-            <ProfileModal
-                isOpen={true}
-                onClose={onClose}
-                account={minimalAccount}
-                accountSession={mockSession}
-            />
-        );
+        // Don't pass accountSession so fetch doesn't run and overwrite minimalAccount
+        render(<ProfileModal isOpen={true} onClose={onClose} account={minimalAccount} />);
 
         await waitFor(() => {
             expect(screen.getByText('@testuser@mastodon.social')).toBeInTheDocument();
