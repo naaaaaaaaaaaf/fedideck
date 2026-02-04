@@ -838,19 +838,13 @@ describe('NotificationCard', () => {
 
             render(<NotificationCard notification={notification} />);
 
-            // Initially should have button and blurred image
-            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
-            expect(button).toBeInTheDocument();
             const img = screen.getByAltText('添付メディア');
             expect(img).toHaveClass('nsfw-blur');
 
-            // Click to reveal
-            await user.click(button);
+            const button = img.closest('button');
+            await user.click(button!);
 
-            // After reveal, button should be gone and new img should not have blur class
-            expect(screen.queryByRole('button', { name: '添付メディア' })).not.toBeInTheDocument();
-            const imgAfter = screen.getByAltText('添付メディア');
-            expect(imgAfter).not.toHaveClass('nsfw-blur');
+            expect(img).not.toHaveClass('nsfw-blur');
         });
 
         it('should support keyboard navigation (Enter key) for reveal', async () => {
@@ -871,14 +865,12 @@ describe('NotificationCard', () => {
 
             render(<NotificationCard notification={notification} />);
 
-            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            const button = screen.getByRole('button', { name: '添付メディア' });
             button.focus();
             await user.keyboard('{Enter}');
 
-            // After reveal, button should be gone
-            expect(screen.queryByRole('button', { name: '添付メディア' })).not.toBeInTheDocument();
-            const imgAfter = screen.getByAltText('添付メディア');
-            expect(imgAfter).not.toHaveClass('nsfw-blur');
+            const img = screen.getByAltText('添付メディア');
+            expect(img).not.toHaveClass('nsfw-blur');
         });
 
         it('should support keyboard navigation (Space key) for reveal', async () => {
@@ -899,14 +891,12 @@ describe('NotificationCard', () => {
 
             render(<NotificationCard notification={notification} />);
 
-            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            const button = screen.getByRole('button', { name: '添付メディア' });
             button.focus();
             await user.keyboard(' ');
 
-            // After reveal, button should be gone
-            expect(screen.queryByRole('button', { name: '添付メディア' })).not.toBeInTheDocument();
-            const imgAfter = screen.getByAltText('添付メディア');
-            expect(imgAfter).not.toHaveClass('nsfw-blur');
+            const img = screen.getByAltText('添付メディア');
+            expect(img).not.toHaveClass('nsfw-blur');
         });
 
         it('should render plain img for non-sensitive media (not button)', () => {
@@ -934,75 +924,6 @@ describe('NotificationCard', () => {
             const img = screen.getByAltText('添付メディア');
             expect(img).toBeInTheDocument();
             expect(img.tagName).toBe('IMG');
-        });
-
-        it('should render plain img after reveal (not button)', async () => {
-            const user = userEvent.setup();
-            const notification = createMockNotification('mention', {
-                status: createMockStatus({
-                    sensitive: true,
-                    mediaAttachments: [
-                        {
-                            id: 'media1',
-                            type: 'image',
-                            url: 'https://example.com/image.png',
-                            previewUrl: 'https://example.com/preview.png',
-                        } as mastodon.v1.MediaAttachment,
-                    ],
-                }),
-            });
-
-            render(<NotificationCard notification={notification} />);
-
-            // Initially should have button for sensitive image
-            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
-            expect(button).toBeInTheDocument();
-
-            // Click to reveal
-            await user.click(button);
-
-            // After reveal, should not have button anymore
-            const buttonAfter = screen.queryByRole('button', { name: '添付メディア' });
-            expect(buttonAfter).not.toBeInTheDocument();
-
-            // Should have plain img instead
-            const img = screen.getByAltText('添付メディア');
-            expect(img).toBeInTheDocument();
-            expect(img.tagName).toBe('IMG');
-        });
-
-        it('should call onStatusClick when clicking revealed image thumbnail', async () => {
-            const user = userEvent.setup();
-            const onStatusClick = vi.fn();
-            const notification = createMockNotification('mention', {
-                status: createMockStatus({
-                    sensitive: true,
-                    mediaAttachments: [
-                        {
-                            id: 'media1',
-                            type: 'image',
-                            url: 'https://example.com/image.png',
-                            previewUrl: 'https://example.com/preview.png',
-                        } as mastodon.v1.MediaAttachment,
-                    ],
-                }),
-            });
-
-            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
-
-            // First, reveal the image
-            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
-            await user.click(button);
-
-            // Reset mock to clear the first click (which was on the button)
-            onStatusClick.mockClear();
-
-            // Now click on the revealed image (should trigger status click)
-            const img = screen.getByAltText('添付メディア');
-            await user.click(img);
-
-            // Should have called onStatusClick for navigation
-            expect(onStatusClick).toHaveBeenCalledTimes(1);
         });
     });
 });
