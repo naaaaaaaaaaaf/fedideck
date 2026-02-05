@@ -25,6 +25,9 @@ function App() {
     const [detailStatus, setDetailStatus] = useState<mastodon.v1.Status | null>(null);
     const [detailAccountSession, setDetailAccountSession] = useState<AccountSession | undefined>();
 
+    // NSFW revealed status IDs (for syncing between StatusCard and StatusDetailModal)
+    const [nsfwRevealedStatusIds, setNsfwRevealedStatusIds] = useState<Set<string>>(new Set());
+
     // Profile modal state
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [profileAccount, setProfileAccount] = useState<mastodon.v1.Account | null>(null);
@@ -185,6 +188,9 @@ function App() {
                     onStatusClick={handleStatusClick}
                     onImageClick={handleImageClick}
                     onAccountClick={handleAccountClick}
+                    onNsfwReveal={(statusId) => {
+                        setNsfwRevealedStatusIds((prev) => new Set(prev).add(statusId));
+                    }}
                 />
             </main>
 
@@ -212,6 +218,12 @@ function App() {
                 onReply={handleStatusDetailReply}
                 onStatusUpdate={updateStatusGlobal}
                 onImageClick={handleImageClick}
+                nsfwRevealed={detailStatus ? nsfwRevealedStatusIds.has(detailStatus.id) : undefined}
+                onNsfwReveal={() => {
+                    if (detailStatus) {
+                        setNsfwRevealedStatusIds((prev) => new Set(prev).add(detailStatus.id));
+                    }
+                }}
             />
             <ProfileModal
                 isOpen={isProfileModalOpen}
