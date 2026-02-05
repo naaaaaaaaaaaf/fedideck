@@ -73,8 +73,7 @@ export function NotificationCard({
         setNsfwRevealed((prev) => {
             const newValue = !prev;
             // Call onNsfwReveal when revealing (not when hiding)
-            if (newValue && onNsfwReveal && status) {
-                const displayStatus = status.reblog ?? status;
+            if (newValue && onNsfwReveal && displayStatus) {
                 onNsfwReveal(displayStatus.id);
             }
             return newValue;
