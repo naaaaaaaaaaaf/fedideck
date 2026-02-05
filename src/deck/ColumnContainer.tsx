@@ -13,6 +13,7 @@ interface ColumnContainerProps {
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
+    nsfwRevealedStatusIds?: Set<string>;
 }
 
 export function ColumnContainer({
@@ -22,6 +23,7 @@ export function ColumnContainer({
     onImageClick,
     onAccountClick,
     onNsfwReveal,
+    nsfwRevealedStatusIds,
 }: ColumnContainerProps) {
     const columns = useColumnsStore((state) => state.columns);
     const removeColumn = useColumnsStore((state) => state.removeColumn);
@@ -46,6 +48,7 @@ export function ColumnContainer({
                     onImageClick={onImageClick}
                     onAccountClick={onAccountClick}
                     onNsfwReveal={onNsfwReveal}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
                 />
             ))}
 

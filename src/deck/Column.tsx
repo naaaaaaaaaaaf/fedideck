@@ -27,6 +27,7 @@ interface ColumnProps {
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
+    nsfwRevealedStatusIds?: Set<string>;
 }
 
 export function Column({
@@ -38,6 +39,7 @@ export function Column({
     onImageClick,
     onAccountClick,
     onNsfwReveal,
+    nsfwRevealedStatusIds,
 }: ColumnProps) {
     const account = useAccountsStore((state) => state.accounts.find((a) => a.id === accountId));
     const streamKey = getStreamKey(accountId, stream.type, stream);
@@ -282,6 +284,7 @@ export function Column({
                                 onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
                             }
                             onNsfwReveal={onNsfwReveal}
+                            nsfwRevealedStatusIds={nsfwRevealedStatusIds}
                         />
                     ))}
 

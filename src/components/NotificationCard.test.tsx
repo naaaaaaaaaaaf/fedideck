@@ -1068,5 +1068,66 @@ describe('NotificationCard', () => {
             expect(onNsfwReveal).toHaveBeenCalledTimes(1);
             expect(onNsfwReveal).toHaveBeenCalledWith('original-123');
         });
+
+        it('should check nsfwRevealedStatusIds for current displayStatus.id', () => {
+            const status1 = createMockStatus({
+                id: 'status-1',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive1.png',
+                        description: 'Sensitive image 1',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const status2 = createMockStatus({
+                id: 'status-2',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '2',
+                        type: 'image',
+                        url: 'https://example.com/sensitive2.png',
+                        description: 'Sensitive image 2',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            // status1は表示済み、status2は未表示
+            const nsfwRevealedStatusIds = new Set(['status-1']);
+
+            const notification1 = createMockNotification('mention', {
+                status: status1,
+            });
+
+            const notification2 = createMockNotification('mention', {
+                status: status2,
+            });
+
+            // status1は表示済みなのでぼかしなし
+            render(
+                <NotificationCard
+                    notification={notification1}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                />
+            );
+
+            const img1 = screen.getByAltText('Sensitive image 1');
+            expect(img1).not.toHaveClass('nsfw-blur');
+
+            // status2は未表示なのでぼかしあり
+            render(
+                <NotificationCard
+                    notification={notification2}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                />
+            );
+
+            const img2 = screen.getByAltText('Sensitive image 2');
+            expect(img2).toHaveClass('nsfw-blur');
+        });
     });
 });

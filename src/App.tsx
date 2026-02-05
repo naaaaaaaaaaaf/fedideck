@@ -191,6 +191,7 @@ function App() {
                     onNsfwReveal={(statusId) => {
                         setNsfwRevealedStatusIds((prev) => new Set(prev).add(statusId));
                     }}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
                 />
             </main>
 

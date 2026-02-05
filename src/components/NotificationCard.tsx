@@ -23,6 +23,7 @@ interface NotificationCardProps {
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onAccountClick?: (account: mastodon.v1.Account) => void;
     onNsfwReveal?: (statusId: string) => void;
+    nsfwRevealedStatusIds?: Set<string>;
 }
 
 export function NotificationCard({
@@ -30,6 +31,7 @@ export function NotificationCard({
     onStatusClick,
     onAccountClick,
     onNsfwReveal,
+    nsfwRevealedStatusIds,
 }: NotificationCardProps) {
     const getNotificationInfo = (): { icon: ReactNode; label: string; color: string } => {
         switch (notification.type) {
@@ -67,17 +69,25 @@ export function NotificationCard({
     const status = notification.status;
     const displayStatus = status?.reblog ?? status;
 
-    const [nsfwRevealed, setNsfwRevealed] = useState(false);
+    // NSFW state: controlled from parent or local
+    const isControlled = nsfwRevealedStatusIds !== undefined;
+    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
+    const nsfwRevealed = isControlled
+        ? displayStatus
+            ? nsfwRevealedStatusIds.has(displayStatus.id)
+            : false
+        : localNsfwRevealed;
 
     const handleNsfwToggle = () => {
-        setNsfwRevealed((prev) => {
-            const newValue = !prev;
-            // Call onNsfwReveal when revealing (not when hiding)
-            if (newValue && onNsfwReveal && displayStatus) {
-                onNsfwReveal(displayStatus.id);
-            }
-            return newValue;
-        });
+        // Always notify parent when revealing (not when hiding)
+        if (!nsfwRevealed && onNsfwReveal && displayStatus) {
+            onNsfwReveal(displayStatus.id);
+        }
+
+        // Update local state if not controlled
+        if (!isControlled) {
+            setLocalNsfwRevealed((prev) => !prev);
+        }
     };
 
     // Note: nsfwRevealed state is automatically reset when notification changes
