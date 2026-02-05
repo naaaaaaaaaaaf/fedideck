@@ -203,6 +203,7 @@ export function StatusDetailModal({
     const [localReblogged, setLocalReblogged] = useState(false);
     const [localReblogsCount, setLocalReblogsCount] = useState(0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
+    const [nsfwRevealed, setNsfwRevealed] = useState(false);
 
     // Thread navigation state
     const [navigatedStatus, setNavigatedStatus] = useState<mastodon.v1.Status | null>(null);
@@ -242,6 +243,7 @@ export function StatusDetailModal({
             setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
             setLocalReblogged(displayStatus.reblogged ?? false);
             setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
+            setNsfwRevealed(false);
         }
     }, [displayStatus, isOpen]);
 
@@ -406,6 +408,10 @@ export function StatusDetailModal({
         } finally {
             setIsLoading((prev) => ({ ...prev, reblog: false }));
         }
+    };
+
+    const handleNsfwToggle = () => {
+        setNsfwRevealed((prev) => !prev);
     };
 
     const handleReply = () => {
@@ -582,24 +588,44 @@ export function StatusDetailModal({
                                             return null; // Guard against mismatch
                                         }
 
-                                        const accessibleLabel =
-                                            media.description ||
-                                            `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
+                                        const isSensitive = displayStatus.sensitive ?? false;
+                                        const needsBlur = isSensitive && !nsfwRevealed;
+
+                                        const accessibleLabel = needsBlur
+                                            ? `閲覧注意の画像を表示 (${imageIndex + 1}/${imageViewerImages.length})`
+                                            : media.description ||
+                                              `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
 
                                         return (
                                             <button
                                                 key={media.id}
-                                                onClick={() =>
-                                                    onImageClick?.(imageViewerImages, imageIndex)
-                                                }
-                                                className="block overflow-hidden rounded-xl text-left"
+                                                onClick={() => {
+                                                    if (isSensitive && !nsfwRevealed) {
+                                                        handleNsfwToggle();
+                                                    } else {
+                                                        onImageClick?.(
+                                                            imageViewerImages,
+                                                            imageIndex
+                                                        );
+                                                    }
+                                                }}
+                                                className="block overflow-hidden rounded-xl text-left nsfw-blur-container"
                                                 aria-label={accessibleLabel}
                                             >
                                                 <img
                                                     src={media.url ?? media.previewUrl ?? ''}
                                                     alt={media.description ?? ''}
-                                                    className="w-full max-h-96 object-contain bg-slate-800 hover:opacity-90 transition-opacity"
+                                                    className={`w-full max-h-96 object-contain bg-slate-800 transition-opacity ${
+                                                        needsBlur ? 'nsfw-blur' : 'hover:opacity-90'
+                                                    }`}
                                                 />
+                                                {needsBlur && (
+                                                    <div className="nsfw-blur-overlay">
+                                                        <span className="text-white text-sm font-medium">
+                                                            閲覧注意
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </button>
                                         );
                                     }
