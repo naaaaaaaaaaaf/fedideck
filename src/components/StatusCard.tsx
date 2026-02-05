@@ -31,6 +31,7 @@ interface StatusCardProps {
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
+    onNsfwReveal?: () => void;
 }
 
 export function StatusCard({
@@ -42,6 +43,7 @@ export function StatusCard({
     onStatusClick,
     onImageClick,
     onAccountClick,
+    onNsfwReveal,
 }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
@@ -208,7 +210,14 @@ export function StatusCard({
     };
 
     const handleNsfwToggle = () => {
-        setNsfwRevealed((prev) => !prev);
+        setNsfwRevealed((prev) => {
+            const newValue = !prev;
+            // Call onNsfwReveal when revealing (not when hiding)
+            if (newValue && onNsfwReveal) {
+                onNsfwReveal();
+            }
+            return newValue;
+        });
     };
 
     // Check if reblog is allowed (not for private/direct messages)
