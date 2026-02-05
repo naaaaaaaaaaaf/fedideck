@@ -35,7 +35,7 @@ interface StatusDetailModalProps {
     onStatusUpdate?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     // NSFW blur state from parent (optional - for syncing with StatusCard)
-    nsfwRevealed?: boolean;
+    nsfwRevealedStatusIds?: Set<string>;
     onNsfwReveal?: (statusId: string) => void;
 }
 
@@ -200,22 +200,29 @@ export function StatusDetailModal({
     onReply,
     onStatusUpdate,
     onImageClick,
-    nsfwRevealed: parentNsfwRevealed,
+    nsfwRevealedStatusIds,
     onNsfwReveal,
 }: StatusDetailModalProps) {
+    // Thread navigation state
+    const [navigatedStatus, setNavigatedStatus] = useState<mastodon.v1.Status | null>(null);
+
+    // Get the display status (navigated > original reblog > original)
+    const displayStatus = navigatedStatus ?? status?.reblog ?? status;
+
     // NSFW state: controlled from parent or local
-    const isControlled = parentNsfwRevealed !== undefined;
+    const isControlled = nsfwRevealedStatusIds !== undefined;
     const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-    const nsfwRevealed = isControlled ? parentNsfwRevealed : localNsfwRevealed;
+
+    // Check if current status is revealed (controlled) or use local state
+    const nsfwRevealed = isControlled
+        ? displayStatus && nsfwRevealedStatusIds.has(displayStatus.id)
+        : localNsfwRevealed;
 
     const [localFavourited, setLocalFavourited] = useState(false);
     const [localFavouritesCount, setLocalFavouritesCount] = useState(0);
     const [localReblogged, setLocalReblogged] = useState(false);
     const [localReblogsCount, setLocalReblogsCount] = useState(0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
-
-    // Thread navigation state
-    const [navigatedStatus, setNavigatedStatus] = useState<mastodon.v1.Status | null>(null);
 
     // Thread context state
     const [context, setContext] = useState<StatusContext | null>(null);
@@ -226,9 +233,6 @@ export function StatusDetailModal({
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const mainStatusRef = useRef<HTMLDivElement>(null);
-
-    // Get the display status (navigated > original reblog > original)
-    const displayStatus = navigatedStatus ?? status?.reblog ?? status;
 
     const { handleKeyDown } = useModalAccessibility({
         isOpen,

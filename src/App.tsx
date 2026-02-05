@@ -218,7 +218,7 @@ function App() {
                 onReply={handleStatusDetailReply}
                 onStatusUpdate={updateStatusGlobal}
                 onImageClick={handleImageClick}
-                nsfwRevealed={detailStatus ? nsfwRevealedStatusIds.has(detailStatus.id) : undefined}
+                nsfwRevealedStatusIds={nsfwRevealedStatusIds}
                 onNsfwReveal={(statusId) => {
                     setNsfwRevealedStatusIds((prev) => new Set(prev).add(statusId));
                 }}
