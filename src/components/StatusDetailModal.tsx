@@ -427,7 +427,7 @@ export function StatusDetailModal({
     };
 
     const handleNsfwToggle = () => {
-        const newValue = isControlled ? !parentNsfwRevealed : !localNsfwRevealed;
+        const newValue = !nsfwRevealed;
 
         // Always notify parent when revealing (not when hiding)
         if (newValue && onNsfwReveal) {
