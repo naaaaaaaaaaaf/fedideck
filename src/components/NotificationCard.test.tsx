@@ -1004,5 +1004,69 @@ describe('NotificationCard', () => {
             // Should have called onStatusClick for navigation
             expect(onStatusClick).toHaveBeenCalledTimes(1);
         });
+
+        it('should call onNsfwReveal with status.id when revealing sensitive image', async () => {
+            const user = userEvent.setup();
+            const onNsfwReveal = vi.fn();
+
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    id: 'status-123',
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/sensitive.png',
+                            previewUrl: 'https://example.com/sensitive-preview.png',
+                            description: 'Sensitive image',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            render(<NotificationCard notification={notification} onNsfwReveal={onNsfwReveal} />);
+
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            await user.click(button);
+
+            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
+            expect(onNsfwReveal).toHaveBeenCalledWith('status-123');
+        });
+
+        it('should call onNsfwReveal with reblogged status.id when revealing', async () => {
+            const user = userEvent.setup();
+            const onNsfwReveal = vi.fn();
+
+            const originalStatus = createMockStatus({
+                id: 'original-123',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: 'media1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive.png',
+                        previewUrl: 'https://example.com/sensitive-preview.png',
+                        description: 'Sensitive reblogged image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    id: 'reblog-456',
+                    reblog: originalStatus,
+                }),
+            });
+
+            render(<NotificationCard notification={notification} onNsfwReveal={onNsfwReveal} />);
+
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            await user.click(button);
+
+            // displayStatus.id（original-123）が通知されるべき
+            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
+            expect(onNsfwReveal).toHaveBeenCalledWith('original-123');
+        });
     });
 });

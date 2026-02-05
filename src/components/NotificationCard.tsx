@@ -22,12 +22,14 @@ interface NotificationCardProps {
     notification: mastodon.v1.Notification;
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onAccountClick?: (account: mastodon.v1.Account) => void;
+    onNsfwReveal?: (statusId: string) => void;
 }
 
 export function NotificationCard({
     notification,
     onStatusClick,
     onAccountClick,
+    onNsfwReveal,
 }: NotificationCardProps) {
     const getNotificationInfo = (): { icon: ReactNode; label: string; color: string } => {
         switch (notification.type) {
@@ -63,11 +65,20 @@ export function NotificationCard({
     const info = getNotificationInfo();
     const account = notification.account;
     const status = notification.status;
+    const displayStatus = status?.reblog ?? status;
 
     const [nsfwRevealed, setNsfwRevealed] = useState(false);
 
     const handleNsfwToggle = () => {
-        setNsfwRevealed((prev) => !prev);
+        setNsfwRevealed((prev) => {
+            const newValue = !prev;
+            // Call onNsfwReveal when revealing (not when hiding)
+            if (newValue && onNsfwReveal && status) {
+                const displayStatus = status.reblog ?? status;
+                onNsfwReveal(displayStatus.id);
+            }
+            return newValue;
+        });
     };
 
     // Note: nsfwRevealed state is automatically reset when notification changes
@@ -325,7 +336,7 @@ export function NotificationCard({
             )}
 
             {/* Status-related notifications */}
-            {status && (
+            {displayStatus && (
                 <div
                     className={`ml-9 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30 ${isStatusClickable ? 'cursor-pointer hover:bg-slate-700/50 transition-colors' : ''}`}
                     onClick={isStatusClickable ? handleStatusClick : undefined}
@@ -334,15 +345,19 @@ export function NotificationCard({
                     tabIndex={isStatusClickable ? 0 : undefined}
                     aria-label={isStatusClickable ? '投稿の詳細を表示' : undefined}
                 >
-                    {status.spoilerText ? (
+                    {displayStatus.spoilerText ? (
                         <details>
                             <summary className="cursor-pointer text-amber-400 text-sm">
-                                <LuTriangleAlert className="inline mr-1" /> {status.spoilerText}
+                                <LuTriangleAlert className="inline mr-1" />{' '}
+                                {displayStatus.spoilerText}
                             </summary>
                             <div
                                 className="mt-2 text-sm text-slate-300 wrap-break-word"
                                 dangerouslySetInnerHTML={{
-                                    __html: replaceEmojisWithImages(status.content, status.emojis),
+                                    __html: replaceEmojisWithImages(
+                                        displayStatus.content,
+                                        displayStatus.emojis
+                                    ),
                                 }}
                             />
                         </details>
@@ -350,18 +365,21 @@ export function NotificationCard({
                         <div
                             className="text-sm text-slate-300 wrap-break-word line-clamp-4"
                             dangerouslySetInnerHTML={{
-                                __html: replaceEmojisWithImages(status.content, status.emojis),
+                                __html: replaceEmojisWithImages(
+                                    displayStatus.content,
+                                    displayStatus.emojis
+                                ),
                             }}
                         />
                     )}
 
                     {/* Media indicator */}
-                    {status.mediaAttachments.length > 0 && (
+                    {displayStatus.mediaAttachments.length > 0 && (
                         <div className="flex gap-1 mt-2">
-                            {status.mediaAttachments.slice(0, 4).map((media, index) => {
-                                const isSensitive = status.sensitive ?? false;
+                            {displayStatus.mediaAttachments.slice(0, 4).map((media, index) => {
+                                const isSensitive = displayStatus.sensitive ?? false;
                                 const needsBlur = isSensitive && !nsfwRevealed;
-                                const totalCount = status.mediaAttachments.length;
+                                const totalCount = displayStatus.mediaAttachments.length;
 
                                 // Sensitive & not yet revealed: use button for reveal interaction
                                 if (needsBlur) {

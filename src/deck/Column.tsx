@@ -281,6 +281,7 @@ export function Column({
                             onAccountClick={
                                 onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
                             }
+                            onNsfwReveal={onNsfwReveal}
                         />
                     ))}
 
