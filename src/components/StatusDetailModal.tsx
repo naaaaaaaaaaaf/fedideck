@@ -215,7 +215,9 @@ export function StatusDetailModal({
 
     // Check if current status is revealed (controlled) or use local state
     const nsfwRevealed = isControlled
-        ? displayStatus && nsfwRevealedStatusIds.has(displayStatus.id)
+        ? displayStatus
+            ? nsfwRevealedStatusIds.has(displayStatus.id)
+            : false
         : localNsfwRevealed;
 
     const [localFavourited, setLocalFavourited] = useState(false);
