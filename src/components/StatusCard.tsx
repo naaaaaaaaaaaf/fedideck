@@ -31,7 +31,7 @@ interface StatusCardProps {
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
-    onNsfwReveal?: () => void;
+    onNsfwReveal?: (statusId: string) => void;
 }
 
 export function StatusCard({
@@ -214,7 +214,7 @@ export function StatusCard({
             const newValue = !prev;
             // Call onNsfwReveal when revealing (not when hiding)
             if (newValue && onNsfwReveal) {
-                onNsfwReveal();
+                onNsfwReveal(displayStatus.id);
             }
             return newValue;
         });

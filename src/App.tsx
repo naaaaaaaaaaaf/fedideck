@@ -219,10 +219,8 @@ function App() {
                 onStatusUpdate={updateStatusGlobal}
                 onImageClick={handleImageClick}
                 nsfwRevealed={detailStatus ? nsfwRevealedStatusIds.has(detailStatus.id) : undefined}
-                onNsfwReveal={() => {
-                    if (detailStatus) {
-                        setNsfwRevealedStatusIds((prev) => new Set(prev).add(detailStatus.id));
-                    }
+                onNsfwReveal={(statusId) => {
+                    setNsfwRevealedStatusIds((prev) => new Set(prev).add(statusId));
                 }}
             />
             <ProfileModal

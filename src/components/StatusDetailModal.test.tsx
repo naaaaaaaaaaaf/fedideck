@@ -361,6 +361,46 @@ describe('StatusDetailModal', () => {
             const img2 = screen.getByAltText('Sensitive image 2');
             expect(img2).toHaveClass('nsfw-blur');
         });
+
+        it('should call onNsfwReveal with displayStatus.id for reblogged posts', async () => {
+            const user = userEvent.setup();
+            const onNsfwReveal = vi.fn();
+
+            const originalStatus = createMockStatus({
+                id: 'original-123',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive.png',
+                        previewUrl: 'https://example.com/sensitive-preview.png',
+                        description: 'Sensitive reblogged image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const reblogStatus = createMockStatus({
+                id: 'reblog-456',
+                reblog: originalStatus,
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={reblogStatus}
+                    onNsfwReveal={onNsfwReveal}
+                />
+            );
+
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            await user.click(button);
+
+            // displayStatus.id（original-123）が通知されるべき
+            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
+            expect(onNsfwReveal).toHaveBeenCalledWith('original-123');
+        });
     });
 
     describe('image click', () => {

@@ -36,7 +36,7 @@ interface StatusDetailModalProps {
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     // NSFW blur state from parent (optional - for syncing with StatusCard)
     nsfwRevealed?: boolean;
-    onNsfwReveal?: () => void;
+    onNsfwReveal?: (statusId: string) => void;
 }
 
 function formatFullDate(dateStr: string): string {
@@ -423,10 +423,16 @@ export function StatusDetailModal({
     };
 
     const handleNsfwToggle = () => {
-        if (isControlled) {
-            onNsfwReveal?.();
-        } else {
-            setLocalNsfwRevealed((prev) => !prev);
+        const newValue = isControlled ? !parentNsfwRevealed : !localNsfwRevealed;
+
+        // Always notify parent when revealing (not when hiding)
+        if (newValue && onNsfwReveal) {
+            onNsfwReveal(displayStatus.id);
+        }
+
+        // Update local state if not controlled
+        if (!isControlled) {
+            setLocalNsfwRevealed(newValue);
         }
     };
 
