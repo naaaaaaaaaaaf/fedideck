@@ -432,7 +432,7 @@ describe('StatusDetailModal', () => {
             // status1は表示済み、status2は未表示
             const nsfwRevealedStatusIds = new Set(['status-1']);
 
-            render(
+            const { rerender } = render(
                 <StatusDetailModal
                     isOpen={true}
                     onClose={() => {}}
@@ -446,7 +446,7 @@ describe('StatusDetailModal', () => {
             expect(img1).not.toHaveClass('nsfw-blur');
 
             // status2に切り替えると、未表示なのでぼかしあり
-            render(
+            rerender(
                 <StatusDetailModal
                     isOpen={true}
                     onClose={() => {}}
