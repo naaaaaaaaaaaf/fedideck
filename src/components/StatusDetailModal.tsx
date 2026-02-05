@@ -34,6 +34,9 @@ interface StatusDetailModalProps {
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusUpdate?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
+    // NSFW blur state from parent (optional - for syncing with StatusCard)
+    nsfwRevealed?: boolean;
+    onNsfwReveal?: () => void;
 }
 
 function formatFullDate(dateStr: string): string {
@@ -197,13 +200,19 @@ export function StatusDetailModal({
     onReply,
     onStatusUpdate,
     onImageClick,
+    nsfwRevealed: parentNsfwRevealed,
+    onNsfwReveal,
 }: StatusDetailModalProps) {
+    // NSFW state: controlled from parent or local
+    const isControlled = parentNsfwRevealed !== undefined;
+    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
+    const nsfwRevealed = isControlled ? parentNsfwRevealed : localNsfwRevealed;
+
     const [localFavourited, setLocalFavourited] = useState(false);
     const [localFavouritesCount, setLocalFavouritesCount] = useState(0);
     const [localReblogged, setLocalReblogged] = useState(false);
     const [localReblogsCount, setLocalReblogsCount] = useState(0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
-    const [nsfwRevealed, setNsfwRevealed] = useState(false);
 
     // Thread navigation state
     const [navigatedStatus, setNavigatedStatus] = useState<mastodon.v1.Status | null>(null);
@@ -243,9 +252,12 @@ export function StatusDetailModal({
             setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
             setLocalReblogged(displayStatus.reblogged ?? false);
             setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
-            setNsfwRevealed(false);
+            // Only reset NSFW state if not controlled by parent
+            if (!isControlled) {
+                setLocalNsfwRevealed(false);
+            }
         }
-    }, [displayStatus, isOpen]);
+    }, [displayStatus, isOpen, isControlled]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
@@ -411,7 +423,11 @@ export function StatusDetailModal({
     };
 
     const handleNsfwToggle = () => {
-        setNsfwRevealed((prev) => !prev);
+        if (isControlled) {
+            onNsfwReveal?.();
+        } else {
+            setLocalNsfwRevealed((prev) => !prev);
+        }
     };
 
     const handleReply = () => {
