@@ -430,7 +430,7 @@ export function StatusDetailModal({
         const newValue = !nsfwRevealed;
 
         // Always notify parent when revealing (not when hiding)
-        if (newValue && onNsfwReveal) {
+        if (newValue && onNsfwReveal && displayStatus) {
             onNsfwReveal(displayStatus.id);
         }
 
