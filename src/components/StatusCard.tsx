@@ -536,7 +536,46 @@ export function StatusCard({
                                 }
 
                                 // Handle video/gifv with NSFW blur support
-                                const accessibleLabel = needsBlur
+                                if (media.type === 'video') {
+                                    const accessibleLabel = needsBlur
+                                        ? '閲覧注意の動画を表示'
+                                        : media.description || '動画';
+
+                                    return (
+                                        <div
+                                            key={media.id}
+                                            className="block overflow-hidden rounded-lg relative nsfw-blur-container"
+                                        >
+                                            <video
+                                                src={media.url ?? undefined}
+                                                poster={media.previewUrl ?? undefined}
+                                                className={`w-full h-36 object-cover ${
+                                                    needsBlur ? 'nsfw-blur' : ''
+                                                }`}
+                                                controls
+                                                aria-label={accessibleLabel}
+                                            />
+                                            {needsBlur && (
+                                                <button
+                                                    type="button"
+                                                    className="nsfw-blur-overlay"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleNsfwToggle();
+                                                    }}
+                                                    aria-label="閲覧注意の動画を表示"
+                                                >
+                                                    <span className="text-white text-sm font-medium">
+                                                        閲覧注意
+                                                    </span>
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                }
+
+                                // gifv: use button wrapper for click handling
+                                const gifvAccessibleLabel = needsBlur
                                     ? '閲覧注意のGIFを表示'
                                     : media.description || 'GIFアニメーション';
 
@@ -548,41 +587,30 @@ export function StatusCard({
                                             e.stopPropagation();
                                             if (isSensitive && !nsfwRevealed) {
                                                 handleNsfwToggle();
-                                            } else {
+                                            } else if (media.url) {
                                                 // For non-NSFW or revealed content, open in new tab
                                                 window.open(
-                                                    media.url ?? '#',
+                                                    media.url,
                                                     '_blank',
                                                     'noopener,noreferrer'
                                                 );
                                             }
                                         }}
                                         className="block overflow-hidden rounded-lg text-left nsfw-blur-container"
-                                        aria-label={accessibleLabel}
+                                        aria-label={gifvAccessibleLabel}
                                     >
-                                        {media.type === 'video' && (
-                                            <video
-                                                src={media.url ?? undefined}
-                                                poster={media.previewUrl ?? undefined}
-                                                className={`w-full h-36 object-cover ${
-                                                    needsBlur ? 'nsfw-blur' : ''
-                                                }`}
-                                                controls
-                                            />
-                                        )}
-                                        {media.type === 'gifv' && (
-                                            <video
-                                                src={media.url ?? undefined}
-                                                className={`w-full h-36 object-cover ${
-                                                    needsBlur ? 'nsfw-blur' : ''
-                                                }`}
-                                                autoPlay
-                                                loop
-                                                muted
-                                                playsInline
-                                            />
-                                        )}
-                                        {needsBlur && media.type !== 'video' && (
+                                        <video
+                                            src={media.url ?? undefined}
+                                            className={`w-full h-36 object-cover ${
+                                                needsBlur ? 'nsfw-blur' : ''
+                                            }`}
+                                            autoPlay
+                                            loop
+                                            muted
+                                            playsInline
+                                            aria-hidden="true"
+                                        />
+                                        {needsBlur && (
                                             <div className="nsfw-blur-overlay">
                                                 <span className="text-white text-sm font-medium">
                                                     閲覧注意
