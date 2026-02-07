@@ -545,7 +545,7 @@ export function StatusCard({
                                         <div
                                             key={media.id}
                                             className={`block overflow-hidden rounded-lg relative nsfw-blur-container ${
-                                                needsBlur ? 'cursor-pointer' : 'cursor-default'
+                                                needsBlur ? 'cursor-pointer' : '!cursor-default'
                                             }`}
                                         >
                                             <video
