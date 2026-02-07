@@ -676,7 +676,9 @@ export function StatusDetailModal({
                                         return (
                                             <div
                                                 key={media.id}
-                                                className="block overflow-hidden rounded-xl relative nsfw-blur-container"
+                                                className={`block overflow-hidden rounded-xl relative nsfw-blur-container ${
+                                                    needsBlur ? 'cursor-pointer' : 'cursor-default'
+                                                }`}
                                             >
                                                 <video
                                                     src={media.url ?? undefined}
