@@ -633,6 +633,7 @@ export function StatusDetailModal({
 
                                         return (
                                             <button
+                                                type="button"
                                                 key={media.id}
                                                 onClick={() => {
                                                     if (isSensitive && !nsfwRevealed) {
