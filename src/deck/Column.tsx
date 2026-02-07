@@ -305,6 +305,7 @@ export function Column({
                                 onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
                             }
                             onNsfwReveal={onNsfwReveal}
+                            nsfwRevealedStatusIds={nsfwRevealedStatusIds}
                         />
                     ))}
 

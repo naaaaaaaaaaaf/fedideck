@@ -32,6 +32,7 @@ interface StatusCardProps {
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
+    nsfwRevealedStatusIds?: Set<string>;
 }
 
 export function StatusCard({
@@ -44,6 +45,7 @@ export function StatusCard({
     onImageClick,
     onAccountClick,
     onNsfwReveal,
+    nsfwRevealedStatusIds,
 }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
@@ -57,7 +59,13 @@ export function StatusCard({
     const [localReblogged, setLocalReblogged] = useState(displayStatus.reblogged ?? false);
     const [localReblogsCount, setLocalReblogsCount] = useState(displayStatus.reblogsCount ?? 0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
-    const [nsfwRevealed, setNsfwRevealed] = useState(false);
+
+    // NSFW state: controlled from parent or local
+    const isControlled = nsfwRevealedStatusIds !== undefined;
+    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
+    const nsfwRevealed = isControlled
+        ? nsfwRevealedStatusIds.has(displayStatus.id)
+        : localNsfwRevealed;
 
     // Track pending props updates that arrived during loading
     const pendingPropsRef = useRef<{
@@ -210,14 +218,15 @@ export function StatusCard({
     };
 
     const handleNsfwToggle = () => {
-        setNsfwRevealed((prev) => {
-            const newValue = !prev;
-            // Call onNsfwReveal when revealing (not when hiding)
-            if (newValue && onNsfwReveal) {
-                onNsfwReveal(displayStatus.id);
-            }
-            return newValue;
-        });
+        // Always notify parent when revealing (not when hiding)
+        if (!nsfwRevealed && onNsfwReveal) {
+            onNsfwReveal(displayStatus.id);
+        }
+
+        // Update local state if not controlled
+        if (!isControlled) {
+            setLocalNsfwRevealed((prev) => !prev);
+        }
     };
 
     // Check if reblog is allowed (not for private/direct messages)
