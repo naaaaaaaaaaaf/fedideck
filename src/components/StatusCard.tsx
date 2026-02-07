@@ -620,7 +620,7 @@ export function StatusCard({
                                                 muted
                                                 playsInline
                                                 aria-hidden="true"
-                                                tabIndex={needsBlur ? -1 : 0}
+                                                tabIndex={-1}
                                             />
                                             {needsBlur && (
                                                 <div className="nsfw-blur-overlay">
