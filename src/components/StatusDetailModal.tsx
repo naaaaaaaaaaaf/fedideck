@@ -210,7 +210,9 @@ export function StatusDetailModal({
     const displayStatus = navigatedStatus ?? status?.reblog ?? status;
 
     // NSFW state: controlled from parent or local
-    const isControlled = nsfwRevealedStatusIds !== undefined && onNsfwReveal !== undefined;
+    // If parent provides state (nsfwRevealedStatusIds), always use it
+    // When onNsfwReveal is missing, operates in read-only mode
+    const isControlled = nsfwRevealedStatusIds !== undefined;
     const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
 
     // Check if current status is revealed (controlled) or use local state
@@ -431,15 +433,20 @@ export function StatusDetailModal({
     const handleNsfwToggle = () => {
         const newValue = !nsfwRevealed;
 
-        // Always notify parent when revealing (not when hiding)
+        // Controlled mode: use parent state
+        if (isControlled) {
+            // If callback provided, notify parent (read-only mode if no callback)
+            if (newValue && onNsfwReveal && displayStatus) {
+                onNsfwReveal(displayStatus.id);
+            }
+            return;
+        }
+
+        // Uncontrolled mode: notify parent if callback provided, then toggle local state
         if (newValue && onNsfwReveal && displayStatus) {
             onNsfwReveal(displayStatus.id);
         }
-
-        // Update local state if not controlled
-        if (!isControlled) {
-            setLocalNsfwRevealed(newValue);
-        }
+        setLocalNsfwRevealed(newValue);
     };
 
     const handleReply = () => {

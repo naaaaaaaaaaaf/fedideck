@@ -61,7 +61,9 @@ export function StatusCard({
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
     // NSFW state: controlled from parent or local
-    const isControlled = nsfwRevealedStatusIds !== undefined && onNsfwReveal !== undefined;
+    // If parent provides state (nsfwRevealedStatusIds), always use it
+    // When onNsfwReveal is missing, operates in read-only mode
+    const isControlled = nsfwRevealedStatusIds !== undefined;
     const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
     const nsfwRevealed = isControlled
         ? nsfwRevealedStatusIds.has(displayStatus.id)
@@ -218,15 +220,20 @@ export function StatusCard({
     };
 
     const handleNsfwToggle = () => {
-        // Always notify parent when revealing (not when hiding)
+        // Controlled mode: use parent state
+        if (isControlled) {
+            // If callback provided, notify parent (read-only mode if no callback)
+            if (!nsfwRevealed && onNsfwReveal) {
+                onNsfwReveal(displayStatus.id);
+            }
+            return;
+        }
+
+        // Uncontrolled mode: notify parent if callback provided, then toggle local state
         if (!nsfwRevealed && onNsfwReveal) {
             onNsfwReveal(displayStatus.id);
         }
-
-        // Update local state if not controlled
-        if (!isControlled) {
-            setLocalNsfwRevealed((prev) => !prev);
-        }
+        setLocalNsfwRevealed((prev) => !prev);
     };
 
     // Check if reblog is allowed (not for private/direct messages)
