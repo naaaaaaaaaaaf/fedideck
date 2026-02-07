@@ -612,11 +612,12 @@ export function StatusCard({
                                         >
                                             <video
                                                 src={media.url ?? undefined}
+                                                poster={media.previewUrl ?? undefined}
                                                 className={`w-full h-36 object-cover ${
                                                     needsBlur ? 'nsfw-blur' : ''
                                                 }`}
-                                                autoPlay
-                                                loop
+                                                autoPlay={!needsBlur}
+                                                loop={!needsBlur}
                                                 muted
                                                 playsInline
                                                 aria-hidden="true"

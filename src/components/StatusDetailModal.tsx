@@ -744,11 +744,12 @@ export function StatusDetailModal({
                                             >
                                                 <video
                                                     src={media.url ?? undefined}
+                                                    poster={media.previewUrl ?? undefined}
                                                     className={`w-full max-h-96 object-contain bg-slate-800 ${
                                                         needsBlur ? 'nsfw-blur' : ''
                                                     }`}
-                                                    autoPlay
-                                                    loop
+                                                    autoPlay={!needsBlur}
+                                                    loop={!needsBlur}
                                                     muted
                                                     playsInline
                                                     aria-hidden="true"
