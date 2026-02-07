@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import type { mastodon } from 'masto';
 import './index.css';
 import { Sidebar } from './components/Sidebar';
@@ -29,6 +29,12 @@ function App() {
     // Use array for LRU cache - most recently revealed at the end
     const MAX_NSFW_CACHE_SIZE = 100;
     const [nsfwRevealedStatusIds, setNsfwRevealedStatusIds] = useState<string[]>([]);
+
+    // Memoize Set to avoid unnecessary re-renders
+    const nsfwRevealedStatusIdSet = useMemo(
+        () => new Set(nsfwRevealedStatusIds),
+        [nsfwRevealedStatusIds]
+    );
 
     // Add status ID to NSFW revealed list with LRU eviction
     const addNsfwRevealedStatusId = useCallback((statusId: string) => {
@@ -207,7 +213,7 @@ function App() {
                     onImageClick={handleImageClick}
                     onAccountClick={handleAccountClick}
                     onNsfwReveal={addNsfwRevealedStatusId}
-                    nsfwRevealedStatusIds={new Set(nsfwRevealedStatusIds)}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
                 />
             </main>
 
@@ -235,7 +241,7 @@ function App() {
                 onReply={handleStatusDetailReply}
                 onStatusUpdate={updateStatusGlobal}
                 onImageClick={handleImageClick}
-                nsfwRevealedStatusIds={new Set(nsfwRevealedStatusIds)}
+                nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
                 onNsfwReveal={addNsfwRevealedStatusId}
             />
             <ProfileModal
