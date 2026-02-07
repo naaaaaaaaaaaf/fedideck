@@ -477,6 +477,10 @@ export function StatusCard({
                             }`}
                         >
                             {mediaAttachments.slice(0, 4).map((media) => {
+                                // Check if content is sensitive (applies to all media types)
+                                const isSensitive = displayStatus.sensitive ?? false;
+                                const needsBlur = isSensitive && !nsfwRevealed;
+
                                 // For images, use button to open ImageViewer
                                 if (media.type === 'image') {
                                     // Skip images without valid URLs (matches imageViewerImages filtering)
@@ -492,9 +496,6 @@ export function StatusCard({
                                     if (imageIndex === -1) {
                                         return null; // Guard against mismatch
                                     }
-
-                                    const isSensitive = displayStatus.sensitive ?? false;
-                                    const needsBlur = isSensitive && !nsfwRevealed;
 
                                     const accessibleLabel = needsBlur
                                         ? `閲覧注意の画像を表示 (${imageIndex + 1}/${imageViewerImages.length})`
@@ -534,34 +535,61 @@ export function StatusCard({
                                     );
                                 }
 
-                                // For video/gifv, keep existing behavior with <a> tag
+                                // Handle video/gifv with NSFW blur support
+                                const accessibleLabel = needsBlur
+                                    ? '閲覧注意のGIFを表示'
+                                    : media.description || 'GIFアニメーション';
+
                                 return (
-                                    <a
+                                    <button
+                                        type="button"
                                         key={media.id}
-                                        href={media.url ?? '#'}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="block overflow-hidden rounded-lg"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (isSensitive && !nsfwRevealed) {
+                                                handleNsfwToggle();
+                                            } else {
+                                                // For non-NSFW or revealed content, open in new tab
+                                                window.open(
+                                                    media.url ?? '#',
+                                                    '_blank',
+                                                    'noopener,noreferrer'
+                                                );
+                                            }
+                                        }}
+                                        className="block overflow-hidden rounded-lg text-left nsfw-blur-container"
+                                        aria-label={accessibleLabel}
                                     >
                                         {media.type === 'video' && (
                                             <video
                                                 src={media.url ?? undefined}
                                                 poster={media.previewUrl ?? undefined}
-                                                className="w-full h-36 object-cover"
+                                                className={`w-full h-36 object-cover ${
+                                                    needsBlur ? 'nsfw-blur' : ''
+                                                }`}
                                                 controls
                                             />
                                         )}
                                         {media.type === 'gifv' && (
                                             <video
                                                 src={media.url ?? undefined}
-                                                className="w-full h-36 object-cover"
+                                                className={`w-full h-36 object-cover ${
+                                                    needsBlur ? 'nsfw-blur' : ''
+                                                }`}
                                                 autoPlay
                                                 loop
                                                 muted
                                                 playsInline
                                             />
                                         )}
-                                    </a>
+                                        {needsBlur && media.type !== 'video' && (
+                                            <div className="nsfw-blur-overlay">
+                                                <span className="text-white text-sm font-medium">
+                                                    閲覧注意
+                                                </span>
+                                            </div>
+                                        )}
+                                    </button>
                                 );
                             })}
                         </div>

@@ -568,19 +568,31 @@ describe('StatusCard', () => {
                 ],
             });
 
+            // Mock window.open
+            const mockOpen = vi.fn();
+            vi.stubGlobal('open', mockOpen);
+
             const { container } = render(
                 <StatusCard status={status} onImageClick={onImageClick} />
             );
 
-            // Video should be in an anchor tag, not a button
-            const videoLink = container.querySelector('a[href="https://example.com/video.mp4"]');
-            expect(videoLink).toBeInTheDocument();
+            // Video should be in a button, not an anchor tag
+            const videoButton = container.querySelector('button[aria-label="Test video"]');
+            expect(videoButton).toBeInTheDocument();
+            expect(
+                container.querySelector('a[href="https://example.com/video.mp4"]')
+            ).not.toBeInTheDocument();
 
-            // Click on the video element
-            const video = container.querySelector('video');
-            expect(video).toBeInTheDocument();
-            await user.click(video!);
+            // Click on the button
+            await user.click(videoButton!);
             expect(onImageClick).not.toHaveBeenCalled();
+            expect(mockOpen).toHaveBeenCalledWith(
+                'https://example.com/video.mp4',
+                '_blank',
+                'noopener,noreferrer'
+            );
+
+            vi.unstubAllGlobals();
         });
 
         it('should NOT call onImageClick for gifv attachments', async () => {
@@ -601,19 +613,31 @@ describe('StatusCard', () => {
                 ],
             });
 
+            // Mock window.open
+            const mockOpen = vi.fn();
+            vi.stubGlobal('open', mockOpen);
+
             const { container } = render(
                 <StatusCard status={status} onImageClick={onImageClick} />
             );
 
-            // gifv should be in an anchor tag, not a button
-            const gifvLink = container.querySelector('a[href="https://example.com/animation.mp4"]');
-            expect(gifvLink).toBeInTheDocument();
+            // gifv should be in a button, not an anchor tag
+            const gifvButton = container.querySelector('button[aria-label="Test animation"]');
+            expect(gifvButton).toBeInTheDocument();
+            expect(
+                container.querySelector('a[href="https://example.com/animation.mp4"]')
+            ).not.toBeInTheDocument();
 
-            // Click on the video element
-            const video = container.querySelector('video');
-            expect(video).toBeInTheDocument();
-            await user.click(video!);
+            // Click on the button
+            await user.click(gifvButton!);
             expect(onImageClick).not.toHaveBeenCalled();
+            expect(mockOpen).toHaveBeenCalledWith(
+                'https://example.com/animation.mp4',
+                '_blank',
+                'noopener,noreferrer'
+            );
+
+            vi.unstubAllGlobals();
         });
 
         it('should NOT trigger card click when image is clicked', async () => {
