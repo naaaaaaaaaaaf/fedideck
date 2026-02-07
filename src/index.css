@@ -174,3 +174,8 @@ body {
     pointer-events: none;
     transition: opacity 0.2s ease-in-out;
 }
+
+/* Enable clicks on button overlays */
+button.nsfw-blur-overlay {
+    pointer-events: auto;
+}
