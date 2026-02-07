@@ -563,6 +563,10 @@ describe('StatusDetailModal', () => {
                 ],
             });
 
+            // Mock window.open
+            const mockOpen = vi.fn();
+            vi.stubGlobal('open', mockOpen);
+
             const { container } = render(
                 <StatusDetailModal
                     isOpen={true}
@@ -572,15 +576,23 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            // Video should be in an anchor tag, not a button
-            const videoLink = container.querySelector('a[href="https://example.com/video.mp4"]');
-            expect(videoLink).toBeInTheDocument();
+            // Video should be in a button, not an anchor tag
+            const videoButton = container.querySelector('button[aria-label="Test video"]');
+            expect(videoButton).toBeInTheDocument();
+            expect(
+                container.querySelector('a[href="https://example.com/video.mp4"]')
+            ).not.toBeInTheDocument();
 
-            // Click on the video element
-            const video = container.querySelector('video');
-            expect(video).toBeInTheDocument();
-            await user.click(video!);
+            // Click on the button
+            await user.click(videoButton!);
             expect(onImageClick).not.toHaveBeenCalled();
+            expect(mockOpen).toHaveBeenCalledWith(
+                'https://example.com/video.mp4',
+                '_blank',
+                'noopener,noreferrer'
+            );
+
+            vi.unstubAllGlobals();
         });
 
         it('should handle mixed media types correctly (images only in viewer)', async () => {
