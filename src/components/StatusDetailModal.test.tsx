@@ -461,6 +461,75 @@ describe('StatusDetailModal', () => {
             const img2 = screen.getByAltText('Sensitive image 2');
             expect(img2).toHaveClass('nsfw-blur');
         });
+
+        it('should blur sensitive video and show overlay button', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'video',
+                        url: 'https://example.com/video.mp4',
+                        previewUrl: 'https://example.com/video-poster.png',
+                        description: 'Sensitive video',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const { container } = render(
+                <StatusDetailModal isOpen={true} onClose={() => {}} status={status} />
+            );
+
+            // Video should have blur class
+            const video = container.querySelector('video');
+            expect(video).toHaveClass('nsfw-blur');
+
+            // Overlay button should be present
+            const overlayButton = container.querySelector(
+                'button.nsfw-blur-overlay[aria-label="閲覧注意の動画を表示"]'
+            );
+            expect(overlayButton).toBeInTheDocument();
+
+            // Click overlay to reveal
+            await user.click(overlayButton!);
+            expect(video).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should blur sensitive gifv and toggle on click', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'gifv',
+                        url: 'https://example.com/animation.mp4',
+                        previewUrl: 'https://example.com/animation-poster.png',
+                        description: 'Sensitive gif',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const { container } = render(
+                <StatusDetailModal isOpen={true} onClose={() => {}} status={status} />
+            );
+
+            // gifv button should have blur-indicating aria-label
+            const gifvButton = screen.getByRole('button', {
+                name: '閲覧注意のGIFを表示',
+            });
+            expect(gifvButton).toBeInTheDocument();
+
+            // Video element should have blur class
+            const video = container.querySelector('video');
+            expect(video).not.toBeNull();
+            expect(video).toHaveClass('nsfw-blur');
+
+            // Click to reveal
+            await user.click(gifvButton);
+            expect(video).not.toHaveClass('nsfw-blur');
+        });
     });
 
     describe('image click', () => {
@@ -548,8 +617,7 @@ describe('StatusDetailModal', () => {
             );
         });
 
-        it('should NOT call onImageClick for video attachments', async () => {
-            const user = userEvent.setup();
+        it('should render video with controls in div wrapper', async () => {
             const onImageClick = vi.fn();
             const status = createMockStatus({
                 mediaAttachments: [
@@ -563,10 +631,6 @@ describe('StatusDetailModal', () => {
                 ],
             });
 
-            // Mock window.open
-            const mockOpen = vi.fn();
-            vi.stubGlobal('open', mockOpen);
-
             const { container } = render(
                 <StatusDetailModal
                     isOpen={true}
@@ -576,23 +640,21 @@ describe('StatusDetailModal', () => {
                 />
             );
 
-            // Video should be in a button, not an anchor tag
-            const videoButton = container.querySelector('button[aria-label="Test video"]');
-            expect(videoButton).toBeInTheDocument();
+            // Video should be in a div, not a button or anchor tag
+            const videoDiv = container.querySelector('div.nsfw-blur-container');
+            expect(videoDiv).toBeInTheDocument();
+            expect(
+                container.querySelector('button[aria-label="Test video"]')
+            ).not.toBeInTheDocument();
             expect(
                 container.querySelector('a[href="https://example.com/video.mp4"]')
             ).not.toBeInTheDocument();
 
-            // Click on the button
-            await user.click(videoButton!);
-            expect(onImageClick).not.toHaveBeenCalled();
-            expect(mockOpen).toHaveBeenCalledWith(
-                'https://example.com/video.mp4',
-                '_blank',
-                'noopener,noreferrer'
-            );
-
-            vi.unstubAllGlobals();
+            // Video element should have controls attribute
+            const video = container.querySelector('video');
+            expect(video).toBeInTheDocument();
+            expect(video).toHaveAttribute('controls');
+            expect(video).toHaveAttribute('aria-label', 'Test video');
         });
 
         it('should handle mixed media types correctly (images only in viewer)', async () => {
