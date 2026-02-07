@@ -15,6 +15,9 @@ import { useColumnsStore } from './store/columns';
 import { useStreamsStore, getStreamKey } from './store/streams';
 import { initStreamManager } from './streaming/streamManager';
 
+// NSFW cache size limit for LRU eviction
+const MAX_NSFW_CACHE_SIZE = 100;
+
 function App() {
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
@@ -27,7 +30,6 @@ function App() {
 
     // NSFW revealed status IDs (for syncing between StatusCard and StatusDetailModal)
     // Use array for LRU cache - most recently revealed at the end
-    const MAX_NSFW_CACHE_SIZE = 100;
     const [nsfwRevealedStatusIds, setNsfwRevealedStatusIds] = useState<string[]>([]);
 
     // Memoize Set to avoid unnecessary re-renders
