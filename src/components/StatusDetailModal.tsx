@@ -705,6 +705,7 @@ export function StatusDetailModal({
                                                     poster={media.previewUrl ?? undefined}
                                                     className="w-full max-h-96 object-contain bg-slate-800 nsfw-blur"
                                                     aria-hidden="true"
+                                                    tabIndex={-1}
                                                 />
                                                 <div className="nsfw-blur-overlay">
                                                     <span className="text-white text-sm font-medium">
@@ -751,6 +752,7 @@ export function StatusDetailModal({
                                                     muted
                                                     playsInline
                                                     aria-hidden="true"
+                                                    tabIndex={needsBlur ? -1 : 0}
                                                 />
                                                 {needsBlur && (
                                                     <div className="nsfw-blur-overlay">

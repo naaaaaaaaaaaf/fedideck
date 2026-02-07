@@ -573,6 +573,7 @@ export function StatusCard({
                                                 poster={media.previewUrl ?? undefined}
                                                 className="w-full h-36 object-cover nsfw-blur"
                                                 aria-hidden="true"
+                                                tabIndex={-1}
                                             />
                                             <div className="nsfw-blur-overlay">
                                                 <span className="text-white text-sm font-medium">
@@ -619,6 +620,7 @@ export function StatusCard({
                                                 muted
                                                 playsInline
                                                 aria-hidden="true"
+                                                tabIndex={needsBlur ? -1 : 0}
                                             />
                                             {needsBlur && (
                                                 <div className="nsfw-blur-overlay">
