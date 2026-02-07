@@ -608,29 +608,31 @@ describe('StatusCard', () => {
 
             // Mock window.open
             const mockOpen = vi.fn();
-            vi.stubGlobal('open', mockOpen);
+            const openSpy = vi.spyOn(window, 'open').mockImplementation(mockOpen);
 
-            const { container } = render(
-                <StatusCard status={status} onImageClick={onImageClick} />
-            );
+            try {
+                const { container } = render(
+                    <StatusCard status={status} onImageClick={onImageClick} />
+                );
 
-            // gifv should be in a button, not an anchor tag
-            const gifvButton = container.querySelector('button[aria-label="Test animation"]');
-            expect(gifvButton).toBeInTheDocument();
-            expect(
-                container.querySelector('a[href="https://example.com/animation.mp4"]')
-            ).not.toBeInTheDocument();
+                // gifv should be in a button, not an anchor tag
+                const gifvButton = container.querySelector('button[aria-label="Test animation"]');
+                expect(gifvButton).toBeInTheDocument();
+                expect(
+                    container.querySelector('a[href="https://example.com/animation.mp4"]')
+                ).not.toBeInTheDocument();
 
-            // Click on the button
-            await user.click(gifvButton!);
-            expect(onImageClick).not.toHaveBeenCalled();
-            expect(mockOpen).toHaveBeenCalledWith(
-                'https://example.com/animation.mp4',
-                '_blank',
-                'noopener,noreferrer'
-            );
-
-            vi.unstubAllGlobals();
+                // Click on the button
+                await user.click(gifvButton!);
+                expect(onImageClick).not.toHaveBeenCalled();
+                expect(mockOpen).toHaveBeenCalledWith(
+                    'https://example.com/animation.mp4',
+                    '_blank',
+                    'noopener,noreferrer'
+                );
+            } finally {
+                openSpy.mockRestore();
+            }
         });
 
         it('should NOT trigger card click when image is clicked', async () => {
