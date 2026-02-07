@@ -550,7 +550,7 @@ describe('StatusCard', () => {
             );
         });
 
-        it('should render video with controls in div wrapper', async () => {
+        it('should render video with anchor tag to open in new tab', async () => {
             const onImageClick = vi.fn();
             const status = createMockStatus({
                 mediaAttachments: [
@@ -571,21 +571,16 @@ describe('StatusCard', () => {
                 <StatusCard status={status} onImageClick={onImageClick} />
             );
 
-            // Video should be in a div, not a button or anchor tag
-            const videoDiv = container.querySelector('div.nsfw-blur-container');
-            expect(videoDiv).toBeInTheDocument();
-            expect(
-                container.querySelector('button[aria-label="Test video"]')
-            ).not.toBeInTheDocument();
-            expect(
-                container.querySelector('a[href="https://example.com/video.mp4"]')
-            ).not.toBeInTheDocument();
+            // Video should be in an anchor tag, not in a div or button
+            const videoLink = container.querySelector('a[href="https://example.com/video.mp4"]');
+            expect(videoLink).toBeInTheDocument();
+            expect(videoLink).toHaveAttribute('target', '_blank');
+            expect(videoLink).toHaveAttribute('rel', 'noopener noreferrer');
 
-            // Video element should have controls attribute
+            // Video element should not have controls (it's a preview)
             const video = container.querySelector('video');
             expect(video).toBeInTheDocument();
-            expect(video).toHaveAttribute('controls');
-            expect(video).toHaveAttribute('aria-label', 'Test video');
+            expect(video).not.toHaveAttribute('controls');
         });
 
         it('should NOT call onImageClick for gifv attachments', async () => {
@@ -1438,8 +1433,7 @@ describe('StatusCard', () => {
             expect(onNsfwReveal).toHaveBeenCalledWith('original-123');
         });
 
-        it('should blur sensitive video and show overlay button', async () => {
-            const user = userEvent.setup();
+        it('should blur sensitive video and show overlay', async () => {
             const status = createMockStatus({
                 sensitive: true,
                 mediaAttachments: [
@@ -1458,19 +1452,21 @@ describe('StatusCard', () => {
 
             const { container } = render(<StatusCard status={status} />);
 
+            // Video should be in a button with blur
+            const videoButton = container.querySelector(
+                'button[aria-label="閲覧注意の動画を表示"]'
+            );
+            expect(videoButton).toBeInTheDocument();
+
             // Video should have blur class
             const video = container.querySelector('video');
             expect(video).toHaveClass('nsfw-blur');
+            expect(video).toHaveAttribute('aria-hidden', 'true');
 
-            // Overlay button should be present
-            const overlayButton = container.querySelector(
-                'button.nsfw-blur-overlay[aria-label="閲覧注意の動画を表示"]'
-            );
-            expect(overlayButton).toBeInTheDocument();
-
-            // Click overlay to reveal
-            await user.click(overlayButton!);
-            expect(video).not.toHaveClass('nsfw-blur');
+            // Overlay div should be present
+            const overlay = container.querySelector('div.nsfw-blur-overlay');
+            expect(overlay).toBeInTheDocument();
+            expect(overlay).toHaveTextContent('閲覧注意');
         });
 
         it('should blur sensitive gifv and toggle on click', async () => {

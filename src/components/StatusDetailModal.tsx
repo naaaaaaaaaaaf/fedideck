@@ -667,44 +667,51 @@ export function StatusDetailModal({
                                         );
                                     }
 
-                                    // Handle video/gifv with NSFW blur support
-                                    if (media.type === 'video') {
-                                        const accessibleLabel = needsBlur
-                                            ? '閲覧注意の動画を表示'
-                                            : media.description || '動画';
-
+                                    // For non-NSFW videos, use <a> tag to open in new tab
+                                    if (media.type === 'video' && !needsBlur) {
                                         return (
-                                            <div
+                                            <a
                                                 key={media.id}
-                                                className={`block overflow-hidden rounded-xl relative nsfw-blur-container ${
-                                                    needsBlur ? 'cursor-pointer' : '!cursor-default'
-                                                }`}
+                                                href={media.url ?? '#'}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block overflow-hidden rounded-xl"
+                                                aria-label={media.description || '動画'}
                                             >
                                                 <video
                                                     src={media.url ?? undefined}
                                                     poster={media.previewUrl ?? undefined}
-                                                    className={`w-full max-h-96 object-contain bg-slate-800 ${
-                                                        needsBlur ? 'nsfw-blur' : ''
-                                                    }`}
-                                                    controls
-                                                    aria-label={accessibleLabel}
+                                                    className="w-full max-h-96 object-contain bg-slate-800"
                                                 />
-                                                {needsBlur && (
-                                                    <button
-                                                        type="button"
-                                                        className="nsfw-blur-overlay"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleNsfwToggle();
-                                                        }}
-                                                        aria-label="閲覧注意の動画を表示"
-                                                    >
-                                                        <span className="text-white text-sm font-medium">
-                                                            閲覧注意
-                                                        </span>
-                                                    </button>
-                                                )}
-                                            </div>
+                                            </a>
+                                        );
+                                    }
+
+                                    // For NSFW videos, use inline video with blur toggle
+                                    if (media.type === 'video' && needsBlur) {
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={media.id}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleNsfwToggle();
+                                                }}
+                                                className="block overflow-hidden rounded-xl text-left nsfw-blur-container"
+                                                aria-label="閲覧注意の動画を表示"
+                                            >
+                                                <video
+                                                    src={media.url ?? undefined}
+                                                    poster={media.previewUrl ?? undefined}
+                                                    className="w-full max-h-96 object-contain bg-slate-800 nsfw-blur"
+                                                    aria-hidden="true"
+                                                />
+                                                <div className="nsfw-blur-overlay">
+                                                    <span className="text-white text-sm font-medium">
+                                                        閲覧注意
+                                                    </span>
+                                                </div>
+                                            </button>
                                         );
                                     }
 
