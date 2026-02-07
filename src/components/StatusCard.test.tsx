@@ -583,8 +583,7 @@ describe('StatusCard', () => {
             expect(video).not.toHaveAttribute('controls');
         });
 
-        it('should NOT call onImageClick for gifv attachments', async () => {
-            const user = userEvent.setup();
+        it('should render gifv as anchor tag to open in new tab', async () => {
             const onImageClick = vi.fn();
             const status = createMockStatus({
                 mediaAttachments: [
@@ -601,33 +600,22 @@ describe('StatusCard', () => {
                 ],
             });
 
-            // Mock window.open
-            const mockOpen = vi.fn();
-            const openSpy = vi.spyOn(window, 'open').mockImplementation(mockOpen);
+            const { container } = render(
+                <StatusCard status={status} onImageClick={onImageClick} />
+            );
 
-            try {
-                const { container } = render(
-                    <StatusCard status={status} onImageClick={onImageClick} />
-                );
+            // gifv should be in an anchor tag
+            const gifvLink = container.querySelector('a[href="https://example.com/animation.mp4"]');
+            expect(gifvLink).toBeInTheDocument();
+            expect(gifvLink).toHaveAttribute('target', '_blank');
+            expect(gifvLink).toHaveAttribute('rel', 'noopener noreferrer');
+            expect(gifvLink).toHaveAttribute('aria-label', 'Test animation');
 
-                // gifv should be in a button, not an anchor tag
-                const gifvButton = container.querySelector('button[aria-label="Test animation"]');
-                expect(gifvButton).toBeInTheDocument();
-                expect(
-                    container.querySelector('a[href="https://example.com/animation.mp4"]')
-                ).not.toBeInTheDocument();
-
-                // Click on the button
-                await user.click(gifvButton!);
-                expect(onImageClick).not.toHaveBeenCalled();
-                expect(mockOpen).toHaveBeenCalledWith(
-                    'https://example.com/animation.mp4',
-                    '_blank',
-                    'noopener,noreferrer'
-                );
-            } finally {
-                openSpy.mockRestore();
-            }
+            // Video element should autoplay
+            const video = container.querySelector('video');
+            expect(video).toBeInTheDocument();
+            expect(video).toHaveAttribute('autoPlay');
+            expect(video).toHaveAttribute('loop');
         });
 
         it('should NOT trigger card click when image is clicked', async () => {
@@ -1469,8 +1457,7 @@ describe('StatusCard', () => {
             expect(overlay).toHaveTextContent('閲覧注意');
         });
 
-        it('should blur sensitive gifv and toggle on click', async () => {
-            const user = userEvent.setup();
+        it('should blur sensitive gifv and show overlay', async () => {
             const status = createMockStatus({
                 sensitive: true,
                 mediaAttachments: [
@@ -1495,13 +1482,15 @@ describe('StatusCard', () => {
             });
             expect(gifvButton).toBeInTheDocument();
 
-            // Video element should have blur class
+            // Video should have blur class and not autoplay
             const video = container.querySelector('video');
             expect(video).toHaveClass('nsfw-blur');
+            expect(video).not.toHaveAttribute('autoPlay');
 
-            // Click to reveal
-            await user.click(gifvButton);
-            expect(video).not.toHaveClass('nsfw-blur');
+            // Overlay div should be present
+            const overlay = container.querySelector('div.nsfw-blur-overlay');
+            expect(overlay).toBeInTheDocument();
+            expect(overlay).toHaveTextContent('閲覧注意');
         });
     });
 });

@@ -720,52 +720,65 @@ export function StatusDetailModal({
                                         );
                                     }
 
-                                    // gifv: use button wrapper for click handling
-                                    if (media.type === 'gifv') {
-                                        const gifvAccessibleLabel = needsBlur
-                                            ? '閲覧注意のGIFを表示'
-                                            : media.description || 'GIFアニメーション';
+                                    // For non-NSFW gifv, use <a> tag to open in new tab
+                                    if (media.type === 'gifv' && !needsBlur) {
+                                        // Skip gifv without valid URLs
+                                        if (!media.url) {
+                                            return null;
+                                        }
+                                        return (
+                                            <a
+                                                key={media.id}
+                                                href={media.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block overflow-hidden rounded-xl"
+                                                aria-label={
+                                                    media.description || 'GIFアニメーション'
+                                                }
+                                            >
+                                                <video
+                                                    src={media.url}
+                                                    poster={media.previewUrl ?? undefined}
+                                                    className="w-full max-h-96 object-contain bg-slate-800"
+                                                    autoPlay
+                                                    loop
+                                                    muted
+                                                    playsInline
+                                                    aria-hidden="true"
+                                                    tabIndex={-1}
+                                                />
+                                            </a>
+                                        );
+                                    }
 
+                                    // For NSFW gifv, use button with blur toggle
+                                    if (media.type === 'gifv' && needsBlur) {
                                         return (
                                             <button
                                                 type="button"
                                                 key={media.id}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (isSensitive && !nsfwRevealed) {
-                                                        handleNsfwToggle();
-                                                    } else if (media.url) {
-                                                        // For non-NSFW or revealed content, open in new tab
-                                                        window.open(
-                                                            media.url,
-                                                            '_blank',
-                                                            'noopener,noreferrer'
-                                                        );
-                                                    }
+                                                    handleNsfwToggle();
                                                 }}
                                                 className="block overflow-hidden rounded-xl text-left nsfw-blur-container"
-                                                aria-label={gifvAccessibleLabel}
+                                                aria-label="閲覧注意のGIFを表示"
                                             >
                                                 <video
                                                     src={media.url ?? undefined}
                                                     poster={media.previewUrl ?? undefined}
-                                                    className={`w-full max-h-96 object-contain bg-slate-800 ${
-                                                        needsBlur ? 'nsfw-blur' : ''
-                                                    }`}
-                                                    autoPlay={!needsBlur}
-                                                    loop={!needsBlur}
+                                                    className="w-full max-h-96 object-contain bg-slate-800 nsfw-blur"
                                                     muted
                                                     playsInline
                                                     aria-hidden="true"
                                                     tabIndex={-1}
                                                 />
-                                                {needsBlur && (
-                                                    <div className="nsfw-blur-overlay">
-                                                        <span className="text-white text-sm font-medium">
-                                                            閲覧注意
-                                                        </span>
-                                                    </div>
-                                                )}
+                                                <div className="nsfw-blur-overlay">
+                                                    <span className="text-white text-sm font-medium">
+                                                        閲覧注意
+                                                    </span>
+                                                </div>
                                             </button>
                                         );
                                     }

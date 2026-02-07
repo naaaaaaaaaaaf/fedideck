@@ -497,8 +497,7 @@ describe('StatusDetailModal', () => {
             expect(overlay).toHaveTextContent('閲覧注意');
         });
 
-        it('should blur sensitive gifv and toggle on click', async () => {
-            const user = userEvent.setup();
+        it('should blur sensitive gifv and show overlay', async () => {
             const status = createMockStatus({
                 sensitive: true,
                 mediaAttachments: [
@@ -522,14 +521,16 @@ describe('StatusDetailModal', () => {
             });
             expect(gifvButton).toBeInTheDocument();
 
-            // Video element should have blur class
+            // Video should have blur class and not autoplay
             const video = container.querySelector('video');
             expect(video).not.toBeNull();
             expect(video).toHaveClass('nsfw-blur');
+            expect(video).not.toHaveAttribute('autoPlay');
 
-            // Click to reveal
-            await user.click(gifvButton);
-            expect(video).not.toHaveClass('nsfw-blur');
+            // Overlay div should be present
+            const overlay = container.querySelector('div.nsfw-blur-overlay');
+            expect(overlay).toBeInTheDocument();
+            expect(overlay).toHaveTextContent('閲覧注意');
         });
     });
 
