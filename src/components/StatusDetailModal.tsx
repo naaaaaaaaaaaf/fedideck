@@ -669,17 +669,21 @@ export function StatusDetailModal({
 
                                     // For non-NSFW videos, use <a> tag to open in new tab
                                     if (media.type === 'video' && !needsBlur) {
+                                        // Skip videos without valid URLs
+                                        if (!media.url) {
+                                            return null;
+                                        }
                                         return (
                                             <a
                                                 key={media.id}
-                                                href={media.url ?? '#'}
+                                                href={media.url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="block overflow-hidden rounded-xl"
                                                 aria-label={media.description || '動画'}
                                             >
                                                 <video
-                                                    src={media.url ?? undefined}
+                                                    src={media.url}
                                                     poster={media.previewUrl ?? undefined}
                                                     className="w-full max-h-96 object-contain bg-slate-800"
                                                 />
