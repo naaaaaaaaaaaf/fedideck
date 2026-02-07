@@ -161,7 +161,6 @@ body {
 .nsfw-blur-container {
     position: relative;
     overflow: hidden;
-    cursor: pointer;
 }
 
 .nsfw-blur-overlay {
