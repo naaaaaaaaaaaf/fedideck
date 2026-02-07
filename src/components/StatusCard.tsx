@@ -577,50 +577,55 @@ export function StatusCard({
                                 }
 
                                 // gifv: use button wrapper for click handling
-                                const gifvAccessibleLabel = needsBlur
-                                    ? '閲覧注意のGIFを表示'
-                                    : media.description || 'GIFアニメーション';
+                                if (media.type === 'gifv') {
+                                    const gifvAccessibleLabel = needsBlur
+                                        ? '閲覧注意のGIFを表示'
+                                        : media.description || 'GIFアニメーション';
 
-                                return (
-                                    <button
-                                        type="button"
-                                        key={media.id}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (isSensitive && !nsfwRevealed) {
-                                                handleNsfwToggle();
-                                            } else if (media.url) {
-                                                // For non-NSFW or revealed content, open in new tab
-                                                window.open(
-                                                    media.url,
-                                                    '_blank',
-                                                    'noopener,noreferrer'
-                                                );
-                                            }
-                                        }}
-                                        className="block overflow-hidden rounded-lg text-left nsfw-blur-container"
-                                        aria-label={gifvAccessibleLabel}
-                                    >
-                                        <video
-                                            src={media.url ?? undefined}
-                                            className={`w-full h-36 object-cover ${
-                                                needsBlur ? 'nsfw-blur' : ''
-                                            }`}
-                                            autoPlay
-                                            loop
-                                            muted
-                                            playsInline
-                                            aria-hidden="true"
-                                        />
-                                        {needsBlur && (
-                                            <div className="nsfw-blur-overlay">
-                                                <span className="text-white text-sm font-medium">
-                                                    閲覧注意
-                                                </span>
-                                            </div>
-                                        )}
-                                    </button>
-                                );
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={media.id}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (isSensitive && !nsfwRevealed) {
+                                                    handleNsfwToggle();
+                                                } else if (media.url) {
+                                                    // For non-NSFW or revealed content, open in new tab
+                                                    window.open(
+                                                        media.url,
+                                                        '_blank',
+                                                        'noopener,noreferrer'
+                                                    );
+                                                }
+                                            }}
+                                            className="block overflow-hidden rounded-lg text-left nsfw-blur-container"
+                                            aria-label={gifvAccessibleLabel}
+                                        >
+                                            <video
+                                                src={media.url ?? undefined}
+                                                className={`w-full h-36 object-cover ${
+                                                    needsBlur ? 'nsfw-blur' : ''
+                                                }`}
+                                                autoPlay
+                                                loop
+                                                muted
+                                                playsInline
+                                                aria-hidden="true"
+                                            />
+                                            {needsBlur && (
+                                                <div className="nsfw-blur-overlay">
+                                                    <span className="text-white text-sm font-medium">
+                                                        閲覧注意
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                }
+
+                                // Unknown media type - skip rendering
+                                return null;
                             })}
                         </div>
                     )}
