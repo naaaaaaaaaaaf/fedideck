@@ -693,6 +693,10 @@ export function StatusDetailModal({
 
                                     // For NSFW videos, use inline video with blur toggle
                                     if (media.type === 'video' && needsBlur) {
+                                        // Skip videos without valid preview (no way to display after reveal)
+                                        if (!media.previewUrl) {
+                                            return null;
+                                        }
                                         return (
                                             <button
                                                 type="button"
@@ -706,7 +710,7 @@ export function StatusDetailModal({
                                             >
                                                 <video
                                                     src={media.url ?? undefined}
-                                                    poster={media.previewUrl ?? undefined}
+                                                    poster={media.previewUrl}
                                                     className="w-full max-h-96 object-contain bg-slate-800 nsfw-blur"
                                                     aria-hidden="true"
                                                     tabIndex={-1}
@@ -754,6 +758,10 @@ export function StatusDetailModal({
 
                                     // For NSFW gifv, use button with blur toggle
                                     if (media.type === 'gifv' && needsBlur) {
+                                        // Skip gifv without valid preview (no way to display after reveal)
+                                        if (!media.previewUrl) {
+                                            return null;
+                                        }
                                         return (
                                             <button
                                                 type="button"
@@ -767,7 +775,7 @@ export function StatusDetailModal({
                                             >
                                                 <video
                                                     src={media.url ?? undefined}
-                                                    poster={media.previewUrl ?? undefined}
+                                                    poster={media.previewUrl}
                                                     className="w-full max-h-96 object-contain bg-slate-800 nsfw-blur"
                                                     muted
                                                     playsInline
