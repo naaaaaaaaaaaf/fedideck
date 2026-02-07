@@ -477,6 +477,10 @@ export function StatusCard({
                             }`}
                         >
                             {mediaAttachments.slice(0, 4).map((media) => {
+                                // Check if content is sensitive (applies to all media types)
+                                const isSensitive = displayStatus.sensitive ?? false;
+                                const needsBlur = isSensitive && !nsfwRevealed;
+
                                 // For images, use button to open ImageViewer
                                 if (media.type === 'image') {
                                     // Skip images without valid URLs (matches imageViewerImages filtering)
@@ -492,9 +496,6 @@ export function StatusCard({
                                     if (imageIndex === -1) {
                                         return null; // Guard against mismatch
                                     }
-
-                                    const isSensitive = displayStatus.sensitive ?? false;
-                                    const needsBlur = isSensitive && !nsfwRevealed;
 
                                     const accessibleLabel = needsBlur
                                         ? `閲覧注意の画像を表示 (${imageIndex + 1}/${imageViewerImages.length})`
@@ -534,35 +535,130 @@ export function StatusCard({
                                     );
                                 }
 
-                                // For video/gifv, keep existing behavior with <a> tag
-                                return (
-                                    <a
-                                        key={media.id}
-                                        href={media.url ?? '#'}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="block overflow-hidden rounded-lg"
-                                    >
-                                        {media.type === 'video' && (
+                                // For non-NSFW videos, use <a> tag to open in new tab
+                                if (media.type === 'video' && !needsBlur) {
+                                    // Skip videos without valid URLs
+                                    if (!media.url) {
+                                        return null;
+                                    }
+                                    return (
+                                        <a
+                                            key={media.id}
+                                            href={media.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block overflow-hidden rounded-lg"
+                                            aria-label={media.description || '動画'}
+                                        >
                                             <video
-                                                src={media.url ?? undefined}
+                                                src={media.url}
                                                 poster={media.previewUrl ?? undefined}
                                                 className="w-full h-36 object-cover"
-                                                controls
                                             />
-                                        )}
-                                        {media.type === 'gifv' && (
+                                        </a>
+                                    );
+                                }
+
+                                // For NSFW videos, use inline video with blur toggle
+                                if (media.type === 'video' && needsBlur) {
+                                    // Skip videos without valid preview (no way to display after reveal)
+                                    if (!media.previewUrl) {
+                                        return null;
+                                    }
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={media.id}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleNsfwToggle();
+                                            }}
+                                            className="block overflow-hidden rounded-lg text-left nsfw-blur-container"
+                                            aria-label="閲覧注意の動画を表示"
+                                        >
                                             <video
                                                 src={media.url ?? undefined}
+                                                poster={media.previewUrl}
+                                                className="w-full h-36 object-cover nsfw-blur"
+                                                aria-hidden="true"
+                                                tabIndex={-1}
+                                            />
+                                            <div className="nsfw-blur-overlay">
+                                                <span className="text-white text-sm font-medium">
+                                                    閲覧注意
+                                                </span>
+                                            </div>
+                                        </button>
+                                    );
+                                }
+
+                                // For non-NSFW gifv, use <a> tag to open in new tab
+                                if (media.type === 'gifv' && !needsBlur) {
+                                    // Skip gifv without valid URLs
+                                    if (!media.url) {
+                                        return null;
+                                    }
+                                    return (
+                                        <a
+                                            key={media.id}
+                                            href={media.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block overflow-hidden rounded-lg"
+                                            aria-label={media.description || 'GIFアニメーション'}
+                                        >
+                                            <video
+                                                src={media.url}
+                                                poster={media.previewUrl ?? undefined}
                                                 className="w-full h-36 object-cover"
                                                 autoPlay
                                                 loop
                                                 muted
                                                 playsInline
+                                                aria-hidden="true"
+                                                tabIndex={-1}
                                             />
-                                        )}
-                                    </a>
-                                );
+                                        </a>
+                                    );
+                                }
+
+                                // For NSFW gifv, use button with blur toggle
+                                if (media.type === 'gifv' && needsBlur) {
+                                    // Skip gifv without valid preview (no way to display after reveal)
+                                    if (!media.previewUrl) {
+                                        return null;
+                                    }
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={media.id}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleNsfwToggle();
+                                            }}
+                                            className="block overflow-hidden rounded-lg text-left nsfw-blur-container"
+                                            aria-label="閲覧注意のGIFを表示"
+                                        >
+                                            <video
+                                                src={media.url ?? undefined}
+                                                poster={media.previewUrl}
+                                                className="w-full h-36 object-cover nsfw-blur"
+                                                muted
+                                                playsInline
+                                                aria-hidden="true"
+                                                tabIndex={-1}
+                                            />
+                                            <div className="nsfw-blur-overlay">
+                                                <span className="text-white text-sm font-medium">
+                                                    閲覧注意
+                                                </span>
+                                            </div>
+                                        </button>
+                                    );
+                                }
+
+                                // Unknown media type - skip rendering
+                                return null;
                             })}
                         </div>
                     )}

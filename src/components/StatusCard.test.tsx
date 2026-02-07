@@ -550,8 +550,7 @@ describe('StatusCard', () => {
             );
         });
 
-        it('should NOT call onImageClick for video attachments', async () => {
-            const user = userEvent.setup();
+        it('should render video with anchor tag to open in new tab', async () => {
             const onImageClick = vi.fn();
             const status = createMockStatus({
                 mediaAttachments: [
@@ -572,19 +571,19 @@ describe('StatusCard', () => {
                 <StatusCard status={status} onImageClick={onImageClick} />
             );
 
-            // Video should be in an anchor tag, not a button
+            // Video should be in an anchor tag, not in a div or button
             const videoLink = container.querySelector('a[href="https://example.com/video.mp4"]');
             expect(videoLink).toBeInTheDocument();
+            expect(videoLink).toHaveAttribute('target', '_blank');
+            expect(videoLink).toHaveAttribute('rel', 'noopener noreferrer');
 
-            // Click on the video element
+            // Video element should not have controls (it's a preview)
             const video = container.querySelector('video');
             expect(video).toBeInTheDocument();
-            await user.click(video!);
-            expect(onImageClick).not.toHaveBeenCalled();
+            expect(video).not.toHaveAttribute('controls');
         });
 
-        it('should NOT call onImageClick for gifv attachments', async () => {
-            const user = userEvent.setup();
+        it('should render gifv as anchor tag to open in new tab', async () => {
             const onImageClick = vi.fn();
             const status = createMockStatus({
                 mediaAttachments: [
@@ -605,15 +604,18 @@ describe('StatusCard', () => {
                 <StatusCard status={status} onImageClick={onImageClick} />
             );
 
-            // gifv should be in an anchor tag, not a button
+            // gifv should be in an anchor tag
             const gifvLink = container.querySelector('a[href="https://example.com/animation.mp4"]');
             expect(gifvLink).toBeInTheDocument();
+            expect(gifvLink).toHaveAttribute('target', '_blank');
+            expect(gifvLink).toHaveAttribute('rel', 'noopener noreferrer');
+            expect(gifvLink).toHaveAttribute('aria-label', 'Test animation');
 
-            // Click on the video element
+            // Video element should autoplay
             const video = container.querySelector('video');
             expect(video).toBeInTheDocument();
-            await user.click(video!);
-            expect(onImageClick).not.toHaveBeenCalled();
+            expect(video).toHaveAttribute('autoPlay');
+            expect(video).toHaveAttribute('loop');
         });
 
         it('should NOT trigger card click when image is clicked', async () => {
@@ -1417,6 +1419,78 @@ describe('StatusCard', () => {
             // displayStatus.id（original-123）が通知されるべき
             expect(onNsfwReveal).toHaveBeenCalledTimes(1);
             expect(onNsfwReveal).toHaveBeenCalledWith('original-123');
+        });
+
+        it('should blur sensitive video and show overlay', async () => {
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'video',
+                        url: 'https://example.com/video.mp4',
+                        previewUrl: 'https://example.com/video-poster.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Sensitive video',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const { container } = render(<StatusCard status={status} />);
+
+            // Video should be in a button with blur
+            const videoButton = container.querySelector(
+                'button[aria-label="閲覧注意の動画を表示"]'
+            );
+            expect(videoButton).toBeInTheDocument();
+
+            // Video should have blur class
+            const video = container.querySelector('video');
+            expect(video).toHaveClass('nsfw-blur');
+            expect(video).toHaveAttribute('aria-hidden', 'true');
+
+            // Overlay div should be present
+            const overlay = container.querySelector('div.nsfw-blur-overlay');
+            expect(overlay).toBeInTheDocument();
+            expect(overlay).toHaveTextContent('閲覧注意');
+        });
+
+        it('should blur sensitive gifv and show overlay', async () => {
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'gifv',
+                        url: 'https://example.com/animation.mp4',
+                        previewUrl: 'https://example.com/animation-poster.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Sensitive gif',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const { container } = render(<StatusCard status={status} />);
+
+            // gifv button should have blur-indicating aria-label
+            const gifvButton = screen.getByRole('button', {
+                name: '閲覧注意のGIFを表示',
+            });
+            expect(gifvButton).toBeInTheDocument();
+
+            // Video should have blur class and not autoplay
+            const video = container.querySelector('video');
+            expect(video).toHaveClass('nsfw-blur');
+            expect(video).not.toHaveAttribute('autoPlay');
+
+            // Overlay div should be present
+            const overlay = container.querySelector('div.nsfw-blur-overlay');
+            expect(overlay).toBeInTheDocument();
+            expect(overlay).toHaveTextContent('閲覧注意');
         });
     });
 });
