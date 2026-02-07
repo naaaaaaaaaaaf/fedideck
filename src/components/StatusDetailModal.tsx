@@ -210,7 +210,7 @@ export function StatusDetailModal({
     const displayStatus = navigatedStatus ?? status?.reblog ?? status;
 
     // NSFW state: controlled from parent or local
-    const isControlled = nsfwRevealedStatusIds !== undefined;
+    const isControlled = nsfwRevealedStatusIds !== undefined && onNsfwReveal !== undefined;
     const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
 
     // Check if current status is revealed (controlled) or use local state

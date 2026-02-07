@@ -1098,6 +1098,7 @@ describe('NotificationCard', () => {
 
             // status1は表示済み、status2は未表示
             const nsfwRevealedStatusIds = new Set(['status-1']);
+            const onNsfwReveal = vi.fn();
 
             const notification1 = createMockNotification('mention', {
                 status: status1,
@@ -1112,6 +1113,7 @@ describe('NotificationCard', () => {
                 <NotificationCard
                     notification={notification1}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
@@ -1123,6 +1125,7 @@ describe('NotificationCard', () => {
                 <NotificationCard
                     notification={notification2}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 

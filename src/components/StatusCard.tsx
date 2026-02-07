@@ -61,7 +61,7 @@ export function StatusCard({
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
     // NSFW state: controlled from parent or local
-    const isControlled = nsfwRevealedStatusIds !== undefined;
+    const isControlled = nsfwRevealedStatusIds !== undefined && onNsfwReveal !== undefined;
     const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
     const nsfwRevealed = isControlled
         ? nsfwRevealedStatusIds.has(displayStatus.id)

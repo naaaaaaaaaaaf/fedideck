@@ -431,6 +431,7 @@ describe('StatusDetailModal', () => {
 
             // status1は表示済み、status2は未表示
             const nsfwRevealedStatusIds = new Set(['status-1']);
+            const onNsfwReveal = vi.fn();
 
             const { rerender } = render(
                 <StatusDetailModal
@@ -438,6 +439,7 @@ describe('StatusDetailModal', () => {
                     onClose={() => {}}
                     status={status1}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
@@ -452,6 +454,7 @@ describe('StatusDetailModal', () => {
                     onClose={() => {}}
                     status={status2}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 

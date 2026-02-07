@@ -70,7 +70,7 @@ export function NotificationCard({
     const displayStatus = status?.reblog ?? status;
 
     // NSFW state: controlled from parent or local
-    const isControlled = nsfwRevealedStatusIds !== undefined;
+    const isControlled = nsfwRevealedStatusIds !== undefined && onNsfwReveal !== undefined;
     const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
     const nsfwRevealed = isControlled
         ? displayStatus
