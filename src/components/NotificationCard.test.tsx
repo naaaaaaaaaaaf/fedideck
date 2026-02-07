@@ -1004,5 +1004,133 @@ describe('NotificationCard', () => {
             // Should have called onStatusClick for navigation
             expect(onStatusClick).toHaveBeenCalledTimes(1);
         });
+
+        it('should call onNsfwReveal with status.id when revealing sensitive image', async () => {
+            const user = userEvent.setup();
+            const onNsfwReveal = vi.fn();
+
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    id: 'status-123',
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/sensitive.png',
+                            previewUrl: 'https://example.com/sensitive-preview.png',
+                            description: 'Sensitive image',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            render(<NotificationCard notification={notification} onNsfwReveal={onNsfwReveal} />);
+
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            await user.click(button);
+
+            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
+            expect(onNsfwReveal).toHaveBeenCalledWith('status-123');
+        });
+
+        it('should call onNsfwReveal with reblogged status.id when revealing', async () => {
+            const user = userEvent.setup();
+            const onNsfwReveal = vi.fn();
+
+            const originalStatus = createMockStatus({
+                id: 'original-123',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: 'media1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive.png',
+                        previewUrl: 'https://example.com/sensitive-preview.png',
+                        description: 'Sensitive reblogged image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    id: 'reblog-456',
+                    reblog: originalStatus,
+                }),
+            });
+
+            render(<NotificationCard notification={notification} onNsfwReveal={onNsfwReveal} />);
+
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            await user.click(button);
+
+            // displayStatus.id（original-123）が通知されるべき
+            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
+            expect(onNsfwReveal).toHaveBeenCalledWith('original-123');
+        });
+
+        it('should check nsfwRevealedStatusIds for current displayStatus.id', () => {
+            const status1 = createMockStatus({
+                id: 'status-1',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive1.png',
+                        description: 'Sensitive image 1',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const status2 = createMockStatus({
+                id: 'status-2',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '2',
+                        type: 'image',
+                        url: 'https://example.com/sensitive2.png',
+                        description: 'Sensitive image 2',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            // status1は表示済み、status2は未表示
+            const nsfwRevealedStatusIds = new Set(['status-1']);
+            const onNsfwReveal = vi.fn();
+
+            const notification1 = createMockNotification('mention', {
+                status: status1,
+            });
+
+            const notification2 = createMockNotification('mention', {
+                status: status2,
+            });
+
+            // status1は表示済みなのでぼかしなし
+            render(
+                <NotificationCard
+                    notification={notification1}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    onNsfwReveal={onNsfwReveal}
+                />
+            );
+
+            const img1 = screen.getByAltText('Sensitive image 1');
+            expect(img1).not.toHaveClass('nsfw-blur');
+
+            // status2は未表示なのでぼかしあり
+            render(
+                <NotificationCard
+                    notification={notification2}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    onNsfwReveal={onNsfwReveal}
+                />
+            );
+
+            const img2 = screen.getByAltText('Sensitive image 2');
+            expect(img2).toHaveClass('nsfw-blur');
+        });
     });
 });

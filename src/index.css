@@ -152,7 +152,6 @@ body {
 .nsfw-blur {
     filter: blur(32px);
     transition: filter 0.2s ease-in-out;
-    cursor: pointer;
 }
 
 .nsfw-blur:hover {
@@ -162,6 +161,7 @@ body {
 .nsfw-blur-container {
     position: relative;
     overflow: hidden;
+    cursor: pointer;
 }
 
 .nsfw-blur-overlay {

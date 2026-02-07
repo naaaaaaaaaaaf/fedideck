@@ -240,6 +240,227 @@ describe('StatusDetailModal', () => {
             expect(img).toBeInTheDocument();
             expect(img).toHaveAttribute('src', 'https://example.com/image.png');
         });
+
+        it('should blur sensitive images by default', () => {
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive.png',
+                        previewUrl: 'https://example.com/sensitive-preview.png',
+                        description: 'Sensitive image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={status} />);
+
+            const img = screen.getByAltText('Sensitive image');
+            expect(img).toHaveClass('nsfw-blur');
+
+            const overlay = screen.getByText('閲覧注意');
+            expect(overlay).toBeInTheDocument();
+        });
+
+        it('should show correct aria-label for blurred sensitive image', () => {
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive.png',
+                        previewUrl: 'https://example.com/sensitive-preview.png',
+                        description: 'Sensitive image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={status} />);
+
+            const button = screen.getByRole('button', {
+                name: /閲覧注意の画像を表示 \(1\/1\)/,
+            });
+            expect(button).toBeInTheDocument();
+        });
+
+        it('should reveal sensitive image when clicked', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive.png',
+                        previewUrl: 'https://example.com/sensitive-preview.png',
+                        description: 'Sensitive image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={status} />);
+
+            const img = screen.getByAltText('Sensitive image');
+            expect(img).toHaveClass('nsfw-blur');
+
+            const button = screen.getByRole('button', {
+                name: /閲覧注意の画像を表示/,
+            });
+            await user.click(button);
+
+            expect(img).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should reset nsfwRevealed state when status changes', async () => {
+            const user = userEvent.setup();
+            const status1 = createMockStatus({
+                id: 'status1',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive1.png',
+                        description: 'Sensitive image 1',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const status2 = createMockStatus({
+                id: 'status2',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '2',
+                        type: 'image',
+                        url: 'https://example.com/sensitive2.png',
+                        description: 'Sensitive image 2',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const { rerender } = render(
+                <StatusDetailModal isOpen={true} onClose={() => {}} status={status1} />
+            );
+
+            // Reveal first image
+            const button1 = screen.getByRole('button', {
+                name: /閲覧注意の画像を表示/,
+            });
+            await user.click(button1);
+
+            const img1 = screen.getByAltText('Sensitive image 1');
+            expect(img1).not.toHaveClass('nsfw-blur');
+
+            // Change to different status
+            rerender(<StatusDetailModal isOpen={true} onClose={() => {}} status={status2} />);
+
+            const img2 = screen.getByAltText('Sensitive image 2');
+            expect(img2).toHaveClass('nsfw-blur');
+        });
+
+        it('should call onNsfwReveal with displayStatus.id for reblogged posts', async () => {
+            const user = userEvent.setup();
+            const onNsfwReveal = vi.fn();
+
+            const originalStatus = createMockStatus({
+                id: 'original-123',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive.png',
+                        previewUrl: 'https://example.com/sensitive-preview.png',
+                        description: 'Sensitive reblogged image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const reblogStatus = createMockStatus({
+                id: 'reblog-456',
+                reblog: originalStatus,
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={reblogStatus}
+                    onNsfwReveal={onNsfwReveal}
+                />
+            );
+
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            await user.click(button);
+
+            // displayStatus.id（original-123）が通知されるべき
+            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
+            expect(onNsfwReveal).toHaveBeenCalledWith('original-123');
+        });
+
+        it('should check nsfwRevealedStatusIds for current displayStatus.id', () => {
+            const status1 = createMockStatus({
+                id: 'status-1',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive1.png',
+                        description: 'Sensitive image 1',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const status2 = createMockStatus({
+                id: 'status-2',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '2',
+                        type: 'image',
+                        url: 'https://example.com/sensitive2.png',
+                        description: 'Sensitive image 2',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            // status1は表示済み、status2は未表示
+            const nsfwRevealedStatusIds = new Set(['status-1']);
+            const onNsfwReveal = vi.fn();
+
+            const { rerender } = render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status1}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    onNsfwReveal={onNsfwReveal}
+                />
+            );
+
+            // status1は表示済みなのでぼかしなし
+            const img1 = screen.getByAltText('Sensitive image 1');
+            expect(img1).not.toHaveClass('nsfw-blur');
+
+            // status2に切り替えると、未表示なのでぼかしあり
+            rerender(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status2}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    onNsfwReveal={onNsfwReveal}
+                />
+            );
+
+            const img2 = screen.getByAltText('Sensitive image 2');
+            expect(img2).toHaveClass('nsfw-blur');
+        });
     });
 
     describe('image click', () => {

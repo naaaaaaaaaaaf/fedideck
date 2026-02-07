@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import type { mastodon } from 'masto';
 import './index.css';
 import { Sidebar } from './components/Sidebar';
@@ -15,6 +15,9 @@ import { useColumnsStore } from './store/columns';
 import { useStreamsStore, getStreamKey } from './store/streams';
 import { initStreamManager } from './streaming/streamManager';
 
+// NSFW cache size limit for LRU eviction
+const MAX_NSFW_CACHE_SIZE = 100;
+
 function App() {
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
@@ -24,6 +27,32 @@ function App() {
     const [isStatusDetailOpen, setIsStatusDetailOpen] = useState(false);
     const [detailStatus, setDetailStatus] = useState<mastodon.v1.Status | null>(null);
     const [detailAccountSession, setDetailAccountSession] = useState<AccountSession | undefined>();
+
+    // NSFW revealed status IDs (for syncing between StatusCard and StatusDetailModal)
+    // Use array for LRU cache - most recently revealed at the end
+    const [nsfwRevealedStatusIds, setNsfwRevealedStatusIds] = useState<string[]>([]);
+
+    // Memoize Set to avoid unnecessary re-renders
+    const nsfwRevealedStatusIdSet = useMemo(
+        () => new Set(nsfwRevealedStatusIds),
+        [nsfwRevealedStatusIds]
+    );
+
+    // Add status ID to NSFW revealed list with LRU eviction
+    const addNsfwRevealedStatusId = useCallback((statusId: string) => {
+        setNsfwRevealedStatusIds((prev) => {
+            // If already exists, move to end (most recently used)
+            if (prev.includes(statusId)) {
+                return [...prev.filter((id) => id !== statusId), statusId];
+            }
+            // Add new entry, evict oldest if over limit
+            const newIds = [...prev, statusId];
+            if (newIds.length > MAX_NSFW_CACHE_SIZE) {
+                return newIds.slice(-MAX_NSFW_CACHE_SIZE);
+            }
+            return newIds;
+        });
+    }, []);
 
     // Profile modal state
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -185,6 +214,8 @@ function App() {
                     onStatusClick={handleStatusClick}
                     onImageClick={handleImageClick}
                     onAccountClick={handleAccountClick}
+                    onNsfwReveal={addNsfwRevealedStatusId}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
                 />
             </main>
 
@@ -212,6 +243,8 @@ function App() {
                 onReply={handleStatusDetailReply}
                 onStatusUpdate={updateStatusGlobal}
                 onImageClick={handleImageClick}
+                nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
+                onNsfwReveal={addNsfwRevealedStatusId}
             />
             <ProfileModal
                 isOpen={isProfileModalOpen}

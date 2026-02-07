@@ -31,6 +31,8 @@ interface StatusCardProps {
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
+    onNsfwReveal?: (statusId: string) => void;
+    nsfwRevealedStatusIds?: Set<string>;
 }
 
 export function StatusCard({
@@ -42,6 +44,8 @@ export function StatusCard({
     onStatusClick,
     onImageClick,
     onAccountClick,
+    onNsfwReveal,
+    nsfwRevealedStatusIds,
 }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
@@ -55,7 +59,15 @@ export function StatusCard({
     const [localReblogged, setLocalReblogged] = useState(displayStatus.reblogged ?? false);
     const [localReblogsCount, setLocalReblogsCount] = useState(displayStatus.reblogsCount ?? 0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
-    const [nsfwRevealed, setNsfwRevealed] = useState(false);
+
+    // NSFW state: controlled from parent or local
+    // If parent provides state (nsfwRevealedStatusIds), always use it
+    // When onNsfwReveal is missing, operates in read-only mode
+    const isControlled = nsfwRevealedStatusIds !== undefined;
+    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
+    const nsfwRevealed = isControlled
+        ? nsfwRevealedStatusIds.has(displayStatus.id)
+        : localNsfwRevealed;
 
     // Track pending props updates that arrived during loading
     const pendingPropsRef = useRef<{
@@ -208,7 +220,20 @@ export function StatusCard({
     };
 
     const handleNsfwToggle = () => {
-        setNsfwRevealed((prev) => !prev);
+        // Controlled mode: use parent state
+        if (isControlled) {
+            // If callback provided, notify parent (read-only mode if no callback)
+            if (!nsfwRevealed && onNsfwReveal) {
+                onNsfwReveal(displayStatus.id);
+            }
+            return;
+        }
+
+        // Uncontrolled mode: notify parent if callback provided, then toggle local state
+        if (!nsfwRevealed && onNsfwReveal) {
+            onNsfwReveal(displayStatus.id);
+        }
+        setLocalNsfwRevealed((prev) => !prev);
     };
 
     // Check if reblog is allowed (not for private/direct messages)
