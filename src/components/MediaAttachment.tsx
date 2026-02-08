@@ -188,22 +188,36 @@ export function MediaAttachment({
 
     // Render video type
     if (media.type === 'video') {
-        // Non-NSFW video: render as <a> tag
+        // Non-NSFW video: render as <a> tag with video element
         if (!needsBlur) {
-            if (!firstNonEmpty(media.url)) {
+            const videoUrl = firstNonEmpty(media.url);
+            const posterUrl = firstNonEmpty(media.previewUrl);
+
+            // If we have poster URL but no video URL, render as static image
+            if (!videoUrl && posterUrl) {
+                return (
+                    <img
+                        src={posterUrl}
+                        alt={media.description || '動画'}
+                        className={`${variantClasses} ${className} ${objectFitClass}`}
+                    />
+                );
+            }
+
+            if (!videoUrl) {
                 return null;
             }
             return (
                 <a
-                    href={media.url ?? undefined}
+                    href={videoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={`block overflow-hidden ${variantClasses} ${className}`}
                     aria-label={media.description || '動画'}
                 >
                     <video
-                        src={media.url ?? undefined}
-                        poster={firstNonEmpty(media.previewUrl) ?? undefined}
+                        src={videoUrl}
+                        poster={posterUrl ?? undefined}
                         className={`${variantClasses} ${objectFitClass}`}
                     />
                 </a>
@@ -211,7 +225,7 @@ export function MediaAttachment({
         }
 
         // NSFW video: render as button with blur toggle
-        if (!hasValidPreviewUrl() || !hasValidUrl()) {
+        if (!hasValidPreviewUrl()) {
             return null;
         }
         return (
@@ -242,20 +256,34 @@ export function MediaAttachment({
     if (media.type === 'gifv') {
         // Non-NSFW gifv: render as <a> tag with autoplay
         if (!needsBlur) {
-            if (!firstNonEmpty(media.url)) {
+            const videoUrl = firstNonEmpty(media.url);
+            const posterUrl = firstNonEmpty(media.previewUrl);
+
+            // If we have poster URL but no video URL, render as static image
+            if (!videoUrl && posterUrl) {
+                return (
+                    <img
+                        src={posterUrl}
+                        alt={media.description || 'GIFアニメーション'}
+                        className={`${variantClasses} ${className} ${objectFitClass}`}
+                    />
+                );
+            }
+
+            if (!videoUrl) {
                 return null;
             }
             return (
                 <a
-                    href={media.url ?? undefined}
+                    href={videoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={`block overflow-hidden ${variantClasses} ${className}`}
                     aria-label={media.description || 'GIFアニメーション'}
                 >
                     <video
-                        src={media.url ?? undefined}
-                        poster={firstNonEmpty(media.previewUrl) ?? undefined}
+                        src={videoUrl}
+                        poster={posterUrl ?? undefined}
                         className={`${variantClasses} ${objectFitClass}`}
                         autoPlay
                         loop
@@ -269,7 +297,7 @@ export function MediaAttachment({
         }
 
         // NSFW gifv: render as button with blur toggle (no autoplay)
-        if (!hasValidPreviewUrl() || !hasValidUrl()) {
+        if (!hasValidPreviewUrl()) {
             return null;
         }
         return (

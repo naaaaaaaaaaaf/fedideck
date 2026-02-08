@@ -328,7 +328,7 @@ describe('MediaAttachment', () => {
             expect(video).not.toHaveAttribute('controls');
         });
 
-        it('should not render non-NSFW video without valid URL', () => {
+        it('should render non-NSFW video without valid URL as static poster image', () => {
             const media = createMockMedia({
                 type: 'video',
                 url: undefined,
@@ -339,7 +339,10 @@ describe('MediaAttachment', () => {
                 <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
             );
 
-            expect(container.firstChild).toBeNull();
+            // Should render img with previewUrl when url is missing
+            const img = container.querySelector('img');
+            expect(img).toBeInTheDocument();
+            expect(img).toHaveAttribute('src', 'https://example.com/video-poster.png');
         });
 
         it('should render NSFW video as button with blur', () => {
@@ -403,6 +406,56 @@ describe('MediaAttachment', () => {
 
             expect(onNsfwToggle).toHaveBeenCalledTimes(1);
         });
+
+        it('should render NSFW video with only previewUrl (no url)', () => {
+            const media = createMockMedia({
+                type: 'video',
+                url: undefined,
+                previewUrl: 'https://example.com/video-poster.png',
+            });
+
+            const { container } = render(
+                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />
+            );
+
+            const button = container.querySelector('button');
+            expect(button).toBeInTheDocument();
+        });
+
+        it('should render non-NSFW video with only previewUrl as static image', () => {
+            const media = createMockMedia({
+                type: 'video',
+                url: undefined,
+                previewUrl: 'https://example.com/video-poster.png',
+            });
+
+            const { container } = render(
+                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={true} />
+            );
+
+            // Should render img with previewUrl when url is missing
+            const img = container.querySelector('img');
+            expect(img).toBeInTheDocument();
+            expect(img).toHaveAttribute('src', 'https://example.com/video-poster.png');
+        });
+
+        it('should maintain video visibility when toggling NSFW reveal with only previewUrl', () => {
+            const media = createMockMedia({
+                type: 'video',
+                url: undefined,
+                previewUrl: 'https://example.com/video-poster.png',
+            });
+
+            // Render with NSFW revealed = false
+            const { container: container1, rerender } = render(
+                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />
+            );
+            expect(container1.firstChild).not.toBeNull();
+
+            // Rerender with NSFW revealed = true (simulating toggle)
+            rerender(<MediaAttachment media={media} isSensitive={true} nsfwRevealed={true} />);
+            expect(container1.firstChild).not.toBeNull();
+        });
     });
 
     describe('gifv rendering', () => {
@@ -430,7 +483,7 @@ describe('MediaAttachment', () => {
             expect(video).toHaveAttribute('loop');
         });
 
-        it('should not render non-NSFW gifv without valid URL', () => {
+        it('should render non-NSFW gifv without valid URL as static poster image', () => {
             const media = createMockMedia({
                 type: 'gifv',
                 url: undefined,
@@ -441,7 +494,10 @@ describe('MediaAttachment', () => {
                 <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
             );
 
-            expect(container.firstChild).toBeNull();
+            // Should render img with previewUrl when url is missing
+            const img = container.querySelector('img');
+            expect(img).toBeInTheDocument();
+            expect(img).toHaveAttribute('src', 'https://example.com/animation-poster.png');
         });
 
         it('should render NSFW gifv as button with blur (no autoplay)', () => {
@@ -503,6 +559,56 @@ describe('MediaAttachment', () => {
             await user.click(button);
 
             expect(onNsfwToggle).toHaveBeenCalledTimes(1);
+        });
+
+        it('should render NSFW gifv with only previewUrl (no url)', () => {
+            const media = createMockMedia({
+                type: 'gifv',
+                url: undefined,
+                previewUrl: 'https://example.com/animation-poster.png',
+            });
+
+            const { container } = render(
+                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />
+            );
+
+            const button = container.querySelector('button');
+            expect(button).toBeInTheDocument();
+        });
+
+        it('should render non-NSFW gifv with only previewUrl as static image', () => {
+            const media = createMockMedia({
+                type: 'gifv',
+                url: undefined,
+                previewUrl: 'https://example.com/animation-poster.png',
+            });
+
+            const { container } = render(
+                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={true} />
+            );
+
+            // Should render img with previewUrl when url is missing
+            const img = container.querySelector('img');
+            expect(img).toBeInTheDocument();
+            expect(img).toHaveAttribute('src', 'https://example.com/animation-poster.png');
+        });
+
+        it('should maintain gifv visibility when toggling NSFW reveal with only previewUrl', () => {
+            const media = createMockMedia({
+                type: 'gifv',
+                url: undefined,
+                previewUrl: 'https://example.com/animation-poster.png',
+            });
+
+            // Render with NSFW revealed = false
+            const { container: container1, rerender } = render(
+                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />
+            );
+            expect(container1.firstChild).not.toBeNull();
+
+            // Rerender with NSFW revealed = true (simulating toggle)
+            rerender(<MediaAttachment media={media} isSensitive={true} nsfwRevealed={true} />);
+            expect(container1.firstChild).not.toBeNull();
         });
     });
 
