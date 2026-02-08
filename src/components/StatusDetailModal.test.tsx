@@ -238,7 +238,8 @@ describe('StatusDetailModal', () => {
 
             const img = screen.getByAltText('Test image');
             expect(img).toBeInTheDocument();
-            expect(img).toHaveAttribute('src', 'https://example.com/preview.png');
+            // detail variant prioritizes full resolution URL
+            expect(img).toHaveAttribute('src', 'https://example.com/image.png');
         });
 
         it('should blur sensitive images by default', () => {

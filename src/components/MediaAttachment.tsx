@@ -32,6 +32,13 @@ export function MediaAttachment({
         detail: 'w-full max-h-96 rounded-xl bg-slate-800',
     }[variant];
 
+    // Select display URL based on variant
+    // detail: prioritize full resolution, card/compact: prioritize thumbnail for bandwidth
+    const displayUrl =
+        variant === 'detail'
+            ? (media.url ?? media.previewUrl ?? '')
+            : (media.previewUrl ?? media.url ?? '');
+
     // Check if media has valid URL
     const hasValidUrl = (): boolean => {
         const url = media.url ?? media.previewUrl ?? '';
@@ -66,8 +73,6 @@ export function MediaAttachment({
             return null;
         }
 
-        const previewUrl = media.previewUrl ?? media.url ?? '';
-
         // For NSFW or when onImageClick is provided, render as button
         if (needsBlur || onImageClick) {
             return (
@@ -85,7 +90,7 @@ export function MediaAttachment({
                     aria-label={getAccessibleLabel()}
                 >
                     <img
-                        src={previewUrl}
+                        src={displayUrl}
                         alt={media.description || '添付メディア'}
                         className={`${variantClasses} object-cover transition-opacity ${
                             needsBlur ? 'nsfw-blur' : 'hover:opacity-90'
@@ -103,7 +108,7 @@ export function MediaAttachment({
         // For non-NSFW without onImageClick (e.g., NotificationCard thumbnails), render as plain img
         return (
             <img
-                src={previewUrl}
+                src={displayUrl}
                 alt={media.description || '添付メディア'}
                 className={`${variantClasses} ${className} object-cover`}
             />
