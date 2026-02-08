@@ -115,6 +115,67 @@ describe('MediaAttachment', () => {
             expect(img).toHaveClass('w-12', 'h-12', 'rounded');
         });
 
+        it('should not render compact video without previewUrl', () => {
+            const media = createMockMedia({
+                type: 'video',
+                url: 'https://example.com/video.mp4',
+                previewUrl: undefined,
+            });
+
+            const { container } = render(
+                <MediaAttachment
+                    media={media}
+                    variant="compact"
+                    isSensitive={false}
+                    nsfwRevealed={false}
+                />
+            );
+
+            // Video URL (mp4) should not be used in img tag
+            expect(container.firstChild).toBeNull();
+        });
+
+        it('should not render compact gifv without previewUrl', () => {
+            const media = createMockMedia({
+                type: 'gifv',
+                url: 'https://example.com/animation.mp4',
+                previewUrl: undefined,
+            });
+
+            const { container } = render(
+                <MediaAttachment
+                    media={media}
+                    variant="compact"
+                    isSensitive={false}
+                    nsfwRevealed={false}
+                />
+            );
+
+            // Video URL (mp4) should not be used in img tag
+            expect(container.firstChild).toBeNull();
+        });
+
+        it('should render compact video with previewUrl', () => {
+            const media = createMockMedia({
+                type: 'video',
+                url: 'https://example.com/video.mp4',
+                previewUrl: 'https://example.com/video-poster.png',
+            });
+
+            const { container } = render(
+                <MediaAttachment
+                    media={media}
+                    variant="compact"
+                    isSensitive={false}
+                    nsfwRevealed={false}
+                />
+            );
+
+            const img = container.querySelector('img');
+            expect(img).toBeInTheDocument();
+            expect(img).toHaveAttribute('src', 'https://example.com/video-poster.png');
+        });
+
         it('should not render image without valid URL', () => {
             const media = createMockMedia({
                 type: 'image',

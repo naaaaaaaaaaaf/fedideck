@@ -78,9 +78,19 @@ export function MediaAttachment({
         return `${mediaLabel}を拡大`;
     };
 
-    // Compact mode: render all media types as simple img thumbnails
+    // Compact mode: render media as simple thumbnails
     // This preserves parent element's click behavior (e.g., NotificationCard)
     if (variant === 'compact') {
+        // For video/gifv, we need a valid previewUrl (poster image)
+        // Cannot use video URL (mp4) directly in an img tag
+        if (media.type === 'video' || media.type === 'gifv') {
+            const posterUrl = firstNonEmpty(media.previewUrl);
+            if (posterUrl === '') {
+                return null;
+            }
+        }
+
+        // For images, use previewUrl with url fallback
         const thumbnailUrl = firstNonEmpty(media.previewUrl, media.url);
         if (thumbnailUrl === '') {
             return null;
