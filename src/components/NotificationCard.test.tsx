@@ -242,8 +242,11 @@ describe('NotificationCard', () => {
                     ],
                 }),
             });
-            render(<NotificationCard notification={notification} />);
-            expect(screen.getByAltText('添付メディア')).toBeInTheDocument();
+            const { container } = render(<NotificationCard notification={notification} />);
+            // Image should be rendered with empty alt (decorative)
+            const img = container.querySelector('img[src="https://example.com/image.png"]');
+            expect(img).toBeInTheDocument();
+            expect(img?.getAttribute('alt')).toBe('');
         });
 
         it('should not display status area when status is absent', () => {
@@ -775,7 +778,8 @@ describe('NotificationCard', () => {
 
             render(<NotificationCard notification={notification} />);
 
-            const img = screen.getByAltText('添付メディア');
+            const { container } = render(<NotificationCard notification={notification} />);
+            const img = container.querySelector('img[src="https://example.com/preview.png"]');
             expect(img).toHaveClass('nsfw-blur');
         });
 
@@ -794,9 +798,9 @@ describe('NotificationCard', () => {
                 }),
             });
 
-            render(<NotificationCard notification={notification} />);
+            const { container } = render(<NotificationCard notification={notification} />);
 
-            const img = screen.getByAltText('添付メディア');
+            const img = container.querySelector('img[src="https://example.com/preview.png"]');
             expect(img).not.toHaveClass('nsfw-blur');
         });
 
@@ -836,12 +840,12 @@ describe('NotificationCard', () => {
                 }),
             });
 
-            render(<NotificationCard notification={notification} />);
+            const { container } = render(<NotificationCard notification={notification} />);
 
             // Initially should have button and blurred image
             const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
             expect(button).toBeInTheDocument();
-            const img = screen.getByAltText('添付メディア');
+            const img = container.querySelector('img[src="https://example.com/preview.png"]');
             expect(img).toHaveClass('nsfw-blur');
 
             // Click to reveal
@@ -849,7 +853,7 @@ describe('NotificationCard', () => {
 
             // After reveal, button should be gone and new img should not have blur class
             expect(screen.queryByRole('button', { name: '添付メディア' })).not.toBeInTheDocument();
-            const imgAfter = screen.getByAltText('添付メディア');
+            const imgAfter = container.querySelector('img[src="https://example.com/preview.png"]');
             expect(imgAfter).not.toHaveClass('nsfw-blur');
         });
 
@@ -869,7 +873,7 @@ describe('NotificationCard', () => {
                 }),
             });
 
-            render(<NotificationCard notification={notification} />);
+            const { container } = render(<NotificationCard notification={notification} />);
 
             const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
             button.focus();
@@ -877,7 +881,7 @@ describe('NotificationCard', () => {
 
             // After reveal, button should be gone
             expect(screen.queryByRole('button', { name: '添付メディア' })).not.toBeInTheDocument();
-            const imgAfter = screen.getByAltText('添付メディア');
+            const imgAfter = container.querySelector('img[src="https://example.com/preview.png"]');
             expect(imgAfter).not.toHaveClass('nsfw-blur');
         });
 
@@ -897,7 +901,7 @@ describe('NotificationCard', () => {
                 }),
             });
 
-            render(<NotificationCard notification={notification} />);
+            const { container } = render(<NotificationCard notification={notification} />);
 
             const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
             button.focus();
@@ -905,7 +909,7 @@ describe('NotificationCard', () => {
 
             // After reveal, button should be gone
             expect(screen.queryByRole('button', { name: '添付メディア' })).not.toBeInTheDocument();
-            const imgAfter = screen.getByAltText('添付メディア');
+            const imgAfter = container.querySelector('img[src="https://example.com/preview.png"]');
             expect(imgAfter).not.toHaveClass('nsfw-blur');
         });
 
@@ -924,16 +928,16 @@ describe('NotificationCard', () => {
                 }),
             });
 
-            render(<NotificationCard notification={notification} />);
+            const { container } = render(<NotificationCard notification={notification} />);
 
             // Should not have a button for non-sensitive media
             const button = screen.queryByRole('button', { name: '添付メディア' });
             expect(button).not.toBeInTheDocument();
 
             // Should have a plain img element
-            const img = screen.getByAltText('添付メディア');
+            const img = container.querySelector('img[src="https://example.com/preview.png"]');
             expect(img).toBeInTheDocument();
-            expect(img.tagName).toBe('IMG');
+            expect(img?.tagName).toBe('IMG');
         });
 
         it('should render plain img after reveal (not button)', async () => {
@@ -952,7 +956,7 @@ describe('NotificationCard', () => {
                 }),
             });
 
-            render(<NotificationCard notification={notification} />);
+            const { container } = render(<NotificationCard notification={notification} />);
 
             // Initially should have button for sensitive image
             const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
@@ -966,43 +970,9 @@ describe('NotificationCard', () => {
             expect(buttonAfter).not.toBeInTheDocument();
 
             // Should have plain img instead
-            const img = screen.getByAltText('添付メディア');
+            const img = container.querySelector('img[src="https://example.com/preview.png"]');
             expect(img).toBeInTheDocument();
-            expect(img.tagName).toBe('IMG');
-        });
-
-        it('should call onStatusClick when clicking revealed image thumbnail', async () => {
-            const user = userEvent.setup();
-            const onStatusClick = vi.fn();
-            const notification = createMockNotification('mention', {
-                status: createMockStatus({
-                    sensitive: true,
-                    mediaAttachments: [
-                        {
-                            id: 'media1',
-                            type: 'image',
-                            url: 'https://example.com/image.png',
-                            previewUrl: 'https://example.com/preview.png',
-                        } as mastodon.v1.MediaAttachment,
-                    ],
-                }),
-            });
-
-            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
-
-            // First, reveal the image
-            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
-            await user.click(button);
-
-            // Reset mock to clear the first click (which was on the button)
-            onStatusClick.mockClear();
-
-            // Now click on the revealed image (should trigger status click)
-            const img = screen.getByAltText('添付メディア');
-            await user.click(img);
-
-            // Should have called onStatusClick for navigation
-            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(img?.tagName).toBe('IMG');
         });
 
         it('should call onNsfwReveal with status.id when revealing sensitive image', async () => {

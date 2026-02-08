@@ -110,7 +110,7 @@ export function MediaAttachment({
                 >
                     <img
                         src={thumbnailUrl}
-                        alt={media.description || '添付メディア'}
+                        alt={media.description ?? ''}
                         className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                         aria-hidden="true"
                     />
@@ -127,7 +127,7 @@ export function MediaAttachment({
         return (
             <img
                 src={thumbnailUrl}
-                alt={media.description || '添付メディア'}
+                alt={media.description ?? ''}
                 className={`${variantClasses} ${className} ${objectFitClass}`}
             />
         );
@@ -157,10 +157,11 @@ export function MediaAttachment({
                 >
                     <img
                         src={displayUrl}
-                        alt={media.description || '添付メディア'}
+                        alt={media.description ?? ''}
                         className={`${variantClasses} ${objectFitClass} transition-opacity ${
                             needsBlur ? 'nsfw-blur' : 'hover:opacity-90'
                         }`}
+                        aria-hidden="true"
                     />
                     {needsBlur && (
                         <div className="nsfw-blur-overlay">
@@ -177,7 +178,7 @@ export function MediaAttachment({
         return (
             <img
                 src={displayUrl}
-                alt={media.description || '添付メディア'}
+                alt={media.description ?? ''}
                 className={`${variantClasses} ${className} ${objectFitClass}`}
             />
         );
