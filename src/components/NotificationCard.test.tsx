@@ -776,8 +776,6 @@ describe('NotificationCard', () => {
                 }),
             });
 
-            render(<NotificationCard notification={notification} />);
-
             const { container } = render(<NotificationCard notification={notification} />);
             const img = container.querySelector('img[src="https://example.com/preview.png"]');
             expect(img).toHaveClass('nsfw-blur');
