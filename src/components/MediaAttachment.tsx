@@ -195,15 +195,15 @@ export function MediaAttachment({
             }
             return (
                 <a
-                    href={media.url}
+                    href={media.url ?? undefined}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={`block overflow-hidden ${variantClasses} ${className}`}
                     aria-label={media.description || '動画'}
                 >
                     <video
-                        src={media.url}
-                        poster={firstNonEmpty(media.previewUrl) || undefined}
+                        src={media.url ?? undefined}
+                        poster={firstNonEmpty(media.previewUrl) ?? undefined}
                         className={`${variantClasses} ${objectFitClass}`}
                     />
                 </a>
@@ -225,8 +225,8 @@ export function MediaAttachment({
                 aria-label={getAccessibleLabel(media.type)}
             >
                 <video
-                    src={media.url || undefined}
-                    poster={firstNonEmpty(media.previewUrl) || undefined}
+                    src={media.url ?? undefined}
+                    poster={firstNonEmpty(media.previewUrl) ?? undefined}
                     className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                     aria-hidden="true"
                     tabIndex={-1}
@@ -247,15 +247,15 @@ export function MediaAttachment({
             }
             return (
                 <a
-                    href={media.url}
+                    href={media.url ?? undefined}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={`block overflow-hidden ${variantClasses} ${className}`}
                     aria-label={media.description || 'GIFアニメーション'}
                 >
                     <video
-                        src={media.url}
-                        poster={firstNonEmpty(media.previewUrl) || undefined}
+                        src={media.url ?? undefined}
+                        poster={firstNonEmpty(media.previewUrl) ?? undefined}
                         className={`${variantClasses} ${objectFitClass}`}
                         autoPlay
                         loop
@@ -283,8 +283,8 @@ export function MediaAttachment({
                 aria-label={getAccessibleLabel(media.type)}
             >
                 <video
-                    src={media.url || undefined}
-                    poster={firstNonEmpty(media.previewUrl) || undefined}
+                    src={media.url ?? undefined}
+                    poster={firstNonEmpty(media.previewUrl) ?? undefined}
                     className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                     muted
                     playsInline
