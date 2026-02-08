@@ -36,6 +36,10 @@ export function MediaAttachment({
     // detail: contain to show full image, card/compact: cover for uniform thumbnails
     const objectFitClass = variant === 'detail' ? 'object-contain' : 'object-cover';
 
+    // Variant-specific overlay text size
+    // compact: smaller text for 12x12px thumbnails, card/detail: normal size
+    const overlayTextClass = variant === 'compact' ? 'text-xs' : 'text-sm';
+
     // Select display URL based on variant
     // detail: prioritize full resolution, card/compact: prioritize thumbnail for bandwidth
     const displayUrl =
@@ -98,7 +102,9 @@ export function MediaAttachment({
                         aria-hidden="true"
                     />
                     <div className="nsfw-blur-overlay">
-                        <span className="text-white text-sm font-medium">閲覧注意</span>
+                        <span className={`text-white ${overlayTextClass} font-medium`}>
+                            閲覧注意
+                        </span>
                     </div>
                 </button>
             );
@@ -145,7 +151,9 @@ export function MediaAttachment({
                     />
                     {needsBlur && (
                         <div className="nsfw-blur-overlay">
-                            <span className="text-white text-sm font-medium">閲覧注意</span>
+                            <span className={`text-white ${overlayTextClass} font-medium`}>
+                                閲覧注意
+                            </span>
                         </div>
                     )}
                 </button>
@@ -208,7 +216,7 @@ export function MediaAttachment({
                     tabIndex={-1}
                 />
                 <div className="nsfw-blur-overlay">
-                    <span className="text-white text-sm font-medium">閲覧注意</span>
+                    <span className={`text-white ${overlayTextClass} font-medium`}>閲覧注意</span>
                 </div>
             </button>
         );
@@ -268,7 +276,7 @@ export function MediaAttachment({
                     tabIndex={-1}
                 />
                 <div className="nsfw-blur-overlay">
-                    <span className="text-white text-sm font-medium">閲覧注意</span>
+                    <span className={`text-white ${overlayTextClass} font-medium`}>閲覧注意</span>
                 </div>
             </button>
         );

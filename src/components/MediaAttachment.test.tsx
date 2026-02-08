@@ -565,4 +565,89 @@ describe('MediaAttachment', () => {
             expect(container.firstChild).toBeNull();
         });
     });
+
+    describe('variant-specific overlay text sizing', () => {
+        it('should use text-xs for compact variant NSFW overlay', () => {
+            const media = createMockMedia({
+                type: 'image',
+                url: 'https://example.com/image.png',
+                previewUrl: 'https://example.com/preview.png',
+            });
+
+            const { container } = render(
+                <MediaAttachment
+                    media={media}
+                    variant="compact"
+                    isSensitive={true}
+                    nsfwRevealed={false}
+                />
+            );
+
+            const overlay = container.querySelector('.nsfw-blur-overlay span');
+            expect(overlay).toHaveClass('text-xs');
+            expect(overlay).not.toHaveClass('text-sm');
+        });
+
+        it('should use text-sm for card variant NSFW overlay', () => {
+            const media = createMockMedia({
+                type: 'image',
+                url: 'https://example.com/image.png',
+                previewUrl: 'https://example.com/preview.png',
+            });
+
+            const { container } = render(
+                <MediaAttachment
+                    media={media}
+                    variant="card"
+                    isSensitive={true}
+                    nsfwRevealed={false}
+                />
+            );
+
+            const overlay = container.querySelector('.nsfw-blur-overlay span');
+            expect(overlay).toHaveClass('text-sm');
+            expect(overlay).not.toHaveClass('text-xs');
+        });
+
+        it('should use text-sm for detail variant NSFW overlay', () => {
+            const media = createMockMedia({
+                type: 'image',
+                url: 'https://example.com/image.png',
+                previewUrl: 'https://example.com/preview.png',
+            });
+
+            const { container } = render(
+                <MediaAttachment
+                    media={media}
+                    variant="detail"
+                    isSensitive={true}
+                    nsfwRevealed={false}
+                />
+            );
+
+            const overlay = container.querySelector('.nsfw-blur-overlay span');
+            expect(overlay).toHaveClass('text-sm');
+            expect(overlay).not.toHaveClass('text-xs');
+        });
+
+        it('should use text-xs for compact variant NSFW video overlay', () => {
+            const media = createMockMedia({
+                type: 'video',
+                url: 'https://example.com/video.mp4',
+                previewUrl: 'https://example.com/preview.png',
+            });
+
+            const { container } = render(
+                <MediaAttachment
+                    media={media}
+                    variant="compact"
+                    isSensitive={true}
+                    nsfwRevealed={false}
+                />
+            );
+
+            const overlay = container.querySelector('.nsfw-blur-overlay span');
+            expect(overlay).toHaveClass('text-xs');
+        });
+    });
 });
