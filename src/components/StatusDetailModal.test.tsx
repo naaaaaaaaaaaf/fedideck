@@ -238,7 +238,7 @@ describe('StatusDetailModal', () => {
 
             const img = screen.getByAltText('Test image');
             expect(img).toBeInTheDocument();
-            expect(img).toHaveAttribute('src', 'https://example.com/image.png');
+            expect(img).toHaveAttribute('src', 'https://example.com/preview.png');
         });
 
         it('should blur sensitive images by default', () => {
