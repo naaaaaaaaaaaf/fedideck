@@ -850,7 +850,9 @@ describe('NotificationCard', () => {
             await user.click(button);
 
             // After reveal, button should be gone and new img should not have blur class
-            expect(screen.queryByRole('button', { name: '添付メディア' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: /閲覧注意の画像を表示/ })
+            ).not.toBeInTheDocument();
             const imgAfter = container.querySelector('img[src="https://example.com/preview.png"]');
             expect(imgAfter).not.toHaveClass('nsfw-blur');
         });
@@ -878,7 +880,9 @@ describe('NotificationCard', () => {
             await user.keyboard('{Enter}');
 
             // After reveal, button should be gone
-            expect(screen.queryByRole('button', { name: '添付メディア' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: /閲覧注意の画像を表示/ })
+            ).not.toBeInTheDocument();
             const imgAfter = container.querySelector('img[src="https://example.com/preview.png"]');
             expect(imgAfter).not.toHaveClass('nsfw-blur');
         });
@@ -906,7 +910,9 @@ describe('NotificationCard', () => {
             await user.keyboard(' ');
 
             // After reveal, button should be gone
-            expect(screen.queryByRole('button', { name: '添付メディア' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: /閲覧注意の画像を表示/ })
+            ).not.toBeInTheDocument();
             const imgAfter = container.querySelector('img[src="https://example.com/preview.png"]');
             expect(imgAfter).not.toHaveClass('nsfw-blur');
         });
