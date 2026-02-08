@@ -19,6 +19,7 @@ import {
 } from '../api/mastoClient';
 import { formatDate } from '../utils/dateFormat';
 import { replaceEmojisWithImages } from '../utils/emoji';
+import { firstNonEmpty } from '../utils/firstNonEmpty';
 import type { ImageViewerImage } from './ImageViewer';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
@@ -34,17 +35,6 @@ interface StatusCardProps {
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
     nsfwRevealedStatusIds?: Set<string>;
-}
-
-/**
- * Returns the first non-empty string from the provided values.
- * Used for URL fallback chains where empty strings should be treated as missing values.
- */
-function firstNonEmpty(...values: (string | undefined | null)[]): string {
-    for (const value of values) {
-        if (value) return value;
-    }
-    return '';
 }
 
 export function StatusCard({

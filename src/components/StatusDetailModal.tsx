@@ -23,6 +23,7 @@ import {
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { formatDate } from '../utils/dateFormat';
 import { replaceEmojisWithImages } from '../utils/emoji';
+import { firstNonEmpty } from '../utils/firstNonEmpty';
 import type { ImageViewerImage } from './ImageViewer';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
@@ -49,17 +50,6 @@ function formatFullDate(dateStr: string): string {
         hour: '2-digit',
         minute: '2-digit',
     });
-}
-
-/**
- * Returns the first non-empty string from the provided values.
- * Used for URL fallback chains where empty strings should be treated as missing values.
- */
-function firstNonEmpty(...values: (string | undefined | null)[]): string {
-    for (const value of values) {
-        if (value) return value;
-    }
-    return '';
 }
 
 // Compact status display for thread ancestors/descendants

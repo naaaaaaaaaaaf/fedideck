@@ -1,4 +1,5 @@
 import type { mastodon } from 'masto';
+import { firstNonEmpty } from '../utils/firstNonEmpty';
 
 export interface MediaAttachmentProps {
     media: mastodon.v1.MediaAttachment;
@@ -10,17 +11,6 @@ export interface MediaAttachmentProps {
     imageIndex?: number;
     totalImages?: number;
     className?: string;
-}
-
-/**
- * Returns the first non-empty string from the provided values.
- * Used for URL fallback chains where empty strings should be treated as missing values.
- */
-function firstNonEmpty(...values: (string | undefined | null)[]): string {
-    for (const value of values) {
-        if (value) return value;
-    }
-    return '';
 }
 
 export function MediaAttachment({
