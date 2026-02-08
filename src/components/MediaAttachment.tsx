@@ -32,6 +32,10 @@ export function MediaAttachment({
         detail: 'w-full max-h-96 rounded-xl bg-slate-800',
     }[variant];
 
+    // Variant-specific object-fit
+    // detail: contain to show full image, card/compact: cover for uniform thumbnails
+    const objectFitClass = variant === 'detail' ? 'object-contain' : 'object-cover';
+
     // Select display URL based on variant
     // detail: prioritize full resolution, card/compact: prioritize thumbnail for bandwidth
     const displayUrl =
@@ -92,7 +96,7 @@ export function MediaAttachment({
                     <img
                         src={displayUrl}
                         alt={media.description || '添付メディア'}
-                        className={`${variantClasses} object-cover transition-opacity ${
+                        className={`${variantClasses} ${objectFitClass} transition-opacity ${
                             needsBlur ? 'nsfw-blur' : 'hover:opacity-90'
                         }`}
                     />
@@ -110,7 +114,7 @@ export function MediaAttachment({
             <img
                 src={displayUrl}
                 alt={media.description || '添付メディア'}
-                className={`${variantClasses} ${className} object-cover`}
+                className={`${variantClasses} ${className} ${objectFitClass}`}
             />
         );
     }
@@ -133,7 +137,7 @@ export function MediaAttachment({
                     <video
                         src={media.url}
                         poster={media.previewUrl ?? undefined}
-                        className={`${variantClasses} object-cover`}
+                        className={`${variantClasses} ${objectFitClass}`}
                     />
                 </a>
             );
@@ -156,7 +160,7 @@ export function MediaAttachment({
                 <video
                     src={media.url ?? undefined}
                     poster={media.previewUrl}
-                    className={`${variantClasses} object-cover nsfw-blur`}
+                    className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                     aria-hidden="true"
                     tabIndex={-1}
                 />
@@ -185,7 +189,7 @@ export function MediaAttachment({
                     <video
                         src={media.url}
                         poster={media.previewUrl ?? undefined}
-                        className={`${variantClasses} object-cover`}
+                        className={`${variantClasses} ${objectFitClass}`}
                         autoPlay
                         loop
                         muted
@@ -214,7 +218,7 @@ export function MediaAttachment({
                 <video
                     src={media.url ?? undefined}
                     poster={media.previewUrl}
-                    className={`${variantClasses} object-cover nsfw-blur`}
+                    className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                     muted
                     playsInline
                     aria-hidden="true"
