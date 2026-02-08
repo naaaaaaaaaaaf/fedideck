@@ -51,6 +51,17 @@ function formatFullDate(dateStr: string): string {
     });
 }
 
+/**
+ * Returns the first non-empty string from the provided values.
+ * Used for URL fallback chains where empty strings should be treated as missing values.
+ */
+function firstNonEmpty(...values: (string | undefined | null)[]): string {
+    for (const value of values) {
+        if (value) return value;
+    }
+    return '';
+}
+
 // Compact status display for thread ancestors/descendants
 interface ThreadItemProps {
     status: mastodon.v1.Status;
@@ -352,7 +363,7 @@ export function StatusDetailModal({
             .filter((media) => media.type === 'image')
             .slice(0, 4)
             .map((media) => ({
-                url: media.url ?? media.previewUrl ?? '',
+                url: firstNonEmpty(media.url, media.previewUrl),
                 previewUrl: media.previewUrl ?? undefined,
                 description: media.description ?? undefined,
             }))
@@ -614,7 +625,7 @@ export function StatusDetailModal({
                                             ? imageViewerImages.findIndex(
                                                   (img) =>
                                                       img.url ===
-                                                      (media.url ?? media.previewUrl ?? '')
+                                                      firstNonEmpty(media.url, media.previewUrl)
                                               )
                                             : undefined;
 

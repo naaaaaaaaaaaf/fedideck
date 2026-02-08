@@ -36,6 +36,17 @@ interface StatusCardProps {
     nsfwRevealedStatusIds?: Set<string>;
 }
 
+/**
+ * Returns the first non-empty string from the provided values.
+ * Used for URL fallback chains where empty strings should be treated as missing values.
+ */
+function firstNonEmpty(...values: (string | undefined | null)[]): string {
+    for (const value of values) {
+        if (value) return value;
+    }
+    return '';
+}
+
 export function StatusCard({
     status,
     isReblog = false,
@@ -138,7 +149,7 @@ export function StatusCard({
             .filter((media) => media.type === 'image')
             .slice(0, 4)
             .map((media) => ({
-                url: media.url ?? media.previewUrl ?? '',
+                url: firstNonEmpty(media.url, media.previewUrl),
                 previewUrl: media.previewUrl ?? undefined,
                 description: media.description ?? undefined,
             }))
@@ -483,7 +494,8 @@ export function StatusCard({
                                     media.type === 'image'
                                         ? imageViewerImages.findIndex(
                                               (img) =>
-                                                  img.url === (media.url ?? media.previewUrl ?? '')
+                                                  img.url ===
+                                                  firstNonEmpty(media.url, media.previewUrl)
                                           )
                                         : undefined;
 
