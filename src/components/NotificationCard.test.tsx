@@ -975,6 +975,49 @@ describe('NotificationCard', () => {
             expect(img?.tagName).toBe('IMG');
         });
 
+        it('should call onStatusClick when clicking revealed NSFW image', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    id: 'status-123',
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            const { container } = render(
+                <NotificationCard notification={notification} onStatusClick={onStatusClick} />
+            );
+
+            // First click reveals the image
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            await user.click(button);
+            expect(onStatusClick).not.toHaveBeenCalled();
+
+            // Second click on the revealed image should call onStatusClick
+            // (because compact mode renders plain img which bubbles events)
+            const img = container.querySelector('img[src="https://example.com/preview.png"]');
+            expect(img).toBeInTheDocument();
+            await user.click(img!);
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: 'status-123',
+                    sensitive: true,
+                })
+            );
+        });
+
         it('should call onNsfwReveal with status.id when revealing sensitive image', async () => {
             const user = userEvent.setup();
             const onNsfwReveal = vi.fn();
