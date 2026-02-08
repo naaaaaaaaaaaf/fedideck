@@ -124,10 +124,12 @@ export function MediaAttachment({
         }
 
         // Non-NSFW thumbnail: render as plain img
+        const fallbackAlt =
+            media.type === 'video' ? '添付動画' : media.type === 'gifv' ? '添付GIF' : '添付画像';
         return (
             <img
                 src={thumbnailUrl}
-                alt={media.description ?? ''}
+                alt={media.description ?? fallbackAlt}
                 className={`${variantClasses} ${className} ${objectFitClass}`}
             />
         );
@@ -201,7 +203,7 @@ export function MediaAttachment({
                 >
                     <video
                         src={media.url}
-                        poster={firstNonEmpty(media.previewUrl)}
+                        poster={firstNonEmpty(media.previewUrl) || undefined}
                         className={`${variantClasses} ${objectFitClass}`}
                     />
                 </a>
@@ -209,7 +211,7 @@ export function MediaAttachment({
         }
 
         // NSFW video: render as button with blur toggle
-        if (!hasValidPreviewUrl()) {
+        if (!hasValidPreviewUrl() || !hasValidUrl()) {
             return null;
         }
         return (
@@ -223,8 +225,8 @@ export function MediaAttachment({
                 aria-label={getAccessibleLabel(media.type)}
             >
                 <video
-                    src={firstNonEmpty(media.url)}
-                    poster={media.previewUrl}
+                    src={media.url || undefined}
+                    poster={firstNonEmpty(media.previewUrl) || undefined}
                     className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                     aria-hidden="true"
                     tabIndex={-1}
@@ -253,7 +255,7 @@ export function MediaAttachment({
                 >
                     <video
                         src={media.url}
-                        poster={firstNonEmpty(media.previewUrl)}
+                        poster={firstNonEmpty(media.previewUrl) || undefined}
                         className={`${variantClasses} ${objectFitClass}`}
                         autoPlay
                         loop
@@ -267,7 +269,7 @@ export function MediaAttachment({
         }
 
         // NSFW gifv: render as button with blur toggle (no autoplay)
-        if (!hasValidPreviewUrl()) {
+        if (!hasValidPreviewUrl() || !hasValidUrl()) {
             return null;
         }
         return (
@@ -281,8 +283,8 @@ export function MediaAttachment({
                 aria-label={getAccessibleLabel(media.type)}
             >
                 <video
-                    src={firstNonEmpty(media.url)}
-                    poster={media.previewUrl}
+                    src={media.url || undefined}
+                    poster={firstNonEmpty(media.previewUrl) || undefined}
                     className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                     muted
                     playsInline

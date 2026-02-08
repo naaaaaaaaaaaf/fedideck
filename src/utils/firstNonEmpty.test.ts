@@ -35,11 +35,9 @@ describe('firstNonEmpty', () => {
 
     it('should treat empty string differently from null/undefined', () => {
         // ?? operator only falls back for null/undefined, not empty strings
+        // For example: '' ?? 'fallback' returns '' (empty string is not nullish)
+        // but: null ?? 'fallback' returns 'fallback' (null is nullish)
         expect(firstNonEmpty('', 'fallback')).toBe('fallback');
         expect(firstNonEmpty(null, 'fallback')).toBe('fallback');
-        // ?? would not fall back for empty string, but would for null
-        const emptyStr = '';
-        const resultNullish = null ?? 'fallback';
-        expect(resultNullish).toBe('fallback');
     });
 });
