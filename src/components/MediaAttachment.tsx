@@ -12,6 +12,17 @@ export interface MediaAttachmentProps {
     className?: string;
 }
 
+/**
+ * Returns the first non-empty string from the provided values.
+ * Used for URL fallback chains where empty strings should be treated as missing values.
+ */
+function firstNonEmpty(...values: (string | undefined | null)[]): string {
+    for (const value of values) {
+        if (value) return value;
+    }
+    return '';
+}
+
 export function MediaAttachment({
     media,
     variant = 'card',
@@ -42,20 +53,20 @@ export function MediaAttachment({
 
     // Select display URL based on variant
     // detail: prioritize full resolution, card/compact: prioritize thumbnail for bandwidth
-    const displayUrl =
-        variant === 'detail'
-            ? (media.url ?? media.previewUrl ?? '')
-            : (media.previewUrl ?? media.url ?? '');
+    const displayUrl = firstNonEmpty(
+        variant === 'detail' ? media.url : media.previewUrl,
+        variant === 'detail' ? media.previewUrl : media.url,
+        ''
+    );
 
     // Check if media has valid URL
     const hasValidUrl = (): boolean => {
-        const url = media.url ?? media.previewUrl ?? '';
-        return url !== '';
+        return firstNonEmpty(media.url, media.previewUrl) !== '';
     };
 
     // Check if media has valid preview URL (for NSFW case)
     const hasValidPreviewUrl = (): boolean => {
-        return (media.previewUrl ?? '') !== '';
+        return firstNonEmpty(media.previewUrl) !== '';
     };
 
     // Generate accessible label
@@ -78,7 +89,7 @@ export function MediaAttachment({
     // Compact mode: render all media types as simple img thumbnails
     // This preserves parent element's click behavior (e.g., NotificationCard)
     if (variant === 'compact') {
-        const thumbnailUrl = media.previewUrl ?? media.url ?? '';
+        const thumbnailUrl = firstNonEmpty(media.previewUrl, media.url);
         if (thumbnailUrl === '') {
             return null;
         }
@@ -174,7 +185,7 @@ export function MediaAttachment({
     if (media.type === 'video') {
         // Non-NSFW video: render as <a> tag
         if (!needsBlur) {
-            if (!media.url) {
+            if (!firstNonEmpty(media.url)) {
                 return null;
             }
             return (
@@ -209,7 +220,7 @@ export function MediaAttachment({
                 aria-label="閲覧注意の動画を表示"
             >
                 <video
-                    src={media.url ?? undefined}
+                    src={firstNonEmpty(media.url)}
                     poster={media.previewUrl}
                     className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                     aria-hidden="true"
@@ -226,7 +237,7 @@ export function MediaAttachment({
     if (media.type === 'gifv') {
         // Non-NSFW gifv: render as <a> tag with autoplay
         if (!needsBlur) {
-            if (!media.url) {
+            if (!firstNonEmpty(media.url)) {
                 return null;
             }
             return (
@@ -267,7 +278,7 @@ export function MediaAttachment({
                 aria-label="閲覧注意のGIFを表示"
             >
                 <video
-                    src={media.url ?? undefined}
+                    src={firstNonEmpty(media.url)}
                     poster={media.previewUrl}
                     className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                     muted
