@@ -70,20 +70,22 @@ export function MediaAttachment({
     };
 
     // Generate accessible label
-    const getAccessibleLabel = (): string => {
+    const getAccessibleLabel = (mediaType?: string): string => {
+        const mediaLabel = mediaType === 'video' ? '動画' : mediaType === 'gifv' ? 'GIF' : '画像';
+
         if (needsBlur) {
             if (imageIndex !== undefined && totalImages !== undefined) {
-                return `閲覧注意の画像を表示 (${imageIndex + 1}/${totalImages})`;
+                return `閲覧注意の${mediaLabel}を表示 (${imageIndex + 1}/${totalImages})`;
             }
-            return '閲覧注意の画像を表示';
+            return `閲覧注意の${mediaLabel}を表示`;
         }
         if (media.description) {
             return media.description;
         }
         if (imageIndex !== undefined && totalImages !== undefined) {
-            return `画像を拡大 (${imageIndex + 1}/${totalImages})`;
+            return `${mediaLabel}を拡大 (${imageIndex + 1}/${totalImages})`;
         }
-        return '画像を拡大';
+        return `${mediaLabel}を拡大`;
     };
 
     // Compact mode: render all media types as simple img thumbnails
@@ -104,7 +106,7 @@ export function MediaAttachment({
                         onNsfwToggle?.();
                     }}
                     className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
-                    aria-label={getAccessibleLabel()}
+                    aria-label={getAccessibleLabel(media.type)}
                 >
                     <img
                         src={thumbnailUrl}
@@ -151,7 +153,7 @@ export function MediaAttachment({
                         }
                     }}
                     className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
-                    aria-label={getAccessibleLabel()}
+                    aria-label={getAccessibleLabel(media.type)}
                 >
                     <img
                         src={displayUrl}
@@ -217,7 +219,7 @@ export function MediaAttachment({
                     onNsfwToggle?.();
                 }}
                 className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
-                aria-label="閲覧注意の動画を表示"
+                aria-label={getAccessibleLabel(media.type)}
             >
                 <video
                     src={firstNonEmpty(media.url)}
@@ -275,7 +277,7 @@ export function MediaAttachment({
                     onNsfwToggle?.();
                 }}
                 className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
-                aria-label="閲覧注意のGIFを表示"
+                aria-label={getAccessibleLabel(media.type)}
             >
                 <video
                     src={firstNonEmpty(media.url)}
