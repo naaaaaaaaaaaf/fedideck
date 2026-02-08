@@ -198,7 +198,7 @@ export function MediaAttachment({
                 >
                     <video
                         src={media.url}
-                        poster={media.previewUrl ?? undefined}
+                        poster={firstNonEmpty(media.previewUrl)}
                         className={`${variantClasses} ${objectFitClass}`}
                     />
                 </a>
@@ -250,7 +250,7 @@ export function MediaAttachment({
                 >
                     <video
                         src={media.url}
-                        poster={media.previewUrl ?? undefined}
+                        poster={firstNonEmpty(media.previewUrl)}
                         className={`${variantClasses} ${objectFitClass}`}
                         autoPlay
                         loop
