@@ -110,8 +110,9 @@ describe('MediaAttachment', () => {
                 />
             );
 
-            const button = container.querySelector('button');
-            expect(button).toHaveClass('w-12', 'h-12', 'rounded');
+            // Compact mode renders as plain img (not button) to preserve parent click behavior
+            const img = container.querySelector('img');
+            expect(img).toHaveClass('w-12', 'h-12', 'rounded');
         });
 
         it('should not render image without valid URL', () => {

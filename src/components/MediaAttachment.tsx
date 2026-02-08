@@ -71,6 +71,49 @@ export function MediaAttachment({
         return '画像を拡大';
     };
 
+    // Compact mode: render all media types as simple img thumbnails
+    // This preserves parent element's click behavior (e.g., NotificationCard)
+    if (variant === 'compact') {
+        const thumbnailUrl = media.previewUrl ?? media.url ?? '';
+        if (thumbnailUrl === '') {
+            return null;
+        }
+
+        // NSFW thumbnail in compact mode: render as button with blur
+        if (needsBlur) {
+            return (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onNsfwToggle?.();
+                    }}
+                    className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
+                    aria-label={getAccessibleLabel()}
+                >
+                    <img
+                        src={thumbnailUrl}
+                        alt={media.description || '添付メディア'}
+                        className={`${variantClasses} ${objectFitClass} nsfw-blur`}
+                        aria-hidden="true"
+                    />
+                    <div className="nsfw-blur-overlay">
+                        <span className="text-white text-sm font-medium">閲覧注意</span>
+                    </div>
+                </button>
+            );
+        }
+
+        // Non-NSFW thumbnail: render as plain img
+        return (
+            <img
+                src={thumbnailUrl}
+                alt={media.description || '添付メディア'}
+                className={`${variantClasses} ${className} ${objectFitClass}`}
+            />
+        );
+    }
+
     // Render image type
     if (media.type === 'image') {
         if (!hasValidUrl()) {
