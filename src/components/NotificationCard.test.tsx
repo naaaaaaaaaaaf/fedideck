@@ -228,7 +228,7 @@ describe('NotificationCard', () => {
             expect(img).toHaveAttribute('src', 'https://example.com/preview.png');
         });
 
-        it('should use fallback alt text for media without description', () => {
+        it('should render media without description as decorative with empty alt', () => {
             const notification = createMockNotification('mention', {
                 status: createMockStatus({
                     mediaAttachments: [
@@ -243,7 +243,7 @@ describe('NotificationCard', () => {
                 }),
             });
             const { container } = render(<NotificationCard notification={notification} />);
-            // Image should be rendered with empty alt (decorative)
+            // Image without description should be rendered with empty alt (decorative)
             const img = container.querySelector('img[src="https://example.com/image.png"]');
             expect(img).toBeInTheDocument();
             expect(img?.getAttribute('alt')).toBe('');
