@@ -4,7 +4,7 @@ import { VideoViewer } from './VideoViewer';
 
 describe('VideoViewer', () => {
     // Store originals to restore after tests
-    let originalFullscreenElement: unknown;
+    let originalFullscreenElement: PropertyDescriptor | undefined;
     let originalRequestFullscreen: typeof Element.prototype.requestFullscreen;
     let originalExitFullscreen: typeof document.exitFullscreen;
 
