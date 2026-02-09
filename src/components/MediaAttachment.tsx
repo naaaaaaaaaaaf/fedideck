@@ -295,7 +295,7 @@ export function MediaAttachment({
                         e.stopPropagation();
                         onVideoClick();
                     }}
-                    className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
+                    className={`group relative block overflow-hidden text-left ${variantClasses} ${className}`}
                     aria-label={getAccessibleLabel(media.type)}
                 >
                     <video
@@ -306,7 +306,7 @@ export function MediaAttachment({
                         aria-hidden="true"
                         tabIndex={-1}
                     />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity">
                         <div className="p-3 bg-white/90 rounded-full">
                             <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
                         </div>
@@ -321,7 +321,7 @@ export function MediaAttachment({
                 href={videoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`relative block overflow-hidden ${variantClasses} ${className}`}
+                className={`group relative block overflow-hidden ${variantClasses} ${className}`}
                 aria-label={getAccessibleLabel(media.type)}
             >
                 <video
@@ -332,7 +332,7 @@ export function MediaAttachment({
                     aria-hidden="true"
                     tabIndex={-1}
                 />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">
                     <div className="p-3 bg-white/90 rounded-full">
                         <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
                     </div>
@@ -410,7 +410,7 @@ export function MediaAttachment({
                         e.stopPropagation();
                         onVideoClick();
                     }}
-                    className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
+                    className={`group relative block overflow-hidden text-left ${variantClasses} ${className}`}
                     aria-label={getAccessibleLabel(media.type)}
                 >
                     <video
@@ -424,7 +424,7 @@ export function MediaAttachment({
                         aria-hidden="true"
                         tabIndex={-1}
                     />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity">
                         <div className="p-3 bg-white/90 rounded-full">
                             <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
                         </div>
@@ -439,7 +439,7 @@ export function MediaAttachment({
                 href={videoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`relative block overflow-hidden ${variantClasses} ${className}`}
+                className={`group relative block overflow-hidden ${variantClasses} ${className}`}
                 aria-label={getAccessibleLabel(media.type)}
             >
                 <video
@@ -453,7 +453,7 @@ export function MediaAttachment({
                     aria-hidden="true"
                     tabIndex={-1}
                 />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">
                     <div className="p-3 bg-white/90 rounded-full">
                         <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
                     </div>
