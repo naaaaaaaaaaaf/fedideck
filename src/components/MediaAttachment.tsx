@@ -80,6 +80,12 @@ export function MediaAttachment({
     // Compact mode: render media as simple thumbnails
     // This preserves parent element's click behavior (e.g., NotificationCard)
     if (variant === 'compact') {
+        // Compact mode only supports image/video/gifv types
+        // Audio and unknown types are not rendered as thumbnails
+        if (media.type !== 'image' && media.type !== 'video' && media.type !== 'gifv') {
+            return null;
+        }
+
         // For video/gifv, we need a valid previewUrl (poster image)
         // Cannot use video URL (mp4) directly in an img tag
         if (media.type === 'video' || media.type === 'gifv') {
