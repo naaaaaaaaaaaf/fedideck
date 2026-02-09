@@ -148,7 +148,7 @@ export function MediaAttachment({
                     onClick={(e) => {
                         e.stopPropagation();
                         if (isSensitive && !nsfwRevealed) {
-                            onNsfwToggle ? onNsfwToggle() : onImageClick?.();
+                            onNsfwToggle?.();
                         } else if (onImageClick) {
                             onImageClick();
                         }
@@ -216,7 +216,7 @@ export function MediaAttachment({
                 >
                     <video
                         src={videoUrl}
-                        poster={posterUrl ?? undefined}
+                        poster={posterUrl || undefined}
                         className={`${variantClasses} ${objectFitClass}`}
                         aria-hidden="true"
                         tabIndex={-1}
@@ -241,7 +241,7 @@ export function MediaAttachment({
             >
                 <video
                     src={media.url ?? undefined}
-                    poster={firstNonEmpty(media.previewUrl) ?? undefined}
+                    poster={firstNonEmpty(media.previewUrl) || undefined}
                     className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                     aria-hidden="true"
                     tabIndex={-1}
@@ -284,7 +284,7 @@ export function MediaAttachment({
                 >
                     <video
                         src={videoUrl}
-                        poster={posterUrl ?? undefined}
+                        poster={posterUrl || undefined}
                         className={`${variantClasses} ${objectFitClass}`}
                         autoPlay
                         loop
@@ -313,7 +313,7 @@ export function MediaAttachment({
             >
                 <video
                     src={media.url ?? undefined}
-                    poster={firstNonEmpty(media.previewUrl) ?? undefined}
+                    poster={firstNonEmpty(media.previewUrl) || undefined}
                     className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                     muted
                     playsInline
