@@ -483,6 +483,7 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                                 showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
                             }`}
                             aria-hidden={!showControls}
+                            inert={!showControls ? true : undefined}
                         >
                             <div className="flex items-center gap-3">
                                 {/* Play/Pause button */}
