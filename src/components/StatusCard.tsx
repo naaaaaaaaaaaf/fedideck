@@ -21,6 +21,7 @@ import { formatDate } from '../utils/dateFormat';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import type { ImageViewerImage } from './ImageViewer';
+import type { VideoViewerVideo } from './VideoViewer';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
 
@@ -32,6 +33,7 @@ interface StatusCardProps {
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
+    onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
     nsfwRevealedStatusIds?: Set<string>;
@@ -45,6 +47,7 @@ export function StatusCard({
     onReply,
     onStatusClick,
     onImageClick,
+    onVideoClick,
     onAccountClick,
     onNsfwReveal,
     nsfwRevealedStatusIds,
@@ -144,6 +147,21 @@ export function StatusCard({
                 description: media.description ?? undefined,
             }))
             .filter((image) => image.url !== '');
+    }, [displayStatus.mediaAttachments]);
+
+    // Convert video/gifv attachments to VideoViewerVideo format (memoized)
+    const videoViewerVideos = useMemo(() => {
+        const attachments = displayStatus.mediaAttachments ?? [];
+        return attachments
+            .filter((media) => media.type === 'video' || media.type === 'gifv')
+            .slice(0, 4)
+            .map((media) => ({
+                url: firstNonEmpty(media.url),
+                previewUrl: media.previewUrl ?? undefined,
+                description: media.description ?? undefined,
+                type: media.type as 'video' | 'gifv',
+            }))
+            .filter((video) => video.url !== '');
     }, [displayStatus.mediaAttachments]);
 
     // Safely access account
@@ -488,6 +506,12 @@ export function StatusCard({
                                                   firstNonEmpty(media.url, media.previewUrl)
                                           )
                                         : undefined;
+                                const videoIndex =
+                                    media.type === 'video' || media.type === 'gifv'
+                                        ? videoViewerVideos.findIndex(
+                                              (v) => v.url === firstNonEmpty(media.url)
+                                          )
+                                        : undefined;
 
                                 return (
                                     <MediaAttachment
@@ -509,6 +533,19 @@ export function StatusCard({
                                                 : undefined
                                         }
                                         totalImages={imageViewerImages.length}
+                                        onVideoClick={
+                                            videoIndex !== undefined &&
+                                            videoIndex !== -1 &&
+                                            onVideoClick
+                                                ? () => onVideoClick(videoViewerVideos, videoIndex)
+                                                : undefined
+                                        }
+                                        videoIndex={
+                                            videoIndex !== undefined && videoIndex !== -1
+                                                ? videoIndex
+                                                : undefined
+                                        }
+                                        totalVideos={videoViewerVideos.length}
                                     />
                                 );
                             })}

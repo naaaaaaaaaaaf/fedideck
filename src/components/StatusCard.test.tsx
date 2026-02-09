@@ -1493,4 +1493,127 @@ describe('StatusCard', () => {
             expect(overlay).toHaveTextContent('閲覧注意');
         });
     });
+
+    describe('video viewer integration', () => {
+        it('should call onVideoClick with correct video data when video is clicked', async () => {
+            const user = userEvent.setup();
+            const onVideoClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'video',
+                        url: 'https://example.com/video.mp4',
+                        previewUrl: 'https://example.com/video-poster.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Test video',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onVideoClick={onVideoClick} />);
+
+            const videoButton = screen.getByRole('button', { name: 'Test video' });
+            await user.click(videoButton);
+
+            expect(onVideoClick).toHaveBeenCalledTimes(1);
+            const [videos, index] = onVideoClick.mock.calls[0];
+            expect(videos).toHaveLength(1);
+            expect(videos[0]).toMatchObject({
+                url: 'https://example.com/video.mp4',
+                previewUrl: 'https://example.com/video-poster.png',
+                description: 'Test video',
+                type: 'video',
+            });
+            expect(index).toBe(0);
+        });
+
+        it('should call onVideoClick with correct index for multiple videos', async () => {
+            const user = userEvent.setup();
+            const onVideoClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'video',
+                        url: 'https://example.com/video1.mp4',
+                        previewUrl: 'https://example.com/video-poster1.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'First video',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                    {
+                        id: '2',
+                        type: 'video',
+                        url: 'https://example.com/video2.mp4',
+                        previewUrl: 'https://example.com/video-poster2.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Second video',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onVideoClick={onVideoClick} />);
+
+            const secondVideoButton = screen.getByRole('button', { name: 'Second video' });
+            await user.click(secondVideoButton);
+
+            const [videos, index] = onVideoClick.mock.calls[0];
+            expect(videos).toHaveLength(2);
+            expect(index).toBe(1);
+        });
+
+        it('should include only video and gifv types in videoViewerVideos', () => {
+            const onVideoClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Test image',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                    {
+                        id: '2',
+                        type: 'video',
+                        url: 'https://example.com/video.mp4',
+                        previewUrl: 'https://example.com/video-poster.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Test video',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                    {
+                        id: '3',
+                        type: 'gifv',
+                        url: 'https://example.com/animation.mp4',
+                        previewUrl: 'https://example.com/animation-poster.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Test animation',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onVideoClick={onVideoClick} />);
+
+            const videoButton = screen.getByRole('button', { name: 'Test video' });
+            videoButton.click(); // Click to get the videos array
+
+            const [videos] = onVideoClick.mock.calls[0];
+            expect(videos).toHaveLength(2); // Only video and gifv, not image
+            expect(videos[0].type).toBe('video');
+            expect(videos[1].type).toBe('gifv');
+        });
+    });
 });
