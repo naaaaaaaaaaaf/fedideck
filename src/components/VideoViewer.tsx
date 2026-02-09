@@ -344,8 +344,25 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
         };
     }, [isPlaying, resetControlsTimeout]);
 
-    // Show controls on mouse movement
+    // Show controls on mouse movement, touch interaction, or focus
     const handleMouseMove = useCallback(() => {
+        resetControlsTimeout();
+    }, [resetControlsTimeout]);
+
+    const handleTouchStart = useCallback(() => {
+        resetControlsTimeout();
+    }, [resetControlsTimeout]);
+
+    const handleControlsFocus = useCallback(() => {
+        setShowControls(true);
+        // Clear timeout to prevent hiding while focused
+        if (controlsTimeoutRef.current) {
+            clearTimeout(controlsTimeoutRef.current);
+            controlsTimeoutRef.current = null;
+        }
+    }, []);
+
+    const handleControlsBlur = useCallback(() => {
         resetControlsTimeout();
     }, [resetControlsTimeout]);
 
@@ -502,7 +519,13 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                     ref={videoContainerRef}
                     className="flex flex-col items-center justify-center max-w-full max-h-[calc(100vh-8rem)]"
                 >
-                    <div ref={videoWrapperRef} className="relative" onMouseMove={handleMouseMove}>
+                    <div
+                        ref={videoWrapperRef}
+                        className="relative"
+                        onMouseMove={handleMouseMove}
+                        onTouchStart={handleTouchStart}
+                        onPointerMove={handleMouseMove}
+                    >
                         <video
                             ref={videoRef}
                             src={currentVideo?.url}
@@ -521,6 +544,9 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                             }`}
                             aria-hidden={!showControls}
                             inert={!showControls ? true : undefined}
+                            tabIndex={-1}
+                            onFocus={handleControlsFocus}
+                            onBlur={handleControlsBlur}
                         >
                             <div className="flex items-center gap-3">
                                 {/* Play/Pause button */}
