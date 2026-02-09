@@ -370,6 +370,8 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                             ref={videoRef}
                             src={currentVideo?.url}
                             poster={currentVideo?.previewUrl}
+                            loop={currentVideo?.type === 'gifv'}
+                            muted={currentVideo?.type === 'gifv'}
                             aria-label={currentVideo?.description ?? '動画'}
                             className="max-w-full max-h-[calc(100vh-12rem)] object-contain"
                         />

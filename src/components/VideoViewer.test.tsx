@@ -407,4 +407,63 @@ describe('VideoViewer', () => {
             expect(screen.getByText('2 / 2')).toBeInTheDocument();
         });
     });
+
+    describe('gifv type support', () => {
+        it('should render gifv video with loop attribute', () => {
+            const gifvVideos = [
+                {
+                    url: 'https://example.com/gifv.mp4',
+                    type: 'gifv' as const,
+                },
+            ];
+
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={gifvVideos} />);
+
+            const video = screen.getByRole('dialog').querySelector('video');
+            expect(video).toHaveAttribute('loop');
+        });
+
+        it('should render gifv video with muted attribute', () => {
+            const gifvVideos = [
+                {
+                    url: 'https://example.com/gifv.mp4',
+                    type: 'gifv' as const,
+                },
+            ];
+
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={gifvVideos} />);
+
+            const video = screen.getByRole('dialog').querySelector('video') as HTMLVideoElement;
+            // Check the muted property
+            expect(video.muted).toBe(true);
+        });
+
+        it('should not render regular video with loop attribute', () => {
+            const regularVideos = [
+                {
+                    url: 'https://example.com/video.mp4',
+                    type: 'video' as const,
+                },
+            ];
+
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={regularVideos} />);
+
+            const video = screen.getByRole('dialog').querySelector('video');
+            expect(video).not.toHaveAttribute('loop');
+        });
+
+        it('should not render regular video with muted attribute', () => {
+            const regularVideos = [
+                {
+                    url: 'https://example.com/video.mp4',
+                    type: 'video' as const,
+                },
+            ];
+
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={regularVideos} />);
+
+            const video = screen.getByRole('dialog').querySelector('video') as HTMLVideoElement;
+            expect(video.muted).toBe(false);
+        });
+    });
 });
