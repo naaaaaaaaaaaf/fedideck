@@ -4,17 +4,16 @@ import { VideoViewer } from './VideoViewer';
 
 describe('VideoViewer', () => {
     // Store originals to restore after tests
-    let originalFullscreenElement: PropertyDescriptor | undefined;
     let originalRequestFullscreen: typeof Element.prototype.requestFullscreen;
     let originalExitFullscreen: typeof document.exitFullscreen;
 
     beforeAll(() => {
         // Store original values
-        originalFullscreenElement = Object.getOwnPropertyDescriptor(document, 'fullscreenElement');
         originalRequestFullscreen = Element.prototype.requestFullscreen;
         originalExitFullscreen = document.exitFullscreen;
 
-        // Mock fullscreenElement as configurable so it can be reset
+        // Mock fullscreenElement as configurable own property
+        // Note: fullscreenElement is typically on Document.prototype, not an own property
         Object.defineProperty(document, 'fullscreenElement', {
             writable: true,
             configurable: true,
@@ -37,10 +36,12 @@ describe('VideoViewer', () => {
     });
 
     afterAll(() => {
-        // Restore original values
-        if (originalFullscreenElement) {
-            Object.defineProperty(document, 'fullscreenElement', originalFullscreenElement);
-        }
+        // Delete the mocked own property to restore Document.prototype.fullscreenElement
+        // This is necessary because Object.getOwnPropertyDescriptor(document, 'fullscreenElement')
+        // returns undefined (it's on the prototype, not an own property)
+        delete (document as any).fullscreenElement;
+
+        // Restore original methods
         Element.prototype.requestFullscreen = originalRequestFullscreen;
         document.exitFullscreen = originalExitFullscreen;
     });
