@@ -27,7 +27,7 @@ export function toVideoViewerVideos(
         .slice(0, 4)
         .map((media) => ({
             url: firstNonEmpty(media.url),
-            previewUrl: media.previewUrl ?? undefined,
+            previewUrl: firstNonEmpty(media.previewUrl),
             description: media.description ?? undefined,
             type: media.type, // Type is inferred as 'video' | 'gifv' from the type guard
         }))
