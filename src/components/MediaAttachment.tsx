@@ -142,7 +142,13 @@ export function MediaAttachment({
         // Use empty alt when no description to treat thumbnail as decorative
         if (media.type === 'video' || media.type === 'gifv') {
             return (
-                <div className={`relative block overflow-hidden ${variantClasses} ${className}`}>
+                <div
+                    className={`relative block overflow-hidden ${variantClasses} ${className}`}
+                    role="img"
+                    aria-label={
+                        media.description || (media.type === 'video' ? '動画' : 'GIFアニメーション')
+                    }
+                >
                     <img
                         src={thumbnailUrl}
                         alt={media.description ?? ''}
