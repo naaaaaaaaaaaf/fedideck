@@ -1,4 +1,5 @@
 import type { mastodon } from 'masto';
+import { LuPlay } from 'react-icons/lu';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 
 export interface MediaAttachmentProps {
@@ -116,7 +117,7 @@ export function MediaAttachment({
                         e.stopPropagation();
                         onNsfwToggle?.();
                     }}
-                    className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
+                    className={`relative block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
                     aria-label={getAccessibleLabel(media.type)}
                 >
                     <img
@@ -130,12 +131,39 @@ export function MediaAttachment({
                             閲覧注意
                         </span>
                     </div>
+                    {/* Play button for video/gifv */}
+                    {(media.type === 'video' || media.type === 'gifv') && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="p-1.5 bg-white/90 rounded-full">
+                                <LuPlay className="w-3 h-3 text-slate-900" aria-hidden="true" />
+                            </div>
+                        </div>
+                    )}
                 </button>
             );
         }
 
-        // Non-NSFW thumbnail: render as plain img
+        // Non-NSFW thumbnail: render as img with play button overlay for video/gifv
         // Use empty alt when no description to treat thumbnail as decorative
+        if (media.type === 'video' || media.type === 'gifv') {
+            return (
+                <div className={`relative block overflow-hidden ${variantClasses} ${className}`}>
+                    <img
+                        src={thumbnailUrl}
+                        alt={media.description ?? ''}
+                        className={`${variantClasses} ${objectFitClass}`}
+                        aria-hidden="true"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <div className="p-1.5 bg-white/90 rounded-full">
+                            <LuPlay className="w-3 h-3 text-slate-900" aria-hidden="true" />
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // For images, render as plain img
         return (
             <img
                 src={thumbnailUrl}
@@ -231,7 +259,7 @@ export function MediaAttachment({
                             e.stopPropagation();
                             onVideoClick();
                         }}
-                        className={`block overflow-hidden text-left ${variantClasses} ${className}`}
+                        className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
                         aria-label={media.description || '動画'}
                     >
                         <video
@@ -241,6 +269,11 @@ export function MediaAttachment({
                             aria-hidden="true"
                             tabIndex={-1}
                         />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+                            <div className="p-3 bg-white/90 rounded-full">
+                                <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
+                            </div>
+                        </div>
                     </button>
                 );
             }
@@ -251,7 +284,7 @@ export function MediaAttachment({
                     href={videoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`block overflow-hidden ${variantClasses} ${className}`}
+                    className={`relative block overflow-hidden ${variantClasses} ${className}`}
                     aria-label={media.description || '動画'}
                 >
                     <video
@@ -261,6 +294,11 @@ export function MediaAttachment({
                         aria-hidden="true"
                         tabIndex={-1}
                     />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                        <div className="p-3 bg-white/90 rounded-full">
+                            <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
+                        </div>
+                    </div>
                 </a>
             );
         }
@@ -287,7 +325,7 @@ export function MediaAttachment({
                             e.stopPropagation();
                             onVideoClick();
                         }}
-                        className={`block overflow-hidden text-left ${variantClasses} ${className}`}
+                        className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
                         aria-label={media.description || '動画'}
                     >
                         <video
@@ -297,6 +335,11 @@ export function MediaAttachment({
                             aria-hidden="true"
                             tabIndex={-1}
                         />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+                            <div className="p-3 bg-white/90 rounded-full">
+                                <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
+                            </div>
+                        </div>
                     </button>
                 );
             }
@@ -369,7 +412,7 @@ export function MediaAttachment({
                             e.stopPropagation();
                             onVideoClick();
                         }}
-                        className={`block overflow-hidden text-left ${variantClasses} ${className}`}
+                        className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
                         aria-label={media.description || 'GIFアニメーション'}
                     >
                         <video
@@ -383,6 +426,11 @@ export function MediaAttachment({
                             aria-hidden="true"
                             tabIndex={-1}
                         />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+                            <div className="p-3 bg-white/90 rounded-full">
+                                <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
+                            </div>
+                        </div>
                     </button>
                 );
             }
@@ -393,7 +441,7 @@ export function MediaAttachment({
                     href={videoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`block overflow-hidden ${variantClasses} ${className}`}
+                    className={`relative block overflow-hidden ${variantClasses} ${className}`}
                     aria-label={media.description || 'GIFアニメーション'}
                 >
                     <video
@@ -407,6 +455,11 @@ export function MediaAttachment({
                         aria-hidden="true"
                         tabIndex={-1}
                     />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                        <div className="p-3 bg-white/90 rounded-full">
+                            <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
+                        </div>
+                    </div>
                 </a>
             );
         }
@@ -433,7 +486,7 @@ export function MediaAttachment({
                             e.stopPropagation();
                             onVideoClick();
                         }}
-                        className={`block overflow-hidden text-left ${variantClasses} ${className}`}
+                        className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
                         aria-label={media.description || 'GIFアニメーション'}
                     >
                         <video
@@ -447,6 +500,11 @@ export function MediaAttachment({
                             aria-hidden="true"
                             tabIndex={-1}
                         />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+                            <div className="p-3 bg-white/90 rounded-full">
+                                <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
+                            </div>
+                        </div>
                     </button>
                 );
             }
