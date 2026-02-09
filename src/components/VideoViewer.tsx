@@ -150,18 +150,47 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
         (e: React.KeyboardEvent) => {
             const target = e.target as HTMLElement;
 
-            // Don't intercept keys when focus is on interactive elements
-            // Allow default behavior for range sliders, buttons, and inputs
-            if (
+            // Special handling for interactive elements
+            const isInteractiveElement =
                 target.tagName === 'INPUT' ||
                 target.tagName === 'BUTTON' ||
-                target.isContentEditable
-            ) {
-                // Delegate ESC and Tab to base handler for accessibility (focus trap)
-                if (e.key === 'Escape' || e.key === 'Tab') {
-                    baseHandleKeyDown(e);
+                target.isContentEditable;
+
+            if (isInteractiveElement) {
+                // For range inputs, allow only Tab/ESC for focus trap
+                // For other inputs and contentEditable, also allow Tab/ESC
+                // For buttons, allow Tab/ESC and other shortcuts (except Space)
+                if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'range') {
+                    if (e.key === 'Escape' || e.key === 'Tab') {
+                        baseHandleKeyDown(e);
+                    }
+                    // Arrow keys on range input should not be intercepted for video controls
+                    return;
                 }
-                return;
+
+                // For contentEditable elements and text inputs, only allow Tab/ESC
+                if (
+                    target.isContentEditable ||
+                    (target.tagName === 'INPUT' && (target as HTMLInputElement).type !== 'range')
+                ) {
+                    if (e.key === 'Escape' || e.key === 'Tab') {
+                        baseHandleKeyDown(e);
+                    }
+                    return;
+                }
+
+                // For buttons: delegate Tab/ESC, allow other shortcuts except Space
+                if (target.tagName === 'BUTTON') {
+                    if (e.key === 'Escape' || e.key === 'Tab') {
+                        baseHandleKeyDown(e);
+                    }
+                    // Don't intercept Space on buttons (activates the button)
+                    // But allow other shortcuts to pass through
+                    if (e.key === ' ') {
+                        return;
+                    }
+                    // Continue to handle other keys (f, arrows, etc.)
+                }
             }
 
             // Handle Space key for play/pause
