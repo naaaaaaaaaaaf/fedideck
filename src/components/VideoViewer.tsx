@@ -116,10 +116,32 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
     const toggleFullscreen = useCallback(() => {
         if (!videoWrapperRef.current) return;
 
-        if (!document.fullscreenElement) {
-            videoWrapperRef.current.requestFullscreen();
-        } else {
-            document.exitFullscreen();
+        // Check if Fullscreen API is supported
+        if (!document.fullscreenEnabled || !videoWrapperRef.current.requestFullscreen) {
+            console.warn('Fullscreen API is not supported in this environment');
+            return;
+        }
+
+        try {
+            if (!document.fullscreenElement) {
+                const requestPromise = videoWrapperRef.current.requestFullscreen();
+                // Handle promise rejection (e.g., user denies fullscreen)
+                if (requestPromise && typeof requestPromise.catch === 'function') {
+                    requestPromise.catch((err) => {
+                        console.error('Failed to enter fullscreen:', err);
+                    });
+                }
+            } else {
+                const exitPromise = document.exitFullscreen();
+                // Handle promise rejection
+                if (exitPromise && typeof exitPromise.catch === 'function') {
+                    exitPromise.catch((err) => {
+                        console.error('Failed to exit fullscreen:', err);
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('Fullscreen toggle error:', err);
         }
     }, []);
 
