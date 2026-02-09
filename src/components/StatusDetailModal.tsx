@@ -24,6 +24,7 @@ import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { formatDate } from '../utils/dateFormat';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
+import { toVideoViewerVideos } from '../utils/videoAttachments';
 import type { ImageViewerImage } from './ImageViewer';
 import type { VideoViewerVideo } from './VideoViewer';
 import { DisplayName } from './DisplayName';
@@ -364,19 +365,10 @@ export function StatusDetailModal({
     }, [displayStatus?.mediaAttachments]);
 
     // Convert video/gifv attachments to VideoViewerVideo format (memoized)
-    const videoViewerVideos = useMemo(() => {
-        const mediaAttachments = displayStatus?.mediaAttachments ?? [];
-        return mediaAttachments
-            .filter((media) => media.type === 'video' || media.type === 'gifv')
-            .slice(0, 4)
-            .map((media) => ({
-                url: firstNonEmpty(media.url),
-                previewUrl: media.previewUrl ?? undefined,
-                description: media.description ?? undefined,
-                type: media.type as 'video' | 'gifv',
-            }))
-            .filter((video) => video.url !== '');
-    }, [displayStatus?.mediaAttachments]);
+    const videoViewerVideos = useMemo(
+        () => toVideoViewerVideos(displayStatus?.mediaAttachments),
+        [displayStatus?.mediaAttachments]
+    );
 
     if (!isOpen || !status || !displayStatus) return null;
 

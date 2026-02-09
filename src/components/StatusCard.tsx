@@ -20,6 +20,7 @@ import {
 import { formatDate } from '../utils/dateFormat';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
+import { toVideoViewerVideos } from '../utils/videoAttachments';
 import type { ImageViewerImage } from './ImageViewer';
 import type { VideoViewerVideo } from './VideoViewer';
 import { DisplayName } from './DisplayName';
@@ -150,19 +151,10 @@ export function StatusCard({
     }, [displayStatus.mediaAttachments]);
 
     // Convert video/gifv attachments to VideoViewerVideo format (memoized)
-    const videoViewerVideos = useMemo(() => {
-        const attachments = displayStatus.mediaAttachments ?? [];
-        return attachments
-            .filter((media) => media.type === 'video' || media.type === 'gifv')
-            .slice(0, 4)
-            .map((media) => ({
-                url: firstNonEmpty(media.url),
-                previewUrl: media.previewUrl ?? undefined,
-                description: media.description ?? undefined,
-                type: media.type as 'video' | 'gifv',
-            }))
-            .filter((video) => video.url !== '');
-    }, [displayStatus.mediaAttachments]);
+    const videoViewerVideos = useMemo(
+        () => toVideoViewerVideos(displayStatus.mediaAttachments),
+        [displayStatus.mediaAttachments]
+    );
 
     // Safely access account
     const account = displayStatus.account;
