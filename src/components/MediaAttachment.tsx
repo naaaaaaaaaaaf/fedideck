@@ -206,7 +206,7 @@ export function MediaAttachment({
 
     // Render video type
     if (media.type === 'video') {
-        // Non-NSFW video: render as <a> tag with video element
+        // Non-NSFW video: render as button if onVideoClick provided, otherwise as <a> tag
         if (!needsBlur) {
             const videoUrl = firstNonEmpty(media.url);
             const posterUrl = firstNonEmpty(media.previewUrl);
@@ -225,6 +225,31 @@ export function MediaAttachment({
             if (!videoUrl) {
                 return null;
             }
+
+            // If onVideoClick is provided, render as button
+            if (onVideoClick) {
+                return (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onVideoClick();
+                        }}
+                        className={`block overflow-hidden text-left ${variantClasses} ${className}`}
+                        aria-label={media.description || '動画'}
+                    >
+                        <video
+                            src={videoUrl}
+                            poster={posterUrl || undefined}
+                            className={`${variantClasses} ${objectFitClass}`}
+                            aria-hidden="true"
+                            tabIndex={-1}
+                        />
+                    </button>
+                );
+            }
+
+            // Otherwise, render as <a> tag (legacy behavior)
             return (
                 <a
                     href={videoUrl}
@@ -244,7 +269,9 @@ export function MediaAttachment({
             );
         }
 
-        // NSFW video: render as button with blur toggle
+        // NSFW video: 2-stage interaction
+        // Stage 1 (blur): click to reveal
+        // Stage 2 (revealed): click to open video viewer if onVideoClick provided
         if (!hasValidPreviewUrl()) {
             return null;
         }
@@ -252,12 +279,51 @@ export function MediaAttachment({
         if (!onNsfwToggle) {
             return null;
         }
+
+        // NSFW revealed state
+        if (nsfwRevealed) {
+            // If onVideoClick is provided, render as button that opens video viewer
+            if (onVideoClick) {
+                return (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onVideoClick();
+                        }}
+                        className={`block overflow-hidden text-left ${variantClasses} ${className}`}
+                        aria-label={media.description || '動画'}
+                    >
+                        <video
+                            src={firstNonEmpty(media.url) || undefined}
+                            poster={firstNonEmpty(media.previewUrl) || undefined}
+                            className={`${variantClasses} ${objectFitClass}`}
+                            aria-hidden="true"
+                            tabIndex={-1}
+                        />
+                    </button>
+                );
+            }
+
+            // Otherwise, render as plain video element (no blur)
+            return (
+                <video
+                    src={firstNonEmpty(media.url) || undefined}
+                    poster={firstNonEmpty(media.previewUrl) || undefined}
+                    className={`${variantClasses} ${className} ${objectFitClass}`}
+                    aria-hidden="true"
+                    tabIndex={-1}
+                />
+            );
+        }
+
+        // NSFW blur state: render as button with blur toggle
         return (
             <button
                 type="button"
                 onClick={(e) => {
                     e.stopPropagation();
-                    onNsfwToggle?.();
+                    onNsfwToggle();
                 }}
                 className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
                 aria-label={getAccessibleLabel(media.type)}
