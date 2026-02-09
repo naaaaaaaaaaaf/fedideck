@@ -147,8 +147,8 @@ export function MediaAttachment({
                     type="button"
                     onClick={(e) => {
                         e.stopPropagation();
-                        if (isSensitive && !nsfwRevealed && onNsfwToggle) {
-                            onNsfwToggle();
+                        if (isSensitive && !nsfwRevealed) {
+                            onNsfwToggle ? onNsfwToggle() : onImageClick?.();
                         } else if (onImageClick) {
                             onImageClick();
                         }
