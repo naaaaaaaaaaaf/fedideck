@@ -1,5 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { LuX, LuPlay, LuPause, LuVolume, LuVolumeX, LuMaximize, LuMinimize } from 'react-icons/lu';
+import {
+    LuX,
+    LuPlay,
+    LuPause,
+    LuVolume,
+    LuVolumeX,
+    LuMaximize,
+    LuMinimize,
+    LuChevronLeft,
+    LuChevronRight,
+} from 'react-icons/lu';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 
 export interface VideoViewerVideo {
@@ -49,6 +59,19 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
         videos.length > 0 ? Math.max(0, Math.min(currentIndex, videos.length - 1)) : 0;
     const currentVideo = videos[safeIndex];
 
+    // Check if there are multiple videos
+    const hasMultipleVideos = videos.length > 1;
+
+    // Navigate to previous video
+    const goToPrevious = useCallback(() => {
+        setCurrentIndex((prev) => (prev > 0 ? prev - 1 : videos.length - 1));
+    }, [videos.length]);
+
+    // Navigate to next video
+    const goToNext = useCallback(() => {
+        setCurrentIndex((prev) => (prev < videos.length - 1 ? prev + 1 : 0));
+    }, [videos.length]);
+
     // Handle keyboard navigation
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent) => {
@@ -66,7 +89,21 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                 return;
             }
 
-            // Handle arrow keys for volume
+            // Handle arrow keys for video navigation (when multiple videos)
+            if (hasMultipleVideos) {
+                if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    goToPrevious();
+                    return;
+                }
+                if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    goToNext();
+                    return;
+                }
+            }
+
+            // Handle arrow keys for volume (when single video)
             if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 adjustVolume(0.1);
@@ -81,7 +118,7 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
             // Delegate other keys to base handler (ESC, Tab)
             baseHandleKeyDown(e);
         },
-        [baseHandleKeyDown]
+        [baseHandleKeyDown, hasMultipleVideos, goToPrevious, goToNext]
     );
 
     // Toggle play/pause
@@ -232,6 +269,17 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
         };
     }, []);
 
+    // Pause video when navigating to a different video
+    useEffect(() => {
+        if (videoRef.current && isPlaying) {
+            videoRef.current.pause();
+            setIsPlaying(false);
+        }
+        // Reset time display when changing videos
+        setCurrentTime(0);
+        setDuration(0);
+    }, [safeIndex]);
+
     // Handle backdrop click
     const handleBackdropClick = (e: React.MouseEvent) => {
         if (e.target === e.currentTarget) {
@@ -289,6 +337,28 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                 >
                     <LuX className="w-6 h-6" aria-hidden="true" />
                 </button>
+
+                {/* Navigation - Previous */}
+                {hasMultipleVideos && (
+                    <button
+                        onClick={goToPrevious}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-slate-800/80 hover:bg-slate-700 rounded-full transition-colors text-slate-300 hover:text-white z-10"
+                        aria-label="前の動画"
+                    >
+                        <LuChevronLeft className="w-8 h-8" aria-hidden="true" />
+                    </button>
+                )}
+
+                {/* Navigation - Next */}
+                {hasMultipleVideos && (
+                    <button
+                        onClick={goToNext}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-slate-800/80 hover:bg-slate-700 rounded-full transition-colors text-slate-300 hover:text-white z-10"
+                        aria-label="次の動画"
+                    >
+                        <LuChevronRight className="w-8 h-8" aria-hidden="true" />
+                    </button>
+                )}
 
                 {/* Video container */}
                 <div
@@ -384,6 +454,13 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                     {currentVideo?.description && (
                         <div className="mt-4 text-slate-300 text-sm text-center max-w-2xl px-4">
                             {currentVideo.description}
+                        </div>
+                    )}
+
+                    {/* Video counter */}
+                    {hasMultipleVideos && (
+                        <div className="mt-4 text-slate-300 text-sm">
+                            {safeIndex + 1} / {videos.length}
                         </div>
                     )}
                 </div>

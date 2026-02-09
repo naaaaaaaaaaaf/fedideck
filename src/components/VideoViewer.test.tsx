@@ -235,4 +235,90 @@ describe('VideoViewer', () => {
             expect(muteButton).toBeInTheDocument();
         });
     });
+
+    describe('multiple video navigation', () => {
+        it('should render navigation buttons when multiple videos', () => {
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+            expect(screen.getByLabelText('前の動画')).toBeInTheDocument();
+            expect(screen.getByLabelText('次の動画')).toBeInTheDocument();
+        });
+
+        it('should render video counter when multiple videos', () => {
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+            expect(screen.getByText('1 / 2')).toBeInTheDocument();
+        });
+
+        it('should not render navigation buttons when single video', () => {
+            const singleVideo = [mockVideos[0]];
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={singleVideo} />);
+
+            expect(screen.queryByLabelText('前の動画')).not.toBeInTheDocument();
+            expect(screen.queryByLabelText('次の動画')).not.toBeInTheDocument();
+        });
+
+        it('should navigate to next video when next button is clicked', () => {
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+            const nextButton = screen.getByLabelText('次の動画');
+            fireEvent.click(nextButton);
+
+            // Counter should update to 2 / 2
+            expect(screen.getByText('2 / 2')).toBeInTheDocument();
+        });
+
+        it('should navigate to previous video when previous button is clicked', () => {
+            render(
+                <VideoViewer
+                    isOpen={true}
+                    onClose={mockOnClose}
+                    videos={mockVideos}
+                    initialIndex={1}
+                />
+            );
+
+            // Should start at 2 / 2
+            expect(screen.getByText('2 / 2')).toBeInTheDocument();
+
+            const prevButton = screen.getByLabelText('前の動画');
+            fireEvent.click(prevButton);
+
+            // Counter should update to 1 / 2
+            expect(screen.getByText('1 / 2')).toBeInTheDocument();
+        });
+
+        it('should wrap around to first video when next is clicked on last video', () => {
+            render(
+                <VideoViewer
+                    isOpen={true}
+                    onClose={mockOnClose}
+                    videos={mockVideos}
+                    initialIndex={1}
+                />
+            );
+
+            // Should start at 2 / 2
+            expect(screen.getByText('2 / 2')).toBeInTheDocument();
+
+            const nextButton = screen.getByLabelText('次の動画');
+            fireEvent.click(nextButton);
+
+            // Counter should wrap to 1 / 2
+            expect(screen.getByText('1 / 2')).toBeInTheDocument();
+        });
+
+        it('should wrap around to last video when previous is clicked on first video', () => {
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+            // Should start at 1 / 2
+            expect(screen.getByText('1 / 2')).toBeInTheDocument();
+
+            const prevButton = screen.getByLabelText('前の動画');
+            fireEvent.click(prevButton);
+
+            // Counter should wrap to 2 / 2
+            expect(screen.getByText('2 / 2')).toBeInTheDocument();
+        });
+    });
 });
