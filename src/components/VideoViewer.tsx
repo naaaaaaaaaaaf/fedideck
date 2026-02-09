@@ -110,6 +110,22 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
     // Handle keyboard navigation
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+
+            // Don't intercept keys when focus is on interactive elements
+            // Allow default behavior for range sliders, buttons, and inputs
+            if (
+                target.tagName === 'INPUT' ||
+                target.tagName === 'BUTTON' ||
+                target.isContentEditable
+            ) {
+                // Still delegate ESC to base handler for modal close
+                if (e.key === 'Escape') {
+                    baseHandleKeyDown(e);
+                }
+                return;
+            }
+
             // Handle Space key for play/pause
             if (e.key === ' ') {
                 e.preventDefault();
@@ -275,7 +291,8 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
             video.removeEventListener('loadedmetadata', handleLoadedMetadata);
             video.removeEventListener('ended', handleEnded);
         };
-    }, []);
+        // Re-attach event listeners when video changes (safeIndex changes)
+    }, [safeIndex]);
 
     // Pause video when navigating to a different video
     useEffect(() => {

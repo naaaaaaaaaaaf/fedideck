@@ -56,11 +56,6 @@ export function MediaAttachment({
         return firstNonEmpty(media.url, media.previewUrl) !== '';
     };
 
-    // Check if media has valid preview URL (for NSFW case)
-    const hasValidPreviewUrl = (): boolean => {
-        return firstNonEmpty(media.previewUrl) !== '';
-    };
-
     // Generate accessible label
     const getAccessibleLabel = (mediaType?: string): string => {
         const mediaLabel = mediaType === 'video' ? '動画' : mediaType === 'gifv' ? 'GIF' : '画像';
@@ -230,61 +225,71 @@ export function MediaAttachment({
 
     // Render video type
     if (media.type === 'video') {
-        // Non-NSFW video: render as button if onVideoClick provided, otherwise as <a> tag
-        if (!needsBlur) {
-            const videoUrl = firstNonEmpty(media.url);
-            const posterUrl = firstNonEmpty(media.previewUrl);
+        const videoUrl = firstNonEmpty(media.url);
+        const posterUrl = firstNonEmpty(media.previewUrl);
 
-            // If we have poster URL but no video URL, render as static image
-            if (!videoUrl && posterUrl) {
-                return (
-                    <img
-                        src={posterUrl}
-                        alt={media.description || '動画'}
-                        className={`${variantClasses} ${className} ${objectFitClass}`}
-                    />
-                );
-            }
-
-            if (!videoUrl) {
+        // NSFW blur state: render as button with blur toggle
+        if (needsBlur) {
+            // If onNsfwToggle is not provided, cannot properly handle NSFW content
+            if (!onNsfwToggle) {
                 return null;
             }
-
-            // If onVideoClick is provided, render as button
-            if (onVideoClick) {
-                return (
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onVideoClick();
-                        }}
-                        className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
-                        aria-label={media.description || '動画'}
-                    >
-                        <video
-                            src={videoUrl}
-                            poster={posterUrl || undefined}
-                            className={`${variantClasses} ${objectFitClass}`}
-                            aria-hidden="true"
-                            tabIndex={-1}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
-                            <div className="p-3 bg-white/90 rounded-full">
-                                <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
-                            </div>
-                        </div>
-                    </button>
-                );
+            // Need at least posterUrl for NSFW blur display
+            if (!posterUrl) {
+                return null;
             }
-
-            // Otherwise, render as <a> tag (legacy behavior)
             return (
-                <a
-                    href={videoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`relative block overflow-hidden ${variantClasses} ${className}`}
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onNsfwToggle();
+                    }}
+                    className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
+                    aria-label={getAccessibleLabel(media.type)}
+                >
+                    <video
+                        src={videoUrl || undefined}
+                        poster={posterUrl}
+                        className={`${variantClasses} ${objectFitClass} nsfw-blur`}
+                        aria-hidden="true"
+                        tabIndex={-1}
+                    />
+                    <div className="nsfw-blur-overlay">
+                        <span className={`text-white ${overlayTextClass} font-medium`}>
+                            閲覧注意
+                        </span>
+                    </div>
+                </button>
+            );
+        }
+
+        // Non-NSFW or NSFW revealed: render video without blur
+        // If we have poster URL but no video URL, render as static image
+        if (!videoUrl && posterUrl) {
+            return (
+                <img
+                    src={posterUrl}
+                    alt={media.description || '動画'}
+                    className={`${variantClasses} ${className} ${objectFitClass}`}
+                />
+            );
+        }
+
+        if (!videoUrl) {
+            return null;
+        }
+
+        // If onVideoClick is provided, render as button
+        if (onVideoClick) {
+            return (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onVideoClick();
+                    }}
+                    className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
                     aria-label={media.description || '動画'}
                 >
                     <video
@@ -294,154 +299,111 @@ export function MediaAttachment({
                         aria-hidden="true"
                         tabIndex={-1}
                     />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
                         <div className="p-3 bg-white/90 rounded-full">
                             <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
                         </div>
                     </div>
-                </a>
+                </button>
             );
         }
 
-        // NSFW video: 2-stage interaction
-        // Stage 1 (blur): click to reveal
-        // Stage 2 (revealed): click to open video viewer if onVideoClick provided
-        if (!hasValidPreviewUrl()) {
-            return null;
-        }
-        // If onNsfwToggle is not provided, cannot properly handle NSFW content
-        if (!onNsfwToggle) {
-            return null;
-        }
-
-        // NSFW revealed state
-        if (nsfwRevealed) {
-            // If onVideoClick is provided, render as button that opens video viewer
-            if (onVideoClick) {
-                return (
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onVideoClick();
-                        }}
-                        className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
-                        aria-label={media.description || '動画'}
-                    >
-                        <video
-                            src={firstNonEmpty(media.url) || undefined}
-                            poster={firstNonEmpty(media.previewUrl) || undefined}
-                            className={`${variantClasses} ${objectFitClass}`}
-                            aria-hidden="true"
-                            tabIndex={-1}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
-                            <div className="p-3 bg-white/90 rounded-full">
-                                <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
-                            </div>
-                        </div>
-                    </button>
-                );
-            }
-
-            // Otherwise, render as plain video element (no blur)
-            return (
-                <video
-                    src={firstNonEmpty(media.url) || undefined}
-                    poster={firstNonEmpty(media.previewUrl) || undefined}
-                    className={`${variantClasses} ${className} ${objectFitClass}`}
-                    aria-hidden="true"
-                    tabIndex={-1}
-                />
-            );
-        }
-
-        // NSFW blur state: render as button with blur toggle
+        // Otherwise, render as <a> tag (legacy behavior)
         return (
-            <button
-                type="button"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onNsfwToggle();
-                }}
-                className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
-                aria-label={getAccessibleLabel(media.type)}
+            <a
+                href={videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`relative block overflow-hidden ${variantClasses} ${className}`}
+                aria-label={media.description || '動画'}
             >
                 <video
-                    src={firstNonEmpty(media.url) || undefined}
-                    poster={firstNonEmpty(media.previewUrl) || undefined}
-                    className={`${variantClasses} ${objectFitClass} nsfw-blur`}
+                    src={videoUrl}
+                    poster={posterUrl || undefined}
+                    className={`${variantClasses} ${objectFitClass}`}
                     aria-hidden="true"
                     tabIndex={-1}
                 />
-                <div className="nsfw-blur-overlay">
-                    <span className={`text-white ${overlayTextClass} font-medium`}>閲覧注意</span>
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                    <div className="p-3 bg-white/90 rounded-full">
+                        <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
+                    </div>
                 </div>
-            </button>
+            </a>
         );
     }
 
     // Render gifv type
     if (media.type === 'gifv') {
-        // Non-NSFW gifv: render as button if onVideoClick provided, otherwise as <a> tag
-        if (!needsBlur) {
-            const videoUrl = firstNonEmpty(media.url);
-            const posterUrl = firstNonEmpty(media.previewUrl);
+        const videoUrl = firstNonEmpty(media.url);
+        const posterUrl = firstNonEmpty(media.previewUrl);
 
-            // If we have poster URL but no video URL, render as static image
-            if (!videoUrl && posterUrl) {
-                return (
-                    <img
-                        src={posterUrl}
-                        alt={media.description || 'GIFアニメーション'}
-                        className={`${variantClasses} ${className} ${objectFitClass}`}
-                    />
-                );
-            }
-
-            if (!videoUrl) {
+        // NSFW blur state: render as button with blur toggle
+        if (needsBlur) {
+            // If onNsfwToggle is not provided, cannot properly handle NSFW content
+            if (!onNsfwToggle) {
                 return null;
             }
-
-            // If onVideoClick is provided, render as button
-            if (onVideoClick) {
-                return (
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onVideoClick();
-                        }}
-                        className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
-                        aria-label={media.description || 'GIFアニメーション'}
-                    >
-                        <video
-                            src={videoUrl}
-                            poster={posterUrl || undefined}
-                            className={`${variantClasses} ${objectFitClass}`}
-                            autoPlay={false}
-                            loop
-                            muted
-                            playsInline
-                            aria-hidden="true"
-                            tabIndex={-1}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
-                            <div className="p-3 bg-white/90 rounded-full">
-                                <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
-                            </div>
-                        </div>
-                    </button>
-                );
+            // Need at least posterUrl for NSFW blur display
+            if (!posterUrl) {
+                return null;
             }
-
-            // Otherwise, render as <a> tag (legacy behavior)
             return (
-                <a
-                    href={videoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`relative block overflow-hidden ${variantClasses} ${className}`}
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onNsfwToggle();
+                    }}
+                    className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
+                    aria-label={getAccessibleLabel(media.type)}
+                >
+                    <video
+                        src={videoUrl || undefined}
+                        poster={posterUrl}
+                        className={`${variantClasses} ${objectFitClass} nsfw-blur`}
+                        autoPlay={false}
+                        loop
+                        muted
+                        playsInline
+                        aria-hidden="true"
+                        tabIndex={-1}
+                    />
+                    <div className="nsfw-blur-overlay">
+                        <span className={`text-white ${overlayTextClass} font-medium`}>
+                            閲覧注意
+                        </span>
+                    </div>
+                </button>
+            );
+        }
+
+        // Non-NSFW or NSFW revealed: render video without blur
+        // If we have poster URL but no video URL, render as static image
+        if (!videoUrl && posterUrl) {
+            return (
+                <img
+                    src={posterUrl}
+                    alt={media.description || 'GIFアニメーション'}
+                    className={`${variantClasses} ${className} ${objectFitClass}`}
+                />
+            );
+        }
+
+        if (!videoUrl) {
+            return null;
+        }
+
+        // If onVideoClick is provided, render as button
+        if (onVideoClick) {
+            return (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onVideoClick();
+                    }}
+                    className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
                     aria-label={media.description || 'GIFアニメーション'}
                 >
                     <video
@@ -455,66 +417,28 @@ export function MediaAttachment({
                         aria-hidden="true"
                         tabIndex={-1}
                     />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
                         <div className="p-3 bg-white/90 rounded-full">
                             <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
                         </div>
                     </div>
-                </a>
+                </button>
             );
         }
 
-        // NSFW gifv: 2-stage interaction
-        // Stage 1 (blur): click to reveal
-        // Stage 2 (revealed): click to open video viewer if onVideoClick provided
-        if (!hasValidPreviewUrl()) {
-            return null;
-        }
-        // If onNsfwToggle is not provided, cannot properly handle NSFW content
-        if (!onNsfwToggle) {
-            return null;
-        }
-
-        // NSFW revealed state
-        if (nsfwRevealed) {
-            // If onVideoClick is provided, render as button that opens video viewer
-            if (onVideoClick) {
-                return (
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onVideoClick();
-                        }}
-                        className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
-                        aria-label={media.description || 'GIFアニメーション'}
-                    >
-                        <video
-                            src={firstNonEmpty(media.url) || undefined}
-                            poster={firstNonEmpty(media.previewUrl) || undefined}
-                            className={`${variantClasses} ${objectFitClass}`}
-                            autoPlay={false}
-                            loop
-                            muted
-                            playsInline
-                            aria-hidden="true"
-                            tabIndex={-1}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
-                            <div className="p-3 bg-white/90 rounded-full">
-                                <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
-                            </div>
-                        </div>
-                    </button>
-                );
-            }
-
-            // Otherwise, render as plain video element (no blur, with autoplay only for compact)
-            return (
+        // Otherwise, render as <a> tag (legacy behavior)
+        return (
+            <a
+                href={videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`relative block overflow-hidden ${variantClasses} ${className}`}
+                aria-label={media.description || 'GIFアニメーション'}
+            >
                 <video
-                    src={firstNonEmpty(media.url) || undefined}
-                    poster={firstNonEmpty(media.previewUrl) || undefined}
-                    className={`${variantClasses} ${className} ${objectFitClass}`}
+                    src={videoUrl}
+                    poster={posterUrl || undefined}
+                    className={`${variantClasses} ${objectFitClass}`}
                     autoPlay={false}
                     loop
                     muted
@@ -522,33 +446,12 @@ export function MediaAttachment({
                     aria-hidden="true"
                     tabIndex={-1}
                 />
-            );
-        }
-
-        // NSFW blur state: render as button with blur toggle (no autoplay)
-        return (
-            <button
-                type="button"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onNsfwToggle();
-                }}
-                className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
-                aria-label={getAccessibleLabel(media.type)}
-            >
-                <video
-                    src={firstNonEmpty(media.url) || undefined}
-                    poster={firstNonEmpty(media.previewUrl) || undefined}
-                    className={`${variantClasses} ${objectFitClass} nsfw-blur`}
-                    muted
-                    playsInline
-                    aria-hidden="true"
-                    tabIndex={-1}
-                />
-                <div className="nsfw-blur-overlay">
-                    <span className={`text-white ${overlayTextClass} font-medium`}>閲覧注意</span>
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                    <div className="p-3 bg-white/90 rounded-full">
+                        <LuPlay className="w-6 h-6 text-slate-900" aria-hidden="true" />
+                    </div>
                 </div>
-            </button>
+            </a>
         );
     }
 
