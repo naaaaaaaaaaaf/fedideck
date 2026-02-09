@@ -1,27 +1,50 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { VideoViewer } from './VideoViewer';
 
-// Mock fullscreen API for jsdom environment
-Object.defineProperty(document, 'fullscreenElement', {
-    writable: true,
-    value: null,
-});
-
-// Mock Element.prototype.requestFullscreen
-Element.prototype.requestFullscreen = vi.fn(function () {
-    // @ts-expect-error - Mocking fullscreen API for testing
-    document.fullscreenElement = this;
-    return Promise.resolve();
-});
-
-document.exitFullscreen = vi.fn(function () {
-    // @ts-expect-error - Mocking fullscreen API for testing
-    document.fullscreenElement = null;
-    return Promise.resolve();
-});
-
 describe('VideoViewer', () => {
+    // Store originals to restore after tests
+    let originalFullscreenElement: unknown;
+    let originalRequestFullscreen: typeof Element.prototype.requestFullscreen;
+    let originalExitFullscreen: typeof document.exitFullscreen;
+
+    beforeAll(() => {
+        // Store original values
+        originalFullscreenElement = Object.getOwnPropertyDescriptor(document, 'fullscreenElement');
+        originalRequestFullscreen = Element.prototype.requestFullscreen;
+        originalExitFullscreen = document.exitFullscreen;
+
+        // Mock fullscreenElement as configurable so it can be reset
+        Object.defineProperty(document, 'fullscreenElement', {
+            writable: true,
+            configurable: true,
+            value: null,
+        });
+
+        // Mock Element.prototype.requestFullscreen
+        Element.prototype.requestFullscreen = vi.fn(function () {
+            // @ts-expect-error - Mocking fullscreen API for testing
+            document.fullscreenElement = this;
+            return Promise.resolve();
+        }) as unknown as typeof Element.prototype.requestFullscreen;
+
+        // Mock document.exitFullscreen
+        document.exitFullscreen = vi.fn(function () {
+            // @ts-expect-error - Mocking fullscreen API for testing
+            document.fullscreenElement = null;
+            return Promise.resolve();
+        });
+    });
+
+    afterAll(() => {
+        // Restore original values
+        if (originalFullscreenElement) {
+            Object.defineProperty(document, 'fullscreenElement', originalFullscreenElement);
+        }
+        Element.prototype.requestFullscreen = originalRequestFullscreen;
+        document.exitFullscreen = originalExitFullscreen;
+    });
+
     const mockOnClose = vi.fn();
     const mockVideos = [
         {
