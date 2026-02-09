@@ -86,7 +86,16 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
         if (isPlaying) {
             videoRef.current.pause();
         } else {
-            videoRef.current.play();
+            // Handle play() promise to catch autoplay/user-gesture restrictions
+            const playPromise = videoRef.current.play();
+            // play() may not return a Promise in some test environments
+            if (playPromise && typeof playPromise.catch === 'function') {
+                playPromise.catch((err) => {
+                    // Revert isPlaying state on failure
+                    setIsPlaying(false);
+                    console.error('Failed to play video:', err);
+                });
+            }
         }
     }, [isPlaying]);
 
