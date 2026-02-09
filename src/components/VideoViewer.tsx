@@ -532,84 +532,81 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                         />
 
                         {/* Video controls overlay */}
-                        <div
-                            className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
-                                showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                            }`}
-                            aria-hidden={!showControls}
-                            inert={!showControls ? true : undefined}
-                            tabIndex={-1}
-                            onFocus={handleControlsFocus}
-                            onBlur={handleControlsBlur}
-                        >
-                            <div className="flex items-center gap-3">
-                                {/* Play/Pause button */}
-                                <button
-                                    onClick={togglePlayPause}
-                                    className="p-2 hover:bg-white/20 rounded-full transition-colors text-white"
-                                    aria-label={isPlaying ? '一時停止' : '再生'}
-                                >
-                                    {isPlaying ? (
-                                        <LuPause className="w-5 h-5" aria-hidden="true" />
-                                    ) : (
-                                        <LuPlay className="w-5 h-5" aria-hidden="true" />
-                                    )}
-                                </button>
+                        {showControls && (
+                            <div
+                                className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 opacity-100"
+                                onFocus={handleControlsFocus}
+                                onBlur={handleControlsBlur}
+                            >
+                                <div className="flex items-center gap-3">
+                                    {/* Play/Pause button */}
+                                    <button
+                                        onClick={togglePlayPause}
+                                        className="p-2 hover:bg-white/20 rounded-full transition-colors text-white"
+                                        aria-label={isPlaying ? '一時停止' : '再生'}
+                                    >
+                                        {isPlaying ? (
+                                            <LuPause className="w-5 h-5" aria-hidden="true" />
+                                        ) : (
+                                            <LuPlay className="w-5 h-5" aria-hidden="true" />
+                                        )}
+                                    </button>
 
-                                {/* Time display */}
-                                <span className="text-white text-sm tabular-nums">
-                                    {formatTime(currentTime)} / {formatTime(duration)}
-                                </span>
+                                    {/* Time display */}
+                                    <span className="text-white text-sm tabular-nums">
+                                        {formatTime(currentTime)} / {formatTime(duration)}
+                                    </span>
 
-                                {/* Seek bar */}
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max={duration || 0}
-                                    value={currentTime}
-                                    onChange={handleSeek}
-                                    className="flex-1 h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer"
-                                    aria-label="シーク"
-                                />
+                                    {/* Seek bar */}
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max={duration || 0}
+                                        value={currentTime}
+                                        onChange={handleSeek}
+                                        className="flex-1 h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer"
+                                        aria-label="シーク"
+                                    />
 
-                                {/* Volume control */}
-                                <button
-                                    onClick={toggleMute}
-                                    className="p-2 hover:bg-white/20 rounded-full transition-colors text-white"
-                                    aria-label={isMuted ? 'ミュート解除' : 'ミュート'}
-                                >
-                                    {isMuted || volume === 0 ? (
-                                        <LuVolumeX className="w-5 h-5" aria-hidden="true" />
-                                    ) : (
-                                        <LuVolume className="w-5 h-5" aria-hidden="true" />
-                                    )}
-                                </button>
+                                    {/* Volume control */}
+                                    <button
+                                        onClick={toggleMute}
+                                        className="p-2 hover:bg-white/20 rounded-full transition-colors text-white"
+                                        aria-label={isMuted ? 'ミュート解除' : 'ミュート'}
+                                    >
+                                        {isMuted || volume === 0 ? (
+                                            <LuVolumeX className="w-5 h-5" aria-hidden="true" />
+                                        ) : (
+                                            <LuVolume className="w-5 h-5" aria-hidden="true" />
+                                        )}
+                                    </button>
 
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="1"
-                                    step="0.1"
-                                    value={isMuted ? 0 : volume}
-                                    onChange={handleVolumeChange}
-                                    className="w-20 h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer"
-                                    aria-label="音量"
-                                />
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="1"
+                                        step="0.1"
+                                        value={isMuted ? 0 : volume}
+                                        onChange={handleVolumeChange}
+                                        className="w-20 h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer"
+                                        aria-label="音量"
+                                    />
 
-                                {/* Fullscreen button */}
-                                <button
-                                    onClick={toggleFullscreen}
-                                    className="p-2 hover:bg-white/20 rounded-full transition-colors text-white"
-                                    aria-label={isFullscreen ? '全画面解除' : '全画面表示'}
-                                >
-                                    {isFullscreen ? (
-                                        <LuMinimize className="w-5 h-5" aria-hidden="true" />
-                                    ) : (
-                                        <LuMaximize className="w-5 h-5" aria-hidden="true" />
-                                    )}
-                                </button>
+                                    {/* Fullscreen button */}
+                                    <button
+                                        onClick={toggleFullscreen}
+                                        className="p-2 hover:bg-white/20 rounded-full transition-colors text-white"
+                                        aria-label={isFullscreen ? '全画面解除' : '全画面表示'}
+                                    >
+                                        {isFullscreen ? (
+                                            <LuMinimize className="w-5 h-5" aria-hidden="true" />
+                                        ) : (
+                                            <LuMaximize className="w-5 h-5" aria-hidden="true" />
+                                        )}
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Video description */}
