@@ -344,7 +344,7 @@ export function MediaAttachment({
 
     // Render gifv type
     if (media.type === 'gifv') {
-        // Non-NSFW gifv: render as <a> tag with autoplay
+        // Non-NSFW gifv: render as button if onVideoClick provided, otherwise as <a> tag
         if (!needsBlur) {
             const videoUrl = firstNonEmpty(media.url);
             const posterUrl = firstNonEmpty(media.previewUrl);
@@ -363,6 +363,35 @@ export function MediaAttachment({
             if (!videoUrl) {
                 return null;
             }
+
+            // If onVideoClick is provided, render as button
+            if (onVideoClick) {
+                return (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onVideoClick();
+                        }}
+                        className={`block overflow-hidden text-left ${variantClasses} ${className}`}
+                        aria-label={media.description || 'GIFアニメーション'}
+                    >
+                        <video
+                            src={videoUrl}
+                            poster={posterUrl || undefined}
+                            className={`${variantClasses} ${objectFitClass}`}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            aria-hidden="true"
+                            tabIndex={-1}
+                        />
+                    </button>
+                );
+            }
+
+            // Otherwise, render as <a> tag (legacy behavior)
             return (
                 <a
                     href={videoUrl}
@@ -386,7 +415,9 @@ export function MediaAttachment({
             );
         }
 
-        // NSFW gifv: render as button with blur toggle (no autoplay)
+        // NSFW gifv: 2-stage interaction
+        // Stage 1 (blur): click to reveal
+        // Stage 2 (revealed): click to open video viewer if onVideoClick provided
         if (!hasValidPreviewUrl()) {
             return null;
         }
@@ -394,12 +425,59 @@ export function MediaAttachment({
         if (!onNsfwToggle) {
             return null;
         }
+
+        // NSFW revealed state
+        if (nsfwRevealed) {
+            // If onVideoClick is provided, render as button that opens video viewer
+            if (onVideoClick) {
+                return (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onVideoClick();
+                        }}
+                        className={`block overflow-hidden text-left ${variantClasses} ${className}`}
+                        aria-label={media.description || 'GIFアニメーション'}
+                    >
+                        <video
+                            src={firstNonEmpty(media.url) || undefined}
+                            poster={firstNonEmpty(media.previewUrl) || undefined}
+                            className={`${variantClasses} ${objectFitClass}`}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            aria-hidden="true"
+                            tabIndex={-1}
+                        />
+                    </button>
+                );
+            }
+
+            // Otherwise, render as plain video element (no blur, with autoplay)
+            return (
+                <video
+                    src={firstNonEmpty(media.url) || undefined}
+                    poster={firstNonEmpty(media.previewUrl) || undefined}
+                    className={`${variantClasses} ${className} ${objectFitClass}`}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    aria-hidden="true"
+                    tabIndex={-1}
+                />
+            );
+        }
+
+        // NSFW blur state: render as button with blur toggle (no autoplay)
         return (
             <button
                 type="button"
                 onClick={(e) => {
                     e.stopPropagation();
-                    onNsfwToggle?.();
+                    onNsfwToggle();
                 }}
                 className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
                 aria-label={getAccessibleLabel(media.type)}
