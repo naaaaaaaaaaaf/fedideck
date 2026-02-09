@@ -63,6 +63,9 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
     useEffect(() => {
         if (currentVideo?.type === 'gifv') {
             setIsMuted(true);
+        } else if (currentVideo?.type === 'video') {
+            // Regular videos should not be muted by default (unmute when leaving gifv)
+            setIsMuted(false);
         }
     }, [currentVideo?.type]);
 
