@@ -301,6 +301,7 @@ export function MediaAttachment({
                     <video
                         src={videoUrl}
                         poster={posterUrl || undefined}
+                        preload="none"
                         className={`${variantClasses} ${objectFitClass}`}
                         aria-hidden="true"
                         tabIndex={-1}
@@ -326,6 +327,7 @@ export function MediaAttachment({
                 <video
                     src={videoUrl}
                     poster={posterUrl || undefined}
+                    preload="none"
                     className={`${variantClasses} ${objectFitClass}`}
                     aria-hidden="true"
                     tabIndex={-1}
@@ -414,6 +416,7 @@ export function MediaAttachment({
                     <video
                         src={videoUrl}
                         poster={posterUrl || undefined}
+                        preload="none"
                         className={`${variantClasses} ${objectFitClass}`}
                         loop
                         muted
@@ -442,6 +445,7 @@ export function MediaAttachment({
                 <video
                     src={videoUrl}
                     poster={posterUrl || undefined}
+                    preload="none"
                     className={`${variantClasses} ${objectFitClass}`}
                     loop
                     muted
