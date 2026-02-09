@@ -255,8 +255,8 @@ export function MediaAttachment({
                     aria-label={getAccessibleLabel(media.type)}
                 >
                     <video
-                        src={videoUrl || undefined}
                         poster={posterUrl}
+                        preload="none"
                         className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                         aria-hidden="true"
                         tabIndex={-1}
@@ -365,8 +365,8 @@ export function MediaAttachment({
                     aria-label={getAccessibleLabel(media.type)}
                 >
                     <video
-                        src={videoUrl || undefined}
                         poster={posterUrl}
+                        preload="none"
                         className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                         loop
                         muted
