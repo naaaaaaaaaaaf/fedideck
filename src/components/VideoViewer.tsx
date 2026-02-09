@@ -186,6 +186,7 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                 if (target.tagName === 'BUTTON') {
                     if (e.key === 'Escape' || e.key === 'Tab') {
                         baseHandleKeyDown(e);
+                        return;
                     }
                     // Don't intercept Space on buttons (activates the button)
                     // But allow other shortcuts to pass through
@@ -224,7 +225,7 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                 }
             }
 
-            // Handle arrow keys for volume (when single video)
+            // Handle arrow keys for volume adjustment
             if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 adjustVolume(0.1);
