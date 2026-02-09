@@ -45,8 +45,7 @@ export function MediaAttachment({
     // detail: prioritize full resolution, card/compact: prioritize thumbnail for bandwidth
     const displayUrl = firstNonEmpty(
         variant === 'detail' ? media.url : media.previewUrl,
-        variant === 'detail' ? media.previewUrl : media.url,
-        ''
+        variant === 'detail' ? media.previewUrl : media.url
     );
 
     // Check if media has valid URL
