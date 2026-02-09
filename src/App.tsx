@@ -9,6 +9,7 @@ import { ComposeModal, type ReplyToStatus } from './components/ComposeModal';
 import { StatusDetailModal } from './components/StatusDetailModal';
 import { ProfileModal } from './components/ProfileModal';
 import { ImageViewer, type ImageViewerImage } from './components/ImageViewer';
+import { VideoViewer, type VideoViewerVideo } from './components/VideoViewer';
 import { useAccountsStore } from './store/accounts';
 import type { AccountSession } from './api/mastoClient';
 import { useColumnsStore } from './store/columns';
@@ -66,6 +67,12 @@ function App() {
     const [viewerImages, setViewerImages] = useState<ImageViewerImage[]>([]);
     const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
     const [imageViewerKey, setImageViewerKey] = useState(0);
+
+    // VideoViewer state
+    const [isVideoViewerOpen, setIsVideoViewerOpen] = useState(false);
+    const [viewerVideos, setViewerVideos] = useState<VideoViewerVideo[]>([]);
+    const [viewerInitialVideoIndex, setViewerInitialVideoIndex] = useState(0);
+    const [videoViewerKey, setVideoViewerKey] = useState(0);
 
     const loadFromStorage = useAccountsStore((state) => state.loadFromStorage);
     const accounts = useAccountsStore((state) => state.accounts);
@@ -200,6 +207,17 @@ function App() {
         setIsImageViewerOpen(false);
     }, []);
 
+    const handleVideoClick = useCallback((videos: VideoViewerVideo[], index: number) => {
+        setViewerVideos(videos);
+        setViewerInitialVideoIndex(index);
+        setVideoViewerKey((k) => k + 1); // Force remount to reset index
+        setIsVideoViewerOpen(true);
+    }, []);
+
+    const handleVideoViewerClose = useCallback(() => {
+        setIsVideoViewerOpen(false);
+    }, []);
+
     return (
         <div className="h-screen flex overflow-hidden">
             <Sidebar
@@ -213,6 +231,7 @@ function App() {
                     onReply={handleReply}
                     onStatusClick={handleStatusClick}
                     onImageClick={handleImageClick}
+                    onVideoClick={handleVideoClick}
                     onAccountClick={handleAccountClick}
                     onNsfwReveal={addNsfwRevealedStatusId}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
@@ -243,6 +262,7 @@ function App() {
                 onReply={handleStatusDetailReply}
                 onStatusUpdate={updateStatusGlobal}
                 onImageClick={handleImageClick}
+                onVideoClick={handleVideoClick}
                 nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
                 onNsfwReveal={addNsfwRevealedStatusId}
             />
@@ -258,6 +278,13 @@ function App() {
                 onClose={handleImageViewerClose}
                 images={viewerImages}
                 initialIndex={viewerInitialIndex}
+            />
+            <VideoViewer
+                key={videoViewerKey}
+                isOpen={isVideoViewerOpen}
+                onClose={handleVideoViewerClose}
+                videos={viewerVideos}
+                initialIndex={viewerInitialVideoIndex}
             />
         </div>
     );
