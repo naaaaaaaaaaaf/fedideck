@@ -64,6 +64,15 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
         videos.length > 0 ? Math.max(0, Math.min(currentIndex, videos.length - 1)) : 0;
     const currentVideo = videos[safeIndex];
 
+    // Sync currentIndex to safeIndex when it diverges (e.g., initialIndex out of bounds,
+    // videos array shrinks while open). This ensures navigation always advances from
+    // the currently displayed item.
+    useEffect(() => {
+        if (currentIndex !== safeIndex) {
+            setCurrentIndex(safeIndex);
+        }
+    }, [currentIndex, safeIndex]);
+
     // Initialize mute state based on initial video type (gifv should be muted by default)
     useEffect(() => {
         if (currentVideo?.type === 'gifv') {
