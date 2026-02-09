@@ -611,10 +611,10 @@ describe('StatusCard', () => {
             expect(gifvLink).toHaveAttribute('rel', 'noopener noreferrer');
             expect(gifvLink).toHaveAttribute('aria-label', 'Test animation');
 
-            // Video element should autoplay
+            // Video element should not autoplay in card variant
             const video = container.querySelector('video');
             expect(video).toBeInTheDocument();
-            expect(video).toHaveAttribute('autoPlay');
+            expect(video).not.toHaveAttribute('autoPlay');
             expect(video).toHaveAttribute('loop');
         });
 

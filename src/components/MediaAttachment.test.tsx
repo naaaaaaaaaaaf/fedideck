@@ -670,7 +670,7 @@ describe('MediaAttachment', () => {
 
             const video = container.querySelector('video');
             expect(video).toBeInTheDocument();
-            expect(video).toHaveAttribute('autoPlay');
+            expect(video).not.toHaveAttribute('autoPlay');
             expect(video).toHaveAttribute('loop');
         });
 
@@ -866,7 +866,7 @@ describe('MediaAttachment', () => {
                 expect(button).toHaveAttribute('aria-label', 'Test animation');
 
                 const video = container.querySelector('video') as HTMLVideoElement;
-                expect(video).toHaveAttribute('autoPlay');
+                expect(video).not.toHaveAttribute('autoPlay');
                 expect(video).toHaveAttribute('loop');
                 expect(video.muted).toBe(true);
             });
@@ -922,7 +922,7 @@ describe('MediaAttachment', () => {
 
                 const video = container.querySelector('video');
                 expect(video).not.toHaveClass('nsfw-blur');
-                expect(video).toHaveAttribute('autoPlay');
+                expect(video).not.toHaveAttribute('autoPlay');
                 expect(video).toHaveAttribute('loop');
             });
 

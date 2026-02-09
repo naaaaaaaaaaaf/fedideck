@@ -419,7 +419,7 @@ export function MediaAttachment({
                             src={videoUrl}
                             poster={posterUrl || undefined}
                             className={`${variantClasses} ${objectFitClass}`}
-                            autoPlay
+                            autoPlay={variant === 'compact'}
                             loop
                             muted
                             playsInline
@@ -448,7 +448,7 @@ export function MediaAttachment({
                         src={videoUrl}
                         poster={posterUrl || undefined}
                         className={`${variantClasses} ${objectFitClass}`}
-                        autoPlay
+                        autoPlay={variant === 'compact'}
                         loop
                         muted
                         playsInline
@@ -493,7 +493,7 @@ export function MediaAttachment({
                             src={firstNonEmpty(media.url) || undefined}
                             poster={firstNonEmpty(media.previewUrl) || undefined}
                             className={`${variantClasses} ${objectFitClass}`}
-                            autoPlay
+                            autoPlay={variant === 'compact'}
                             loop
                             muted
                             playsInline
@@ -509,13 +509,13 @@ export function MediaAttachment({
                 );
             }
 
-            // Otherwise, render as plain video element (no blur, with autoplay)
+            // Otherwise, render as plain video element (no blur, with autoplay only for compact)
             return (
                 <video
                     src={firstNonEmpty(media.url) || undefined}
                     poster={firstNonEmpty(media.previewUrl) || undefined}
                     className={`${variantClasses} ${className} ${objectFitClass}`}
-                    autoPlay
+                    autoPlay={variant === 'compact'}
                     loop
                     muted
                     playsInline
