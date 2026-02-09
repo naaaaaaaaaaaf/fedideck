@@ -3,6 +3,15 @@ import { firstNonEmpty } from './firstNonEmpty';
 import type { VideoViewerVideo } from '../components/VideoViewer';
 
 /**
+ * Type guard to check if media attachment is a video or gifv
+ */
+function isVideoOrGifv(
+    media: mastodon.v1.MediaAttachment
+): media is mastodon.v1.MediaAttachment & { type: 'video' | 'gifv' } {
+    return media.type === 'video' || media.type === 'gifv';
+}
+
+/**
  * Convert Mastodon media attachments to VideoViewerVideo format.
  * Filters for video/gifv types only, limits to 4 items, and removes empty URLs.
  *
@@ -14,13 +23,13 @@ export function toVideoViewerVideos(
 ): VideoViewerVideo[] {
     const attachments = mediaAttachments ?? [];
     return attachments
-        .filter((media) => media.type === 'video' || media.type === 'gifv')
+        .filter(isVideoOrGifv)
         .slice(0, 4)
         .map((media) => ({
             url: firstNonEmpty(media.url),
             previewUrl: media.previewUrl ?? undefined,
             description: media.description ?? undefined,
-            type: media.type as 'video' | 'gifv',
+            type: media.type, // Type is inferred as 'video' | 'gifv' from the type guard
         }))
         .filter((video) => video.url !== '');
 }
