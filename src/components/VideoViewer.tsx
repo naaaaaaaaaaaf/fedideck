@@ -425,6 +425,16 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                 clearTimeout(controlsTimeoutRef.current);
                 controlsTimeoutRef.current = null;
             }
+            // Exit fullscreen if active when modal is closed
+            if (document.fullscreenElement) {
+                const exitPromise = document.exitFullscreen();
+                if (exitPromise && typeof exitPromise.catch === 'function') {
+                    exitPromise.catch((err) => {
+                        // Ignore errors from exiting fullscreen (element may already be removed)
+                        console.debug('Fullscreen exit error:', err);
+                    });
+                }
+            }
         }
     }, [isOpen]);
 
