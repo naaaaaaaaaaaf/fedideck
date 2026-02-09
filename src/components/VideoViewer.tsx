@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { LuX, LuPlay, LuPause } from 'react-icons/lu';
+import { LuX, LuPlay, LuPause, LuVolume, LuVolumeX, LuMaximize, LuMinimize } from 'react-icons/lu';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 
 export interface VideoViewerVideo {
@@ -21,9 +21,15 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
+    const [volume, setVolume] = useState(1);
+    const [isMuted, setIsMuted] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [showControls, setShowControls] = useState(true);
+    const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const videoContainerRef = useRef<HTMLDivElement>(null);
+    const videoWrapperRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
 
     const { handleKeyDown: baseHandleKeyDown } = useModalAccessibility({
@@ -53,6 +59,25 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                 return;
             }
 
+            // Handle f key for fullscreen
+            if (e.key === 'f' || e.key === 'F') {
+                e.preventDefault();
+                toggleFullscreen();
+                return;
+            }
+
+            // Handle arrow keys for volume
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                adjustVolume(0.1);
+                return;
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                adjustVolume(-0.1);
+                return;
+            }
+
             // Delegate other keys to base handler (ESC, Tab)
             baseHandleKeyDown(e);
         },
@@ -78,6 +103,100 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
             setCurrentTime(time);
         }
     }, []);
+
+    // Toggle mute
+    const toggleMute = useCallback(() => {
+        if (!videoRef.current) return;
+
+        if (isMuted) {
+            videoRef.current.muted = false;
+            setIsMuted(false);
+            if (videoRef.current.volume === 0) {
+                videoRef.current.volume = 1;
+                setVolume(1);
+            }
+        } else {
+            videoRef.current.muted = true;
+            setIsMuted(true);
+        }
+    }, [isMuted]);
+
+    // Handle volume change
+    const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const newVolume = parseFloat(e.target.value);
+        if (videoRef.current) {
+            videoRef.current.volume = newVolume;
+            videoRef.current.muted = newVolume === 0;
+            setVolume(newVolume);
+            setIsMuted(newVolume === 0);
+        }
+    }, []);
+
+    // Adjust volume with arrow keys
+    const adjustVolume = useCallback(
+        (delta: number) => {
+            if (!videoRef.current) return;
+            const newVolume = Math.max(0, Math.min(1, volume + delta));
+            videoRef.current.volume = newVolume;
+            videoRef.current.muted = newVolume === 0;
+            setVolume(newVolume);
+            setIsMuted(newVolume === 0);
+        },
+        [volume]
+    );
+
+    // Toggle fullscreen
+    const toggleFullscreen = useCallback(() => {
+        if (!videoWrapperRef.current) return;
+
+        if (!document.fullscreenElement) {
+            videoWrapperRef.current.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    }, []);
+
+    // Handle fullscreen change
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        };
+    }, []);
+
+    // Auto-hide controls when playing
+    const resetControlsTimeout = useCallback(() => {
+        if (controlsTimeoutRef.current) {
+            clearTimeout(controlsTimeoutRef.current);
+        }
+
+        if (isPlaying) {
+            setShowControls(true);
+            controlsTimeoutRef.current = setTimeout(() => {
+                setShowControls(false);
+            }, 3000);
+        } else {
+            setShowControls(true);
+        }
+    }, [isPlaying]);
+
+    useEffect(() => {
+        resetControlsTimeout();
+        return () => {
+            if (controlsTimeoutRef.current) {
+                clearTimeout(controlsTimeoutRef.current);
+            }
+        };
+    }, [isPlaying, resetControlsTimeout]);
+
+    // Show controls on mouse movement
+    const handleMouseMove = useCallback(() => {
+        resetControlsTimeout();
+    }, [resetControlsTimeout]);
 
     // Format time for display (MM:SS)
     const formatTime = (time: number): string => {
@@ -176,7 +295,7 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                     ref={videoContainerRef}
                     className="flex flex-col items-center justify-center max-w-full max-h-[calc(100vh-8rem)]"
                 >
-                    <div className="relative">
+                    <div ref={videoWrapperRef} className="relative" onMouseMove={handleMouseMove}>
                         <video
                             ref={videoRef}
                             src={currentVideo?.url}
@@ -186,7 +305,11 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                         />
 
                         {/* Video controls overlay */}
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                        <div
+                            className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
+                                showControls ? 'opacity-100' : 'opacity-0'
+                            }`}
+                        >
                             <div className="flex items-center gap-3">
                                 {/* Play/Pause button */}
                                 <button
@@ -216,6 +339,43 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                                     className="flex-1 h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer"
                                     aria-label="シーク"
                                 />
+
+                                {/* Volume control */}
+                                <button
+                                    onClick={toggleMute}
+                                    className="p-2 hover:bg-white/20 rounded-full transition-colors text-white"
+                                    aria-label={isMuted ? 'ミュート解除' : 'ミュート'}
+                                >
+                                    {isMuted || volume === 0 ? (
+                                        <LuVolumeX className="w-5 h-5" aria-hidden="true" />
+                                    ) : (
+                                        <LuVolume className="w-5 h-5" aria-hidden="true" />
+                                    )}
+                                </button>
+
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.1"
+                                    value={isMuted ? 0 : volume}
+                                    onChange={handleVolumeChange}
+                                    className="w-20 h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer"
+                                    aria-label="音量"
+                                />
+
+                                {/* Fullscreen button */}
+                                <button
+                                    onClick={toggleFullscreen}
+                                    className="p-2 hover:bg-white/20 rounded-full transition-colors text-white"
+                                    aria-label={isFullscreen ? '全画面解除' : '全画面表示'}
+                                >
+                                    {isFullscreen ? (
+                                        <LuMinimize className="w-5 h-5" aria-hidden="true" />
+                                    ) : (
+                                        <LuMaximize className="w-5 h-5" aria-hidden="true" />
+                                    )}
+                                </button>
                             </div>
                         </div>
                     </div>
