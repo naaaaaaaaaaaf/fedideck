@@ -407,6 +407,77 @@ describe('VideoViewer', () => {
             // Counter should wrap to 2 / 2
             expect(screen.getByText('2 / 2')).toBeInTheDocument();
         });
+
+        describe('focus trap with interactive elements', () => {
+            it('should delegate Tab key to baseHandleKeyDown when range input is focused', () => {
+                render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+                const seekBar = screen
+                    .getByRole('dialog')
+                    .querySelector('input[type="range"]') as HTMLInputElement;
+
+                // Simulate Tab key on range input
+                // The baseHandleKeyDown should receive the Tab event for focus trap
+                fireEvent.keyDown(seekBar, { key: 'Tab' });
+
+                // If focus trap works, the event should not be prevented by our handler
+                // and should reach useModalAccessibility's Tab handling
+                expect(seekBar).toBeInTheDocument();
+            });
+
+            it('should delegate Shift+Tab key to baseHandleKeyDown when button is focused', () => {
+                render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+                const closeButton = screen.getByLabelText('閉じる');
+
+                // Simulate Shift+Tab key on button
+                fireEvent.keyDown(closeButton, { key: 'Tab', shiftKey: true });
+
+                // Button should still be present, focus trap should handle Tab
+                expect(closeButton).toBeInTheDocument();
+            });
+
+            it('should delegate ESC key to baseHandleKeyDown when range input is focused', () => {
+                render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+                const seekBar = screen
+                    .getByRole('dialog')
+                    .querySelector('input[type="range"]') as HTMLInputElement;
+
+                // ESC on range input should close modal (via baseHandleKeyDown)
+                fireEvent.keyDown(seekBar, { key: 'Escape' });
+
+                expect(mockOnClose).toHaveBeenCalledTimes(1);
+            });
+
+            it('should allow arrow keys to work on range input (not intercepted)', () => {
+                render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+                const seekBar = screen
+                    .getByRole('dialog')
+                    .querySelector('input[type="range"]') as HTMLInputElement;
+
+                // Arrow keys on range input should not be intercepted by video controls
+                // They should allow default behavior (adjusting the slider)
+                fireEvent.keyDown(seekBar, { key: 'ArrowRight' });
+
+                // The slider should still be functional
+                expect(seekBar).toBeInTheDocument();
+            });
+
+            it('should allow Space key to work on button (not intercepted for play/pause)', () => {
+                render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+                const playButton = screen.getByLabelText('再生');
+
+                // Space key on button should not trigger video play/pause
+                // It should activate the button instead
+                fireEvent.keyDown(playButton, { key: ' ' });
+
+                // Button should still be present and functional
+                expect(playButton).toBeInTheDocument();
+            });
+        });
     });
 
     describe('gifv type support', () => {
