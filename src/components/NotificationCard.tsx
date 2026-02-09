@@ -17,6 +17,7 @@ import {
 import { formatDate } from '../utils/dateFormat';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { DisplayName } from './DisplayName';
+import { MediaAttachment } from './MediaAttachment';
 
 interface NotificationCardProps {
     notification: mastodon.v1.Notification;
@@ -394,43 +395,18 @@ export function NotificationCard({
                         <div className="flex gap-1 mt-2">
                             {displayStatus.mediaAttachments.slice(0, 4).map((media, index) => {
                                 const isSensitive = displayStatus.sensitive ?? false;
-                                const needsBlur = isSensitive && !nsfwRevealed;
                                 const totalCount = displayStatus.mediaAttachments.length;
 
-                                // Sensitive & not yet revealed: use button for reveal interaction
-                                if (needsBlur) {
-                                    return (
-                                        <button
-                                            type="button"
-                                            key={media.id}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleNsfwToggle();
-                                            }}
-                                            className="nsfw-blur-container w-12 h-12"
-                                            aria-label={`閲覧注意の画像を表示 (${index + 1}/${totalCount})`}
-                                        >
-                                            <img
-                                                src={media.previewUrl ?? media.url ?? ''}
-                                                alt={media.description || '添付メディア'}
-                                                className="w-12 h-12 rounded object-cover nsfw-blur"
-                                            />
-                                            <div className="nsfw-blur-overlay">
-                                                <span className="text-white text-xs font-medium">
-                                                    閲覧注意
-                                                </span>
-                                            </div>
-                                        </button>
-                                    );
-                                }
-
-                                // Non-sensitive or already revealed: use plain img for normal click-through behavior
                                 return (
-                                    <img
+                                    <MediaAttachment
                                         key={media.id}
-                                        src={media.previewUrl ?? media.url ?? ''}
-                                        alt={media.description || '添付メディア'}
-                                        className="w-12 h-12 rounded object-cover"
+                                        media={media}
+                                        variant="compact"
+                                        isSensitive={isSensitive}
+                                        nsfwRevealed={nsfwRevealed}
+                                        onNsfwToggle={handleNsfwToggle}
+                                        imageIndex={index}
+                                        totalImages={totalCount}
                                     />
                                 );
                             })}

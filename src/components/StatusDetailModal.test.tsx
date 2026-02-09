@@ -238,6 +238,7 @@ describe('StatusDetailModal', () => {
 
             const img = screen.getByAltText('Test image');
             expect(img).toBeInTheDocument();
+            // detail variant prioritizes full resolution URL
             expect(img).toHaveAttribute('src', 'https://example.com/image.png');
         });
 
