@@ -218,6 +218,8 @@ export function MediaAttachment({
                         src={videoUrl}
                         poster={posterUrl ?? undefined}
                         className={`${variantClasses} ${objectFitClass}`}
+                        aria-hidden="true"
+                        tabIndex={-1}
                     />
                 </a>
             );
