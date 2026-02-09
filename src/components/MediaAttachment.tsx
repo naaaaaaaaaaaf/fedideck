@@ -124,12 +124,11 @@ export function MediaAttachment({
         }
 
         // Non-NSFW thumbnail: render as plain img
-        const fallbackAlt =
-            media.type === 'video' ? '添付動画' : media.type === 'gifv' ? '添付GIF' : '添付画像';
+        // Use empty alt when no description to treat thumbnail as decorative
         return (
             <img
                 src={thumbnailUrl}
-                alt={media.description ?? fallbackAlt}
+                alt={media.description ?? ''}
                 className={`${variantClasses} ${className} ${objectFitClass}`}
             />
         );
