@@ -677,12 +677,6 @@ export function StatusDetailModal({
                                                           )
                                                     : undefined
                                             }
-                                            videoIndex={
-                                                videoIndex !== undefined && videoIndex !== -1
-                                                    ? videoIndex
-                                                    : undefined
-                                            }
-                                            totalVideos={videoViewerVideos.length}
                                         />
                                     );
                                 })}

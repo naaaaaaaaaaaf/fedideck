@@ -10,11 +10,13 @@ Object.defineProperty(document, 'fullscreenElement', {
 
 // Mock Element.prototype.requestFullscreen
 Element.prototype.requestFullscreen = vi.fn(function () {
+    // @ts-expect-error - Mocking fullscreen API for testing
     document.fullscreenElement = this;
     return Promise.resolve();
 });
 
 document.exitFullscreen = vi.fn(function () {
+    // @ts-expect-error - Mocking fullscreen API for testing
     document.fullscreenElement = null;
     return Promise.resolve();
 });

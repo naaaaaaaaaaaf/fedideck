@@ -419,7 +419,7 @@ export function MediaAttachment({
                             src={videoUrl}
                             poster={posterUrl || undefined}
                             className={`${variantClasses} ${objectFitClass}`}
-                            autoPlay={variant === 'compact'}
+                            autoPlay={false}
                             loop
                             muted
                             playsInline
@@ -448,7 +448,7 @@ export function MediaAttachment({
                         src={videoUrl}
                         poster={posterUrl || undefined}
                         className={`${variantClasses} ${objectFitClass}`}
-                        autoPlay={variant === 'compact'}
+                        autoPlay={false}
                         loop
                         muted
                         playsInline
@@ -493,7 +493,7 @@ export function MediaAttachment({
                             src={firstNonEmpty(media.url) || undefined}
                             poster={firstNonEmpty(media.previewUrl) || undefined}
                             className={`${variantClasses} ${objectFitClass}`}
-                            autoPlay={variant === 'compact'}
+                            autoPlay={false}
                             loop
                             muted
                             playsInline
@@ -515,7 +515,7 @@ export function MediaAttachment({
                     src={firstNonEmpty(media.url) || undefined}
                     poster={firstNonEmpty(media.previewUrl) || undefined}
                     className={`${variantClasses} ${className} ${objectFitClass}`}
-                    autoPlay={variant === 'compact'}
+                    autoPlay={false}
                     loop
                     muted
                     playsInline

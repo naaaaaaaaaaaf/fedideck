@@ -540,12 +540,6 @@ export function StatusCard({
                                                 ? () => onVideoClick(videoViewerVideos, videoIndex)
                                                 : undefined
                                         }
-                                        videoIndex={
-                                            videoIndex !== undefined && videoIndex !== -1
-                                                ? videoIndex
-                                                : undefined
-                                        }
-                                        totalVideos={videoViewerVideos.length}
                                     />
                                 );
                             })}
