@@ -368,7 +368,6 @@ export function MediaAttachment({
                         src={videoUrl || undefined}
                         poster={posterUrl}
                         className={`${variantClasses} ${objectFitClass} nsfw-blur`}
-                        autoPlay={false}
                         loop
                         muted
                         playsInline
