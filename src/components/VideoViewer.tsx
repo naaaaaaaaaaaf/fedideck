@@ -32,7 +32,12 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [volume, setVolume] = useState(1);
-    const [isMuted, setIsMuted] = useState(false);
+    // Initialize isMuted based on initial video type to prevent unmuted flash for gifv
+    // Use lazy initial state to compute from videos[initialIndex] on first render
+    const [isMuted, setIsMuted] = useState(() => {
+        const initialVideo = videos[initialIndex];
+        return initialVideo?.type === 'gifv';
+    });
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [showControls, setShowControls] = useState(true);
     const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -474,6 +479,7 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                             poster={currentVideo?.previewUrl}
                             loop={currentVideo?.type === 'gifv'}
                             muted={isMuted}
+                            playsInline
                             aria-label={currentVideo?.description ?? '動画'}
                             className="max-w-full max-h-[calc(100vh-12rem)] object-contain"
                         />
