@@ -38,7 +38,7 @@ export function MediaAttachment({
     const objectFitClass = variant === 'detail' ? 'object-contain' : 'object-cover';
 
     // Variant-specific overlay text size
-    // compact: smaller text for 12x12px thumbnails, card/detail: normal size
+    // compact: smaller text for 48x48px thumbnails, card/detail: normal size
     const overlayTextClass = variant === 'compact' ? 'text-xs' : 'text-sm';
 
     // Select display URL based on variant
