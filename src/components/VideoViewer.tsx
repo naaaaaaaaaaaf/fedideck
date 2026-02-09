@@ -392,6 +392,22 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [safeIndex]);
 
+    // Pause video and reset state when modal closes
+    useEffect(() => {
+        if (!isOpen) {
+            // Pause playback when modal is closed
+            if (videoRef.current) {
+                videoRef.current.pause();
+            }
+            setIsPlaying(false);
+            // Clear controls timeout to prevent state updates after close
+            if (controlsTimeoutRef.current) {
+                clearTimeout(controlsTimeoutRef.current);
+                controlsTimeoutRef.current = null;
+            }
+        }
+    }, [isOpen]);
+
     // Handle backdrop click
     const handleBackdropClick = (e: React.MouseEvent) => {
         if (e.target === e.currentTarget) {
