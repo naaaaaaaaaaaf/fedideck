@@ -25,11 +25,14 @@ export function toVideoViewerVideos(
     return attachments
         .filter(isVideoOrGifv)
         .slice(0, 4)
-        .map((media) => ({
-            url: firstNonEmpty(media.url),
-            previewUrl: firstNonEmpty(media.previewUrl),
-            description: media.description ?? undefined,
-            type: media.type, // Type is inferred as 'video' | 'gifv' from the type guard
-        }))
+        .map((media) => {
+            const previewUrl = firstNonEmpty(media.previewUrl);
+            return {
+                url: firstNonEmpty(media.url),
+                previewUrl: previewUrl || undefined,
+                description: media.description ?? undefined,
+                type: media.type, // Type is inferred as 'video' | 'gifv' from the type guard
+            };
+        })
         .filter((video) => video.url !== '');
 }
