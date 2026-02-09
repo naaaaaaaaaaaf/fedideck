@@ -295,6 +295,11 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
 
     // Handle fullscreen change
     useEffect(() => {
+        // Guard: only register listener while modal is open
+        // VideoViewer returns null when closed but stays mounted,
+        // so we need to avoid registering listeners while closed
+        if (!isOpen) return;
+
         const handleFullscreenChange = () => {
             setIsFullscreen(!!document.fullscreenElement);
         };
@@ -303,7 +308,7 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
         return () => {
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
         };
-    }, []);
+    }, [isOpen]);
 
     // Auto-hide controls when playing
     const resetControlsTimeout = useCallback(() => {
