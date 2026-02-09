@@ -415,7 +415,6 @@ export function MediaAttachment({
                         src={videoUrl}
                         poster={posterUrl || undefined}
                         className={`${variantClasses} ${objectFitClass}`}
-                        autoPlay={false}
                         loop
                         muted
                         playsInline
@@ -444,7 +443,6 @@ export function MediaAttachment({
                     src={videoUrl}
                     poster={posterUrl || undefined}
                     className={`${variantClasses} ${objectFitClass}`}
-                    autoPlay={false}
                     loop
                     muted
                     playsInline
