@@ -59,6 +59,13 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
         videos.length > 0 ? Math.max(0, Math.min(currentIndex, videos.length - 1)) : 0;
     const currentVideo = videos[safeIndex];
 
+    // Initialize mute state based on initial video type (gifv should be muted by default)
+    useEffect(() => {
+        if (currentVideo?.type === 'gifv') {
+            setIsMuted(true);
+        }
+    }, [currentVideo?.type]);
+
     // Check if there are multiple videos
     const hasMultipleVideos = videos.length > 1;
 
@@ -303,6 +310,12 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
         // Reset time display when changing videos
         setCurrentTime(0);
         setDuration(0);
+
+        // Sync mute state with video type (gifv should be muted by default)
+        if (currentVideo?.type === 'gifv') {
+            setIsMuted(true);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [safeIndex]);
 
     // Handle backdrop click
@@ -396,7 +409,7 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                             src={currentVideo?.url}
                             poster={currentVideo?.previewUrl}
                             loop={currentVideo?.type === 'gifv'}
-                            muted={currentVideo?.type === 'gifv'}
+                            muted={isMuted}
                             aria-label={currentVideo?.description ?? '動画'}
                             className="max-w-full max-h-[calc(100vh-12rem)] object-contain"
                         />
