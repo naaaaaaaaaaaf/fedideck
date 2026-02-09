@@ -477,8 +477,9 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                         {/* Video controls overlay */}
                         <div
                             className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
-                                showControls ? 'opacity-100' : 'opacity-0'
+                                showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
                             }`}
+                            aria-hidden={!showControls}
                         >
                             <div className="flex items-center gap-3">
                                 {/* Play/Pause button */}
