@@ -361,8 +361,8 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
             video.removeEventListener('loadedmetadata', handleLoadedMetadata);
             video.removeEventListener('ended', handleEnded);
         };
-        // Re-attach event listeners when video changes (safeIndex changes)
-    }, [safeIndex]);
+        // Re-attach event listeners when video source changes
+    }, [currentVideo?.url]);
 
     // Pause video when navigating to a different video
     useEffect(() => {
