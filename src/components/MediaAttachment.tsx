@@ -239,7 +239,7 @@ export function MediaAttachment({
                 aria-label={getAccessibleLabel(media.type)}
             >
                 <video
-                    src={media.url ?? undefined}
+                    src={firstNonEmpty(media.url) || undefined}
                     poster={firstNonEmpty(media.previewUrl) || undefined}
                     className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                     aria-hidden="true"
@@ -311,7 +311,7 @@ export function MediaAttachment({
                 aria-label={getAccessibleLabel(media.type)}
             >
                 <video
-                    src={media.url ?? undefined}
+                    src={firstNonEmpty(media.url) || undefined}
                     poster={firstNonEmpty(media.previewUrl) || undefined}
                     className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                     muted
