@@ -276,7 +276,7 @@ export function MediaAttachment({
             return (
                 <img
                     src={posterUrl}
-                    alt={media.description || '動画'}
+                    alt={getAccessibleLabel(media.type)}
                     className={`${variantClasses} ${className} ${objectFitClass}`}
                 />
             );
@@ -296,7 +296,7 @@ export function MediaAttachment({
                         onVideoClick();
                     }}
                     className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
-                    aria-label={media.description || '動画'}
+                    aria-label={getAccessibleLabel(media.type)}
                 >
                     <video
                         src={videoUrl}
@@ -321,7 +321,7 @@ export function MediaAttachment({
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`relative block overflow-hidden ${variantClasses} ${className}`}
-                aria-label={media.description || '動画'}
+                aria-label={getAccessibleLabel(media.type)}
             >
                 <video
                     src={videoUrl}
@@ -390,7 +390,7 @@ export function MediaAttachment({
             return (
                 <img
                     src={posterUrl}
-                    alt={media.description || 'GIFアニメーション'}
+                    alt={getAccessibleLabel(media.type)}
                     className={`${variantClasses} ${className} ${objectFitClass}`}
                 />
             );
@@ -410,7 +410,7 @@ export function MediaAttachment({
                         onVideoClick();
                     }}
                     className={`relative block overflow-hidden text-left ${variantClasses} ${className}`}
-                    aria-label={media.description || 'GIFアニメーション'}
+                    aria-label={getAccessibleLabel(media.type)}
                 >
                     <video
                         src={videoUrl}
@@ -439,7 +439,7 @@ export function MediaAttachment({
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`relative block overflow-hidden ${variantClasses} ${className}`}
-                aria-label={media.description || 'GIFアニメーション'}
+                aria-label={getAccessibleLabel(media.type)}
             >
                 <video
                     src={videoUrl}
