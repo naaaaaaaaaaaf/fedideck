@@ -223,8 +223,16 @@ describe('MediaAttachment', () => {
     describe('NSFW blur handling', () => {
         it('should apply blur class to sensitive images', () => {
             const media = createMockMedia({ type: 'image' });
+            const onNsfwToggle = vi.fn();
 
-            render(<MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />);
+            render(
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
+                />
+            );
 
             const img = screen.getByAltText('Test image');
             expect(img).toHaveClass('nsfw-blur');
@@ -241,8 +249,16 @@ describe('MediaAttachment', () => {
 
         it('should remove blur when nsfwRevealed is true', () => {
             const media = createMockMedia({ type: 'image' });
+            const onNsfwToggle = vi.fn();
 
-            render(<MediaAttachment media={media} isSensitive={true} nsfwRevealed={true} />);
+            render(
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={true}
+                    onNsfwToggle={onNsfwToggle}
+                />
+            );
 
             const img = screen.getByAltText('Test image');
             expect(img).not.toHaveClass('nsfw-blur');
@@ -250,8 +266,16 @@ describe('MediaAttachment', () => {
 
         it('should display overlay on sensitive images', () => {
             const media = createMockMedia({ type: 'image' });
+            const onNsfwToggle = vi.fn();
 
-            render(<MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />);
+            render(
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
+                />
+            );
 
             expect(screen.getByText('閲覧注意')).toBeInTheDocument();
         });
@@ -351,9 +375,15 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/video.mp4',
                 previewUrl: 'https://example.com/video-poster.png',
             });
+            const onNsfwToggle = vi.fn();
 
             const { container } = render(
-                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
+                />
             );
 
             const button = container.querySelector('button[aria-label="閲覧注意の動画を表示"]');
@@ -413,9 +443,15 @@ describe('MediaAttachment', () => {
                 url: undefined,
                 previewUrl: 'https://example.com/video-poster.png',
             });
+            const onNsfwToggle = vi.fn();
 
             const { container } = render(
-                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
+                />
             );
 
             const button = container.querySelector('button');
@@ -428,9 +464,15 @@ describe('MediaAttachment', () => {
                 url: undefined,
                 previewUrl: 'https://example.com/video-poster.png',
             });
+            const onNsfwToggle = vi.fn();
 
             const { container } = render(
-                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={true} />
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={true}
+                    onNsfwToggle={onNsfwToggle}
+                />
             );
 
             // Should render img with previewUrl when url is missing
@@ -445,15 +487,28 @@ describe('MediaAttachment', () => {
                 url: undefined,
                 previewUrl: 'https://example.com/video-poster.png',
             });
+            const onNsfwToggle = vi.fn();
 
             // Render with NSFW revealed = false
             const { container: container1, rerender } = render(
-                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
+                />
             );
             expect(container1.firstChild).not.toBeNull();
 
             // Rerender with NSFW revealed = true (simulating toggle)
-            rerender(<MediaAttachment media={media} isSensitive={true} nsfwRevealed={true} />);
+            rerender(
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={true}
+                    onNsfwToggle={onNsfwToggle}
+                />
+            );
             expect(container1.firstChild).not.toBeNull();
         });
     });
@@ -506,9 +561,15 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/animation.mp4',
                 previewUrl: 'https://example.com/animation-poster.png',
             });
+            const onNsfwToggle = vi.fn();
 
             const { container } = render(
-                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
+                />
             );
 
             const button = screen.getByRole('button', { name: '閲覧注意のGIFを表示' });
@@ -529,9 +590,15 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/animation.mp4',
                 previewUrl: undefined,
             });
+            const onNsfwToggle = vi.fn();
 
             const { container } = render(
-                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
+                />
             );
 
             expect(container.firstChild).toBeNull();
@@ -567,9 +634,15 @@ describe('MediaAttachment', () => {
                 url: undefined,
                 previewUrl: 'https://example.com/animation-poster.png',
             });
+            const onNsfwToggle = vi.fn();
 
             const { container } = render(
-                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
+                />
             );
 
             const button = container.querySelector('button');
@@ -582,9 +655,15 @@ describe('MediaAttachment', () => {
                 url: undefined,
                 previewUrl: 'https://example.com/animation-poster.png',
             });
+            const onNsfwToggle = vi.fn();
 
             const { container } = render(
-                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={true} />
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={true}
+                    onNsfwToggle={onNsfwToggle}
+                />
             );
 
             // Should render img with previewUrl when url is missing
@@ -599,15 +678,28 @@ describe('MediaAttachment', () => {
                 url: undefined,
                 previewUrl: 'https://example.com/animation-poster.png',
             });
+            const onNsfwToggle = vi.fn();
 
             // Render with NSFW revealed = false
             const { container: container1, rerender } = render(
-                <MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
+                />
             );
             expect(container1.firstChild).not.toBeNull();
 
             // Rerender with NSFW revealed = true (simulating toggle)
-            rerender(<MediaAttachment media={media} isSensitive={true} nsfwRevealed={true} />);
+            rerender(
+                <MediaAttachment
+                    media={media}
+                    isSensitive={true}
+                    nsfwRevealed={true}
+                    onNsfwToggle={onNsfwToggle}
+                />
+            );
             expect(container1.firstChild).not.toBeNull();
         });
     });
@@ -615,6 +707,7 @@ describe('MediaAttachment', () => {
     describe('accessibility', () => {
         it('should have correct aria-label for sensitive images', () => {
             const media = createMockMedia({ type: 'image' });
+            const onNsfwToggle = vi.fn();
 
             render(
                 <MediaAttachment
@@ -623,6 +716,7 @@ describe('MediaAttachment', () => {
                     nsfwRevealed={false}
                     imageIndex={0}
                     totalImages={3}
+                    onNsfwToggle={onNsfwToggle}
                 />
             );
 
@@ -740,6 +834,7 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/image.png',
                 previewUrl: 'https://example.com/preview.png',
             });
+            const onNsfwToggle = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
@@ -747,6 +842,7 @@ describe('MediaAttachment', () => {
                     variant="compact"
                     isSensitive={true}
                     nsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
                 />
             );
 
@@ -761,6 +857,7 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/image.png',
                 previewUrl: 'https://example.com/preview.png',
             });
+            const onNsfwToggle = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
@@ -768,6 +865,7 @@ describe('MediaAttachment', () => {
                     variant="card"
                     isSensitive={true}
                     nsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
                 />
             );
 
@@ -782,6 +880,7 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/image.png',
                 previewUrl: 'https://example.com/preview.png',
             });
+            const onNsfwToggle = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
@@ -789,6 +888,7 @@ describe('MediaAttachment', () => {
                     variant="detail"
                     isSensitive={true}
                     nsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
                 />
             );
 
@@ -803,6 +903,7 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/video.mp4',
                 previewUrl: 'https://example.com/preview.png',
             });
+            const onNsfwToggle = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
@@ -810,6 +911,7 @@ describe('MediaAttachment', () => {
                     variant="compact"
                     isSensitive={true}
                     nsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
                 />
             );
 

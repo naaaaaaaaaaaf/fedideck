@@ -97,6 +97,10 @@ export function MediaAttachment({
 
         // NSFW thumbnail in compact mode: render as button with blur
         if (needsBlur) {
+            // If onNsfwToggle is not provided, we cannot properly handle NSFW content
+            if (!onNsfwToggle) {
+                return null;
+            }
             return (
                 <button
                     type="button"
@@ -141,6 +145,10 @@ export function MediaAttachment({
 
         // For NSFW or when onImageClick is provided, render as button
         if (needsBlur || onImageClick) {
+            // If NSFW content needs blur but onNsfwToggle is not provided, cannot handle properly
+            if (needsBlur && !onNsfwToggle) {
+                return null;
+            }
             return (
                 <button
                     type="button"
@@ -228,6 +236,10 @@ export function MediaAttachment({
         if (!hasValidPreviewUrl()) {
             return null;
         }
+        // If onNsfwToggle is not provided, cannot properly handle NSFW content
+        if (!onNsfwToggle) {
+            return null;
+        }
         return (
             <button
                 type="button"
@@ -298,6 +310,10 @@ export function MediaAttachment({
 
         // NSFW gifv: render as button with blur toggle (no autoplay)
         if (!hasValidPreviewUrl()) {
+            return null;
+        }
+        // If onNsfwToggle is not provided, cannot properly handle NSFW content
+        if (!onNsfwToggle) {
             return null;
         }
         return (
