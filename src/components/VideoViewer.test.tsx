@@ -212,7 +212,6 @@ describe('VideoViewer', () => {
 
             // The seek bar should be functional (able to trigger onChange)
             // In test environment without actual video, duration is 0, so value stays 0
-            const originalValue = seekBar.value;
             fireEvent.change(seekBar, { target: { value: '10' } });
 
             // Value may remain 0 due to max=0 constraint, but onChange should not error

@@ -72,6 +72,41 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
         setCurrentIndex((prev) => (prev < videos.length - 1 ? prev + 1 : 0));
     }, [videos.length]);
 
+    // Toggle play/pause
+    const togglePlayPause = useCallback(() => {
+        if (!videoRef.current) return;
+
+        if (isPlaying) {
+            videoRef.current.pause();
+        } else {
+            videoRef.current.play();
+        }
+    }, [isPlaying]);
+
+    // Adjust volume with arrow keys
+    const adjustVolume = useCallback(
+        (delta: number) => {
+            if (!videoRef.current) return;
+            const newVolume = Math.max(0, Math.min(1, volume + delta));
+            videoRef.current.volume = newVolume;
+            videoRef.current.muted = newVolume === 0;
+            setVolume(newVolume);
+            setIsMuted(newVolume === 0);
+        },
+        [volume]
+    );
+
+    // Toggle fullscreen
+    const toggleFullscreen = useCallback(() => {
+        if (!videoWrapperRef.current) return;
+
+        if (!document.fullscreenElement) {
+            videoWrapperRef.current.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    }, []);
+
     // Handle keyboard navigation
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent) => {
@@ -118,19 +153,16 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
             // Delegate other keys to base handler (ESC, Tab)
             baseHandleKeyDown(e);
         },
-        [baseHandleKeyDown, hasMultipleVideos, goToPrevious, goToNext]
+        [
+            baseHandleKeyDown,
+            hasMultipleVideos,
+            goToPrevious,
+            goToNext,
+            togglePlayPause,
+            toggleFullscreen,
+            adjustVolume,
+        ]
     );
-
-    // Toggle play/pause
-    const togglePlayPause = useCallback(() => {
-        if (!videoRef.current) return;
-
-        if (isPlaying) {
-            videoRef.current.pause();
-        } else {
-            videoRef.current.play();
-        }
-    }, [isPlaying]);
 
     // Handle seek
     const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,30 +198,6 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
             videoRef.current.muted = newVolume === 0;
             setVolume(newVolume);
             setIsMuted(newVolume === 0);
-        }
-    }, []);
-
-    // Adjust volume with arrow keys
-    const adjustVolume = useCallback(
-        (delta: number) => {
-            if (!videoRef.current) return;
-            const newVolume = Math.max(0, Math.min(1, volume + delta));
-            videoRef.current.volume = newVolume;
-            videoRef.current.muted = newVolume === 0;
-            setVolume(newVolume);
-            setIsMuted(newVolume === 0);
-        },
-        [volume]
-    );
-
-    // Toggle fullscreen
-    const toggleFullscreen = useCallback(() => {
-        if (!videoWrapperRef.current) return;
-
-        if (!document.fullscreenElement) {
-            videoWrapperRef.current.requestFullscreen();
-        } else {
-            document.exitFullscreen();
         }
     }, []);
 
@@ -271,10 +279,10 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
 
     // Pause video when navigating to a different video
     useEffect(() => {
-        if (videoRef.current && isPlaying) {
+        if (videoRef.current) {
             videoRef.current.pause();
-            setIsPlaying(false);
         }
+        setIsPlaying(false);
         // Reset time display when changing videos
         setCurrentTime(0);
         setDuration(0);

@@ -11,8 +11,6 @@ export interface MediaAttachmentProps {
     imageIndex?: number;
     totalImages?: number;
     onVideoClick?: () => void;
-    videoIndex?: number;
-    totalVideos?: number;
     className?: string;
 }
 
@@ -26,8 +24,6 @@ export function MediaAttachment({
     imageIndex,
     totalImages,
     onVideoClick,
-    videoIndex,
-    totalVideos,
     className = '',
 }: MediaAttachmentProps) {
     const needsBlur = isSensitive && !nsfwRevealed;
