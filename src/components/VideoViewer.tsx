@@ -119,8 +119,8 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
                 target.tagName === 'BUTTON' ||
                 target.isContentEditable
             ) {
-                // Still delegate ESC to base handler for modal close
-                if (e.key === 'Escape') {
+                // Delegate ESC and Tab to base handler for accessibility (focus trap)
+                if (e.key === 'Escape' || e.key === 'Tab') {
                     baseHandleKeyDown(e);
                 }
                 return;
