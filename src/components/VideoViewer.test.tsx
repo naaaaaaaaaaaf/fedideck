@@ -2,6 +2,23 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { VideoViewer } from './VideoViewer';
 
+// Mock fullscreen API for jsdom environment
+Object.defineProperty(document, 'fullscreenElement', {
+    writable: true,
+    value: null,
+});
+
+// Mock Element.prototype.requestFullscreen
+Element.prototype.requestFullscreen = vi.fn(function () {
+    document.fullscreenElement = this;
+    return Promise.resolve();
+});
+
+document.exitFullscreen = vi.fn(function () {
+    document.fullscreenElement = null;
+    return Promise.resolve();
+});
+
 describe('VideoViewer', () => {
     const mockOnClose = vi.fn();
     const mockVideos = [
@@ -316,6 +333,75 @@ describe('VideoViewer', () => {
 
             const prevButton = screen.getByLabelText('前の動画');
             fireEvent.click(prevButton);
+
+            // Counter should wrap to 2 / 2
+            expect(screen.getByText('2 / 2')).toBeInTheDocument();
+        });
+    });
+
+    describe('keyboard shortcuts', () => {
+        it('should toggle play/pause when Space key is pressed', () => {
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+            const dialog = screen.getByRole('dialog');
+            const playButton = screen.getByLabelText('再生');
+
+            // Press Space key
+            fireEvent.keyDown(dialog, { key: ' ' });
+
+            // Play button should still be present
+            expect(playButton).toBeInTheDocument();
+        });
+
+        it('should handle fullscreen toggle when f key is pressed', () => {
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+            const dialog = screen.getByRole('dialog');
+            const fullscreenButton = screen.getByLabelText('全画面表示');
+
+            // Press f key
+            fireEvent.keyDown(dialog, { key: 'f' });
+
+            // Button should still be present (actual fullscreen not testable in jsdom)
+            expect(fullscreenButton).toBeInTheDocument();
+        });
+
+        it('should handle F key (uppercase) for fullscreen', () => {
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+            const dialog = screen.getByRole('dialog');
+
+            // Press F key (uppercase)
+            fireEvent.keyDown(dialog, { key: 'F' });
+
+            expect(screen.getByLabelText('全画面表示')).toBeInTheDocument();
+        });
+
+        it('should navigate to next video with ArrowRight when multiple videos', () => {
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+            const dialog = screen.getByRole('dialog');
+
+            // Should start at 1 / 2
+            expect(screen.getByText('1 / 2')).toBeInTheDocument();
+
+            // Press ArrowRight key
+            fireEvent.keyDown(dialog, { key: 'ArrowRight' });
+
+            // Counter should update to 2 / 2
+            expect(screen.getByText('2 / 2')).toBeInTheDocument();
+        });
+
+        it('should navigate to previous video with ArrowLeft when multiple videos', () => {
+            render(<VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />);
+
+            const dialog = screen.getByRole('dialog');
+
+            // Should start at 1 / 2
+            expect(screen.getByText('1 / 2')).toBeInTheDocument();
+
+            // Press ArrowLeft key
+            fireEvent.keyDown(dialog, { key: 'ArrowLeft' });
 
             // Counter should wrap to 2 / 2
             expect(screen.getByText('2 / 2')).toBeInTheDocument();
