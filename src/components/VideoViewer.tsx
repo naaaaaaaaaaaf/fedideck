@@ -11,13 +11,7 @@ import {
     LuChevronRight,
 } from 'react-icons/lu';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
-
-export interface VideoViewerVideo {
-    url: string;
-    previewUrl?: string;
-    description?: string;
-    type: 'video' | 'gifv';
-}
+import type { VideoViewerVideo } from '../types/video';
 
 export interface VideoViewerProps {
     isOpen: boolean;

@@ -16,7 +16,7 @@ import {
 } from '../api/mastoClient';
 import { subscribeToStream, unsubscribeFromStream } from '../streaming/streamManager';
 import type { ImageViewerImage } from '../components/ImageViewer';
-import type { VideoViewerVideo } from '../components/VideoViewer';
+import type { VideoViewerVideo } from '../types/video';
 
 interface ColumnProps {
     id: string;

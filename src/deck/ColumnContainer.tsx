@@ -5,7 +5,7 @@ import { SiMastodon } from 'react-icons/si';
 import { useColumnsStore } from '../store/columns';
 import { useAccountsStore } from '../store/accounts';
 import type { ImageViewerImage } from '../components/ImageViewer';
-import type { VideoViewerVideo } from '../components/VideoViewer';
+import type { VideoViewerVideo } from '../types/video';
 
 interface ColumnContainerProps {
     onAddColumn?: () => void;

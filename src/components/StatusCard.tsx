@@ -22,7 +22,7 @@ import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import type { ImageViewerImage } from './ImageViewer';
-import type { VideoViewerVideo } from './VideoViewer';
+import type { VideoViewerVideo } from '../types/video';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
 

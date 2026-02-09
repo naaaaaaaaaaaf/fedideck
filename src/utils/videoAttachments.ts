@@ -1,6 +1,6 @@
 import type { mastodon } from 'masto';
 import { firstNonEmpty } from './firstNonEmpty';
-import type { VideoViewerVideo } from '../components/VideoViewer';
+import type { VideoViewerVideo } from '../types/video';
 
 /**
  * Type guard to check if media attachment is a video or gifv
