@@ -33,10 +33,12 @@ export const useAccountsStore = create<AccountsState>()(
             addAccount: (session) => {
                 saveSession(session);
                 set((state) => {
-                    const exists = state.accounts.some(a => a.id === session.id);
+                    const exists = state.accounts.some((a) => a.id === session.id);
                     if (exists) {
                         return {
-                            accounts: state.accounts.map(a => a.id === session.id ? session : a),
+                            accounts: state.accounts.map((a) =>
+                                a.id === session.id ? session : a
+                            ),
                         };
                     }
                     return {
@@ -49,12 +51,13 @@ export const useAccountsStore = create<AccountsState>()(
             removeAccount: (accountId) => {
                 removeSession(accountId);
                 set((state) => {
-                    const filtered = state.accounts.filter(a => a.id !== accountId);
+                    const filtered = state.accounts.filter((a) => a.id !== accountId);
                     return {
                         accounts: filtered,
-                        activeAccountId: state.activeAccountId === accountId
-                            ? (filtered[0]?.id ?? null)
-                            : state.activeAccountId,
+                        activeAccountId:
+                            state.activeAccountId === accountId
+                                ? (filtered[0]?.id ?? null)
+                                : state.activeAccountId,
                     };
                 });
             },
@@ -65,12 +68,12 @@ export const useAccountsStore = create<AccountsState>()(
 
             getActiveAccount: () => {
                 const { accounts, activeAccountId } = get();
-                return accounts.find(a => a.id === activeAccountId) ?? null;
+                return accounts.find((a) => a.id === activeAccountId) ?? null;
             },
 
             updateAccountInfo: (accountId, account) => {
                 set((state) => ({
-                    accounts: state.accounts.map(a =>
+                    accounts: state.accounts.map((a) =>
                         a.id === accountId ? { ...a, account } : a
                     ),
                 }));

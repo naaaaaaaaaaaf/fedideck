@@ -84,9 +84,11 @@ describe('StreamingClient', () => {
 
     describe('connect', () => {
         it('should construct WebSocket URL with wss for https instances', () => {
-            const client = new StreamingClient(createOptions({
-                instanceUrl: 'https://mastodon.social',
-            }));
+            const client = new StreamingClient(
+                createOptions({
+                    instanceUrl: 'https://mastodon.social',
+                })
+            );
 
             client.connect();
 
@@ -95,9 +97,11 @@ describe('StreamingClient', () => {
         });
 
         it('should construct WebSocket URL with ws for http instances', () => {
-            const client = new StreamingClient(createOptions({
-                instanceUrl: 'http://localhost:3000',
-            }));
+            const client = new StreamingClient(
+                createOptions({
+                    instanceUrl: 'http://localhost:3000',
+                })
+            );
 
             client.connect();
 
@@ -165,7 +169,7 @@ describe('StreamingClient', () => {
             const ws2 = getLastInstance();
             ws2.simulateOpen();
 
-            const sentMessages = ws2.sent.map(s => JSON.parse(s));
+            const sentMessages = ws2.sent.map((s) => JSON.parse(s));
             expect(sentMessages).toContainEqual({ type: 'subscribe', stream: 'user' });
             expect(sentMessages).toContainEqual({ type: 'subscribe', stream: 'public' });
         });
@@ -276,9 +280,11 @@ describe('StreamingClient', () => {
             // 11th close should trigger onError with max attempts reached
             getLastInstance().close();
 
-            expect(onError).toHaveBeenCalledWith(expect.objectContaining({
-                message: 'Max reconnection attempts reached',
-            }));
+            expect(onError).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    message: 'Max reconnection attempts reached',
+                })
+            );
         });
 
         it('should not reconnect if intentionally closed', () => {
@@ -303,19 +309,23 @@ describe('StreamingClient', () => {
             getLastInstance().simulateOpen();
 
             const payload = { id: '1', content: '<p>hello</p>', created_at: '2024-01-01' };
-            getLastInstance().simulateMessage(JSON.stringify({
-                event: 'update',
-                payload: JSON.stringify(payload),
-                stream: ['user'],
-            }));
+            getLastInstance().simulateMessage(
+                JSON.stringify({
+                    event: 'update',
+                    payload: JSON.stringify(payload),
+                    stream: ['user'],
+                })
+            );
 
             expect(onUpdate).toHaveBeenCalledTimes(1);
             // Should convert snake_case to camelCase
-            expect(onUpdate).toHaveBeenCalledWith(expect.objectContaining({
-                id: '1',
-                content: '<p>hello</p>',
-                createdAt: '2024-01-01',
-            }));
+            expect(onUpdate).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '1',
+                    content: '<p>hello</p>',
+                    createdAt: '2024-01-01',
+                })
+            );
         });
 
         it('should handle update event with object payload directly', () => {
@@ -325,11 +335,13 @@ describe('StreamingClient', () => {
             getLastInstance().simulateOpen();
 
             const payload = { id: '2', content: '<p>world</p>' };
-            getLastInstance().simulateMessage(JSON.stringify({
-                event: 'update',
-                payload,
-                stream: ['user'],
-            }));
+            getLastInstance().simulateMessage(
+                JSON.stringify({
+                    event: 'update',
+                    payload,
+                    stream: ['user'],
+                })
+            );
 
             expect(onUpdate).toHaveBeenCalledWith(payload);
         });
@@ -340,11 +352,13 @@ describe('StreamingClient', () => {
             client.connect();
             getLastInstance().simulateOpen();
 
-            getLastInstance().simulateMessage(JSON.stringify({
-                event: 'delete',
-                payload: '12345',
-                stream: ['user'],
-            }));
+            getLastInstance().simulateMessage(
+                JSON.stringify({
+                    event: 'delete',
+                    payload: '12345',
+                    stream: ['user'],
+                })
+            );
 
             expect(onDelete).toHaveBeenCalledWith('12345');
         });
@@ -356,17 +370,21 @@ describe('StreamingClient', () => {
             getLastInstance().simulateOpen();
 
             const payload = { id: '1', type: 'favourite', created_at: '2024-01-01' };
-            getLastInstance().simulateMessage(JSON.stringify({
-                event: 'notification',
-                payload: JSON.stringify(payload),
-                stream: ['user'],
-            }));
+            getLastInstance().simulateMessage(
+                JSON.stringify({
+                    event: 'notification',
+                    payload: JSON.stringify(payload),
+                    stream: ['user'],
+                })
+            );
 
-            expect(onNotification).toHaveBeenCalledWith(expect.objectContaining({
-                id: '1',
-                type: 'favourite',
-                createdAt: '2024-01-01',
-            }));
+            expect(onNotification).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '1',
+                    type: 'favourite',
+                    createdAt: '2024-01-01',
+                })
+            );
         });
 
         it('should handle status.update event and call onStatusUpdate', () => {
@@ -376,17 +394,21 @@ describe('StreamingClient', () => {
             getLastInstance().simulateOpen();
 
             const payload = { id: '1', content: '<p>edited</p>', created_at: '2024-01-01' };
-            getLastInstance().simulateMessage(JSON.stringify({
-                event: 'status.update',
-                payload: JSON.stringify(payload),
-                stream: ['user'],
-            }));
+            getLastInstance().simulateMessage(
+                JSON.stringify({
+                    event: 'status.update',
+                    payload: JSON.stringify(payload),
+                    stream: ['user'],
+                })
+            );
 
-            expect(onStatusUpdate).toHaveBeenCalledWith(expect.objectContaining({
-                id: '1',
-                content: '<p>edited</p>',
-                createdAt: '2024-01-01',
-            }));
+            expect(onStatusUpdate).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '1',
+                    content: '<p>edited</p>',
+                    createdAt: '2024-01-01',
+                })
+            );
         });
 
         it('should not throw on invalid JSON', () => {
@@ -477,8 +499,8 @@ describe('StreamingClient', () => {
             client.subscribePublic();
             client.unsubscribeAll();
 
-            const messages = getLastInstance().sent.map(s => JSON.parse(s));
-            const unsubscribes = messages.filter(m => m.type === 'unsubscribe');
+            const messages = getLastInstance().sent.map((s) => JSON.parse(s));
+            const unsubscribes = messages.filter((m) => m.type === 'unsubscribe');
             expect(unsubscribes.length).toBe(2);
         });
 

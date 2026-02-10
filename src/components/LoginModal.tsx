@@ -25,7 +25,7 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-    const addAccount = useAccountsStore(state => state.addAccount);
+    const addAccount = useAccountsStore((state) => state.addAccount);
 
     const { handleKeyDown } = useModalAccessibility({
         isOpen,
@@ -148,7 +148,10 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
                 {/* Content */}
                 <div className="p-6">
                     {error && (
-                        <div className="mb-4 p-3 bg-red-900/30 border border-red-700/50 rounded-lg text-red-300 text-sm" role="alert">
+                        <div
+                            className="mb-4 p-3 bg-red-900/30 border border-red-700/50 rounded-lg text-red-300 text-sm"
+                            role="alert"
+                        >
                             {error}
                         </div>
                     )}
@@ -156,7 +159,10 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
                     {/* Step 1: Instance URL */}
                     {step === 'instance' && (
                         <form onSubmit={handleInstanceSubmit}>
-                            <label htmlFor="instance-url-input" className="block text-sm text-slate-300 mb-2">
+                            <label
+                                htmlFor="instance-url-input"
+                                className="block text-sm text-slate-300 mb-2"
+                            >
                                 インスタンスURL
                             </label>
                             <input
@@ -220,7 +226,10 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
                     {/* Step 3: Enter code */}
                     {step === 'code' && (
                         <form onSubmit={handleCodeSubmit}>
-                            <label htmlFor="auth-code-input" className="block text-sm text-slate-300 mb-2">
+                            <label
+                                htmlFor="auth-code-input"
+                                className="block text-sm text-slate-300 mb-2"
+                            >
                                 認証コード
                             </label>
                             <input

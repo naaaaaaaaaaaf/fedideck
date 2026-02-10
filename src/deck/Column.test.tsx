@@ -19,53 +19,58 @@ const createMockSession = (overrides = {}) => ({
     ...overrides,
 });
 
-const createMockStatus = (id: string): mastodon.v1.Status => ({
-    id,
-    createdAt: new Date().toISOString(),
-    content: `<p>Status ${id}</p>`,
-    account: {
-        id: '1',
-        username: 'testuser',
-        displayName: 'Test User',
-        avatar: 'https://example.com/avatar.png',
-        acct: 'testuser',
-    },
-    mediaAttachments: [],
-    mentions: [],
-    tags: [],
-    emojis: [],
-    reblog: null,
-    spoilerText: '',
-    visibility: 'public',
-    favouritesCount: 0,
-    reblogsCount: 0,
-    repliesCount: 0,
-    favourited: false,
-    reblogged: false,
-} as unknown as mastodon.v1.Status);
+const createMockStatus = (id: string): mastodon.v1.Status =>
+    ({
+        id,
+        createdAt: new Date().toISOString(),
+        content: `<p>Status ${id}</p>`,
+        account: {
+            id: '1',
+            username: 'testuser',
+            displayName: 'Test User',
+            avatar: 'https://example.com/avatar.png',
+            acct: 'testuser',
+        },
+        mediaAttachments: [],
+        mentions: [],
+        tags: [],
+        emojis: [],
+        reblog: null,
+        spoilerText: '',
+        visibility: 'public',
+        favouritesCount: 0,
+        reblogsCount: 0,
+        repliesCount: 0,
+        favourited: false,
+        reblogged: false,
+    }) as unknown as mastodon.v1.Status;
 
-const createMockNotification = (id: string): mastodon.v1.Notification => ({
-    id,
-    type: 'favourite',
-    createdAt: new Date().toISOString(),
-    account: {
-        id: '1',
-        username: 'testuser',
-        displayName: 'Test User',
-        avatar: 'https://example.com/avatar.png',
-        acct: 'testuser',
-    },
-} as mastodon.v1.Notification);
+const createMockNotification = (id: string): mastodon.v1.Notification =>
+    ({
+        id,
+        type: 'favourite',
+        createdAt: new Date().toISOString(),
+        account: {
+            id: '1',
+            username: 'testuser',
+            displayName: 'Test User',
+            avatar: 'https://example.com/avatar.png',
+            acct: 'testuser',
+        },
+    }) as mastodon.v1.Notification;
 
 // Store mocks
 let mockAccount: ReturnType<typeof createMockSession> | undefined;
-let mockStreamDataMap: Record<string, {
-    statuses: mastodon.v1.Status[];
-    notifications: mastodon.v1.Notification[];
-    isLoading: boolean;
-    hasMore: boolean;
-    error: string | null;
-}> = {};
+let mockStreamDataMap: Record<
+    string,
+    {
+        statuses: mastodon.v1.Status[];
+        notifications: mastodon.v1.Notification[];
+        isLoading: boolean;
+        hasMore: boolean;
+        error: string | null;
+    }
+> = {};
 
 const mockInitStream = vi.fn();
 const mockSetLoading = vi.fn();
@@ -101,7 +106,11 @@ vi.mock('../store/streams', () => ({
         if (selector) return selector(state);
         return state;
     },
-    getStreamKey: (accountId: string, streamType: string, params?: { listId?: string; hashtag?: string }) => {
+    getStreamKey: (
+        accountId: string,
+        streamType: string,
+        params?: { listId?: string; hashtag?: string }
+    ) => {
         if (params?.listId) return `${accountId}:list:${params.listId}`;
         if (params?.hashtag) return `${accountId}:hashtag:${params.hashtag}`;
         return `${accountId}:${streamType}`;
@@ -140,7 +149,13 @@ vi.mock('../components/StatusCard', () => ({
 
 const mockNotificationCardOnStatusClick = vi.fn();
 vi.mock('../components/NotificationCard', () => ({
-    NotificationCard: ({ notification, onStatusClick }: { notification: mastodon.v1.Notification; onStatusClick?: (status: mastodon.v1.Status) => void }) => {
+    NotificationCard: ({
+        notification,
+        onStatusClick,
+    }: {
+        notification: mastodon.v1.Notification;
+        onStatusClick?: (status: mastodon.v1.Status) => void;
+    }) => {
         // Store the onStatusClick callback for testing
         if (onStatusClick) {
             mockNotificationCardOnStatusClick.mockImplementation(onStatusClick);
@@ -169,7 +184,9 @@ class MockIntersectionObserver {
     readonly root = null;
     readonly rootMargin = '';
     readonly thresholds: readonly number[] = [];
-    takeRecords(): IntersectionObserverEntry[] { return []; }
+    takeRecords(): IntersectionObserverEntry[] {
+        return [];
+    }
 }
 
 describe('Column', () => {
@@ -194,36 +211,39 @@ describe('Column', () => {
 
     describe('rendering', () => {
         it('should render column header with stream icon and label', () => {
-            render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />
-            );
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
             expect(screen.getByText('ホーム')).toBeInTheDocument();
         });
 
         it('should render refresh button', () => {
-            render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />
-            );
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
             expect(screen.getByTitle('更新')).toBeInTheDocument();
         });
 
         it('should render remove button when onRemove is provided', () => {
             render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} onRemove={vi.fn()} />
+                <Column
+                    id="col-1"
+                    accountId="1@mastodon.social"
+                    stream={{ type: 'home' }}
+                    onRemove={vi.fn()}
+                />
             );
             expect(screen.getByTitle('カラムを削除')).toBeInTheDocument();
         });
 
         it('should not render remove button when onRemove is not provided', () => {
-            render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />
-            );
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
             expect(screen.queryByTitle('カラムを削除')).not.toBeInTheDocument();
         });
 
         it('should display correct label for each stream type', () => {
             const { rerender } = render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'notifications' }} />
+                <Column
+                    id="col-1"
+                    accountId="1@mastodon.social"
+                    stream={{ type: 'notifications' }}
+                />
             );
             expect(screen.getByText('通知')).toBeInTheDocument();
 
@@ -243,9 +263,7 @@ describe('Column', () => {
                 hasMore: true,
                 error: null,
             };
-            render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />
-            );
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
             expect(screen.getByText('読み込み中...')).toBeInTheDocument();
         });
 
@@ -257,9 +275,7 @@ describe('Column', () => {
                 hasMore: true,
                 error: 'Network error',
             };
-            render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />
-            );
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
             expect(screen.getByText('Network error')).toBeInTheDocument();
             expect(screen.getByText('再試行')).toBeInTheDocument();
         });
@@ -272,51 +288,55 @@ describe('Column', () => {
                 hasMore: true,
                 error: null,
             };
-            render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />
-            );
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
             expect(screen.getByText('まだ投稿がありません')).toBeInTheDocument();
         });
     });
 
     describe('data fetching', () => {
         it('should call initStream on mount', () => {
-            render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />
-            );
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
             expect(mockInitStream).toHaveBeenCalledWith('1@mastodon.social:home');
         });
 
         it('should call fetchHomeTimeline for home stream', async () => {
-            render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />
-            );
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
             await waitFor(() => {
                 expect(mockFetchHomeTimeline).toHaveBeenCalled();
             });
         });
 
         it('should call fetchPublicTimeline for public stream', async () => {
-            render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'public' }} />
-            );
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'public' }} />);
             await waitFor(() => {
-                expect(mockFetchPublicTimeline).toHaveBeenCalledWith(expect.anything(), { local: false });
+                expect(mockFetchPublicTimeline).toHaveBeenCalledWith(expect.anything(), {
+                    local: false,
+                });
             });
         });
 
         it('should call fetchPublicTimeline with local:true for public:local stream', async () => {
             render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'public:local' }} />
+                <Column
+                    id="col-1"
+                    accountId="1@mastodon.social"
+                    stream={{ type: 'public:local' }}
+                />
             );
             await waitFor(() => {
-                expect(mockFetchPublicTimeline).toHaveBeenCalledWith(expect.anything(), { local: true });
+                expect(mockFetchPublicTimeline).toHaveBeenCalledWith(expect.anything(), {
+                    local: true,
+                });
             });
         });
 
         it('should call fetchNotifications for notifications stream', async () => {
             render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'notifications' }} />
+                <Column
+                    id="col-1"
+                    accountId="1@mastodon.social"
+                    stream={{ type: 'notifications' }}
+                />
             );
             await waitFor(() => {
                 expect(mockFetchNotificationsAPI).toHaveBeenCalled();
@@ -325,7 +345,11 @@ describe('Column', () => {
 
         it('should call fetchListTimeline for list stream', async () => {
             render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'list', listId: '42' }} />
+                <Column
+                    id="col-1"
+                    accountId="1@mastodon.social"
+                    stream={{ type: 'list', listId: '42' }}
+                />
             );
             await waitFor(() => {
                 expect(mockFetchListTimeline).toHaveBeenCalledWith(expect.anything(), '42');
@@ -334,19 +358,24 @@ describe('Column', () => {
 
         it('should call fetchHashtagTimeline for hashtag stream', async () => {
             render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'hashtag', hashtag: 'typescript' }} />
+                <Column
+                    id="col-1"
+                    accountId="1@mastodon.social"
+                    stream={{ type: 'hashtag', hashtag: 'typescript' }}
+                />
             );
             await waitFor(() => {
-                expect(mockFetchHashtagTimeline).toHaveBeenCalledWith(expect.anything(), 'typescript');
+                expect(mockFetchHashtagTimeline).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'typescript'
+                );
             });
         });
     });
 
     describe('streaming', () => {
         it('should subscribe to stream on mount', () => {
-            render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />
-            );
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
             expect(mockSubscribeToStream).toHaveBeenCalledWith(
                 '1@mastodon.social',
                 'https://mastodon.social',
@@ -360,10 +389,9 @@ describe('Column', () => {
                 <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />
             );
             unmount();
-            expect(mockUnsubscribeFromStream).toHaveBeenCalledWith(
-                '1@mastodon.social',
-                { type: 'home' }
-            );
+            expect(mockUnsubscribeFromStream).toHaveBeenCalledWith('1@mastodon.social', {
+                type: 'home',
+            });
         });
     });
 
@@ -376,9 +404,7 @@ describe('Column', () => {
                 hasMore: true,
                 error: null,
             };
-            render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />
-            );
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
             expect(screen.getByTestId('status-s1')).toBeInTheDocument();
             expect(screen.getByTestId('status-s2')).toBeInTheDocument();
         });
@@ -392,7 +418,11 @@ describe('Column', () => {
                 error: null,
             };
             render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'notifications' }} />
+                <Column
+                    id="col-1"
+                    accountId="1@mastodon.social"
+                    stream={{ type: 'notifications' }}
+                />
             );
             expect(screen.getByTestId('notification-n1')).toBeInTheDocument();
             expect(screen.getByTestId('notification-n2')).toBeInTheDocument();
@@ -404,7 +434,12 @@ describe('Column', () => {
             const user = userEvent.setup();
             const onRemove = vi.fn();
             render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} onRemove={onRemove} />
+                <Column
+                    id="col-1"
+                    accountId="1@mastodon.social"
+                    stream={{ type: 'home' }}
+                    onRemove={onRemove}
+                />
             );
 
             await user.click(screen.getByTitle('カラムを削除'));
@@ -413,9 +448,7 @@ describe('Column', () => {
 
         it('should reload data when refresh button is clicked', async () => {
             const user = userEvent.setup();
-            render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />
-            );
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
 
             mockFetchHomeTimeline.mockClear();
             await user.click(screen.getByTitle('更新'));
@@ -435,9 +468,7 @@ describe('Column', () => {
                 hasMore: true,
                 error: null,
             };
-            render(
-                <Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />
-            );
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
             expect(mockObserve).toHaveBeenCalled();
         });
 
@@ -493,7 +524,7 @@ describe('Column', () => {
             expect(notification).toHaveAttribute('data-has-status-click', 'false');
         });
 
-        it('should call onStatusClick with accountId when NotificationCard callback is triggered', () => {
+        it('should call onStatusClick with accountSessionId when NotificationCard callback is triggered', () => {
             const onStatusClick = vi.fn();
             const mockStatus = createMockStatus('test-status');
             mockStreamDataMap['1@mastodon.social:notifications'] = {

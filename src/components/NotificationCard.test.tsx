@@ -4,75 +4,78 @@ import userEvent from '@testing-library/user-event';
 import { NotificationCard } from './NotificationCard';
 import type { mastodon } from 'masto';
 
-const createMockAccount = (overrides: Partial<mastodon.v1.Account> = {}): mastodon.v1.Account => ({
-    id: '1',
-    username: 'testuser',
-    acct: 'testuser',
-    displayName: 'Test User',
-    locked: false,
-    bot: false,
-    group: false,
-    createdAt: new Date().toISOString(),
-    note: '<p>Hello world</p>',
-    url: 'https://mastodon.social/@testuser',
-    avatar: 'https://example.com/avatar.png',
-    avatarStatic: 'https://example.com/avatar.png',
-    header: 'https://example.com/header.png',
-    headerStatic: 'https://example.com/header.png',
-    followersCount: 100,
-    followingCount: 50,
-    statusesCount: 200,
-    lastStatusAt: null,
-    emojis: [],
-    fields: [],
-    roles: [],
-    ...overrides,
-} as mastodon.v1.Account);
+const createMockAccount = (overrides: Partial<mastodon.v1.Account> = {}): mastodon.v1.Account =>
+    ({
+        id: '1',
+        username: 'testuser',
+        acct: 'testuser',
+        displayName: 'Test User',
+        locked: false,
+        bot: false,
+        group: false,
+        createdAt: new Date().toISOString(),
+        note: '<p>Hello world</p>',
+        url: 'https://mastodon.social/@testuser',
+        avatar: 'https://example.com/avatar.png',
+        avatarStatic: 'https://example.com/avatar.png',
+        header: 'https://example.com/header.png',
+        headerStatic: 'https://example.com/header.png',
+        followersCount: 100,
+        followingCount: 50,
+        statusesCount: 200,
+        lastStatusAt: null,
+        emojis: [],
+        fields: [],
+        roles: [],
+        ...overrides,
+    }) as mastodon.v1.Account;
 
-const createMockStatus = (overrides: Partial<mastodon.v1.Status> = {}): mastodon.v1.Status => ({
-    id: '1',
-    createdAt: new Date().toISOString(),
-    inReplyToId: null,
-    inReplyToAccountId: null,
-    sensitive: false,
-    spoilerText: '',
-    visibility: 'public',
-    language: 'ja',
-    uri: 'https://mastodon.social/statuses/1',
-    url: 'https://mastodon.social/@testuser/1',
-    repliesCount: 0,
-    reblogsCount: 0,
-    favouritesCount: 0,
-    editedAt: null,
-    favourited: false,
-    reblogged: false,
-    muted: false,
-    bookmarked: false,
-    pinned: false,
-    content: '<p>Test content</p>',
-    filtered: [],
-    reblog: null,
-    application: null,
-    account: createMockAccount(),
-    mediaAttachments: [],
-    mentions: [],
-    tags: [],
-    emojis: [],
-    card: null,
-    poll: null,
-    ...overrides,
-} as unknown as mastodon.v1.Status);
+const createMockStatus = (overrides: Partial<mastodon.v1.Status> = {}): mastodon.v1.Status =>
+    ({
+        id: '1',
+        createdAt: new Date().toISOString(),
+        inReplyToId: null,
+        inReplyToAccountId: null,
+        sensitive: false,
+        spoilerText: '',
+        visibility: 'public',
+        language: 'ja',
+        uri: 'https://mastodon.social/statuses/1',
+        url: 'https://mastodon.social/@testuser/1',
+        repliesCount: 0,
+        reblogsCount: 0,
+        favouritesCount: 0,
+        editedAt: null,
+        favourited: false,
+        reblogged: false,
+        muted: false,
+        bookmarked: false,
+        pinned: false,
+        content: '<p>Test content</p>',
+        filtered: [],
+        reblog: null,
+        application: null,
+        account: createMockAccount(),
+        mediaAttachments: [],
+        mentions: [],
+        tags: [],
+        emojis: [],
+        card: null,
+        poll: null,
+        ...overrides,
+    }) as unknown as mastodon.v1.Status;
 
 const createMockNotification = (
     type: string,
     overrides: Partial<mastodon.v1.Notification> = {}
-): mastodon.v1.Notification => ({
-    id: '1',
-    type,
-    createdAt: new Date().toISOString(),
-    account: createMockAccount(),
-    ...overrides,
-} as mastodon.v1.Notification);
+): mastodon.v1.Notification =>
+    ({
+        id: '1',
+        type,
+        createdAt: new Date().toISOString(),
+        account: createMockAccount(),
+        ...overrides,
+    }) as mastodon.v1.Notification;
 
 describe('NotificationCard', () => {
     describe('notification types', () => {
@@ -225,7 +228,7 @@ describe('NotificationCard', () => {
             expect(img).toHaveAttribute('src', 'https://example.com/preview.png');
         });
 
-        it('should use fallback alt text for media without description', () => {
+        it('should render media without description as decorative with empty alt', () => {
             const notification = createMockNotification('mention', {
                 status: createMockStatus({
                     mediaAttachments: [
@@ -239,8 +242,11 @@ describe('NotificationCard', () => {
                     ],
                 }),
             });
-            render(<NotificationCard notification={notification} />);
-            expect(screen.getByAltText('添付メディア')).toBeInTheDocument();
+            const { container } = render(<NotificationCard notification={notification} />);
+            // Image without description should be rendered with empty alt (decorative)
+            const img = container.querySelector('img[src="https://example.com/image.png"]');
+            expect(img).toBeInTheDocument();
+            expect(img?.getAttribute('alt')).toBe('');
         });
 
         it('should not display status area when status is absent', () => {
@@ -278,8 +284,12 @@ describe('NotificationCard', () => {
                 account: createMockAccount({ displayName: 'Requester' }),
             });
             render(<NotificationCard notification={notification} />);
-            expect(screen.getByLabelText('Requesterのフォローリクエストを承認')).toBeInTheDocument();
-            expect(screen.getByLabelText('Requesterのフォローリクエストを拒否')).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Requesterのフォローリクエストを承認')
+            ).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Requesterのフォローリクエストを拒否')
+            ).toBeInTheDocument();
         });
     });
 
@@ -408,7 +418,9 @@ describe('NotificationCard', () => {
             const notification = createMockNotification('follow');
             render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
 
-            expect(screen.queryByRole('button', { name: '投稿の詳細を表示' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: '投稿の詳細を表示' })
+            ).not.toBeInTheDocument();
         });
 
         it('should not have clickable status area for follow_request notification (no status)', () => {
@@ -416,7 +428,9 @@ describe('NotificationCard', () => {
             const notification = createMockNotification('follow_request');
             render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
 
-            expect(screen.queryByRole('button', { name: '投稿の詳細を表示' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: '投稿の詳細を表示' })
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -424,7 +438,9 @@ describe('NotificationCard', () => {
         it('should not call onStatusClick when clicking on a link', async () => {
             const onStatusClick = vi.fn();
             const notification = createMockNotification('mention', {
-                status: createMockStatus({ content: '<p><a href="https://example.com">Link</a></p>' }),
+                status: createMockStatus({
+                    content: '<p><a href="https://example.com">Link</a></p>',
+                }),
             });
             render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
 
@@ -446,6 +462,48 @@ describe('NotificationCard', () => {
 
             const summary = screen.getByText(/CW: spoiler/);
             await userEvent.click(summary);
+
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should call onStatusClick when clicking on expanded CW content', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    spoilerText: 'Spoiler warning!',
+                    content: '<p>Hidden content</p>',
+                }),
+            });
+
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/Spoiler warning!/);
+            await user.click(summary);
+
+            const content = screen.getByText('Hidden content');
+            await user.click(content);
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+        });
+
+        it('should NOT call onStatusClick when clicking links in CW content', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    spoilerText: 'Spoiler with link',
+                    content: '<p>Text with <a href="https://example.com">link</a></p>',
+                }),
+            });
+
+            render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/Spoiler with link/);
+            await user.click(summary);
+
+            const link = screen.getByRole('link', { name: 'link' });
+            await user.click(link);
 
             expect(onStatusClick).not.toHaveBeenCalled();
         });
@@ -496,7 +554,9 @@ describe('NotificationCard', () => {
         it('should not call onStatusClick when Enter is pressed on a link', () => {
             const onStatusClick = vi.fn();
             const notification = createMockNotification('mention', {
-                status: createMockStatus({ content: '<p><a href="https://example.com">Link</a></p>' }),
+                status: createMockStatus({
+                    content: '<p><a href="https://example.com">Link</a></p>',
+                }),
             });
             render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
 
@@ -509,7 +569,9 @@ describe('NotificationCard', () => {
         it('should not call onStatusClick when Space is pressed on a link', () => {
             const onStatusClick = vi.fn();
             const notification = createMockNotification('mention', {
-                status: createMockStatus({ content: '<p><a href="https://example.com">Link</a></p>' }),
+                status: createMockStatus({
+                    content: '<p><a href="https://example.com">Link</a></p>',
+                }),
             });
             render(<NotificationCard notification={notification} onStatusClick={onStatusClick} />);
 
@@ -587,7 +649,9 @@ describe('NotificationCard', () => {
             });
             render(<NotificationCard notification={notification} />);
 
-            expect(screen.queryByRole('button', { name: '投稿の詳細を表示' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: '投稿の詳細を表示' })
+            ).not.toBeInTheDocument();
         });
 
         it('should not have tabIndex when onStatusClick is not provided', () => {
@@ -598,6 +662,492 @@ describe('NotificationCard', () => {
 
             const statusArea = container.querySelector('.ml-9.p-3');
             expect(statusArea).not.toHaveAttribute('tabIndex');
+        });
+    });
+
+    describe('account click', () => {
+        it('should call onAccountClick when avatar is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus(),
+            });
+
+            render(
+                <NotificationCard notification={notification} onAccountClick={onAccountClick} />
+            );
+
+            const avatars = screen.getAllByAltText('Test User');
+            await user.click(avatars[0]);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '1',
+                    username: 'testuser',
+                })
+            );
+        });
+
+        it('should call onAccountClick when display name is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus(),
+            });
+
+            render(
+                <NotificationCard notification={notification} onAccountClick={onAccountClick} />
+            );
+
+            const displayName = screen.getByText('Test User');
+            await user.click(displayName);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '1',
+                    displayName: 'Test User',
+                })
+            );
+        });
+
+        it('should NOT trigger status click when avatar is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const onStatusClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus(),
+            });
+
+            render(
+                <NotificationCard
+                    notification={notification}
+                    onAccountClick={onAccountClick}
+                    onStatusClick={onStatusClick}
+                />
+            );
+
+            const avatars = screen.getAllByAltText('Test User');
+            await user.click(avatars[0]);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should work with follow notification', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const notification = createMockNotification('follow', {
+                account: createMockAccount({
+                    displayName: 'Follower Name',
+                }),
+            });
+
+            render(
+                <NotificationCard notification={notification} onAccountClick={onAccountClick} />
+            );
+
+            // Click the avatar in header (first one)
+            const avatars = screen.getAllByAltText('Follower Name');
+            await user.click(avatars[0]);
+
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    displayName: 'Follower Name',
+                })
+            );
+        });
+    });
+
+    describe('NSFW blur', () => {
+        it('should apply blur to sensitive media in notifications', () => {
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            const { container } = render(<NotificationCard notification={notification} />);
+            const img = container.querySelector('img[src="https://example.com/preview.png"]');
+            expect(img).toHaveClass('nsfw-blur');
+        });
+
+        it('should not apply blur to non-sensitive media', () => {
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: false,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            const { container } = render(<NotificationCard notification={notification} />);
+
+            const img = container.querySelector('img[src="https://example.com/preview.png"]');
+            expect(img).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should display overlay text on sensitive media', () => {
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            render(<NotificationCard notification={notification} />);
+
+            expect(screen.getByText('閲覧注意')).toBeInTheDocument();
+        });
+
+        it('should reveal media on click when sensitive', async () => {
+            const user = userEvent.setup();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            const { container } = render(<NotificationCard notification={notification} />);
+
+            // Initially should have button and blurred image
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            expect(button).toBeInTheDocument();
+            const img = container.querySelector('img[src="https://example.com/preview.png"]');
+            expect(img).toHaveClass('nsfw-blur');
+
+            // Click to reveal
+            await user.click(button);
+
+            // After reveal, button should be gone and new img should not have blur class
+            expect(
+                screen.queryByRole('button', { name: /閲覧注意の画像を表示/ })
+            ).not.toBeInTheDocument();
+            const imgAfter = container.querySelector('img[src="https://example.com/preview.png"]');
+            expect(imgAfter).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should support keyboard navigation (Enter key) for reveal', async () => {
+            const user = userEvent.setup();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            const { container } = render(<NotificationCard notification={notification} />);
+
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            button.focus();
+            await user.keyboard('{Enter}');
+
+            // After reveal, button should be gone
+            expect(
+                screen.queryByRole('button', { name: /閲覧注意の画像を表示/ })
+            ).not.toBeInTheDocument();
+            const imgAfter = container.querySelector('img[src="https://example.com/preview.png"]');
+            expect(imgAfter).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should support keyboard navigation (Space key) for reveal', async () => {
+            const user = userEvent.setup();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            const { container } = render(<NotificationCard notification={notification} />);
+
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            button.focus();
+            await user.keyboard(' ');
+
+            // After reveal, button should be gone
+            expect(
+                screen.queryByRole('button', { name: /閲覧注意の画像を表示/ })
+            ).not.toBeInTheDocument();
+            const imgAfter = container.querySelector('img[src="https://example.com/preview.png"]');
+            expect(imgAfter).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should render plain img for non-sensitive media (not button)', () => {
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: false,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            const { container } = render(<NotificationCard notification={notification} />);
+
+            // Should not have a button for non-sensitive media
+            const button = screen.queryByRole('button', { name: '添付メディア' });
+            expect(button).not.toBeInTheDocument();
+
+            // Should have a plain img element
+            const img = container.querySelector('img[src="https://example.com/preview.png"]');
+            expect(img).toBeInTheDocument();
+            expect(img?.tagName).toBe('IMG');
+        });
+
+        it('should render plain img after reveal (not button)', async () => {
+            const user = userEvent.setup();
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            const { container } = render(<NotificationCard notification={notification} />);
+
+            // Initially should have button for sensitive image
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            expect(button).toBeInTheDocument();
+
+            // Click to reveal
+            await user.click(button);
+
+            // After reveal, should not have button anymore
+            const buttonAfter = screen.queryByRole('button', { name: '添付メディア' });
+            expect(buttonAfter).not.toBeInTheDocument();
+
+            // Should have plain img instead
+            const img = container.querySelector('img[src="https://example.com/preview.png"]');
+            expect(img).toBeInTheDocument();
+            expect(img?.tagName).toBe('IMG');
+        });
+
+        it('should call onStatusClick when clicking revealed NSFW image', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    id: 'status-123',
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/preview.png',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            const { container } = render(
+                <NotificationCard notification={notification} onStatusClick={onStatusClick} />
+            );
+
+            // First click reveals the image
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            await user.click(button);
+            expect(onStatusClick).not.toHaveBeenCalled();
+
+            // Second click on the revealed image should call onStatusClick
+            // (because compact mode renders plain img which bubbles events)
+            const img = container.querySelector('img[src="https://example.com/preview.png"]');
+            expect(img).toBeInTheDocument();
+            await user.click(img!);
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: 'status-123',
+                    sensitive: true,
+                })
+            );
+        });
+
+        it('should call onNsfwReveal with status.id when revealing sensitive image', async () => {
+            const user = userEvent.setup();
+            const onNsfwReveal = vi.fn();
+
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    id: 'status-123',
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media1',
+                            type: 'image',
+                            url: 'https://example.com/sensitive.png',
+                            previewUrl: 'https://example.com/sensitive-preview.png',
+                            description: 'Sensitive image',
+                        } as mastodon.v1.MediaAttachment,
+                    ],
+                }),
+            });
+
+            render(<NotificationCard notification={notification} onNsfwReveal={onNsfwReveal} />);
+
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            await user.click(button);
+
+            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
+            expect(onNsfwReveal).toHaveBeenCalledWith('status-123');
+        });
+
+        it('should call onNsfwReveal with reblogged status.id when revealing', async () => {
+            const user = userEvent.setup();
+            const onNsfwReveal = vi.fn();
+
+            const originalStatus = createMockStatus({
+                id: 'original-123',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: 'media1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive.png',
+                        previewUrl: 'https://example.com/sensitive-preview.png',
+                        description: 'Sensitive reblogged image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const notification = createMockNotification('mention', {
+                status: createMockStatus({
+                    id: 'reblog-456',
+                    reblog: originalStatus,
+                }),
+            });
+
+            render(<NotificationCard notification={notification} onNsfwReveal={onNsfwReveal} />);
+
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            await user.click(button);
+
+            // displayStatus.id（original-123）が通知されるべき
+            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
+            expect(onNsfwReveal).toHaveBeenCalledWith('original-123');
+        });
+
+        it('should check nsfwRevealedStatusIds for current displayStatus.id', () => {
+            const status1 = createMockStatus({
+                id: 'status-1',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive1.png',
+                        description: 'Sensitive image 1',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const status2 = createMockStatus({
+                id: 'status-2',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '2',
+                        type: 'image',
+                        url: 'https://example.com/sensitive2.png',
+                        description: 'Sensitive image 2',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            // status1は表示済み、status2は未表示
+            const nsfwRevealedStatusIds = new Set(['status-1']);
+            const onNsfwReveal = vi.fn();
+
+            const notification1 = createMockNotification('mention', {
+                status: status1,
+            });
+
+            const notification2 = createMockNotification('mention', {
+                status: status2,
+            });
+
+            // status1は表示済みなのでぼかしなし
+            render(
+                <NotificationCard
+                    notification={notification1}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    onNsfwReveal={onNsfwReveal}
+                />
+            );
+
+            const img1 = screen.getByAltText('Sensitive image 1');
+            expect(img1).not.toHaveClass('nsfw-blur');
+
+            // status2は未表示なのでぼかしあり
+            render(
+                <NotificationCard
+                    notification={notification2}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    onNsfwReveal={onNsfwReveal}
+                />
+            );
+
+            const img2 = screen.getByAltText('Sensitive image 2');
+            expect(img2).toHaveClass('nsfw-blur');
         });
     });
 });

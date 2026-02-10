@@ -1,12 +1,34 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import type { mastodon } from 'masto';
-import { LuX, LuRepeat2, LuMessageCircle, LuStar, LuLink, LuTriangleAlert, LuLoader } from 'react-icons/lu';
-import { type AccountSession, type MastoClient, getClient, favouriteStatus, unfavouriteStatus, reblogStatus, unreblogStatus, getStatusContext, type StatusContext } from '../api/mastoClient';
+import {
+    LuX,
+    LuRepeat2,
+    LuMessageCircle,
+    LuStar,
+    LuLink,
+    LuTriangleAlert,
+    LuLoader,
+} from 'react-icons/lu';
+import {
+    type AccountSession,
+    type MastoClient,
+    getClient,
+    favouriteStatus,
+    unfavouriteStatus,
+    reblogStatus,
+    unreblogStatus,
+    getStatusContext,
+    type StatusContext,
+} from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { formatDate } from '../utils/dateFormat';
 import { replaceEmojisWithImages } from '../utils/emoji';
+import { firstNonEmpty } from '../utils/firstNonEmpty';
+import { toVideoViewerVideos } from '../utils/videoAttachments';
 import type { ImageViewerImage } from './ImageViewer';
+import type { VideoViewerVideo } from '../types/video';
 import { DisplayName } from './DisplayName';
+import { MediaAttachment } from './MediaAttachment';
 
 interface StatusDetailModalProps {
     isOpen: boolean;
@@ -16,6 +38,10 @@ interface StatusDetailModalProps {
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusUpdate?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
+    onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
+    // NSFW blur state from parent (optional - for syncing with StatusCard)
+    nsfwRevealedStatusIds?: Set<string>;
+    onNsfwReveal?: (statusId: string) => void;
 }
 
 function formatFullDate(dateStr: string): string {
@@ -49,7 +75,7 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
         // Guard against e.target not being an Element
         if (!(e.target instanceof Element)) return;
         // Don't trigger if clicking on interactive elements
-        if (e.target.closest('a, button, video, details')) return;
+        if (e.target.closest('a, button, video, summary')) return;
         onClick(status);
     };
 
@@ -59,8 +85,8 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
             // Guard against e.target not being an Element
             if (!(e.target instanceof Element)) return;
             // Don't trigger if focus is on interactive elements (same as handleClick)
-            if (e.target.closest('a, button, video, details')) return;
-            
+            if (e.target.closest('a, button, video, summary')) return;
+
             e.preventDefault();
             onClick(status);
         }
@@ -72,7 +98,10 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
             <div className="flex gap-3">
                 {/* Thread connector line for descendants */}
                 {type === 'descendant' && depth > 0 && (
-                    <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-700/50" style={{ marginLeft: `${(indentLevel - 1) * 16 + 18}px` }} />
+                    <div
+                        className="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-700/50"
+                        style={{ marginLeft: `${(indentLevel - 1) * 16 + 18}px` }}
+                    />
                 )}
 
                 {/* Avatar */}
@@ -98,13 +127,8 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
                             rel="noopener noreferrer"
                             className="hover:underline truncate"
                         >
-                            <DisplayName
-                                account={account}
-                                className="font-medium text-slate-200"
-                            />
-                            <span className="text-slate-500 ml-1">
-                                @{account.acct}
-                            </span>
+                            <DisplayName account={account} className="font-medium text-slate-200" />
+                            <span className="text-slate-500 ml-1">@{account.acct}</span>
                         </a>
                         <span className="text-slate-500 text-sm shrink-0">
                             {formatDate(status.createdAt)}
@@ -119,13 +143,17 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
                             </summary>
                             <div
                                 className="text-slate-300 mt-1 status-content text-sm"
-                                dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(status.content, status.emojis) }}
+                                dangerouslySetInnerHTML={{
+                                    __html: replaceEmojisWithImages(status.content, status.emojis),
+                                }}
                             />
                         </details>
                     ) : (
                         <div
                             className="text-slate-300 status-content text-sm line-clamp-3"
-                            dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(status.content, status.emojis) }}
+                            dangerouslySetInnerHTML={{
+                                __html: replaceEmojisWithImages(status.content, status.emojis),
+                            }}
                         />
                     )}
 
@@ -163,24 +191,48 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
 
     // Render as div when not clickable
     return (
-        <div
-            className={baseClassName}
-            style={baseStyle}
-        >
+        <div className={baseClassName} style={baseStyle}>
             {sharedContent}
         </div>
     );
 }
 
-export function StatusDetailModal({ isOpen, onClose, status, accountSession, onReply, onStatusUpdate, onImageClick }: StatusDetailModalProps) {
+export function StatusDetailModal({
+    isOpen,
+    onClose,
+    status,
+    accountSession,
+    onReply,
+    onStatusUpdate,
+    onImageClick,
+    onVideoClick,
+    nsfwRevealedStatusIds,
+    onNsfwReveal,
+}: StatusDetailModalProps) {
+    // Thread navigation state
+    const [navigatedStatus, setNavigatedStatus] = useState<mastodon.v1.Status | null>(null);
+
+    // Get the display status (navigated > original reblog > original)
+    const displayStatus = navigatedStatus ?? status?.reblog ?? status;
+
+    // NSFW state: controlled from parent or local
+    // If parent provides state (nsfwRevealedStatusIds), always use it
+    // When onNsfwReveal is missing, operates in read-only mode
+    const isControlled = nsfwRevealedStatusIds !== undefined;
+    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
+
+    // Check if current status is revealed (controlled) or use local state
+    const nsfwRevealed = isControlled
+        ? displayStatus
+            ? nsfwRevealedStatusIds.has(displayStatus.id)
+            : false
+        : localNsfwRevealed;
+
     const [localFavourited, setLocalFavourited] = useState(false);
     const [localFavouritesCount, setLocalFavouritesCount] = useState(0);
     const [localReblogged, setLocalReblogged] = useState(false);
     const [localReblogsCount, setLocalReblogsCount] = useState(0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
-
-    // Thread navigation state
-    const [navigatedStatus, setNavigatedStatus] = useState<mastodon.v1.Status | null>(null);
 
     // Thread context state
     const [context, setContext] = useState<StatusContext | null>(null);
@@ -191,9 +243,6 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const mainStatusRef = useRef<HTMLDivElement>(null);
-
-    // Get the display status (navigated > original reblog > original)
-    const displayStatus = navigatedStatus ?? (status?.reblog ?? status);
 
     const { handleKeyDown } = useModalAccessibility({
         isOpen,
@@ -217,8 +266,12 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
             setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
             setLocalReblogged(displayStatus.reblogged ?? false);
             setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
+            // Only reset NSFW state if not controlled by parent
+            if (!isControlled) {
+                setLocalNsfwRevealed(false);
+            }
         }
-    }, [displayStatus, isOpen]);
+    }, [displayStatus, isOpen, isControlled]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
@@ -266,8 +319,9 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
     // Scroll to main status after context loads (only when there's thread UI)
     useEffect(() => {
         // Only scroll if there are ancestors or descendants to show
-        const hasThreadUI = context && (context.ancestors.length > 0 || context.descendants.length > 0);
-        
+        const hasThreadUI =
+            context && (context.ancestors.length > 0 || context.descendants.length > 0);
+
         if (hasThreadUI && mainStatusRef.current) {
             // Small delay to ensure DOM is updated
             const timeoutId = setTimeout(() => {
@@ -277,14 +331,14 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                 }
 
                 // Respect user's motion preferences (with feature detection for test environments)
-                const prefersReducedMotion = 
-                    typeof window !== 'undefined' && 
+                const prefersReducedMotion =
+                    typeof window !== 'undefined' &&
                     typeof window.matchMedia === 'function' &&
                     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                
-                mainStatusRef.current.scrollIntoView({ 
-                    behavior: prefersReducedMotion ? 'auto' : 'smooth', 
-                    block: 'center' 
+
+                mainStatusRef.current.scrollIntoView({
+                    behavior: prefersReducedMotion ? 'auto' : 'smooth',
+                    block: 'center',
                 });
             }, 100);
 
@@ -300,26 +354,33 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
     const imageViewerImages = useMemo(() => {
         const mediaAttachments = displayStatus?.mediaAttachments ?? [];
         return mediaAttachments
-            .filter(media => media.type === 'image')
+            .filter((media) => media.type === 'image')
             .slice(0, 4)
-            .map(media => ({
-                url: media.url ?? media.previewUrl ?? '',
+            .map((media) => ({
+                url: firstNonEmpty(media.url, media.previewUrl),
                 previewUrl: media.previewUrl ?? undefined,
                 description: media.description ?? undefined,
             }))
-            .filter(image => image.url !== '');
+            .filter((image) => image.url !== '');
     }, [displayStatus?.mediaAttachments]);
+
+    // Convert video/gifv attachments to VideoViewerVideo format (memoized)
+    const videoViewerVideos = useMemo(
+        () => toVideoViewerVideos(displayStatus?.mediaAttachments),
+        [displayStatus?.mediaAttachments]
+    );
 
     if (!isOpen || !status || !displayStatus) return null;
 
-    const reblogger = navigatedStatus ? null : (status.reblog ? status.account : null);
+    const reblogger = navigatedStatus ? null : status.reblog ? status.account : null;
     const account = displayStatus.account;
 
     if (!account) return null;
 
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
     const poll = displayStatus.poll;
-    const canReblog = displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
+    const canReblog =
+        displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
 
     const handleThreadNavigate = (clickedStatus: mastodon.v1.Status) => {
         setContext(null);
@@ -331,10 +392,10 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
     const handleFavourite = async () => {
         if (!accountSession || isLoading.favourite) return;
 
-        setIsLoading(prev => ({ ...prev, favourite: true }));
+        setIsLoading((prev) => ({ ...prev, favourite: true }));
         const wasLocalFavourited = localFavourited;
         setLocalFavourited(!wasLocalFavourited);
-        setLocalFavouritesCount(prev => wasLocalFavourited ? prev - 1 : prev + 1);
+        setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev - 1 : prev + 1));
 
         try {
             const client: MastoClient = getClient(accountSession);
@@ -347,20 +408,20 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
             onStatusUpdate?.(updatedStatus);
         } catch (error) {
             setLocalFavourited(wasLocalFavourited);
-            setLocalFavouritesCount(prev => wasLocalFavourited ? prev + 1 : prev - 1);
+            setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev + 1 : prev - 1));
             console.error('Failed to toggle favourite:', error);
         } finally {
-            setIsLoading(prev => ({ ...prev, favourite: false }));
+            setIsLoading((prev) => ({ ...prev, favourite: false }));
         }
     };
 
     const handleReblog = async () => {
         if (!accountSession || isLoading.reblog || !canReblog) return;
 
-        setIsLoading(prev => ({ ...prev, reblog: true }));
+        setIsLoading((prev) => ({ ...prev, reblog: true }));
         const wasLocalReblogged = localReblogged;
         setLocalReblogged(!wasLocalReblogged);
-        setLocalReblogsCount(prev => wasLocalReblogged ? prev - 1 : prev + 1);
+        setLocalReblogsCount((prev) => (wasLocalReblogged ? prev - 1 : prev + 1));
 
         try {
             const client: MastoClient = getClient(accountSession);
@@ -374,11 +435,30 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
             onStatusUpdate?.(actualStatus);
         } catch (error) {
             setLocalReblogged(wasLocalReblogged);
-            setLocalReblogsCount(prev => wasLocalReblogged ? prev + 1 : prev - 1);
+            setLocalReblogsCount((prev) => (wasLocalReblogged ? prev + 1 : prev - 1));
             console.error('Failed to toggle reblog:', error);
         } finally {
-            setIsLoading(prev => ({ ...prev, reblog: false }));
+            setIsLoading((prev) => ({ ...prev, reblog: false }));
         }
+    };
+
+    const handleNsfwToggle = () => {
+        const newValue = !nsfwRevealed;
+
+        // Controlled mode: use parent state
+        if (isControlled) {
+            // If callback provided, notify parent (read-only mode if no callback)
+            if (newValue && onNsfwReveal && displayStatus) {
+                onNsfwReveal(displayStatus.id);
+            }
+            return;
+        }
+
+        // Uncontrolled mode: notify parent if callback provided, then toggle local state
+        if (newValue && onNsfwReveal && displayStatus) {
+            onNsfwReveal(displayStatus.id);
+        }
+        setLocalNsfwRevealed(newValue);
     };
 
     const handleReply = () => {
@@ -408,7 +488,9 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
             >
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
-                    <h2 id="status-detail-title" className="text-lg font-semibold text-slate-100">投稿の詳細</h2>
+                    <h2 id="status-detail-title" className="text-lg font-semibold text-slate-100">
+                        投稿の詳細
+                    </h2>
                     <button
                         ref={closeButtonRef}
                         onClick={onClose}
@@ -454,17 +536,18 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                     )}
 
                     {/* Main status - highlighted */}
-                    <div ref={mainStatusRef} className={`${context && (context.ancestors.length > 0 || context.descendants.length > 0) ? 'bg-slate-800/50 rounded-xl p-4 -mx-2 ring-2 ring-indigo-500/30' : ''}`}>
+                    <div
+                        ref={mainStatusRef}
+                        className={`${context && (context.ancestors.length > 0 || context.descendants.length > 0) ? 'bg-slate-800/50 rounded-xl p-4 -mx-2 ring-2 ring-indigo-500/30' : ''}`}
+                    >
                         {/* Reblog indicator */}
                         {reblogger && (
                             <div className="flex items-center gap-2 text-sm text-slate-400 mb-3">
                                 <LuRepeat2 className="text-green-400" aria-hidden="true" />
-                                <img
-                                    src={reblogger.avatar}
-                                    alt=""
-                                    className="w-5 h-5 rounded"
-                                />
-                                <span><DisplayName account={reblogger} /> がブースト</span>
+                                <img src={reblogger.avatar} alt="" className="w-5 h-5 rounded" />
+                                <span>
+                                    <DisplayName account={reblogger} /> がブースト
+                                </span>
                             </div>
                         )}
 
@@ -493,9 +576,7 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                                         account={account}
                                         className="font-semibold text-lg text-slate-100 block"
                                     />
-                                    <span className="text-slate-400 block">
-                                        @{account.acct}
-                                    </span>
+                                    <span className="text-slate-400 block">@{account.acct}</span>
                                 </a>
                             </div>
                         </div>
@@ -504,11 +585,17 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                         {displayStatus.spoilerText && (
                             <details className="mb-4" open>
                                 <summary className="cursor-pointer text-amber-400 mb-2">
-                                    <LuTriangleAlert className="inline mr-1" aria-hidden="true" /> {displayStatus.spoilerText}
+                                    <LuTriangleAlert className="inline mr-1" aria-hidden="true" />{' '}
+                                    {displayStatus.spoilerText}
                                 </summary>
                                 <div
                                     className="text-slate-200 text-lg leading-relaxed status-content"
-                                    dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(displayStatus.content, displayStatus.emojis) }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: replaceEmojisWithImages(
+                                            displayStatus.content,
+                                            displayStatus.emojis
+                                        ),
+                                    }}
                                 />
                             </details>
                         )}
@@ -517,175 +604,194 @@ export function StatusDetailModal({ isOpen, onClose, status, accountSession, onR
                         {!displayStatus.spoilerText && (
                             <div
                                 className="text-slate-200 text-lg leading-relaxed mb-4 status-content"
-                                dangerouslySetInnerHTML={{ __html: replaceEmojisWithImages(displayStatus.content, displayStatus.emojis) }}
+                                dangerouslySetInnerHTML={{
+                                    __html: replaceEmojisWithImages(
+                                        displayStatus.content,
+                                        displayStatus.emojis
+                                    ),
+                                }}
                             />
                         )}
 
-                    {/* Media attachments - larger display */}
-                    {mediaAttachments.length > 0 && (
-                        <div className={`mb-4 grid gap-2 ${mediaAttachments.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                            {mediaAttachments.slice(0, 4).map((media) => {
-                                // For images, use button to open ImageViewer
-                                if (media.type === 'image') {
-                                    // Skip images without valid URLs (matches imageViewerImages filtering)
-                                    const imageUrl = media.url ?? media.previewUrl ?? '';
-                                    if (imageUrl === '') {
-                                        return null;
-                                    }
-
-                                    // Find the index in the filtered imageViewerImages array
-                                    const imageIndex = imageViewerImages.findIndex(img => img.url === imageUrl);
-                                    if (imageIndex === -1) {
-                                        return null; // Guard against mismatch
-                                    }
-
-                                    const accessibleLabel = media.description
-                                        || `画像を拡大 (${imageIndex + 1}/${imageViewerImages.length})`;
+                        {/* Media attachments - larger display */}
+                        {mediaAttachments.length > 0 && (
+                            <div
+                                className={`mb-4 grid gap-2 ${mediaAttachments.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}
+                            >
+                                {mediaAttachments.slice(0, 4).map((media) => {
+                                    const isSensitive = displayStatus.sensitive ?? false;
+                                    const imageIndex =
+                                        media.type === 'image'
+                                            ? imageViewerImages.findIndex(
+                                                  (img) =>
+                                                      img.url ===
+                                                      firstNonEmpty(media.url, media.previewUrl)
+                                              )
+                                            : undefined;
+                                    const videoIndex =
+                                        media.type === 'video' || media.type === 'gifv'
+                                            ? videoViewerVideos.findIndex(
+                                                  (v) => v.url === firstNonEmpty(media.url)
+                                              )
+                                            : undefined;
 
                                     return (
-                                        <button
+                                        <MediaAttachment
                                             key={media.id}
-                                            onClick={() => onImageClick?.(imageViewerImages, imageIndex)}
-                                            className="block overflow-hidden rounded-xl text-left"
-                                            aria-label={accessibleLabel}
-                                        >
-                                            <img
-                                                src={media.url ?? media.previewUrl ?? ''}
-                                                alt={media.description ?? ''}
-                                                className="w-full max-h-96 object-contain bg-slate-800 hover:opacity-90 transition-opacity"
-                                            />
-                                        </button>
+                                            media={media}
+                                            variant="detail"
+                                            isSensitive={isSensitive}
+                                            nsfwRevealed={nsfwRevealed}
+                                            onNsfwToggle={handleNsfwToggle}
+                                            onImageClick={
+                                                imageIndex !== undefined && imageIndex !== -1
+                                                    ? () =>
+                                                          onImageClick?.(
+                                                              imageViewerImages,
+                                                              imageIndex
+                                                          )
+                                                    : undefined
+                                            }
+                                            imageIndex={
+                                                imageIndex !== undefined && imageIndex !== -1
+                                                    ? imageIndex
+                                                    : undefined
+                                            }
+                                            totalImages={imageViewerImages.length}
+                                            onVideoClick={
+                                                videoIndex !== undefined &&
+                                                videoIndex !== -1 &&
+                                                onVideoClick
+                                                    ? () =>
+                                                          onVideoClick(
+                                                              videoViewerVideos,
+                                                              videoIndex
+                                                          )
+                                                    : undefined
+                                            }
+                                        />
                                     );
-                                }
-
-                                // For video/gifv, keep existing behavior with <a> tag
-                                return (
-                                    <a
-                                        key={media.id}
-                                        href={media.url ?? '#'}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="block overflow-hidden rounded-xl"
-                                    >
-                                        {media.type === 'video' && (
-                                            <video
-                                                src={media.url ?? undefined}
-                                                poster={media.previewUrl ?? undefined}
-                                                className="w-full max-h-96 object-contain bg-slate-800"
-                                                controls
-                                            />
-                                        )}
-                                        {media.type === 'gifv' && (
-                                            <video
-                                                src={media.url ?? undefined}
-                                                className="w-full max-h-96 object-contain bg-slate-800"
-                                                autoPlay
-                                                loop
-                                                muted
-                                                playsInline
-                                            />
-                                        )}
-                                    </a>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    {/* Poll */}
-                    {poll && poll.options && poll.options.length > 0 && (
-                        <div className="mb-4 p-4 bg-slate-800/50 rounded-xl">
-                            {poll.options.map((option, i) => {
-                                const votesCount = poll.votesCount ?? 0;
-                                const percentage = votesCount > 0
-                                    ? Math.round((option.votesCount ?? 0) / votesCount * 100)
-                                    : 0;
-                                return (
-                                    <div key={i} className="mb-3 last:mb-0">
-                                        <div className="flex justify-between text-sm mb-1">
-                                            <span className="text-slate-200">{option.title}</span>
-                                            <span className="text-slate-400">{percentage}%</span>
-                                        </div>
-                                        <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-indigo-500 transition-all rounded-full"
-                                                style={{ width: `${percentage}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            <div className="text-sm text-slate-400 mt-3 pt-3 border-t border-slate-700">
-                                {poll.votesCount ?? 0}票
-                                {poll.expired && ' · 終了'}
+                                })}
                             </div>
-                        </div>
-                    )}
-
-                    {/* Timestamp */}
-                    <div className="text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">
-                        <a
-                            href={displayStatus.url ?? '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:underline"
-                        >
-                            {formatFullDate(displayStatus.createdAt)}
-                        </a>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="flex items-center gap-6 text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">
-                        <span><strong className="text-slate-200">{localReblogsCount}</strong> ブースト</span>
-                        <span><strong className="text-slate-200">{localFavouritesCount}</strong> お気に入り</span>
-                        {displayStatus.repliesCount > 0 && (
-                            <span><strong className="text-slate-200">{displayStatus.repliesCount}</strong> 返信</span>
                         )}
-                    </div>
 
-                    {/* Action bar */}
-                    <div className="flex items-center justify-around text-slate-400">
-                        <button
-                            onClick={handleReply}
-                            className="flex items-center gap-2 px-4 py-2 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
-                        >
-                            <LuMessageCircle className="w-5 h-5" aria-hidden="true" />
-                            <span>返信</span>
-                        </button>
-                        <button
-                            onClick={handleReblog}
-                            disabled={!accountSession || isLoading.reblog || !canReblog}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${!canReblog
-                                ? 'opacity-50 cursor-not-allowed'
-                                : localReblogged
-                                    ? 'text-green-400 hover:bg-green-400/10'
-                                    : 'hover:text-green-400 hover:bg-green-400/10'
+                        {/* Poll */}
+                        {poll && poll.options && poll.options.length > 0 && (
+                            <div className="mb-4 p-4 bg-slate-800/50 rounded-xl">
+                                {poll.options.map((option, i) => {
+                                    const votesCount = poll.votesCount ?? 0;
+                                    const percentage =
+                                        votesCount > 0
+                                            ? Math.round(
+                                                  ((option.votesCount ?? 0) / votesCount) * 100
+                                              )
+                                            : 0;
+                                    return (
+                                        <div key={i} className="mb-3 last:mb-0">
+                                            <div className="flex justify-between text-sm mb-1">
+                                                <span className="text-slate-200">
+                                                    {option.title}
+                                                </span>
+                                                <span className="text-slate-400">
+                                                    {percentage}%
+                                                </span>
+                                            </div>
+                                            <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-indigo-500 transition-all rounded-full"
+                                                    style={{ width: `${percentage}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                <div className="text-sm text-slate-400 mt-3 pt-3 border-t border-slate-700">
+                                    {poll.votesCount ?? 0}票{poll.expired && ' · 終了'}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Timestamp */}
+                        <div className="text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">
+                            <a
+                                href={displayStatus.url ?? '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:underline"
+                            >
+                                {formatFullDate(displayStatus.createdAt)}
+                            </a>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="flex items-center gap-6 text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">
+                            <span>
+                                <strong className="text-slate-200">{localReblogsCount}</strong>{' '}
+                                ブースト
+                            </span>
+                            <span>
+                                <strong className="text-slate-200">{localFavouritesCount}</strong>{' '}
+                                お気に入り
+                            </span>
+                            {displayStatus.repliesCount > 0 && (
+                                <span>
+                                    <strong className="text-slate-200">
+                                        {displayStatus.repliesCount}
+                                    </strong>{' '}
+                                    返信
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Action bar */}
+                        <div className="flex items-center justify-around text-slate-400">
+                            <button
+                                onClick={handleReply}
+                                className="flex items-center gap-2 px-4 py-2 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
+                            >
+                                <LuMessageCircle className="w-5 h-5" aria-hidden="true" />
+                                <span>返信</span>
+                            </button>
+                            <button
+                                onClick={handleReblog}
+                                disabled={!accountSession || isLoading.reblog || !canReblog}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                                    !canReblog
+                                        ? 'opacity-50 cursor-not-allowed'
+                                        : localReblogged
+                                          ? 'text-green-400 hover:bg-green-400/10'
+                                          : 'hover:text-green-400 hover:bg-green-400/10'
                                 } ${isLoading.reblog ? 'opacity-50' : ''}`}
-                            title={!canReblog ? 'この投稿はブーストできません' : undefined}
-                        >
-                            <LuRepeat2 className="w-5 h-5" aria-hidden="true" />
-                            <span>ブースト</span>
-                        </button>
-                        <button
-                            onClick={handleFavourite}
-                            disabled={!accountSession || isLoading.favourite}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${localFavourited
-                                ? 'text-amber-400 hover:bg-amber-400/10'
-                                : 'hover:text-amber-400 hover:bg-amber-400/10'
+                                title={!canReblog ? 'この投稿はブーストできません' : undefined}
+                            >
+                                <LuRepeat2 className="w-5 h-5" aria-hidden="true" />
+                                <span>ブースト</span>
+                            </button>
+                            <button
+                                onClick={handleFavourite}
+                                disabled={!accountSession || isLoading.favourite}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                                    localFavourited
+                                        ? 'text-amber-400 hover:bg-amber-400/10'
+                                        : 'hover:text-amber-400 hover:bg-amber-400/10'
                                 } ${isLoading.favourite ? 'opacity-50' : ''}`}
-                        >
-                            <LuStar className={`w-5 h-5 ${localFavourited ? 'fill-current' : ''}`} aria-hidden="true" />
-                            <span>お気に入り</span>
-                        </button>
-                        <a
-                            href={displayStatus.url ?? '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-4 py-2 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-colors"
-                        >
-                            <LuLink className="w-5 h-5" aria-hidden="true" />
-                            <span>リンク</span>
-                        </a>
-                    </div>
+                            >
+                                <LuStar
+                                    className={`w-5 h-5 ${localFavourited ? 'fill-current' : ''}`}
+                                    aria-hidden="true"
+                                />
+                                <span>お気に入り</span>
+                            </button>
+                            <a
+                                href={displayStatus.url ?? '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-colors"
+                            >
+                                <LuLink className="w-5 h-5" aria-hidden="true" />
+                                <span>リンク</span>
+                            </a>
+                        </div>
                     </div>
 
                     {/* Descendants (replies) */}
@@ -709,10 +815,7 @@ interface DescendantsThreadProps {
 
 function DescendantsThread({ descendants, onThreadNavigate }: DescendantsThreadProps) {
     // Memoize depth calculation to avoid recalculating on every render
-    const threadItems = useMemo(
-        () => calculateThreadDepths(descendants),
-        [descendants]
-    );
+    const threadItems = useMemo(() => calculateThreadDepths(descendants), [descendants]);
 
     return (
         <div className="mt-4 pt-2">
@@ -751,7 +854,7 @@ function calculateThreadDepths(descendants: mastodon.v1.Status[]): ThreadDepthIt
 
     // Memoized depth calculation using iterative approach (no recursion)
     const depthCache = new Map<string, number>();
-    
+
     function calculateDepth(statusId: string): number {
         if (depthCache.has(statusId)) {
             return depthCache.get(statusId)!;
@@ -806,9 +909,9 @@ function calculateThreadDepths(descendants: mastodon.v1.Status[]): ThreadDepthIt
     }
 
     // Calculate depth for all statuses and build result
-    const result: ThreadDepthItem[] = descendants.map(status => ({
+    const result: ThreadDepthItem[] = descendants.map((status) => ({
         status,
-        depth: calculateDepth(status.id)
+        depth: calculateDepth(status.id),
     }));
 
     return result;

@@ -1,6 +1,6 @@
 /**
  * Stream Manager - centralized control of streaming connections
- * 
+ *
  * Manages streaming clients per account, handles subscription lifecycle,
  * and coordinates with the UI through callbacks.
  */

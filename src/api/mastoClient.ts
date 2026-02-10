@@ -266,3 +266,39 @@ export async function getStatusContext(
     const context = await client.v1.statuses.$select(statusId).context.fetch();
     return context;
 }
+
+/**
+ * Custom emoji type matching Mastodon's CustomEmoji entity
+ */
+export interface CustomEmoji {
+    shortcode: string;
+    url: string;
+    staticUrl: string;
+    visibleInPicker: boolean;
+    category?: string | null;
+}
+
+/**
+ * Fetch instance custom emojis
+ */
+export async function fetchCustomEmojis(client: MastoClient): Promise<CustomEmoji[]> {
+    const emojis = await client.v1.customEmojis.list();
+    return emojis.map((emoji) => ({
+        shortcode: emoji.shortcode,
+        url: emoji.url,
+        staticUrl: emoji.staticUrl,
+        visibleInPicker: emoji.visibleInPicker,
+        category: emoji.category ?? null,
+    }));
+}
+
+/**
+ * Fetch account by ID
+ */
+export async function fetchAccount(
+    client: MastoClient,
+    accountId: string
+): Promise<mastodon.v1.Account> {
+    const account = await client.v1.accounts.$select(accountId).fetch();
+    return account;
+}

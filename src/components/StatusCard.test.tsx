@@ -245,9 +245,11 @@ describe('StatusCard', () => {
             await user.click(content);
 
             expect(onStatusClick).toHaveBeenCalledTimes(1);
-            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
-                id: '12345',
-            }));
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                })
+            );
         });
 
         it('should NOT call onStatusClick when clicking a link', async () => {
@@ -302,9 +304,11 @@ describe('StatusCard', () => {
             await user.click(content);
 
             // Should pass original status, not the reblog wrapper
-            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
-                id: 'original-123',
-            }));
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: 'original-123',
+                })
+            );
         });
 
         it('should call onStatusClick when pressing Enter on focusable card', async () => {
@@ -321,9 +325,11 @@ describe('StatusCard', () => {
             await user.keyboard('{Enter}');
 
             expect(onStatusClick).toHaveBeenCalledTimes(1);
-            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
-                id: '12345',
-            }));
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                })
+            );
         });
 
         it('should call onStatusClick when pressing Space on focusable card', async () => {
@@ -340,9 +346,11 @@ describe('StatusCard', () => {
             await user.keyboard(' ');
 
             expect(onStatusClick).toHaveBeenCalledTimes(1);
-            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
-                id: '12345',
-            }));
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                })
+            );
         });
 
         it('should not have keyboard handler when onStatusClick is not provided', () => {
@@ -353,11 +361,11 @@ describe('StatusCard', () => {
             render(<StatusCard status={status} />);
 
             const article = screen.getByRole('article');
-            
+
             // When onStatusClick is not provided, the card should not be keyboard-interactive
             // Check that tabIndex is not set (making it non-focusable via keyboard)
             expect(article).not.toHaveAttribute('tabindex');
-            
+
             // Alternatively, verify that attempting keyboard interaction does nothing
             // (no focus is actually set since tabIndex is undefined)
             article.focus();
@@ -430,9 +438,11 @@ describe('StatusCard', () => {
             await user.click(replyIndicator);
 
             expect(onStatusClick).toHaveBeenCalledTimes(1);
-            expect(onStatusClick).toHaveBeenCalledWith(expect.objectContaining({
-                id: '12345',
-            }));
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                })
+            );
         });
 
         it('should call onStatusClick when pressing Enter on reply indicator', async () => {
@@ -484,7 +494,13 @@ describe('StatusCard', () => {
 
             expect(onImageClick).toHaveBeenCalledTimes(1);
             expect(onImageClick).toHaveBeenCalledWith(
-                [{ url: 'https://example.com/image1.png', previewUrl: 'https://example.com/preview1.png', description: 'First image' }],
+                [
+                    {
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        description: 'First image',
+                    },
+                ],
                 0
             );
         });
@@ -534,8 +550,7 @@ describe('StatusCard', () => {
             );
         });
 
-        it('should NOT call onImageClick for video attachments', async () => {
-            const user = userEvent.setup();
+        it('should render video with anchor tag to open in new tab', async () => {
             const onImageClick = vi.fn();
             const status = createMockStatus({
                 mediaAttachments: [
@@ -552,21 +567,23 @@ describe('StatusCard', () => {
                 ],
             });
 
-            const { container } = render(<StatusCard status={status} onImageClick={onImageClick} />);
+            const { container } = render(
+                <StatusCard status={status} onImageClick={onImageClick} />
+            );
 
-            // Video should be in an anchor tag, not a button
+            // Video should be in an anchor tag, not in a div or button
             const videoLink = container.querySelector('a[href="https://example.com/video.mp4"]');
             expect(videoLink).toBeInTheDocument();
+            expect(videoLink).toHaveAttribute('target', '_blank');
+            expect(videoLink).toHaveAttribute('rel', 'noopener noreferrer');
 
-            // Click on the video element
+            // Video element should not have controls (it's a preview)
             const video = container.querySelector('video');
             expect(video).toBeInTheDocument();
-            await user.click(video!);
-            expect(onImageClick).not.toHaveBeenCalled();
+            expect(video).not.toHaveAttribute('controls');
         });
 
-        it('should NOT call onImageClick for gifv attachments', async () => {
-            const user = userEvent.setup();
+        it('should render gifv as anchor tag to open in new tab', async () => {
             const onImageClick = vi.fn();
             const status = createMockStatus({
                 mediaAttachments: [
@@ -583,17 +600,22 @@ describe('StatusCard', () => {
                 ],
             });
 
-            const { container } = render(<StatusCard status={status} onImageClick={onImageClick} />);
+            const { container } = render(
+                <StatusCard status={status} onImageClick={onImageClick} />
+            );
 
-            // gifv should be in an anchor tag, not a button
+            // gifv should be in an anchor tag
             const gifvLink = container.querySelector('a[href="https://example.com/animation.mp4"]');
             expect(gifvLink).toBeInTheDocument();
+            expect(gifvLink).toHaveAttribute('target', '_blank');
+            expect(gifvLink).toHaveAttribute('rel', 'noopener noreferrer');
+            expect(gifvLink).toHaveAttribute('aria-label', 'Test animation');
 
-            // Click on the video element
+            // Video element should not autoplay in card variant
             const video = container.querySelector('video');
             expect(video).toBeInTheDocument();
-            await user.click(video!);
-            expect(onImageClick).not.toHaveBeenCalled();
+            expect(video).not.toHaveAttribute('autoPlay');
+            expect(video).toHaveAttribute('loop');
         });
 
         it('should NOT trigger card click when image is clicked', async () => {
@@ -612,7 +634,13 @@ describe('StatusCard', () => {
                 ],
             });
 
-            render(<StatusCard status={status} onImageClick={onImageClick} onStatusClick={onStatusClick} />);
+            render(
+                <StatusCard
+                    status={status}
+                    onImageClick={onImageClick}
+                    onStatusClick={onStatusClick}
+                />
+            );
 
             const img = screen.getByAltText('Test image');
             await user.click(img);
@@ -661,8 +689,16 @@ describe('StatusCard', () => {
             // The images array passed to onImageClick should only contain images
             expect(onImageClick).toHaveBeenCalledWith(
                 [
-                    { url: 'https://example.com/image1.png', previewUrl: 'https://example.com/preview1.png', description: 'First image' },
-                    { url: 'https://example.com/image2.png', previewUrl: 'https://example.com/preview2.png', description: 'Second image' },
+                    {
+                        url: 'https://example.com/image1.png',
+                        previewUrl: 'https://example.com/preview1.png',
+                        description: 'First image',
+                    },
+                    {
+                        url: 'https://example.com/image2.png',
+                        previewUrl: 'https://example.com/preview2.png',
+                        description: 'Second image',
+                    },
                 ],
                 1 // Second image is at index 1 in the images-only array
             );
@@ -820,10 +856,12 @@ describe('StatusCard', () => {
             await user.click(replyButton);
 
             expect(onReply).toHaveBeenCalledTimes(1);
-            expect(onReply).toHaveBeenCalledWith(expect.objectContaining({
-                id: '12345',
-                content: '<p>Test post</p>',
-            }));
+            expect(onReply).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                    content: '<p>Test post</p>',
+                })
+            );
         });
 
         it('should call onReply with original status when clicking reblog reply button', async () => {
@@ -849,10 +887,733 @@ describe('StatusCard', () => {
             await user.click(replyButton);
 
             // Should reply to original status, not the reblog wrapper
-            expect(onReply).toHaveBeenCalledWith(expect.objectContaining({
+            expect(onReply).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: 'original-123',
+                    content: '<p>Original content</p>',
+                })
+            );
+        });
+    });
+
+    describe('content warning click behavior', () => {
+        it('should NOT call onStatusClick when clicking on CW summary', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler warning!',
+                content: '<p>Hidden content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            // Click on the summary (the spoiler warning text)
+            const summary = screen.getByText(/Spoiler warning!/);
+            await user.click(summary);
+
+            // Should NOT navigate - just toggles the CW
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should call onStatusClick when clicking on expanded CW content', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler warning!',
+                content: '<p>Hidden content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            // First, expand the CW by clicking the summary
+            const summary = screen.getByText(/Spoiler warning!/);
+            await user.click(summary);
+
+            // Then click on the expanded content
+            const content = screen.getByText('Hidden content');
+            await user.click(content);
+
+            // Should navigate to detail view
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                })
+            );
+        });
+
+        it('should NOT call onStatusClick when clicking links in CW content', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler with link',
+                content: '<p>Text with <a href="https://example.com">link</a></p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            // Expand the CW
+            const summary = screen.getByText(/Spoiler with link/);
+            await user.click(summary);
+
+            // Click on the link inside the CW content
+            const link = screen.getByRole('link', { name: 'link' });
+            await user.click(link);
+
+            // Should NOT navigate - link should handle the click
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should call onStatusClick when pressing Enter on card with CW', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler warning!',
+                content: '<p>Hidden content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const article = screen.getByRole('article');
+            article.focus();
+            await user.keyboard('{Enter}');
+
+            expect(onStatusClick).toHaveBeenCalledTimes(1);
+        });
+
+        it('should NOT call onStatusClick when pressing Enter on CW summary', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler warning!',
+                content: '<p>Hidden content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/Spoiler warning!/);
+            summary.focus();
+            await user.keyboard('{Enter}');
+
+            // Should NOT navigate - CW toggle only
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should NOT call onStatusClick when pressing Space on CW summary', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                spoilerText: 'Spoiler warning!',
+                content: '<p>Hidden content</p>',
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const summary = screen.getByText(/Spoiler warning!/);
+            summary.focus();
+            await user.keyboard(' ');
+
+            // Should NOT navigate - CW toggle only
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('account click', () => {
+        it('should call onAccountClick when avatar is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const status = createMockStatus();
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
+
+            render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={onAccountClick}
+                    accountSession={accountSession}
+                />
+            );
+
+            const avatar = screen.getByAltText('Test User');
+            await user.click(avatar);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '1',
+                    username: 'testuser',
+                }),
+                'test-session-id'
+            );
+        });
+
+        it('should call onAccountClick when display name is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const status = createMockStatus();
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
+
+            render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={onAccountClick}
+                    accountSession={accountSession}
+                />
+            );
+
+            const displayName = screen.getByText('Test User');
+            await user.click(displayName);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '1',
+                    displayName: 'Test User',
+                }),
+                'test-session-id'
+            );
+        });
+
+        it('should call onAccountClick with correct accountSessionId when accountSession is provided', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const status = createMockStatus();
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
+
+            render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={onAccountClick}
+                    accountSession={accountSession}
+                />
+            );
+
+            const avatar = screen.getByAltText('Test User');
+            await user.click(avatar);
+
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({ id: '1' }),
+                'test-session-id'
+            );
+        });
+
+        it('should NOT trigger card click when avatar is clicked', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const onStatusClick = vi.fn();
+            const status = createMockStatus();
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
+
+            render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={onAccountClick}
+                    onStatusClick={onStatusClick}
+                    accountSession={accountSession}
+                />
+            );
+
+            const avatar = screen.getByAltText('Test User');
+            await user.click(avatar);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+
+        it('should work with reblogged status - clicking original author', async () => {
+            const user = userEvent.setup();
+            const onAccountClick = vi.fn();
+            const originalStatus = createMockStatus({
                 id: 'original-123',
-                content: '<p>Original content</p>',
-            }));
+                account: {
+                    ...createMockStatus().account,
+                    id: 'original-author',
+                    username: 'original',
+                    displayName: 'Original Author',
+                },
+            });
+
+            const reblogStatus = createMockStatus({
+                id: 'reblog-456',
+                reblog: originalStatus,
+                account: {
+                    ...createMockStatus().account,
+                    id: 'reblogger',
+                    username: 'reblogger',
+                    displayName: 'Reblogger',
+                },
+            });
+
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: originalStatus.account,
+            };
+
+            render(
+                <StatusCard
+                    status={reblogStatus}
+                    onAccountClick={onAccountClick}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Click on the original author's avatar (the one shown in the main content)
+            const originalAvatar = screen.getByAltText('Original Author');
+            await user.click(originalAvatar);
+
+            expect(onAccountClick).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: 'original-author',
+                    username: 'original',
+                }),
+                'test-session-id'
+            );
+        });
+
+        it('should apply truncation classes to account header links', () => {
+            const longAcct =
+                'very-long-account-name-that-should-be-truncated@example-very-long-domain.social';
+            const status = createMockStatus({
+                account: {
+                    ...createMockStatus().account,
+                    acct: longAcct,
+                },
+            });
+
+            const accountSession = {
+                id: 'test-session-id',
+                instanceUrl: 'https://mastodon.social',
+                accessToken: 'token',
+                account: status.account,
+            };
+
+            const { rerender } = render(
+                <StatusCard
+                    status={status}
+                    onAccountClick={vi.fn()}
+                    accountSession={accountSession}
+                />
+            );
+
+            const accountButton = screen.getByText(`@${longAcct}`).closest('button');
+            expect(accountButton).toHaveClass('min-w-0', 'max-w-full');
+
+            rerender(<StatusCard status={status} />);
+
+            const accountLink = screen.getByText(`@${longAcct}`).closest('a');
+            expect(accountLink).toHaveClass('min-w-0', 'max-w-full');
+        });
+    });
+
+    describe('NSFW blur', () => {
+        it('should apply blur class to sensitive images', () => {
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                        description: 'Sensitive image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            const img = screen.getByAltText('Sensitive image');
+            expect(img).toHaveClass('nsfw-blur');
+        });
+
+        it('should not apply blur to non-sensitive images', () => {
+            const status = createMockStatus({
+                sensitive: false,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                        description: 'Regular image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            const img = screen.getByAltText('Regular image');
+            expect(img).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should display overlay on sensitive images', () => {
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            expect(screen.getByText('閲覧注意')).toBeInTheDocument();
+        });
+
+        it('should reveal image on click when sensitive', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                        description: 'Sensitive image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            const img = screen.getByAltText('Sensitive image');
+            expect(img).toHaveClass('nsfw-blur');
+
+            const button = img.closest('button');
+            await user.click(button!);
+
+            expect(img).not.toHaveClass('nsfw-blur');
+        });
+
+        it('should open ImageViewer on second click after reveal', async () => {
+            const user = userEvent.setup();
+            const onImageClick = vi.fn();
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                        description: 'Sensitive image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onImageClick={onImageClick} />);
+
+            // When blurred, button shows "閲覧注意の画像を表示 (1/1)"
+            const button = screen.getByRole('button', {
+                name: /閲覧注意の画像を表示/,
+            });
+
+            // First click reveals the image
+            await user.click(button);
+            expect(onImageClick).not.toHaveBeenCalled();
+
+            // Second click opens ImageViewer
+            await user.click(button);
+            expect(onImageClick).toHaveBeenCalledTimes(1);
+        });
+
+        it('should handle reblogged sensitive posts', () => {
+            const originalStatus = createMockStatus({
+                id: 'original-123',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                        description: 'Sensitive reblogged image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const reblogStatus = createMockStatus({
+                id: 'reblog-456',
+                reblog: originalStatus,
+            });
+
+            render(<StatusCard status={reblogStatus} />);
+
+            const img = screen.getByAltText('Sensitive reblogged image');
+            expect(img).toHaveClass('nsfw-blur');
+        });
+
+        it('should have proper ARIA labels for sensitive images', () => {
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} />);
+
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            expect(button).toBeInTheDocument();
+        });
+
+        it('should call onNsfwReveal with displayStatus.id for reblogged posts', async () => {
+            const user = userEvent.setup();
+            const onNsfwReveal = vi.fn();
+
+            const originalStatus = createMockStatus({
+                id: 'original-123',
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/sensitive.png',
+                        previewUrl: 'https://example.com/sensitive-preview.png',
+                        description: 'Sensitive reblogged image',
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const reblogStatus = createMockStatus({
+                id: 'reblog-456',
+                reblog: originalStatus,
+            });
+
+            render(<StatusCard status={reblogStatus} onNsfwReveal={onNsfwReveal} />);
+
+            const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
+            await user.click(button);
+
+            // displayStatus.id（original-123）が通知されるべき
+            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
+            expect(onNsfwReveal).toHaveBeenCalledWith('original-123');
+        });
+
+        it('should blur sensitive video and show overlay', async () => {
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'video',
+                        url: 'https://example.com/video.mp4',
+                        previewUrl: 'https://example.com/video-poster.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Sensitive video',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const { container } = render(<StatusCard status={status} />);
+
+            // Video should be in a button with blur
+            const videoButton = container.querySelector(
+                'button[aria-label="閲覧注意の動画を表示"]'
+            );
+            expect(videoButton).toBeInTheDocument();
+
+            // Video should have blur class
+            const video = container.querySelector('video');
+            expect(video).toHaveClass('nsfw-blur');
+            expect(video).toHaveAttribute('aria-hidden', 'true');
+
+            // Overlay div should be present
+            const overlay = container.querySelector('div.nsfw-blur-overlay');
+            expect(overlay).toBeInTheDocument();
+            expect(overlay).toHaveTextContent('閲覧注意');
+        });
+
+        it('should blur sensitive gifv and show overlay', async () => {
+            const status = createMockStatus({
+                sensitive: true,
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'gifv',
+                        url: 'https://example.com/animation.mp4',
+                        previewUrl: 'https://example.com/animation-poster.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Sensitive gif',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            const { container } = render(<StatusCard status={status} />);
+
+            // gifv button should have blur-indicating aria-label
+            const gifvButton = screen.getByRole('button', {
+                name: '閲覧注意のGIFを表示',
+            });
+            expect(gifvButton).toBeInTheDocument();
+
+            // Video should have blur class and not autoplay
+            const video = container.querySelector('video');
+            expect(video).toHaveClass('nsfw-blur');
+            expect(video).not.toHaveAttribute('autoPlay');
+
+            // Overlay div should be present
+            const overlay = container.querySelector('div.nsfw-blur-overlay');
+            expect(overlay).toBeInTheDocument();
+            expect(overlay).toHaveTextContent('閲覧注意');
+        });
+    });
+
+    describe('video viewer integration', () => {
+        it('should call onVideoClick with correct video data when video is clicked', async () => {
+            const user = userEvent.setup();
+            const onVideoClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'video',
+                        url: 'https://example.com/video.mp4',
+                        previewUrl: 'https://example.com/video-poster.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Test video',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onVideoClick={onVideoClick} />);
+
+            const videoButton = screen.getByRole('button', { name: 'Test video' });
+            await user.click(videoButton);
+
+            expect(onVideoClick).toHaveBeenCalledTimes(1);
+            const [videos, index] = onVideoClick.mock.calls[0];
+            expect(videos).toHaveLength(1);
+            expect(videos[0]).toMatchObject({
+                url: 'https://example.com/video.mp4',
+                previewUrl: 'https://example.com/video-poster.png',
+                description: 'Test video',
+                type: 'video',
+            });
+            expect(index).toBe(0);
+        });
+
+        it('should call onVideoClick with correct index for multiple videos', async () => {
+            const user = userEvent.setup();
+            const onVideoClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'video',
+                        url: 'https://example.com/video1.mp4',
+                        previewUrl: 'https://example.com/video-poster1.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'First video',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                    {
+                        id: '2',
+                        type: 'video',
+                        url: 'https://example.com/video2.mp4',
+                        previewUrl: 'https://example.com/video-poster2.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Second video',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onVideoClick={onVideoClick} />);
+
+            const secondVideoButton = screen.getByRole('button', { name: 'Second video' });
+            await user.click(secondVideoButton);
+
+            const [videos, index] = onVideoClick.mock.calls[0];
+            expect(videos).toHaveLength(2);
+            expect(index).toBe(1);
+        });
+
+        it('should include only video and gifv types in videoViewerVideos', () => {
+            const onVideoClick = vi.fn();
+            const status = createMockStatus({
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'image',
+                        url: 'https://example.com/image.png',
+                        previewUrl: 'https://example.com/preview.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Test image',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                    {
+                        id: '2',
+                        type: 'video',
+                        url: 'https://example.com/video.mp4',
+                        previewUrl: 'https://example.com/video-poster.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Test video',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                    {
+                        id: '3',
+                        type: 'gifv',
+                        url: 'https://example.com/animation.mp4',
+                        previewUrl: 'https://example.com/animation-poster.png',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Test animation',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onVideoClick={onVideoClick} />);
+
+            const videoButton = screen.getByRole('button', { name: 'Test video' });
+            videoButton.click(); // Click to get the videos array
+
+            const [videos] = onVideoClick.mock.calls[0];
+            expect(videos).toHaveLength(2); // Only video and gifv, not image
+            expect(videos[0].type).toBe('video');
+            expect(videos[1].type).toBe('gifv');
         });
     });
 });

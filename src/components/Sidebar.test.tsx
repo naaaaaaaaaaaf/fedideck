@@ -78,17 +78,19 @@ describe('Sidebar', () => {
 
         it('should display multiple accounts', () => {
             mockAccounts.push(createMockSession());
-            mockAccounts.push(createMockSession({
-                id: '2@mstdn.jp',
-                instanceUrl: 'https://mstdn.jp',
-                account: {
-                    id: '2',
-                    username: 'user2',
-                    acct: 'user2',
-                    displayName: 'User Two',
-                    avatar: 'https://example.com/avatar2.png',
-                } as mastodon.v1.Account,
-            }));
+            mockAccounts.push(
+                createMockSession({
+                    id: '2@mstdn.jp',
+                    instanceUrl: 'https://mstdn.jp',
+                    account: {
+                        id: '2',
+                        username: 'user2',
+                        acct: 'user2',
+                        displayName: 'User Two',
+                        avatar: 'https://example.com/avatar2.png',
+                    } as mastodon.v1.Account,
+                })
+            );
             render(<Sidebar onAddAccount={vi.fn()} onCompose={vi.fn()} />);
             expect(screen.getByAltText('Test Userのアバター')).toBeInTheDocument();
             expect(screen.getByAltText('User Twoのアバター')).toBeInTheDocument();

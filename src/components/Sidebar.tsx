@@ -7,13 +7,19 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
-    const accounts = useAccountsStore(state => state.accounts);
-    const removeAccount = useAccountsStore(state => state.removeAccount);
+    const accounts = useAccountsStore((state) => state.accounts);
+    const removeAccount = useAccountsStore((state) => state.removeAccount);
 
     return (
-        <aside className="w-16 bg-slate-900 border-r border-slate-700/50 flex flex-col items-center py-4 gap-2" aria-label="サイドバー">
+        <aside
+            className="w-16 bg-slate-900 border-r border-slate-700/50 flex flex-col items-center py-4 gap-2"
+            aria-label="サイドバー"
+        >
             {/* Logo */}
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl font-bold mb-2" aria-hidden="true">
+            <div
+                className="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl font-bold mb-2"
+                aria-hidden="true"
+            >
                 🦣
             </div>
 
@@ -28,7 +34,10 @@ export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
             </button>
 
             {/* Account avatars */}
-            <nav className="flex-1 flex flex-col items-center gap-2 overflow-y-auto" aria-label="アカウント一覧">
+            <nav
+                className="flex-1 flex flex-col items-center gap-2 overflow-y-auto"
+                aria-label="アカウント一覧"
+            >
                 {accounts.map((account) => (
                     <div key={account.id} className="relative group">
                         <div

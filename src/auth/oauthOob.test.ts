@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRestAPIClient } from 'masto';
 import { exchangeCodeForToken, revokeToken, verifyCredentials } from './oauthOob';
 
@@ -14,7 +14,7 @@ describe('oauthOob', () => {
         instanceUrl: 'https://example.com',
     };
 
-    beforeEach(() => {
+    afterEach(() => {
         mockedCreateRestAPIClient.mockReset();
         vi.unstubAllGlobals();
     });
@@ -33,9 +33,12 @@ describe('oauthOob', () => {
 
         const result = await exchangeCodeForToken(credentials, '  code ');
 
-        expect(fetchMock).toHaveBeenCalledWith('https://example.com/oauth/token', expect.objectContaining({
-            method: 'POST',
-        }));
+        expect(fetchMock).toHaveBeenCalledWith(
+            'https://example.com/oauth/token',
+            expect.objectContaining({
+                method: 'POST',
+            })
+        );
         expect(result).toEqual({
             accessToken: 'token',
             tokenType: 'Bearer',
@@ -80,10 +83,16 @@ describe('oauthOob', () => {
         vi.stubGlobal('fetch', fetchMock);
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-        await revokeToken(credentials, 'token');
+        try {
+            await revokeToken(credentials, 'token');
 
-        expect(fetchMock).toHaveBeenCalledWith('https://example.com/oauth/revoke', expect.any(Object));
-        expect(consoleSpy).toHaveBeenCalledWith('Failed to revoke token');
-        consoleSpy.mockRestore();
+            expect(fetchMock).toHaveBeenCalledWith(
+                'https://example.com/oauth/revoke',
+                expect.any(Object)
+            );
+            expect(consoleSpy).toHaveBeenCalledWith('Failed to revoke token');
+        } finally {
+            consoleSpy.mockRestore();
+        }
     });
 });

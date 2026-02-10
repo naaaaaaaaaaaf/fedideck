@@ -158,7 +158,10 @@ describe('LoginModal', () => {
             await waitFor(() => {
                 expect(screen.getByText('認証')).toBeInTheDocument();
             });
-            expect(window.open).toHaveBeenCalledWith('https://mastodon.social/oauth/authorize', '_blank');
+            expect(window.open).toHaveBeenCalledWith(
+                'https://mastodon.social/oauth/authorize',
+                '_blank'
+            );
         });
 
         it('should display error on failure', async () => {
