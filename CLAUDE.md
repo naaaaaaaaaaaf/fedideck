@@ -177,3 +177,67 @@ Minimum requirements:
 * `npm run format:check` passes
 * `npm run lint` passes
 * No type errors
+
+## Release Policy
+
+### Branch Workflow
+
+1. **feature/fix branches** → `develop`
+   - All work happens on feature/fix branches
+   - Merge to develop via PR
+
+2. **develop** → `master` (release only)
+   - Happens on weekly release
+
+3. **master** → `develop` (IMPORTANT!)
+   - **Must happen immediately after each release**
+   - This keeps develop in sync with master
+   - Prevents massive merge conflicts in future releases
+
+### Post-Release Sync (Required!)
+
+After every release, run this immediately:
+
+```bash
+# After release PR is merged and tag is created:
+git checkout develop
+git merge master
+git push origin develop
+```
+
+This ensures develop always has the latest release changes, making the next release merge smooth.
+
+### Release Procedure
+
+```bash
+# 1. Create release branch from master
+git checkout master && git pull origin master
+git checkout -b release/0.YEAR.MONTH.DAY
+
+# 2. Merge develop into release branch
+git merge develop
+
+# 3. Update version in package.json
+# Edit package.json: "version": "0.YEAR.MONTH.DAY"
+
+# 4. Commit version bump
+git add package.json
+git commit -m "chore: bump version to 0.YEAR.MONTH.DAY"
+
+# 5. Push and create PR
+git push origin release/0.YEAR.MONTH.DAY
+# Create PR: release/0.YEAR.MONTH.DAY → master
+
+# 6. After PR merge, create tag on master
+git checkout master && git pull origin master
+git tag -a v0.YEAR.MONTH.DAY -m "Release 0.YEAR.MONTH.DAY"
+git push origin v0.YEAR.MONTH.DAY
+
+# 7. Create GitHub Release
+gh release create v0.YEAR.MONTH.DAY --generate-notes
+
+# 8. ★IMPORTANT★ Sync develop with master
+git checkout develop
+git merge master
+git push origin develop
+```
