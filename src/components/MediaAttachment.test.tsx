@@ -511,6 +511,142 @@ describe('MediaAttachment', () => {
             );
             expect(container1.firstChild).not.toBeNull();
         });
+
+        describe('with onVideoClick', () => {
+            it('should render non-NSFW video as button when onVideoClick is provided', () => {
+                const media = createMockMedia({
+                    type: 'video',
+                    url: 'https://example.com/video.mp4',
+                    previewUrl: 'https://example.com/video-poster.png',
+                    description: 'Test video',
+                });
+                const onVideoClick = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                        onVideoClick={onVideoClick}
+                    />
+                );
+
+                const link = container.querySelector('a[href]');
+                expect(link).not.toBeInTheDocument();
+
+                const button = container.querySelector('button');
+                expect(button).toBeInTheDocument();
+                expect(button).toHaveAttribute('aria-label', 'Test video');
+            });
+
+            it('should call onVideoClick when clicking non-NSFW video button', async () => {
+                const user = userEvent.setup();
+                const media = createMockMedia({
+                    type: 'video',
+                    url: 'https://example.com/video.mp4',
+                    previewUrl: 'https://example.com/video-poster.png',
+                    description: 'Test video',
+                });
+                const onVideoClick = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                        onVideoClick={onVideoClick}
+                    />
+                );
+
+                const button = screen.getByRole('button', { name: 'Test video' });
+                await user.click(button);
+
+                expect(onVideoClick).toHaveBeenCalledTimes(1);
+            });
+
+            it('should render NSFW revealed video as button when onVideoClick is provided', () => {
+                const media = createMockMedia({
+                    type: 'video',
+                    url: 'https://example.com/video.mp4',
+                    previewUrl: 'https://example.com/video-poster.png',
+                    description: 'NSFW video',
+                });
+                const onNsfwToggle = vi.fn();
+                const onVideoClick = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={true}
+                        onNsfwToggle={onNsfwToggle}
+                        onVideoClick={onVideoClick}
+                    />
+                );
+
+                const button = container.querySelector('button');
+                expect(button).toBeInTheDocument();
+                expect(button).toHaveAttribute('aria-label', 'NSFW video');
+
+                const video = container.querySelector('video');
+                expect(video).not.toHaveClass('nsfw-blur');
+            });
+
+            it('should call onVideoClick when clicking NSFW revealed video button', async () => {
+                const user = userEvent.setup();
+                const media = createMockMedia({
+                    type: 'video',
+                    url: 'https://example.com/video.mp4',
+                    previewUrl: 'https://example.com/video-poster.png',
+                    description: 'NSFW video',
+                });
+                const onNsfwToggle = vi.fn();
+                const onVideoClick = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={true}
+                        onNsfwToggle={onNsfwToggle}
+                        onVideoClick={onVideoClick}
+                    />
+                );
+
+                const button = screen.getByRole('button', { name: 'NSFW video' });
+                await user.click(button);
+
+                expect(onVideoClick).toHaveBeenCalledTimes(1);
+                expect(onNsfwToggle).not.toHaveBeenCalled();
+            });
+
+            it('should call onNsfwToggle when clicking NSFW blur state video button', async () => {
+                const user = userEvent.setup();
+                const media = createMockMedia({
+                    type: 'video',
+                    url: 'https://example.com/video.mp4',
+                    previewUrl: 'https://example.com/video-poster.png',
+                });
+                const onNsfwToggle = vi.fn();
+                const onVideoClick = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwToggle={onNsfwToggle}
+                        onVideoClick={onVideoClick}
+                    />
+                );
+
+                const button = screen.getByRole('button', { name: '閲覧注意の動画を表示' });
+                await user.click(button);
+
+                expect(onNsfwToggle).toHaveBeenCalledTimes(1);
+                expect(onVideoClick).not.toHaveBeenCalled();
+            });
+        });
     });
 
     describe('gifv rendering', () => {
@@ -534,7 +670,7 @@ describe('MediaAttachment', () => {
 
             const video = container.querySelector('video');
             expect(video).toBeInTheDocument();
-            expect(video).toHaveAttribute('autoPlay');
+            expect(video).not.toHaveAttribute('autoPlay');
             expect(video).toHaveAttribute('loop');
         });
 
@@ -701,6 +837,149 @@ describe('MediaAttachment', () => {
                 />
             );
             expect(container1.firstChild).not.toBeNull();
+        });
+
+        describe('with onVideoClick', () => {
+            it('should render non-NSFW gifv as button when onVideoClick is provided', () => {
+                const media = createMockMedia({
+                    type: 'gifv',
+                    url: 'https://example.com/animation.mp4',
+                    previewUrl: 'https://example.com/animation-poster.png',
+                    description: 'Test animation',
+                });
+                const onVideoClick = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                        onVideoClick={onVideoClick}
+                    />
+                );
+
+                const link = container.querySelector('a[href]');
+                expect(link).not.toBeInTheDocument();
+
+                const button = container.querySelector('button');
+                expect(button).toBeInTheDocument();
+                expect(button).toHaveAttribute('aria-label', 'Test animation');
+
+                const video = container.querySelector('video') as HTMLVideoElement;
+                expect(video).not.toHaveAttribute('autoPlay');
+                expect(video).toHaveAttribute('loop');
+                expect(video.muted).toBe(true);
+            });
+
+            it('should call onVideoClick when clicking non-NSFW gifv button', async () => {
+                const user = userEvent.setup();
+                const media = createMockMedia({
+                    type: 'gifv',
+                    url: 'https://example.com/animation.mp4',
+                    previewUrl: 'https://example.com/animation-poster.png',
+                    description: 'Test animation',
+                });
+                const onVideoClick = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                        onVideoClick={onVideoClick}
+                    />
+                );
+
+                const button = screen.getByRole('button', { name: 'Test animation' });
+                await user.click(button);
+
+                expect(onVideoClick).toHaveBeenCalledTimes(1);
+            });
+
+            it('should render NSFW revealed gifv as button when onVideoClick is provided', () => {
+                const media = createMockMedia({
+                    type: 'gifv',
+                    url: 'https://example.com/animation.mp4',
+                    previewUrl: 'https://example.com/animation-poster.png',
+                    description: 'NSFW animation',
+                });
+                const onNsfwToggle = vi.fn();
+                const onVideoClick = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={true}
+                        onNsfwToggle={onNsfwToggle}
+                        onVideoClick={onVideoClick}
+                    />
+                );
+
+                const button = container.querySelector('button');
+                expect(button).toBeInTheDocument();
+                expect(button).toHaveAttribute('aria-label', 'NSFW animation');
+
+                const video = container.querySelector('video');
+                expect(video).not.toHaveClass('nsfw-blur');
+                expect(video).not.toHaveAttribute('autoPlay');
+                expect(video).toHaveAttribute('loop');
+            });
+
+            it('should call onVideoClick when clicking NSFW revealed gifv button', async () => {
+                const user = userEvent.setup();
+                const media = createMockMedia({
+                    type: 'gifv',
+                    url: 'https://example.com/animation.mp4',
+                    previewUrl: 'https://example.com/animation-poster.png',
+                    description: 'NSFW animation',
+                });
+                const onNsfwToggle = vi.fn();
+                const onVideoClick = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={true}
+                        onNsfwToggle={onNsfwToggle}
+                        onVideoClick={onVideoClick}
+                    />
+                );
+
+                const button = screen.getByRole('button', { name: 'NSFW animation' });
+                await user.click(button);
+
+                expect(onVideoClick).toHaveBeenCalledTimes(1);
+                expect(onNsfwToggle).not.toHaveBeenCalled();
+            });
+
+            it('should call onNsfwToggle when clicking NSFW blur state gifv button', async () => {
+                const user = userEvent.setup();
+                const media = createMockMedia({
+                    type: 'gifv',
+                    url: 'https://example.com/animation.mp4',
+                    previewUrl: 'https://example.com/animation-poster.png',
+                });
+                const onNsfwToggle = vi.fn();
+                const onVideoClick = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwToggle={onNsfwToggle}
+                        onVideoClick={onVideoClick}
+                    />
+                );
+
+                const button = screen.getByRole('button', { name: '閲覧注意のGIFを表示' });
+                await user.click(button);
+
+                expect(onNsfwToggle).toHaveBeenCalledTimes(1);
+                expect(onVideoClick).not.toHaveBeenCalled();
+            });
         });
     });
 

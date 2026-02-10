@@ -5,12 +5,14 @@ import { SiMastodon } from 'react-icons/si';
 import { useColumnsStore } from '../store/columns';
 import { useAccountsStore } from '../store/accounts';
 import type { ImageViewerImage } from '../components/ImageViewer';
+import type { VideoViewerVideo } from '../types/video';
 
 interface ColumnContainerProps {
     onAddColumn?: () => void;
     onReply?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onStatusClick?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
+    onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
     nsfwRevealedStatusIds?: Set<string>;
@@ -21,6 +23,7 @@ export function ColumnContainer({
     onReply,
     onStatusClick,
     onImageClick,
+    onVideoClick,
     onAccountClick,
     onNsfwReveal,
     nsfwRevealedStatusIds,
@@ -46,6 +49,7 @@ export function ColumnContainer({
                     onReply={onReply}
                     onStatusClick={onStatusClick}
                     onImageClick={onImageClick}
+                    onVideoClick={onVideoClick}
                     onAccountClick={onAccountClick}
                     onNsfwReveal={onNsfwReveal}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIds}

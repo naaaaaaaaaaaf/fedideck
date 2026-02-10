@@ -20,7 +20,9 @@ import {
 import { formatDate } from '../utils/dateFormat';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
+import { toVideoViewerVideos } from '../utils/videoAttachments';
 import type { ImageViewerImage } from './ImageViewer';
+import type { VideoViewerVideo } from '../types/video';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
 
@@ -32,6 +34,7 @@ interface StatusCardProps {
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
+    onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
     nsfwRevealedStatusIds?: Set<string>;
@@ -45,6 +48,7 @@ export function StatusCard({
     onReply,
     onStatusClick,
     onImageClick,
+    onVideoClick,
     onAccountClick,
     onNsfwReveal,
     nsfwRevealedStatusIds,
@@ -145,6 +149,12 @@ export function StatusCard({
             }))
             .filter((image) => image.url !== '');
     }, [displayStatus.mediaAttachments]);
+
+    // Convert video/gifv attachments to VideoViewerVideo format (memoized)
+    const videoViewerVideos = useMemo(
+        () => toVideoViewerVideos(displayStatus.mediaAttachments),
+        [displayStatus.mediaAttachments]
+    );
 
     // Safely access account
     const account = displayStatus.account;
@@ -488,6 +498,12 @@ export function StatusCard({
                                                   firstNonEmpty(media.url, media.previewUrl)
                                           )
                                         : undefined;
+                                const videoIndex =
+                                    media.type === 'video' || media.type === 'gifv'
+                                        ? videoViewerVideos.findIndex(
+                                              (v) => v.url === firstNonEmpty(media.url)
+                                          )
+                                        : undefined;
 
                                 return (
                                     <MediaAttachment
@@ -509,6 +525,13 @@ export function StatusCard({
                                                 : undefined
                                         }
                                         totalImages={imageViewerImages.length}
+                                        onVideoClick={
+                                            videoIndex !== undefined &&
+                                            videoIndex !== -1 &&
+                                            onVideoClick
+                                                ? () => onVideoClick(videoViewerVideos, videoIndex)
+                                                : undefined
+                                        }
                                     />
                                 );
                             })}

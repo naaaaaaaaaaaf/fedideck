@@ -16,6 +16,7 @@ import {
 } from '../api/mastoClient';
 import { subscribeToStream, unsubscribeFromStream } from '../streaming/streamManager';
 import type { ImageViewerImage } from '../components/ImageViewer';
+import type { VideoViewerVideo } from '../types/video';
 
 interface ColumnProps {
     id: string;
@@ -25,6 +26,7 @@ interface ColumnProps {
     onReply?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onStatusClick?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
+    onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
     nsfwRevealedStatusIds?: Set<string>;
@@ -37,6 +39,7 @@ export function Column({
     onReply,
     onStatusClick,
     onImageClick,
+    onVideoClick,
     onAccountClick,
     onNsfwReveal,
     nsfwRevealedStatusIds,
@@ -301,6 +304,7 @@ export function Column({
                                 onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
                             }
                             onImageClick={onImageClick}
+                            onVideoClick={onVideoClick}
                             onAccountClick={
                                 onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
                             }

@@ -24,7 +24,9 @@ import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { formatDate } from '../utils/dateFormat';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
+import { toVideoViewerVideos } from '../utils/videoAttachments';
 import type { ImageViewerImage } from './ImageViewer';
+import type { VideoViewerVideo } from '../types/video';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
 
@@ -36,6 +38,7 @@ interface StatusDetailModalProps {
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusUpdate?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
+    onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
     // NSFW blur state from parent (optional - for syncing with StatusCard)
     nsfwRevealedStatusIds?: Set<string>;
     onNsfwReveal?: (statusId: string) => void;
@@ -202,6 +205,7 @@ export function StatusDetailModal({
     onReply,
     onStatusUpdate,
     onImageClick,
+    onVideoClick,
     nsfwRevealedStatusIds,
     onNsfwReveal,
 }: StatusDetailModalProps) {
@@ -359,6 +363,12 @@ export function StatusDetailModal({
             }))
             .filter((image) => image.url !== '');
     }, [displayStatus?.mediaAttachments]);
+
+    // Convert video/gifv attachments to VideoViewerVideo format (memoized)
+    const videoViewerVideos = useMemo(
+        () => toVideoViewerVideos(displayStatus?.mediaAttachments),
+        [displayStatus?.mediaAttachments]
+    );
 
     if (!isOpen || !status || !displayStatus) return null;
 
@@ -618,6 +628,12 @@ export function StatusDetailModal({
                                                       firstNonEmpty(media.url, media.previewUrl)
                                               )
                                             : undefined;
+                                    const videoIndex =
+                                        media.type === 'video' || media.type === 'gifv'
+                                            ? videoViewerVideos.findIndex(
+                                                  (v) => v.url === firstNonEmpty(media.url)
+                                              )
+                                            : undefined;
 
                                     return (
                                         <MediaAttachment
@@ -642,6 +658,17 @@ export function StatusDetailModal({
                                                     : undefined
                                             }
                                             totalImages={imageViewerImages.length}
+                                            onVideoClick={
+                                                videoIndex !== undefined &&
+                                                videoIndex !== -1 &&
+                                                onVideoClick
+                                                    ? () =>
+                                                          onVideoClick(
+                                                              videoViewerVideos,
+                                                              videoIndex
+                                                          )
+                                                    : undefined
+                                            }
                                         />
                                     );
                                 })}
