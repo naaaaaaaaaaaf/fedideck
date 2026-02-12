@@ -1341,6 +1341,7 @@ describe('MediaAttachment', () => {
                 const media = createMockMedia({
                     type: 'audio',
                     url: 'https://example.com/audio.mp3',
+                    previewUrl: null, // No artwork - should show music icon
                 });
 
                 const { container } = render(
