@@ -283,12 +283,15 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
     // Robust file type detection with extension fallback.
     // MIME is authoritative when available to avoid ambiguous extensions like .webm.
+    // Explicitly check for application/octet-stream and treat as "MIME not available".
     const isAudioFile = (file: File) =>
-        file.type
+        file.type && file.type !== 'application/octet-stream'
             ? file.type.startsWith('audio/')
             : /\.(mp3|m4a|aac|ogg|wav|flac|opus|weba|3gp|3gpp)$/i.test(file.name);
     const isVideoFile = (file: File) =>
-        file.type ? file.type.startsWith('video/') : /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+        file.type && file.type !== 'application/octet-stream'
+            ? file.type.startsWith('video/')
+            : /\.(mp4|webm|mov|m4v)$/i.test(file.name);
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;

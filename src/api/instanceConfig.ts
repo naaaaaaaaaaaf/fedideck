@@ -45,6 +45,7 @@ const DEFAULT_CONFIG: InstanceConfig = {
         'audio/wav', // .wav
         'audio/wave', // .wav (alternative)
         'audio/x-wav', // .wav (alternative)
+        'audio/x-pn-wave', // .wav (RealPlayer/legacy)
         'audio/vnd.wave', // .wav (alternative)
         'audio/flac', // .flac
         'audio/aac', // .aac
