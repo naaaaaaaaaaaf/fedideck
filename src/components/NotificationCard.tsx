@@ -130,6 +130,7 @@ export function NotificationCard({
                 target.closest('a') ||
                 target.closest('button') ||
                 target.closest('video') ||
+                target.closest('audio') ||
                 target.closest('summary')
             ) {
                 return;
@@ -162,6 +163,7 @@ export function NotificationCard({
                 target.closest('a') ||
                 target.closest('button') ||
                 target.closest('video') ||
+                target.closest('audio') ||
                 target.closest('summary')
             ) {
                 return;

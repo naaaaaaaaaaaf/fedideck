@@ -39,8 +39,7 @@ describe('VideoViewer', () => {
         // Delete the mocked own property to restore Document.prototype.fullscreenElement
         // This is necessary because Object.getOwnPropertyDescriptor(document, 'fullscreenElement')
         // returns undefined (it's on the prototype, not an own property)
-        delete (document as Document & Record<string, unknown> & { fullscreenElement?: any })
-            .fullscreenElement;
+        Reflect.deleteProperty(document as Document & Record<string, unknown>, 'fullscreenElement');
 
         // Restore original methods
         Element.prototype.requestFullscreen = originalRequestFullscreen;

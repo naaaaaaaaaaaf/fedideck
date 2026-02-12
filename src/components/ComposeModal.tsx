@@ -322,11 +322,6 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         setMediaFiles((prev) => [...prev, ...newMediaFiles]);
         setError(null);
 
-        // Audio preview rendering
-        const renderAudioPreview = (media: MediaFile) => {
-            return <audio src={media.preview} controls preload="none" className="w-full" />;
-        };
-
         // Upload each file
         for (let i = 0; i < filesToAdd.length; i++) {
             const file = filesToAdd[i];
@@ -880,7 +875,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                                 preload="none"
                                                 className="w-full"
                                             />
-                                        ) : media.file.type.startsWith('video/') ? (
+                                        ) : isVideoFile(media.file) ? (
                                             <video
                                                 src={media.preview}
                                                 className="w-full h-full object-cover"

@@ -98,6 +98,42 @@ export function MediaAttachment({
         // Audio type: render music icon or artwork thumbnail
         if (media.type === 'audio') {
             const artworkUrl = firstNonEmpty(media.previewUrl, media.previewRemoteUrl);
+
+            // NSFW audio in compact mode: render as button with blur
+            if (needsBlur) {
+                if (!onNsfwToggle) {
+                    return null;
+                }
+                return (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onNsfwToggle();
+                        }}
+                        className={`relative block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className} bg-slate-800 flex items-center justify-center`}
+                        aria-label={getAccessibleLabel('audio')}
+                    >
+                        {artworkUrl ? (
+                            <img
+                                src={artworkUrl}
+                                alt={media.description ?? ''}
+                                className={`${variantClasses} ${objectFitClass} nsfw-blur`}
+                                aria-hidden="true"
+                            />
+                        ) : (
+                            <LuMusic className="w-6 h-6 text-slate-300" aria-hidden="true" />
+                        )}
+                        <div className="nsfw-blur-overlay">
+                            <span className={`text-white ${overlayTextClass} font-medium`}>
+                                閲覧注意
+                            </span>
+                        </div>
+                    </button>
+                );
+            }
+
+            // Non-NSFW audio: show artwork or music icon
             return (
                 <div
                     className={`${variantClasses} ${className} bg-slate-800 flex items-center justify-center`}
@@ -116,14 +152,10 @@ export function MediaAttachment({
             );
         }
 
-        // Compact mode only supports image/video/gifv/audio types
+        // Compact mode only supports image/video/gifv types
+        // Note: audio is handled separately above (line 99)
         // Unknown types are not rendered as thumbnails
-        if (
-            media.type !== 'image' &&
-            media.type !== 'video' &&
-            media.type !== 'gifv' &&
-            media.type !== 'audio'
-        ) {
+        if (media.type !== 'image' && media.type !== 'video' && media.type !== 'gifv') {
             return null;
         }
 

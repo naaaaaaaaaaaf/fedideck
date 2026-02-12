@@ -554,4 +554,40 @@ describe('ComposeModal', () => {
         expect(accountSelector).toHaveClass('px-3');
         expect(textarea).toHaveClass('px-3');
     });
+
+    describe('file type detection', () => {
+        it('should detect video file by extension when MIME is empty', async () => {
+            // Create a file without proper MIME type (browsers may not detect it)
+            const videoFile = new File([''], 'video.webm', { type: '' });
+            Object.defineProperty(videoFile, 'name', {
+                value: 'video.webm',
+                writable: false,
+            });
+
+            const user = userEvent.setup();
+            const onClose = vi.fn();
+            const { container } = render(<ComposeModal isOpen={true} onClose={onClose} />);
+
+            // Wait for instance config to load and submit button to appear
+            let submitButton: HTMLButtonElement | null = null;
+            await waitFor(
+                () => {
+                    submitButton = container.querySelector('button');
+                    expect(submitButton).toBeInTheDocument();
+                },
+                { timeout: 3000 }
+            );
+
+            const fileInput = container.querySelector('input[type="file"]');
+            expect(fileInput).toBeInTheDocument();
+
+            if (fileInput) {
+                await user.upload(fileInput, videoFile);
+
+                // Video preview should be rendered, not image
+                const videoPreview = container.querySelector('video');
+                expect(videoPreview).toBeInTheDocument();
+            }
+        });
+    });
 });

@@ -1341,7 +1341,7 @@ describe('MediaAttachment', () => {
                 const media = createMockMedia({
                     type: 'audio',
                     url: 'https://example.com/audio.mp3',
-                    previewUrl: null, // No artwork - should show music icon
+                    previewUrl: undefined, // No artwork - should show music icon
                 });
 
                 const { container } = render(
@@ -1399,6 +1399,83 @@ describe('MediaAttachment', () => {
 
                 const wrapper = container.firstChild as HTMLElement;
                 expect(wrapper).toHaveClass('w-12', 'h-12');
+            });
+
+            describe('NSFW blur', () => {
+                it('should render music icon with blur overlay when NSFW and not revealed', () => {
+                    const media = createMockMedia({
+                        type: 'audio',
+                        url: 'https://example.com/audio.mp3',
+                        previewUrl: undefined, // No artwork - should show music icon with blur
+                    });
+                    const onNsfwToggle = vi.fn();
+
+                    const { container } = render(
+                        <MediaAttachment
+                            media={media}
+                            variant="compact"
+                            isSensitive={true}
+                            nsfwRevealed={false}
+                            onNsfwToggle={onNsfwToggle}
+                        />
+                    );
+
+                    const button = container.querySelector('button');
+                    expect(button).toBeInTheDocument();
+                    expect(button).toHaveClass('nsfw-blur-container');
+
+                    const overlay = button?.querySelector('.nsfw-blur-overlay span');
+                    expect(overlay).toBeInTheDocument();
+                    expect(overlay).toHaveClass('text-xs'); // compact mode uses smaller text
+
+                    const icon = button?.querySelector('svg');
+                    expect(icon).toBeInTheDocument();
+                });
+
+                it('should render artwork with blur overlay when NSFW has previewUrl', () => {
+                    const media = createMockMedia({
+                        type: 'audio',
+                        url: 'https://example.com/audio.mp3',
+                        previewUrl: 'https://example.com/artwork.png',
+                    });
+                    const onNsfwToggle = vi.fn();
+
+                    const { container } = render(
+                        <MediaAttachment
+                            media={media}
+                            variant="compact"
+                            isSensitive={true}
+                            nsfwRevealed={false}
+                            onNsfwToggle={onNsfwToggle}
+                        />
+                    );
+
+                    const button = container.querySelector('button');
+                    expect(button).toBeInTheDocument();
+
+                    const img = button?.querySelector('img');
+                    expect(img).toBeInTheDocument();
+                    expect(img).toHaveClass('nsfw-blur');
+                });
+
+                it('should return null when NSFW without onNsfwToggle', () => {
+                    const media = createMockMedia({
+                        type: 'audio',
+                        url: 'https://example.com/audio.mp3',
+                    });
+
+                    const { container } = render(
+                        <MediaAttachment
+                            media={media}
+                            variant="compact"
+                            isSensitive={true}
+                            nsfwRevealed={false}
+                        />
+                    );
+
+                    const wrapper = container.querySelector('div');
+                    expect(wrapper).not.toBeInTheDocument();
+                });
             });
         });
 
