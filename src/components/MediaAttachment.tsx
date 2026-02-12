@@ -1,5 +1,5 @@
 import type { mastodon } from 'masto';
-import { LuPlay } from 'react-icons/lu';
+import { LuPlay, LuMusic } from 'react-icons/lu';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 
 export interface MediaAttachmentProps {
@@ -58,7 +58,14 @@ export function MediaAttachment({
 
     // Generate accessible label
     const getAccessibleLabel = (mediaType?: string): string => {
-        const mediaLabel = mediaType === 'video' ? '動画' : mediaType === 'gifv' ? 'GIF' : '画像';
+        const mediaLabel =
+            mediaType === 'video'
+                ? '動画'
+                : mediaType === 'gifv'
+                  ? 'GIF'
+                  : mediaType === 'audio'
+                    ? '音声プレーヤー'
+                    : '画像';
 
         if (needsBlur) {
             if (imageIndex !== undefined && totalImages !== undefined) {
