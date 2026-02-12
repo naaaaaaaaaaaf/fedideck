@@ -8,7 +8,7 @@ import { firstNonEmpty } from '../utils/firstNonEmpty';
  */
 const isImageUrl = (url: string | null | undefined): boolean => {
     if (!url) return false;
-    const imageExtensions = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i;
+    const imageExtensions = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(?:[?#]|$)/i;
     return imageExtensions.test(url);
 };
 

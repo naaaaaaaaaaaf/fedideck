@@ -1334,6 +1334,57 @@ describe('MediaAttachment', () => {
                 const img = container.querySelector('img');
                 expect(img).not.toBeInTheDocument();
             });
+
+            it('should display artwork when previewUrl has query string', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png?size=small',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://example.com/artwork.png?size=small');
+            });
+
+            it('should display artwork when previewUrl has fragment', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png#section',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://example.com/artwork.png#section');
+            });
+
+            it('should display artwork when previewUrl has both query string and fragment', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png?size=small#section',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute(
+                    'src',
+                    'https://example.com/artwork.png?size=small#section'
+                );
+            });
         });
 
         describe('compact mode', () => {
