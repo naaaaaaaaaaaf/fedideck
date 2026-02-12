@@ -592,5 +592,67 @@ describe('ComposeModal', () => {
                 expect(videoPreview).toBeInTheDocument();
             }
         });
+
+        it('should detect audio file by extension when MIME is application/octet-stream', async () => {
+            const audioFile = new File([''], 'audio.mp3', { type: 'application/octet-stream' });
+            Object.defineProperty(audioFile, 'name', {
+                value: 'audio.mp3',
+                writable: false,
+            });
+
+            const user = userEvent.setup({ applyAccept: false });
+            const onClose = vi.fn();
+            const { container } = render(<ComposeModal isOpen={true} onClose={onClose} />);
+
+            await waitFor(
+                () => {
+                    const button = container.querySelector('button');
+                    expect(button).toBeInTheDocument();
+                },
+                { timeout: 3000 }
+            );
+
+            const fileInput = container.querySelector('input[type="file"]');
+            expect(fileInput).toBeInTheDocument();
+
+            if (fileInput) {
+                await user.upload(fileInput as HTMLInputElement, audioFile);
+
+                // Audio preview should be rendered
+                const audioPreview = container.querySelector('audio');
+                expect(audioPreview).toBeInTheDocument();
+            }
+        });
+
+        it('should detect audio file by extension when MIME is empty string', async () => {
+            const audioFile = new File([''], 'song.wav', { type: '' });
+            Object.defineProperty(audioFile, 'name', {
+                value: 'song.wav',
+                writable: false,
+            });
+
+            const user = userEvent.setup({ applyAccept: false });
+            const onClose = vi.fn();
+            const { container } = render(<ComposeModal isOpen={true} onClose={onClose} />);
+
+            await waitFor(
+                () => {
+                    const button = container.querySelector('button');
+                    expect(button).toBeInTheDocument();
+                },
+                { timeout: 3000 }
+            );
+
+            const fileInput = container.querySelector('input[type="file"]');
+            expect(fileInput).toBeInTheDocument();
+
+            if (fileInput) {
+                await user.upload(fileInput as HTMLInputElement, audioFile);
+
+                // Audio preview should be rendered
+                const audioPreview = container.querySelector('audio');
+                expect(audioPreview).toBeInTheDocument();
+            }
+        });
     });
 });

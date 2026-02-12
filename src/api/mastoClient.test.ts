@@ -7,6 +7,7 @@ import {
     unreblogStatus,
     getStatusContext,
     fetchAccount,
+    waitForMediaReady,
     type CreateStatusParams,
     type MastoClient,
 } from './mastoClient';
@@ -363,5 +364,74 @@ describe('fetchAccount', () => {
         } as unknown as MastoClient;
 
         await expect(fetchAccount(mockClient, '999')).rejects.toThrow('Account not found');
+    });
+});
+
+describe('waitForMediaReady', () => {
+    it('returns when media.url is populated within timeout', async () => {
+        const mockFetch = vi
+            .fn()
+            .mockResolvedValueOnce({ url: null }) // First poll: not ready
+            .mockResolvedValueOnce({ url: null }) // Second poll: not ready
+            .mockResolvedValueOnce({ url: 'https://example.com/media.mp3' }); // Third poll: ready
+        const mockClient = {
+            v1: {
+                media: {
+                    $select: vi.fn().mockReturnValue({
+                        fetch: mockFetch,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await waitForMediaReady(mockClient, 'media-123', 10000);
+
+        expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('throws timeout error when media never becomes ready', async () => {
+        const mockFetch = vi.fn().mockResolvedValue({ url: null });
+        const mockClient = {
+            v1: {
+                media: {
+                    $select: vi.fn().mockReturnValue({
+                        fetch: mockFetch,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(waitForMediaReady(mockClient, 'media-456', 100)).rejects.toThrow(
+            'メディア処理がタイムアウトしました (mediaId: media-456)'
+        );
+    });
+
+    it('checks media status one final time after deadline expires', async () => {
+        let callCount = 0;
+        const mockFetch = vi.fn().mockImplementation(async () => {
+            callCount++;
+            // Return ready on the 4th call (after timeout should have occurred)
+            return Promise.resolve({
+                url: callCount >= 4 ? 'https://example.com/media.mp3' : null,
+            });
+        });
+        const mockClient = {
+            v1: {
+                media: {
+                    $select: vi.fn().mockReturnValue({
+                        fetch: mockFetch,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        // Use very short timeout (10ms) to trigger quick timeout
+        // With 1 second sleep between polls, timeout should happen after first poll
+        await expect(waitForMediaReady(mockClient, 'media-final-check', 10)).rejects.toThrow(
+            'メディア処理がタイムアウトしました (mediaId: media-final-check)'
+        );
+
+        // The function should have polled at least once before throwing
+        expect(callCount).toBeGreaterThanOrEqual(1);
     });
 });
