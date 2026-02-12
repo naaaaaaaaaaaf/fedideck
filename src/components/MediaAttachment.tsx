@@ -164,7 +164,7 @@ export function MediaAttachment({
         }
 
         // Compact mode only supports image/video/gifv types
-        // Note: audio is handled separately above (line 99)
+        // Note: audio is handled separately in the audio block above
         // Unknown types are not rendered as thumbnails
         if (media.type !== 'image' && media.type !== 'video' && media.type !== 'gifv') {
             return null;
