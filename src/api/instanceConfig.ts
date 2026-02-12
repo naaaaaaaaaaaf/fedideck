@@ -34,6 +34,13 @@ const DEFAULT_CONFIG: InstanceConfig = {
         'image/webp',
         'video/mp4',
         'video/webm',
+        'audio/mpeg',
+        'audio/mp4',
+        'audio/ogg',
+        'audio/wav',
+        'audio/flac',
+        'audio/webm',
+        'audio/aac',
     ],
 };
 

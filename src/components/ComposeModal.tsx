@@ -716,14 +716,14 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
                                     : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
-                            aria-label={`画像/動画を追加${
+                            aria-label={`メディアを追加${
                                 hasMedia
                                     ? ` (${mediaFiles.length}/${instanceConfig?.maxMediaAttachments ?? 4})`
                                     : ''
                             }`}
                         >
                             <LuImage className="w-4 h-4" aria-hidden="true" />
-                            画像/動画
+                            画像/動画/音声
                             {hasMedia && (
                                 <span className="text-xs">
                                     ({mediaFiles.length}/{instanceConfig?.maxMediaAttachments ?? 4})
@@ -750,7 +750,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                             type="file"
                             accept={
                                 instanceConfig?.supportedMimeTypes?.join(',') ??
-                                'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm'
+                                getDefaultConfig().supportedMimeTypes.join(',')
                             }
                             multiple
                             onChange={handleFileSelect}

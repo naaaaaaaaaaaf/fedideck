@@ -217,6 +217,13 @@ describe('instanceConfig', () => {
                     'image/webp',
                     'video/mp4',
                     'video/webm',
+                    'audio/mpeg',
+                    'audio/mp4',
+                    'audio/ogg',
+                    'audio/wav',
+                    'audio/flac',
+                    'audio/webm',
+                    'audio/aac',
                 ],
             });
         });
@@ -247,6 +254,13 @@ describe('instanceConfig', () => {
                 'image/webp',
                 'video/mp4',
                 'video/webm',
+                'audio/mpeg',
+                'audio/mp4',
+                'audio/ogg',
+                'audio/wav',
+                'audio/flac',
+                'audio/webm',
+                'audio/aac',
             ]);
         });
 
@@ -281,6 +295,13 @@ describe('instanceConfig', () => {
                 'image/webp',
                 'video/mp4',
                 'video/webm',
+                'audio/mpeg',
+                'audio/mp4',
+                'audio/ogg',
+                'audio/wav',
+                'audio/flac',
+                'audio/webm',
+                'audio/aac',
             ]); // default
         });
 
@@ -399,6 +420,13 @@ describe('instanceConfig', () => {
                     'image/webp',
                     'video/mp4',
                     'video/webm',
+                    'audio/mpeg',
+                    'audio/mp4',
+                    'audio/ogg',
+                    'audio/wav',
+                    'audio/flac',
+                    'audio/webm',
+                    'audio/aac',
                 ]);
                 // API should not be called for invalid URLs
                 expect(mockClient.v1.instance.fetch).not.toHaveBeenCalled();
@@ -497,6 +525,13 @@ describe('instanceConfig', () => {
                     'image/webp',
                     'video/mp4',
                     'video/webm',
+                    'audio/mpeg',
+                    'audio/mp4',
+                    'audio/ogg',
+                    'audio/wav',
+                    'audio/flac',
+                    'audio/webm',
+                    'audio/aac',
                 ],
             });
         });
