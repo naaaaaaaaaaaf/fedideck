@@ -1198,4 +1198,386 @@ describe('MediaAttachment', () => {
             expect(overlay).toHaveClass('text-xs');
         });
     });
+
+    describe('audio rendering', () => {
+        describe('basic rendering', () => {
+            it('should render audio player with valid URL in card variant', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png',
+                    description: 'Test audio',
+                });
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        variant="card"
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                    />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toBeInTheDocument();
+                expect(audio).toHaveAttribute('src', 'https://example.com/audio.mp3');
+                expect(audio).toHaveAttribute('controls');
+                expect(audio).toHaveAttribute('preload', 'none');
+            });
+
+            it('should render audio player in detail variant', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        variant="detail"
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                    />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toBeInTheDocument();
+            });
+
+            it('should render controls attribute on audio element', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toHaveAttribute('controls');
+            });
+
+            it('should prioritize url over previewUrl for audio playback', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toHaveAttribute('src', 'https://example.com/audio.mp3');
+                expect(audio).not.toHaveAttribute('src', 'https://example.com/artwork.png');
+            });
+
+            it('should return null for invalid URL', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: undefined,
+                    previewUrl: undefined,
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                expect(container.firstChild).toBeNull();
+            });
+
+            it('should use remoteUrl as fallback when url is missing', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: undefined,
+                    remoteUrl: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toHaveAttribute('src', 'https://example.com/audio.mp3');
+            });
+
+            it('should display artwork when previewUrl is available', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://example.com/artwork.png');
+            });
+
+            it('should not display artwork when previewUrl is missing', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: undefined,
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).not.toBeInTheDocument();
+            });
+        });
+
+        describe('compact mode', () => {
+            it('should render music icon in compact mode', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        variant="compact"
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                    />
+                );
+
+                // Find the wrapper div by class
+                const wrapperDiv = container.querySelector('div.bg-slate-800');
+                expect(wrapperDiv).toBeInTheDocument();
+                // Check for music icon (svg)
+                const icon = wrapperDiv?.querySelector('svg');
+                expect(icon).toBeInTheDocument();
+            });
+
+            it('should render artwork thumbnail in compact mode when available', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png',
+                });
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        variant="compact"
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                    />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveClass('w-12', 'h-12', 'rounded');
+            });
+
+            it('should apply w-12 h-12 classes in compact mode', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        variant="compact"
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                    />
+                );
+
+                const wrapper = container.firstChild as HTMLElement;
+                expect(wrapper).toHaveClass('w-12', 'h-12');
+            });
+        });
+
+        describe('NSFW blur', () => {
+            it('should render music icon with blur overlay when NSFW and not revealed', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+                const onNsfwToggle = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwToggle={onNsfwToggle}
+                    />
+                );
+
+                const button = container.querySelector('button');
+                expect(button).toBeInTheDocument();
+                expect(button).toHaveAttribute('aria-label', '閲覧注意の音声プレーヤーを表示');
+
+                const icon = container.querySelector('svg');
+                expect(icon).toBeInTheDocument();
+            });
+
+            it('should render audio player after NSFW reveal', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+                const onNsfwToggle = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={true}
+                        onNsfwToggle={onNsfwToggle}
+                    />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toBeInTheDocument();
+
+                const button = container.querySelector('button');
+                expect(button).not.toBeInTheDocument();
+            });
+
+            it('should call onNsfwToggle when clicking NSFW audio button', async () => {
+                const user = userEvent.setup();
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+                const onNsfwToggle = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwToggle={onNsfwToggle}
+                    />
+                );
+
+                const button = screen.getByRole('button', {
+                    name: '閲覧注意の音声プレーヤーを表示',
+                });
+                await user.click(button);
+
+                expect(onNsfwToggle).toHaveBeenCalledTimes(1);
+            });
+
+            it('should return null when NSFW and onNsfwToggle not provided', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />
+                );
+
+                expect(container.firstChild).toBeNull();
+            });
+        });
+
+        describe('accessibility', () => {
+            it('should have correct aria-label for audio with description', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    description: 'Podcast episode',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toHaveAttribute('aria-label', 'Podcast episode');
+            });
+
+            it('should have default aria-label for audio without description', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    description: undefined,
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toHaveAttribute('aria-label', '音声プレーヤー');
+            });
+
+            it('should have correct NSFW aria-label', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+                const onNsfwToggle = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwToggle={onNsfwToggle}
+                    />
+                );
+
+                const button = screen.getByRole('button', {
+                    name: '閲覧注意の音声プレーヤーを表示',
+                });
+                expect(button).toBeInTheDocument();
+            });
+        });
+
+        describe('edge cases', () => {
+            it('should return null when both url and previewUrl are empty', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: '',
+                    previewUrl: '',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                expect(container.firstChild).toBeNull();
+            });
+
+            it('should handle NSFW audio with missing previewUrl', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: undefined,
+                });
+                const onNsfwToggle = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwToggle={onNsfwToggle}
+                    />
+                );
+
+                const button = container.querySelector('button');
+                expect(button).toBeInTheDocument();
+                expect(button).toHaveClass('nsfw-blur-container');
+            });
+        });
+    });
 });

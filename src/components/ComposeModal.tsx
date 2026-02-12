@@ -280,6 +280,12 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         setPollOptions(newOptions);
     };
 
+    // Robust file type detection with extension fallback
+    const isAudioFile = (file: File) =>
+        file.type.startsWith('audio/') || /\.(mp3|m4a|aac|ogg|wav|flac|webm)$/i.test(file.name);
+    const isVideoFile = (file: File) =>
+        file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || !composingAccount) return;
@@ -290,8 +296,8 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         if (filesToAdd.length === 0) return;
 
         // Check for video - video can only be alone
-        const hasVideo = mediaFiles.some((m) => m.file.type.startsWith('video/'));
-        const newHasVideo = filesToAdd.some((f) => f.type.startsWith('video/'));
+        const hasVideo = mediaFiles.some((m) => isVideoFile(m.file));
+        const newHasVideo = filesToAdd.some((f) => isVideoFile(f));
 
         if (hasVideo || (newHasVideo && mediaFiles.length > 0)) {
             setError('動画は他のメディアと同時に添付できません');
@@ -862,7 +868,14 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     className="bg-slate-800 rounded-lg overflow-hidden"
                                 >
                                     <div className="relative aspect-video">
-                                        {media.file.type.startsWith('video/') ? (
+                                        {isAudioFile(media.file) ? (
+                                            <audio
+                                                src={media.preview}
+                                                controls
+                                                preload="none"
+                                                className="w-full"
+                                            />
+                                        ) : media.file.type.startsWith('video/') ? (
                                             <video
                                                 src={media.preview}
                                                 className="w-full h-full object-cover"

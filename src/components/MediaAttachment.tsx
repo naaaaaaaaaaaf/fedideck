@@ -58,6 +58,22 @@ export function MediaAttachment({
 
     // Generate accessible label
     const getAccessibleLabel = (mediaType?: string): string => {
+        if (needsBlur) {
+            const blurLabel =
+                mediaType === 'video'
+                    ? '動画'
+                    : mediaType === 'gifv'
+                      ? 'GIF'
+                      : mediaType === 'audio'
+                        ? '音声プレーヤー'
+                        : '画像';
+
+            if (imageIndex !== undefined && totalImages !== undefined) {
+                return `閲覧注意の${blurLabel}を表示 (${imageIndex + 1}/${totalImages})`;
+            }
+            return `閲覧注意の${blurLabel}を表示`;
+        }
+
         const mediaLabel =
             mediaType === 'video'
                 ? '動画'
@@ -67,12 +83,6 @@ export function MediaAttachment({
                     ? '音声プレーヤー'
                     : '画像';
 
-        if (needsBlur) {
-            if (imageIndex !== undefined && totalImages !== undefined) {
-                return `閲覧注意の${mediaLabel}を表示 (${imageIndex + 1}/${totalImages})`;
-            }
-            return `閲覧注意の${mediaLabel}を表示`;
-        }
         if (media.description) {
             return media.description;
         }
@@ -106,9 +116,14 @@ export function MediaAttachment({
             );
         }
 
-        // Compact mode only supports image/video/gifv types
+        // Compact mode only supports image/video/gifv/audio types
         // Unknown types are not rendered as thumbnails
-        if (media.type !== 'image' && media.type !== 'video' && media.type !== 'gifv') {
+        if (
+            media.type !== 'image' &&
+            media.type !== 'video' &&
+            media.type !== 'gifv' &&
+            media.type !== 'audio'
+        ) {
             return null;
         }
 
@@ -512,7 +527,7 @@ export function MediaAttachment({
                         onNsfwToggle();
                     }}
                     className={`w-full rounded-lg p-3 bg-slate-800 text-left nsfw-blur-container ${className}`}
-                    aria-label="閲覧注意の音声を表示"
+                    aria-label={getAccessibleLabel('audio')}
                 >
                     <LuMusic className="w-6 h-6 text-slate-300" aria-hidden="true" />
                 </button>
