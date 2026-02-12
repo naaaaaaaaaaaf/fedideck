@@ -114,7 +114,12 @@ export function NotificationCard({
 
         const target = e.target as HTMLElement;
         // Ignore clicks on interactive elements
-        if (target.closest('a') || target.closest('button') || target.closest('summary')) {
+        if (
+            target.closest('a') ||
+            target.closest('button') ||
+            target.closest('summary') ||
+            target.closest('audio')
+        ) {
             return;
         }
         onAccountClick?.(account);
@@ -130,6 +135,7 @@ export function NotificationCard({
                 target.closest('a') ||
                 target.closest('button') ||
                 target.closest('video') ||
+                target.closest('audio') ||
                 target.closest('summary')
             ) {
                 return;
@@ -145,7 +151,12 @@ export function NotificationCard({
 
         const target = e.target as HTMLElement;
         // Ignore clicks on interactive elements
-        if (target.closest('a') || target.closest('button') || target.closest('summary')) {
+        if (
+            target.closest('a') ||
+            target.closest('button') ||
+            target.closest('summary') ||
+            target.closest('audio')
+        ) {
             return;
         }
         onStatusClick(status);
@@ -162,6 +173,7 @@ export function NotificationCard({
                 target.closest('a') ||
                 target.closest('button') ||
                 target.closest('video') ||
+                target.closest('audio') ||
                 target.closest('summary')
             ) {
                 return;

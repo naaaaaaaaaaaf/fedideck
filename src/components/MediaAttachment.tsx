@@ -1,6 +1,16 @@
 import type { mastodon } from 'masto';
-import { LuPlay } from 'react-icons/lu';
+import { LuPlay, LuMusic } from 'react-icons/lu';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
+
+/**
+ * Check if a URL appears to be an image URL based on file extension
+ * Returns false for null/undefined, or URLs without image extensions
+ */
+const isImageUrl = (url: string | null | undefined): boolean => {
+    if (!url) return false;
+    const imageExtensions = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(?:[?#]|$)/i;
+    return imageExtensions.test(url);
+};
 
 export interface MediaAttachmentProps {
     media: mastodon.v1.MediaAttachment;
@@ -58,14 +68,31 @@ export function MediaAttachment({
 
     // Generate accessible label
     const getAccessibleLabel = (mediaType?: string): string => {
-        const mediaLabel = mediaType === 'video' ? '動画' : mediaType === 'gifv' ? 'GIF' : '画像';
-
         if (needsBlur) {
+            const blurLabel =
+                mediaType === 'video'
+                    ? '動画'
+                    : mediaType === 'gifv'
+                      ? 'GIF'
+                      : mediaType === 'audio'
+                        ? '音声プレーヤー'
+                        : '画像';
+
             if (imageIndex !== undefined && totalImages !== undefined) {
-                return `閲覧注意の${mediaLabel}を表示 (${imageIndex + 1}/${totalImages})`;
+                return `閲覧注意の${blurLabel}を表示 (${imageIndex + 1}/${totalImages})`;
             }
-            return `閲覧注意の${mediaLabel}を表示`;
+            return `閲覧注意の${blurLabel}を表示`;
         }
+
+        const mediaLabel =
+            mediaType === 'video'
+                ? '動画'
+                : mediaType === 'gifv'
+                  ? 'GIF'
+                  : mediaType === 'audio'
+                    ? '音声プレーヤー'
+                    : '画像';
+
         if (media.description) {
             return media.description;
         }
@@ -78,8 +105,69 @@ export function MediaAttachment({
     // Compact mode: render media as simple thumbnails
     // This preserves parent element's click behavior (e.g., NotificationCard)
     if (variant === 'compact') {
+        // Audio type: render music icon or artwork thumbnail
+        if (media.type === 'audio') {
+            const artworkUrl = firstNonEmpty(media.previewUrl, media.previewRemoteUrl);
+            const validArtworkUrl = artworkUrl && isImageUrl(artworkUrl) ? artworkUrl : null;
+
+            // NSFW audio in compact mode: render as button with blur
+            if (needsBlur) {
+                if (!onNsfwToggle) {
+                    return null;
+                }
+                return (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onNsfwToggle();
+                        }}
+                        className={`relative block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className} bg-slate-800 flex items-center justify-center`}
+                        aria-label={getAccessibleLabel('audio')}
+                    >
+                        {validArtworkUrl ? (
+                            <img
+                                src={validArtworkUrl}
+                                alt={media.description ?? ''}
+                                className={`${variantClasses} ${objectFitClass} nsfw-blur`}
+                            />
+                        ) : (
+                            <LuMusic className="w-6 h-6 text-slate-300" aria-hidden="true" />
+                        )}
+                        {/* Add visual layer for NSFW indication */}
+                        <div className="absolute inset-0 bg-slate-700/80" aria-hidden="true" />
+                        <div className="nsfw-blur-overlay">
+                            <span className={`text-white ${overlayTextClass} font-medium`}>
+                                閲覧注意
+                            </span>
+                        </div>
+                    </button>
+                );
+            }
+
+            // Non-NSFW audio: show artwork or music icon
+            return (
+                <div
+                    className={`${variantClasses} ${className} bg-slate-800 flex items-center justify-center`}
+                    role="img"
+                    aria-label={media.description || '音声'}
+                >
+                    {validArtworkUrl ? (
+                        <img
+                            src={validArtworkUrl}
+                            alt=""
+                            className={`${variantClasses} ${objectFitClass}`}
+                        />
+                    ) : (
+                        <LuMusic className="w-6 h-6 text-slate-400" aria-hidden="true" />
+                    )}
+                </div>
+            );
+        }
+
         // Compact mode only supports image/video/gifv types
-        // Audio and unknown types are not rendered as thumbnails
+        // Note: audio is handled separately in the audio block above
+        // Unknown types are not rendered as thumbnails
         if (media.type !== 'image' && media.type !== 'video' && media.type !== 'gifv') {
             return null;
         }
@@ -119,7 +207,6 @@ export function MediaAttachment({
                         src={thumbnailUrl}
                         alt={media.description ?? ''}
                         className={`${variantClasses} ${objectFitClass} nsfw-blur`}
-                        aria-hidden="true"
                     />
                     <div className="nsfw-blur-overlay">
                         <span className={`text-white ${overlayTextClass} font-medium`}>
@@ -153,7 +240,6 @@ export function MediaAttachment({
                         src={thumbnailUrl}
                         alt={media.description ?? ''}
                         className={`${variantClasses} ${objectFitClass}`}
-                        aria-hidden="true"
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                         <div className="p-1.5 bg-white/90 rounded-full">
@@ -206,7 +292,6 @@ export function MediaAttachment({
                         className={`${variantClasses} ${objectFitClass} transition-opacity ${
                             needsBlur ? 'nsfw-blur' : 'hover:opacity-90'
                         }`}
-                        aria-hidden="true"
                     />
                     {needsBlur && (
                         <div className="nsfw-blur-overlay">
@@ -459,6 +544,74 @@ export function MediaAttachment({
                     </div>
                 </div>
             </a>
+        );
+    }
+
+    // Render audio type
+    if (media.type === 'audio') {
+        // CRITICAL: audioUrlは音声ファイルURLのみ使用（previewUrlは画像の可能性大）
+        const audioUrl = firstNonEmpty(media.url, media.remoteUrl);
+        const artworkUrl = firstNonEmpty(media.previewUrl, media.previewRemoteUrl);
+        const validArtworkUrl = artworkUrl && isImageUrl(artworkUrl) ? artworkUrl : null;
+
+        if (audioUrl === '') {
+            return null;
+        }
+
+        if (needsBlur) {
+            if (!onNsfwToggle) {
+                return null;
+            }
+            return (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onNsfwToggle();
+                    }}
+                    className={`w-full rounded-lg p-3 bg-slate-800 text-left nsfw-blur-container relative ${className}`}
+                    aria-label={getAccessibleLabel('audio')}
+                >
+                    {validArtworkUrl ? (
+                        <img
+                            src={validArtworkUrl}
+                            alt=""
+                            className="w-20 h-20 rounded mb-2 object-cover nsfw-blur"
+                        />
+                    ) : (
+                        <LuMusic className="w-6 h-6 text-slate-300" aria-hidden="true" />
+                    )}
+                    {/* Add visual layer for NSFW indication */}
+                    <div className="absolute inset-0 bg-slate-700/80" aria-hidden="true" />
+                    <div className="nsfw-blur-overlay">
+                        <span className="text-white text-sm font-medium">閲覧注意</span>
+                    </div>
+                </button>
+            );
+        }
+
+        // 音声専用レイアウト（variantClassesの h-36/max-h-96 を使わない）
+        return (
+            <div className={`w-full rounded-lg bg-slate-800 p-3 ${className}`}>
+                {validArtworkUrl && (
+                    <img
+                        src={validArtworkUrl}
+                        alt=""
+                        className="w-20 h-20 rounded mb-2 object-cover"
+                    />
+                )}
+                <audio
+                    src={audioUrl}
+                    controls
+                    preload="none"
+                    className="w-full"
+                    aria-label={media.description ?? '音声プレーヤー'}
+                >
+                    <a href={audioUrl} target="_blank" rel="noopener noreferrer">
+                        音声を開く
+                    </a>
+                </audio>
+            </div>
         );
     }
 

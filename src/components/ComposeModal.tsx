@@ -21,6 +21,7 @@ import {
     createStatus,
     uploadMedia,
     updateMediaDescription,
+    waitForMediaReady,
     type CreateStatusParams,
 } from '../api/mastoClient';
 import { getInstanceConfig, getDefaultConfig, type InstanceConfig } from '../api/instanceConfig';
@@ -280,6 +281,18 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         setPollOptions(newOptions);
     };
 
+    // Robust file type detection with extension fallback.
+    // MIME is authoritative when available to avoid ambiguous extensions like .webm.
+    // Explicitly check for application/octet-stream and treat as "MIME not available".
+    const isAudioFile = (file: File) =>
+        file.type && file.type !== 'application/octet-stream'
+            ? file.type.startsWith('audio/')
+            : /\.(mp3|m4a|aac|ogg|wav|flac|opus|weba|3gp|3gpp)$/i.test(file.name);
+    const isVideoFile = (file: File) =>
+        file.type && file.type !== 'application/octet-stream'
+            ? file.type.startsWith('video/')
+            : /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || !composingAccount) return;
@@ -290,9 +303,14 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         if (filesToAdd.length === 0) return;
 
         // Check for video - video can only be alone
-        const hasVideo = mediaFiles.some((m) => m.file.type.startsWith('video/'));
-        const newHasVideo = filesToAdd.some((f) => f.type.startsWith('video/'));
+        const hasVideo = mediaFiles.some((m) => isVideoFile(m.file));
+        const newHasVideo = filesToAdd.some((f) => isVideoFile(f));
 
+        // Check for audio - audio can only be alone (Mastodon specification)
+        const hasAudio = mediaFiles.some((m) => isAudioFile(m.file));
+        const newHasAudio = filesToAdd.some((f) => isAudioFile(f));
+
+        // Video cannot be mixed with other media
         if (hasVideo || (newHasVideo && mediaFiles.length > 0)) {
             setError('動画は他のメディアと同時に添付できません');
             return;
@@ -300,6 +318,23 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
         if (newHasVideo && filesToAdd.length > 1) {
             setError('動画は1つのみ添付できます');
+            return;
+        }
+
+        // Audio cannot be mixed with other media (Mastodon spec)
+        if (hasAudio || (newHasAudio && mediaFiles.length > 0)) {
+            setError('音声は他のメディアと同時に添付できません');
+            return;
+        }
+
+        if (newHasAudio && filesToAdd.length > 1) {
+            setError('音声は1つのみ添付できます');
+            return;
+        }
+
+        // Audio and video cannot be mixed even when both are new
+        if (newHasAudio && newHasVideo) {
+            setError('音声と動画を同時に添付できません');
             return;
         }
 
@@ -389,6 +424,25 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
             }
 
             if (hasMedia && allMediaUploaded) {
+                // Wait for media processing to complete (only needed for audio/video)
+                // Images are typically ready immediately after upload
+                // Use isAudioFile/isVideoFile for robust detection with extension fallback
+                for (const media of mediaFiles) {
+                    if (media.uploadedId) {
+                        const needsProcessing = isAudioFile(media.file) || isVideoFile(media.file);
+                        if (!needsProcessing) {
+                            continue;
+                        }
+                        try {
+                            await waitForMediaReady(client, media.uploadedId);
+                        } catch (err) {
+                            console.error('Media processing timeout:', err);
+                            setError('メディアの処理が完了しませんでした');
+                            return;
+                        }
+                    }
+                }
+
                 // Update alt text for media that has it
                 for (const media of mediaFiles) {
                     const trimmedAlt = media.altText?.trim() ?? '';
@@ -716,14 +770,14 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
                                     : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
-                            aria-label={`画像/動画を追加${
+                            aria-label={`メディアを追加${
                                 hasMedia
                                     ? ` (${mediaFiles.length}/${instanceConfig?.maxMediaAttachments ?? 4})`
                                     : ''
                             }`}
                         >
                             <LuImage className="w-4 h-4" aria-hidden="true" />
-                            画像/動画
+                            画像/動画/音声
                             {hasMedia && (
                                 <span className="text-xs">
                                     ({mediaFiles.length}/{instanceConfig?.maxMediaAttachments ?? 4})
@@ -750,7 +804,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                             type="file"
                             accept={
                                 instanceConfig?.supportedMimeTypes?.join(',') ??
-                                'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm'
+                                getDefaultConfig().supportedMimeTypes.join(',')
                             }
                             multiple
                             onChange={handleFileSelect}
@@ -861,8 +915,17 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     key={index}
                                     className="bg-slate-800 rounded-lg overflow-hidden"
                                 >
-                                    <div className="relative aspect-video">
-                                        {media.file.type.startsWith('video/') ? (
+                                    <div
+                                        className={`relative ${isAudioFile(media.file) ? 'p-3' : 'aspect-video'}`}
+                                    >
+                                        {isAudioFile(media.file) ? (
+                                            <audio
+                                                src={media.preview}
+                                                controls
+                                                preload="none"
+                                                className="w-full"
+                                            />
+                                        ) : isVideoFile(media.file) ? (
                                             <video
                                                 src={media.preview}
                                                 className="w-full h-full object-cover"

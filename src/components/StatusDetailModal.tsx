@@ -75,7 +75,7 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
         // Guard against e.target not being an Element
         if (!(e.target instanceof Element)) return;
         // Don't trigger if clicking on interactive elements
-        if (e.target.closest('a, button, video, summary')) return;
+        if (e.target.closest('a, button, video, audio, summary')) return;
         onClick(status);
     };
 
@@ -85,7 +85,7 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
             // Guard against e.target not being an Element
             if (!(e.target instanceof Element)) return;
             // Don't trigger if focus is on interactive elements (same as handleClick)
-            if (e.target.closest('a, button, video, summary')) return;
+            if (e.target.closest('a, button, video, audio, summary')) return;
 
             e.preventDefault();
             onClick(status);
