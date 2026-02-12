@@ -1616,4 +1616,34 @@ describe('StatusCard', () => {
             expect(videos[1].type).toBe('gifv');
         });
     });
+
+    describe('audio interaction', () => {
+        it('should not trigger onStatusClick when interacting with audio controls', () => {
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                content: 'Test status with audio',
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'audio',
+                        url: 'https://example.com/audio.mp3',
+                        previewUrl: null,
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Test audio',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const audioElement = document.querySelector('audio');
+            expect(audioElement).toBeInTheDocument();
+
+            // Click on audio controls should not trigger status click
+            audioElement.click();
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+    });
 });
