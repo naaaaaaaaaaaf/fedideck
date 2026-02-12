@@ -85,8 +85,29 @@ export function MediaAttachment({
     // Compact mode: render media as simple thumbnails
     // This preserves parent element's click behavior (e.g., NotificationCard)
     if (variant === 'compact') {
+        // Audio type: render music icon or artwork thumbnail
+        if (media.type === 'audio') {
+            const artworkUrl = firstNonEmpty(media.previewUrl, media.previewRemoteUrl);
+            return (
+                <div
+                    className={`${variantClasses} ${className} bg-slate-800 flex items-center justify-center`}
+                >
+                    {artworkUrl ? (
+                        <img
+                            src={artworkUrl}
+                            alt={media.description ?? ''}
+                            className={`${variantClasses} ${objectFitClass}`}
+                            aria-hidden="true"
+                        />
+                    ) : (
+                        <LuMusic className="w-6 h-6 text-slate-400" aria-hidden="true" />
+                    )}
+                </div>
+            );
+        }
+
         // Compact mode only supports image/video/gifv types
-        // Audio and unknown types are not rendered as thumbnails
+        // Unknown types are not rendered as thumbnails
         if (media.type !== 'image' && media.type !== 'video' && media.type !== 'gifv') {
             return null;
         }
@@ -466,6 +487,56 @@ export function MediaAttachment({
                     </div>
                 </div>
             </a>
+        );
+    }
+
+    // Render audio type
+    if (media.type === 'audio') {
+        // CRITICAL: audioUrlは音声ファイルURLのみ使用（previewUrlは画像の可能性大）
+        const audioUrl = firstNonEmpty(media.url, media.remoteUrl);
+        const artworkUrl = firstNonEmpty(media.previewUrl, media.previewRemoteUrl);
+
+        if (audioUrl === '') {
+            return null;
+        }
+
+        if (needsBlur) {
+            if (!onNsfwToggle) {
+                return null;
+            }
+            return (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onNsfwToggle();
+                    }}
+                    className={`w-full rounded-lg p-3 bg-slate-800 text-left nsfw-blur-container ${className}`}
+                    aria-label="閲覧注意の音声を表示"
+                >
+                    <LuMusic className="w-6 h-6 text-slate-300" aria-hidden="true" />
+                </button>
+            );
+        }
+
+        // 音声専用レイアウト（variantClassesの h-36/max-h-96 を使わない）
+        return (
+            <div className={`w-full rounded-lg bg-slate-800 p-3 ${className}`}>
+                {artworkUrl && (
+                    <img src={artworkUrl} alt="" className="w-20 h-20 rounded mb-2 object-cover" />
+                )}
+                <audio
+                    src={audioUrl}
+                    controls
+                    preload="none"
+                    className="w-full"
+                    aria-label={media.description ?? '音声プレーヤー'}
+                >
+                    <a href={audioUrl} target="_blank" rel="noopener noreferrer">
+                        音声を開く
+                    </a>
+                </audio>
+            </div>
         );
     }
 
