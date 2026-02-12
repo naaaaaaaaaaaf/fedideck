@@ -149,11 +149,13 @@ export function MediaAttachment({
             return (
                 <div
                     className={`${variantClasses} ${className} bg-slate-800 flex items-center justify-center`}
+                    role="img"
+                    aria-label={media.description || '音声'}
                 >
                     {validArtworkUrl ? (
                         <img
                             src={validArtworkUrl}
-                            alt={media.description ?? ''}
+                            alt=""
                             className={`${variantClasses} ${objectFitClass}`}
                         />
                     ) : (
