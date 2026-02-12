@@ -1627,7 +1627,7 @@ describe('StatusCard', () => {
                         id: '1',
                         type: 'audio',
                         url: 'https://example.com/audio.mp3',
-                        previewUrl: null,
+                        previewUrl: '',
                         remoteUrl: null,
                         meta: null,
                         description: 'Test audio',
@@ -1642,7 +1642,9 @@ describe('StatusCard', () => {
             expect(audioElement).toBeInTheDocument();
 
             // Click on audio controls should not trigger status click
-            audioElement.click();
+            if (audioElement) {
+                audioElement.click();
+            }
             expect(onStatusClick).not.toHaveBeenCalled();
         });
     });

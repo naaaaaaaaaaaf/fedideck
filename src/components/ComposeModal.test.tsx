@@ -585,7 +585,7 @@ describe('ComposeModal', () => {
             expect(fileInput).toBeInTheDocument();
 
             if (fileInput) {
-                await user.upload(fileInput, videoFile);
+                await user.upload(fileInput as HTMLInputElement, videoFile);
 
                 // Video preview should be rendered, not image
                 const videoPreview = container.querySelector('video');
