@@ -18,6 +18,7 @@ vi.mock('../api/mastoClient', () => ({
     })),
     createStatus: vi.fn(),
     uploadMedia: vi.fn().mockResolvedValue({ id: 'mock-media-id' }),
+    waitForMediaReady: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock the instanceConfig module
