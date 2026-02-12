@@ -1537,10 +1537,11 @@ describe('MediaAttachment', () => {
         });
 
         describe('NSFW blur', () => {
-            it('should render music icon with blur overlay when NSFW and not revealed', () => {
+            it('should render music icon with blur overlay when NSFW and not revealed (no artwork)', () => {
                 const media = createMockMedia({
                     type: 'audio',
                     url: 'https://example.com/audio.mp3',
+                    previewUrl: null, // No artwork available
                 });
                 const onNsfwToggle = vi.fn();
 
@@ -1559,6 +1560,37 @@ describe('MediaAttachment', () => {
 
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
+            });
+
+            it('should render artwork with blur overlay when NSFW and not revealed (with artwork)', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.jpg',
+                });
+                const onNsfwToggle = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwToggle={onNsfwToggle}
+                    />
+                );
+
+                const button = container.querySelector('button');
+                expect(button).toBeInTheDocument();
+                expect(button).toHaveAttribute('aria-label', '閲覧注意の音声プレーヤーを表示');
+
+                // Artwork should be rendered with blur class
+                const img = container.querySelector('img.nsfw-blur');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://example.com/artwork.jpg');
+
+                // Music icon should not be rendered when artwork is available
+                const icon = container.querySelector('svg');
+                expect(icon).not.toBeInTheDocument();
             });
 
             it('should render audio player after NSFW reveal', () => {

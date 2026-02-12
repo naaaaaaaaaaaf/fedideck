@@ -572,9 +572,20 @@ export function MediaAttachment({
                     className={`w-full rounded-lg p-3 bg-slate-800 text-left nsfw-blur-container relative ${className}`}
                     aria-label={getAccessibleLabel('audio')}
                 >
-                    <LuMusic className="w-6 h-6 text-slate-300" aria-hidden="true" />
+                    {validArtworkUrl ? (
+                        <img
+                            src={validArtworkUrl}
+                            alt=""
+                            className="w-20 h-20 rounded mb-2 object-cover nsfw-blur"
+                        />
+                    ) : (
+                        <LuMusic className="w-6 h-6 text-slate-300" aria-hidden="true" />
+                    )}
                     {/* Add visual layer for NSFW indication */}
                     <div className="absolute inset-0 bg-slate-700/80" aria-hidden="true" />
+                    <div className="nsfw-blur-overlay">
+                        <span className="text-white text-sm font-medium">閲覧注意</span>
+                    </div>
                 </button>
             );
         }
