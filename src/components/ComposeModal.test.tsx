@@ -17,6 +17,7 @@ vi.mock('../api/mastoClient', () => ({
         },
     })),
     createStatus: vi.fn(),
+    uploadMedia: vi.fn().mockResolvedValue({ id: 'mock-media-id' }),
 }));
 
 // Mock the instanceConfig module
@@ -564,7 +565,9 @@ describe('ComposeModal', () => {
                 writable: false,
             });
 
-            const user = userEvent.setup();
+            // user-event v14 applies input accept filtering by default.
+            // We disable it here to verify ComposeModal's extension fallback logic itself.
+            const user = userEvent.setup({ applyAccept: false });
             const onClose = vi.fn();
             const { container } = render(<ComposeModal isOpen={true} onClose={onClose} />);
 

@@ -280,11 +280,14 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         setPollOptions(newOptions);
     };
 
-    // Robust file type detection with extension fallback
+    // Robust file type detection with extension fallback.
+    // MIME is authoritative when available to avoid ambiguous extensions like .webm.
     const isAudioFile = (file: File) =>
-        file.type.startsWith('audio/') || /\.(mp3|m4a|aac|ogg|wav|flac|webm)$/i.test(file.name);
+        file.type
+            ? file.type.startsWith('audio/')
+            : /\.(mp3|m4a|aac|ogg|wav|flac)$/i.test(file.name);
     const isVideoFile = (file: File) =>
-        file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+        file.type ? file.type.startsWith('video/') : /\.(mp4|webm|mov|m4v)$/i.test(file.name);
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
