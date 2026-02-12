@@ -2,6 +2,16 @@ import type { mastodon } from 'masto';
 import { LuPlay, LuMusic } from 'react-icons/lu';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 
+/**
+ * Check if a URL appears to be an image URL based on file extension
+ * Returns false for null/undefined, or URLs without image extensions
+ */
+const isImageUrl = (url: string | null | undefined): boolean => {
+    if (!url) return false;
+    const imageExtensions = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i;
+    return imageExtensions.test(url);
+};
+
 export interface MediaAttachmentProps {
     media: mastodon.v1.MediaAttachment;
     variant?: 'compact' | 'card' | 'detail';
@@ -98,6 +108,7 @@ export function MediaAttachment({
         // Audio type: render music icon or artwork thumbnail
         if (media.type === 'audio') {
             const artworkUrl = firstNonEmpty(media.previewUrl, media.previewRemoteUrl);
+            const validArtworkUrl = artworkUrl && isImageUrl(artworkUrl) ? artworkUrl : null;
 
             // NSFW audio in compact mode: render as button with blur
             if (needsBlur) {
@@ -114,9 +125,9 @@ export function MediaAttachment({
                         className={`relative block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className} bg-slate-800 flex items-center justify-center`}
                         aria-label={getAccessibleLabel('audio')}
                     >
-                        {artworkUrl ? (
+                        {validArtworkUrl ? (
                             <img
-                                src={artworkUrl}
+                                src={validArtworkUrl}
                                 alt={media.description ?? ''}
                                 role="presentation"
                                 className={`${variantClasses} ${objectFitClass} nsfw-blur`}
@@ -124,6 +135,8 @@ export function MediaAttachment({
                         ) : (
                             <LuMusic className="w-6 h-6 text-slate-300" aria-hidden="true" />
                         )}
+                        {/* Add visual layer for NSFW indication */}
+                        <div className="absolute inset-0 bg-slate-700/80" aria-hidden="true" />
                         <div className="nsfw-blur-overlay">
                             <span className={`text-white ${overlayTextClass} font-medium`}>
                                 閲覧注意
@@ -138,9 +151,9 @@ export function MediaAttachment({
                 <div
                     className={`${variantClasses} ${className} bg-slate-800 flex items-center justify-center`}
                 >
-                    {artworkUrl ? (
+                    {validArtworkUrl ? (
                         <img
-                            src={artworkUrl}
+                            src={validArtworkUrl}
                             alt={media.description ?? ''}
                             role="presentation"
                             className={`${variantClasses} ${objectFitClass}`}
@@ -542,6 +555,7 @@ export function MediaAttachment({
         // CRITICAL: audioUrlは音声ファイルURLのみ使用（previewUrlは画像の可能性大）
         const audioUrl = firstNonEmpty(media.url, media.remoteUrl);
         const artworkUrl = firstNonEmpty(media.previewUrl, media.previewRemoteUrl);
+        const validArtworkUrl = artworkUrl && isImageUrl(artworkUrl) ? artworkUrl : null;
 
         if (audioUrl === '') {
             return null;
@@ -558,10 +572,12 @@ export function MediaAttachment({
                         e.stopPropagation();
                         onNsfwToggle();
                     }}
-                    className={`w-full rounded-lg p-3 bg-slate-800 text-left nsfw-blur-container ${className}`}
+                    className={`w-full rounded-lg p-3 bg-slate-800 text-left nsfw-blur-container relative ${className}`}
                     aria-label={getAccessibleLabel('audio')}
                 >
                     <LuMusic className="w-6 h-6 text-slate-300" aria-hidden="true" />
+                    {/* Add visual layer for NSFW indication */}
+                    <div className="absolute inset-0 bg-slate-700/80" aria-hidden="true" />
                 </button>
             );
         }
@@ -569,8 +585,12 @@ export function MediaAttachment({
         // 音声専用レイアウト（variantClassesの h-36/max-h-96 を使わない）
         return (
             <div className={`w-full rounded-lg bg-slate-800 p-3 ${className}`}>
-                {artworkUrl && (
-                    <img src={artworkUrl} alt="" className="w-20 h-20 rounded mb-2 object-cover" />
+                {validArtworkUrl && (
+                    <img
+                        src={validArtworkUrl}
+                        alt=""
+                        className="w-20 h-20 rounded mb-2 object-cover"
+                    />
                 )}
                 <audio
                     src={audioUrl}
