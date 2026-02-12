@@ -212,7 +212,7 @@ export async function waitForMediaReady(
 ): Promise<void> {
     const deadline = Date.now() + timeoutMs;
 
-    while (Date.now() < deadline) {
+    while (true) {
         const media = await client.v1.media.$select(mediaId).fetch();
 
         // If url is populated, processing is complete
@@ -220,11 +220,14 @@ export async function waitForMediaReady(
             return;
         }
 
+        // Check timeout after checking media status to ensure final poll
+        if (Date.now() >= deadline) {
+            throw new Error(`メディア処理がタイムアウトしました (mediaId: ${mediaId})`);
+        }
+
         // Wait 1 second before next poll
         await new Promise((resolve) => setTimeout(resolve, 1000));
     }
-
-    throw new Error('メディア処理がタイムアウトしました');
 }
 
 /**
