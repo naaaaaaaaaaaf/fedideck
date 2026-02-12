@@ -1541,7 +1541,7 @@ describe('MediaAttachment', () => {
                 const media = createMockMedia({
                     type: 'audio',
                     url: 'https://example.com/audio.mp3',
-                    previewUrl: null, // No artwork available
+                    previewUrl: undefined, // No artwork available
                 });
                 const onNsfwToggle = vi.fn();
 
@@ -1560,6 +1560,34 @@ describe('MediaAttachment', () => {
 
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
+            });
+
+            it('should render music icon when previewUrl is not an image (e.g., audio file)', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/preview.mp3', // Not an image URL
+                });
+                const onNsfwToggle = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwToggle={onNsfwToggle}
+                    />
+                );
+
+                const button = container.querySelector('button');
+                expect(button).toBeInTheDocument();
+
+                // Should show music icon, not artwork, because previewUrl is not an image
+                const icon = container.querySelector('svg');
+                expect(icon).toBeInTheDocument();
+
+                const img = container.querySelector('img');
+                expect(img).not.toBeInTheDocument();
             });
 
             it('should render artwork with blur overlay when NSFW and not revealed (with artwork)', () => {
