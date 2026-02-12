@@ -129,7 +129,6 @@ export function MediaAttachment({
                             <img
                                 src={validArtworkUrl}
                                 alt={media.description ?? ''}
-                                role="presentation"
                                 className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                             />
                         ) : (
@@ -155,7 +154,6 @@ export function MediaAttachment({
                         <img
                             src={validArtworkUrl}
                             alt={media.description ?? ''}
-                            role="presentation"
                             className={`${variantClasses} ${objectFitClass}`}
                         />
                     ) : (
@@ -206,7 +204,6 @@ export function MediaAttachment({
                     <img
                         src={thumbnailUrl}
                         alt={media.description ?? ''}
-                        role="presentation"
                         className={`${variantClasses} ${objectFitClass} nsfw-blur`}
                     />
                     <div className="nsfw-blur-overlay">
@@ -240,7 +237,6 @@ export function MediaAttachment({
                     <img
                         src={thumbnailUrl}
                         alt={media.description ?? ''}
-                        role="presentation"
                         className={`${variantClasses} ${objectFitClass}`}
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/20">
@@ -291,7 +287,6 @@ export function MediaAttachment({
                     <img
                         src={displayUrl}
                         alt={media.description ?? ''}
-                        role="presentation"
                         className={`${variantClasses} ${objectFitClass} transition-opacity ${
                             needsBlur ? 'nsfw-blur' : 'hover:opacity-90'
                         }`}

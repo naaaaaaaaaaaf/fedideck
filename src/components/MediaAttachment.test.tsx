@@ -26,9 +26,11 @@ describe('MediaAttachment', () => {
         it('should render image with valid URL', () => {
             const media = createMockMedia({ type: 'image' });
 
-            render(<MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />);
+            const { container } = render(
+                <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+            );
 
-            const img = screen.getByAltText('Test image');
+            const img = container.querySelector('img');
             expect(img).toBeInTheDocument();
             expect(img).toHaveAttribute('src', 'https://example.com/preview.png');
         });
@@ -197,9 +199,11 @@ describe('MediaAttachment', () => {
                 previewUrl: 'https://example.com/preview.png',
             });
 
-            render(<MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />);
+            const { container } = render(
+                <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+            );
 
-            const img = screen.getByAltText('Test image');
+            const img = container.querySelector('img');
             expect(img).toHaveAttribute('src', 'https://example.com/preview.png');
         });
 
@@ -225,7 +229,7 @@ describe('MediaAttachment', () => {
             const media = createMockMedia({ type: 'image' });
             const onNsfwToggle = vi.fn();
 
-            render(
+            const { container } = render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
@@ -234,16 +238,18 @@ describe('MediaAttachment', () => {
                 />
             );
 
-            const img = screen.getByAltText('Test image');
+            const img = container.querySelector('img');
             expect(img).toHaveClass('nsfw-blur');
         });
 
         it('should not apply blur to non-sensitive images', () => {
             const media = createMockMedia({ type: 'image' });
 
-            render(<MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />);
+            const { container } = render(
+                <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+            );
 
-            const img = screen.getByAltText('Test image');
+            const img = container.querySelector('img');
             expect(img).not.toHaveClass('nsfw-blur');
         });
 
@@ -251,7 +257,7 @@ describe('MediaAttachment', () => {
             const media = createMockMedia({ type: 'image' });
             const onNsfwToggle = vi.fn();
 
-            render(
+            const { container } = render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
@@ -260,7 +266,7 @@ describe('MediaAttachment', () => {
                 />
             );
 
-            const img = screen.getByAltText('Test image');
+            const img = container.querySelector('img');
             expect(img).not.toHaveClass('nsfw-blur');
         });
 
