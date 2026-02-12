@@ -426,11 +426,10 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
             if (hasMedia && allMediaUploaded) {
                 // Wait for media processing to complete (only needed for audio/video)
                 // Images are typically ready immediately after upload
+                // Use isAudioFile/isVideoFile for robust detection with extension fallback
                 for (const media of mediaFiles) {
                     if (media.uploadedId) {
-                        const mimeType = media.file.type.toLowerCase();
-                        const needsProcessing =
-                            mimeType.startsWith('audio/') || mimeType.startsWith('video/');
+                        const needsProcessing = isAudioFile(media.file) || isVideoFile(media.file);
                         if (!needsProcessing) {
                             continue;
                         }
