@@ -198,6 +198,7 @@ export async function uploadMedia(
  * @param client - Mastodon API client
  * @param mediaId - ID of the uploaded media attachment
  * @param timeoutMs - Maximum time to wait in milliseconds (default: 45000ms = 45s)
+ * @param pollIntervalMs - Interval between polling attempts in milliseconds (default: 1000ms)
  * @throws Error if processing times out
  *
  * @remarks
@@ -208,7 +209,8 @@ export async function uploadMedia(
 export async function waitForMediaReady(
     client: MastoClient,
     mediaId: string,
-    timeoutMs = 45000
+    timeoutMs = 45000,
+    pollIntervalMs = 1000
 ): Promise<void> {
     const deadline = Date.now() + timeoutMs;
 
@@ -225,8 +227,8 @@ export async function waitForMediaReady(
             throw new Error(`メディア処理がタイムアウトしました (mediaId: ${mediaId})`);
         }
 
-        // Wait 1 second before next poll
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Wait before next poll
+        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
     }
 }
 

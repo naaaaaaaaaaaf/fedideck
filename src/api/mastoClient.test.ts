@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
     createStatus,
     favouriteStatus,
@@ -368,14 +368,6 @@ describe('fetchAccount', () => {
 });
 
 describe('waitForMediaReady', () => {
-    beforeEach(() => {
-        vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-        vi.useRealTimers();
-    });
-
     it('returns when media.url is populated within timeout', async () => {
         const mockFetch = vi
             .fn()
@@ -392,13 +384,8 @@ describe('waitForMediaReady', () => {
             },
         } as unknown as MastoClient;
 
-        // Start the waitForMediaReady promise
-        const promise = waitForMediaReady(mockClient, 'media-123', 10000);
-
-        // Run all timers until the promise settles (3 polls with 1s sleeps between them)
-        await vi.runAllTimersAsync();
-
-        await promise;
+        // Use short poll interval (1ms) for fast testing
+        await waitForMediaReady(mockClient, 'media-123', 10000, 1);
 
         expect(mockFetch).toHaveBeenCalledTimes(3);
     });
@@ -415,19 +402,8 @@ describe('waitForMediaReady', () => {
             },
         } as unknown as MastoClient;
 
-        // Start the waitForMediaReady promise with short timeout
-        // Capture error to prevent unhandled rejection during timer advancement
-        let capturedError: Error | null = null;
-        const promise = waitForMediaReady(mockClient, 'media-456', 500).catch((err) => {
-            capturedError = err;
-        });
-
-        // Run all timers until the promise settles (will timeout)
-        await vi.runAllTimersAsync();
-        await promise;
-
-        expect(capturedError).toBeInstanceOf(Error);
-        expect(capturedError?.message).toBe(
+        // Use short timeout and poll interval for fast testing
+        await expect(waitForMediaReady(mockClient, 'media-456', 10, 1)).rejects.toThrow(
             'メディア処理がタイムアウトしました (mediaId: media-456)'
         );
     });
@@ -436,10 +412,8 @@ describe('waitForMediaReady', () => {
         let callCount = 0;
         const mockFetch = vi.fn().mockImplementation(async () => {
             callCount++;
-            // Return ready on the 4th call (after timeout should have occurred)
-            return Promise.resolve({
-                url: callCount >= 4 ? 'https://example.com/media.mp3' : null,
-            });
+            // Always return null to ensure timeout
+            return Promise.resolve({ url: null });
         });
         const mockClient = {
             v1: {
@@ -451,19 +425,8 @@ describe('waitForMediaReady', () => {
             },
         } as unknown as MastoClient;
 
-        // Use short timeout (10ms) to trigger quick timeout
-        // Capture error to prevent unhandled rejection during timer advancement
-        let capturedError: Error | null = null;
-        const promise = waitForMediaReady(mockClient, 'media-final-check', 10).catch((err) => {
-            capturedError = err;
-        });
-
-        // Run all timers until the promise settles
-        await vi.runAllTimersAsync();
-        await promise;
-
-        expect(capturedError).toBeInstanceOf(Error);
-        expect(capturedError?.message).toBe(
+        // Use short timeout and poll interval for fast testing
+        await expect(waitForMediaReady(mockClient, 'media-final-check', 10, 1)).rejects.toThrow(
             'メディア処理がタイムアウトしました (mediaId: media-final-check)'
         );
 
