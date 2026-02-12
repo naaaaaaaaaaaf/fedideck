@@ -915,7 +915,9 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     key={index}
                                     className="bg-slate-800 rounded-lg overflow-hidden"
                                 >
-                                    <div className="relative aspect-video">
+                                    <div
+                                        className={`relative ${isAudioFile(media.file) ? 'p-3' : 'aspect-video'}`}
+                                    >
                                         {isAudioFile(media.file) ? (
                                             <audio
                                                 src={media.preview}
