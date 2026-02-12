@@ -21,6 +21,7 @@ import {
     createStatus,
     uploadMedia,
     updateMediaDescription,
+    waitForMediaReady,
     type CreateStatusParams,
 } from '../api/mastoClient';
 import { getInstanceConfig, getDefaultConfig, type InstanceConfig } from '../api/instanceConfig';
@@ -285,7 +286,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     const isAudioFile = (file: File) =>
         file.type
             ? file.type.startsWith('audio/')
-            : /\.(mp3|m4a|aac|ogg|wav|flac)$/i.test(file.name);
+            : /\.(mp3|m4a|aac|ogg|wav|flac|opus|weba|3gp|3gpp)$/i.test(file.name);
     const isVideoFile = (file: File) =>
         file.type ? file.type.startsWith('video/') : /\.(mp4|webm|mov|m4v)$/i.test(file.name);
 
@@ -302,6 +303,11 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         const hasVideo = mediaFiles.some((m) => isVideoFile(m.file));
         const newHasVideo = filesToAdd.some((f) => isVideoFile(f));
 
+        // Check for audio - audio can only be alone (Mastodon specification)
+        const hasAudio = mediaFiles.some((m) => isAudioFile(m.file));
+        const newHasAudio = filesToAdd.some((f) => isAudioFile(f));
+
+        // Video cannot be mixed with other media
         if (hasVideo || (newHasVideo && mediaFiles.length > 0)) {
             setError('動画は他のメディアと同時に添付できません');
             return;
@@ -309,6 +315,23 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
         if (newHasVideo && filesToAdd.length > 1) {
             setError('動画は1つのみ添付できます');
+            return;
+        }
+
+        // Audio cannot be mixed with other media (Mastodon spec)
+        if (hasAudio || (newHasAudio && mediaFiles.length > 0)) {
+            setError('音声は他のメディアと同時に添付できません');
+            return;
+        }
+
+        if (newHasAudio && filesToAdd.length > 1) {
+            setError('音声は1つのみ添付できます');
+            return;
+        }
+
+        // Audio and video cannot be mixed even when both are new
+        if (newHasAudio && newHasVideo) {
+            setError('音声と動画を同時に添付できません');
             return;
         }
 
@@ -398,6 +421,19 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
             }
 
             if (hasMedia && allMediaUploaded) {
+                // Wait for media processing to complete (important for audio/video)
+                for (const media of mediaFiles) {
+                    if (media.uploadedId) {
+                        try {
+                            await waitForMediaReady(client, media.uploadedId);
+                        } catch (err) {
+                            console.error('Media processing timeout:', err);
+                            setError('メディアの処理が完了しませんでした');
+                            return;
+                        }
+                    }
+                }
+
                 // Update alt text for media that has it
                 for (const media of mediaFiles) {
                     const trimmedAlt = media.altText?.trim() ?? '';

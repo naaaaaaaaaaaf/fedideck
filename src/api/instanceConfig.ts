@@ -34,13 +34,23 @@ const DEFAULT_CONFIG: InstanceConfig = {
         'image/webp',
         'video/mp4',
         'video/webm',
-        'audio/mpeg',
-        'audio/mp4',
-        'audio/ogg',
-        'audio/wav',
-        'audio/flac',
-        'audio/webm',
-        'audio/aac',
+        // Audio MIME types - matching Mastodon's supported formats
+        'audio/mpeg', // .mp3
+        'audio/mp3', // .mp3 (alternative)
+        'audio/mp4', // .m4a
+        'audio/x-m4a', // .m4a (alternative)
+        'audio/m4a', // .m4a (alternative)
+        'audio/ogg', // .ogg, .opus
+        'audio/vorbis', // .ogg (alternative)
+        'audio/wav', // .wav
+        'audio/wave', // .wav (alternative)
+        'audio/x-wav', // .wav (alternative)
+        'audio/vnd.wave', // .wav (alternative)
+        'audio/flac', // .flac
+        'audio/aac', // .aac
+        'audio/webm', // .weba (audio in WebM)
+        'audio/3gpp', // .3gp (mobile audio)
+        'audio/opus', // .opus in Ogg container
     ],
 };
 

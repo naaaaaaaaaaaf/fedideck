@@ -192,6 +192,42 @@ export async function uploadMedia(
 }
 
 /**
+ * Wait for media processing to complete before using it in a status.
+ * Audio/video files may require async processing on the server.
+ *
+ * @param client - Mastodon API client
+ * @param mediaId - ID of the uploaded media attachment
+ * @param timeoutMs - Maximum time to wait in milliseconds (default: 45000ms = 45s)
+ * @throws Error if processing times out
+ *
+ * @remarks
+ * When uploading audio or video via POST /api/v2/media, the server may
+ * process the file asynchronously. We must poll GET /api/v1/media/:id
+ * until the `url` field is populated, indicating processing is complete.
+ */
+export async function waitForMediaReady(
+    client: MastoClient,
+    mediaId: string,
+    timeoutMs = 45000
+): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+        const media = await client.v1.media.$select(mediaId).fetch();
+
+        // If url is populated, processing is complete
+        if (media.url) {
+            return;
+        }
+
+        // Wait 1 second before next poll
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    throw new Error('メディア処理がタイムアウトしました');
+}
+
+/**
  * Update media attachment description (alt text)
  */
 export async function updateMediaDescription(

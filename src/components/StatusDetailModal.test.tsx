@@ -694,8 +694,16 @@ describe('StatusDetailModal', () => {
             );
 
             // Click the second image (which appears after a video in the list)
-            const secondImg = screen.getByAltText('Second image');
-            await user.click(secondImg);
+            // Images are rendered as buttons in detail mode when onImageClick is provided
+            // The aria-label uses the description when available
+            const imgButtons = screen.getAllByRole('button');
+            const secondImgButton = imgButtons.find(
+                (btn) => btn.getAttribute('aria-label') === 'Second image'
+            );
+            if (!secondImgButton) {
+                throw new Error('Could not find button with aria-label "Second image"');
+            }
+            await user.click(secondImgButton);
 
             // The images array passed to onImageClick should only contain images
             expect(onImageClick).toHaveBeenCalledWith(

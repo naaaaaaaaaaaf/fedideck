@@ -118,8 +118,8 @@ export function MediaAttachment({
                             <img
                                 src={artworkUrl}
                                 alt={media.description ?? ''}
+                                role="presentation"
                                 className={`${variantClasses} ${objectFitClass} nsfw-blur`}
-                                aria-hidden="true"
                             />
                         ) : (
                             <LuMusic className="w-6 h-6 text-slate-300" aria-hidden="true" />
@@ -142,8 +142,8 @@ export function MediaAttachment({
                         <img
                             src={artworkUrl}
                             alt={media.description ?? ''}
+                            role="presentation"
                             className={`${variantClasses} ${objectFitClass}`}
-                            aria-hidden="true"
                         />
                     ) : (
                         <LuMusic className="w-6 h-6 text-slate-400" aria-hidden="true" />
@@ -193,8 +193,8 @@ export function MediaAttachment({
                     <img
                         src={thumbnailUrl}
                         alt={media.description ?? ''}
+                        role="presentation"
                         className={`${variantClasses} ${objectFitClass} nsfw-blur`}
-                        aria-hidden="true"
                     />
                     <div className="nsfw-blur-overlay">
                         <span className={`text-white ${overlayTextClass} font-medium`}>
@@ -227,8 +227,8 @@ export function MediaAttachment({
                     <img
                         src={thumbnailUrl}
                         alt={media.description ?? ''}
+                        role="presentation"
                         className={`${variantClasses} ${objectFitClass}`}
-                        aria-hidden="true"
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                         <div className="p-1.5 bg-white/90 rounded-full">
@@ -278,10 +278,10 @@ export function MediaAttachment({
                     <img
                         src={displayUrl}
                         alt={media.description ?? ''}
+                        role="presentation"
                         className={`${variantClasses} ${objectFitClass} transition-opacity ${
                             needsBlur ? 'nsfw-blur' : 'hover:opacity-90'
                         }`}
-                        aria-hidden="true"
                     />
                     {needsBlur && (
                         <div className="nsfw-blur-overlay">
