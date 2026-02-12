@@ -424,9 +424,16 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
             }
 
             if (hasMedia && allMediaUploaded) {
-                // Wait for media processing to complete (important for audio/video)
+                // Wait for media processing to complete (only needed for audio/video)
+                // Images are typically ready immediately after upload
                 for (const media of mediaFiles) {
                     if (media.uploadedId) {
+                        const mimeType = media.file.type.toLowerCase();
+                        const needsProcessing =
+                            mimeType.startsWith('audio/') || mimeType.startsWith('video/');
+                        if (!needsProcessing) {
+                            continue;
+                        }
                         try {
                             await waitForMediaReady(client, media.uploadedId);
                         } catch (err) {
