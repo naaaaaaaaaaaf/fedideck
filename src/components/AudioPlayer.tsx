@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { LuX, LuMusic } from 'react-icons/lu';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import type { AudioViewerTrack } from '../types/audio';
@@ -217,22 +217,24 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
         }
     }, [hasMultipleTracks, goToNext]);
 
-    // Cleanup on close or unmount
-    const cleanup = useCallback(() => {
-        if (audioRef.current) {
-            audioRef.current.pause();
+    // Pause audio and cancel animation frame when modal closes.
+    // Captures audio/raf refs in closure so cleanup works even after unmount.
+    useEffect(() => {
+        if (isOpen) {
+            const audio = audioRef.current;
+            const getRaf = () => rafRef.current;
+            return () => {
+                if (audio) {
+                    audio.pause();
+                }
+                const raf = getRaf();
+                if (raf) {
+                    cancelAnimationFrame(raf);
+                    rafRef.current = null;
+                }
+            };
         }
-        if (rafRef.current) {
-            cancelAnimationFrame(rafRef.current);
-            rafRef.current = null;
-        }
-    }, []);
-
-    // Cleanup on modal close
-    const handleClose = useCallback(() => {
-        cleanup();
-        onClose();
-    }, [cleanup, onClose]);
+    }, [isOpen]);
 
     if (!isOpen || tracks.length === 0) return null;
 
@@ -260,7 +262,7 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
                 {/* Close button */}
                 <button
                     ref={closeButtonRef}
-                    onClick={handleClose}
+                    onClick={onClose}
                     className="absolute top-4 right-4 p-2 bg-slate-700/80 hover:bg-slate-600 rounded-lg transition-colors text-slate-300 hover:text-white"
                     aria-label="閉じる"
                 >

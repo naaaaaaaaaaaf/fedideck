@@ -263,14 +263,49 @@ describe('AudioPlayer', () => {
             expect(mockOnClose).toHaveBeenCalled();
         });
 
-        it('should pause audio when modal is closed', () => {
-            render(<AudioPlayer isOpen={true} onClose={mockOnClose} tracks={mockTracks} />);
+        it('should pause audio when modal closes via isOpen change', () => {
+            const { rerender } = render(
+                <AudioPlayer isOpen={true} onClose={mockOnClose} tracks={mockTracks} />
+            );
 
-            const closeButton = screen.getByLabelText('閉じる');
-            fireEvent.click(closeButton);
+            // Close by changing isOpen to false
+            rerender(<AudioPlayer isOpen={false} onClose={mockOnClose} tracks={mockTracks} />);
 
-            // onClose should be called (which triggers cleanup)
-            expect(mockOnClose).toHaveBeenCalled();
+            expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
+        });
+
+        it('should pause audio when Escape key is pressed', () => {
+            const handleClose = vi.fn();
+            const { rerender } = render(
+                <AudioPlayer isOpen={true} onClose={handleClose} tracks={mockTracks} />
+            );
+
+            const dialog = screen.getByRole('dialog');
+            fireEvent.keyDown(dialog, { key: 'Escape' });
+
+            expect(handleClose).toHaveBeenCalled();
+
+            // Simulate parent responding to onClose by setting isOpen=false
+            rerender(<AudioPlayer isOpen={false} onClose={handleClose} tracks={mockTracks} />);
+
+            expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
+        });
+
+        it('should pause audio when backdrop is clicked', () => {
+            const handleClose = vi.fn();
+            const { container, rerender } = render(
+                <AudioPlayer isOpen={true} onClose={handleClose} tracks={mockTracks} />
+            );
+
+            const backdrop = container.querySelector('.bg-black\\/90');
+            fireEvent.click(backdrop!);
+
+            expect(handleClose).toHaveBeenCalled();
+
+            // Simulate parent responding to onClose by setting isOpen=false
+            rerender(<AudioPlayer isOpen={false} onClose={handleClose} tracks={mockTracks} />);
+
+            expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
         });
     });
 
