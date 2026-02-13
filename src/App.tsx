@@ -10,7 +10,9 @@ import { StatusDetailModal } from './components/StatusDetailModal';
 import { ProfileModal } from './components/ProfileModal';
 import { ImageViewer, type ImageViewerImage } from './components/ImageViewer';
 import { VideoViewer } from './components/VideoViewer';
+import { AudioPlayer } from './components/AudioPlayer';
 import type { VideoViewerVideo } from './types/video';
+import type { AudioViewerTrack } from './types/audio';
 import { useAccountsStore } from './store/accounts';
 import type { AccountSession } from './api/mastoClient';
 import { useColumnsStore } from './store/columns';
@@ -74,6 +76,12 @@ function App() {
     const [viewerVideos, setViewerVideos] = useState<VideoViewerVideo[]>([]);
     const [viewerInitialVideoIndex, setViewerInitialVideoIndex] = useState(0);
     const [videoViewerKey, setVideoViewerKey] = useState(0);
+
+    // AudioPlayer state
+    const [isAudioPlayerOpen, setIsAudioPlayerOpen] = useState(false);
+    const [audioTracks, setAudioTracks] = useState<AudioViewerTrack[]>([]);
+    const [audioInitialIndex, setAudioInitialIndex] = useState(0);
+    const [audioPlayerKey, setAudioPlayerKey] = useState(0);
 
     const loadFromStorage = useAccountsStore((state) => state.loadFromStorage);
     const accounts = useAccountsStore((state) => state.accounts);
@@ -219,6 +227,17 @@ function App() {
         setIsVideoViewerOpen(false);
     }, []);
 
+    const handleAudioClick = useCallback((tracks: AudioViewerTrack[], index: number) => {
+        setAudioTracks(tracks);
+        setAudioInitialIndex(index);
+        setAudioPlayerKey((k) => k + 1); // Force remount to reset index
+        setIsAudioPlayerOpen(true);
+    }, []);
+
+    const handleAudioPlayerClose = useCallback(() => {
+        setIsAudioPlayerOpen(false);
+    }, []);
+
     return (
         <div className="h-screen flex overflow-hidden">
             <Sidebar
@@ -233,6 +252,7 @@ function App() {
                     onStatusClick={handleStatusClick}
                     onImageClick={handleImageClick}
                     onVideoClick={handleVideoClick}
+                    onAudioClick={handleAudioClick}
                     onAccountClick={handleAccountClick}
                     onNsfwReveal={addNsfwRevealedStatusId}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
@@ -264,6 +284,7 @@ function App() {
                 onStatusUpdate={updateStatusGlobal}
                 onImageClick={handleImageClick}
                 onVideoClick={handleVideoClick}
+                onAudioClick={handleAudioClick}
                 nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
                 onNsfwReveal={addNsfwRevealedStatusId}
             />
@@ -286,6 +307,13 @@ function App() {
                 onClose={handleVideoViewerClose}
                 videos={viewerVideos}
                 initialIndex={viewerInitialVideoIndex}
+            />
+            <AudioPlayer
+                key={audioPlayerKey}
+                isOpen={isAudioPlayerOpen}
+                onClose={handleAudioPlayerClose}
+                tracks={audioTracks}
+                initialIndex={audioInitialIndex}
             />
         </div>
     );

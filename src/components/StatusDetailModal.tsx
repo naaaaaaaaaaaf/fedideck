@@ -27,6 +27,7 @@ import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import type { ImageViewerImage } from './ImageViewer';
 import type { VideoViewerVideo } from '../types/video';
+import type { AudioViewerTrack } from '../types/audio';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
 
@@ -39,6 +40,7 @@ interface StatusDetailModalProps {
     onStatusUpdate?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
+    onAudioClick?: (tracks: AudioViewerTrack[], index: number) => void;
     // NSFW blur state from parent (optional - for syncing with StatusCard)
     nsfwRevealedStatusIds?: Set<string>;
     onNsfwReveal?: (statusId: string) => void;
@@ -206,6 +208,7 @@ export function StatusDetailModal({
     onStatusUpdate,
     onImageClick,
     onVideoClick,
+    onAudioClick,
     nsfwRevealedStatusIds,
     onNsfwReveal,
 }: StatusDetailModalProps) {
