@@ -533,4 +533,36 @@ describe('AudioPlayer', () => {
             expect(audio.volume).toBe(0.5);
         });
     });
+
+    describe('formatTime edge cases', () => {
+        it('should display 0:00 when duration is NaN', () => {
+            render(<AudioPlayer isOpen={true} onClose={mockOnClose} tracks={mockTracks} />);
+
+            const audio = screen.getByRole('dialog').querySelector('audio') as HTMLAudioElement;
+            Object.defineProperty(audio, 'duration', {
+                writable: true,
+                value: NaN,
+            });
+            fireEvent.loadedMetadata(audio);
+
+            // The duration display should show 0:00 for NaN
+            const timeDisplays = screen.getAllByText('0:00');
+            expect(timeDisplays.length).toBeGreaterThanOrEqual(1);
+        });
+
+        it('should display 0:00 when duration is Infinity', () => {
+            render(<AudioPlayer isOpen={true} onClose={mockOnClose} tracks={mockTracks} />);
+
+            const audio = screen.getByRole('dialog').querySelector('audio') as HTMLAudioElement;
+            Object.defineProperty(audio, 'duration', {
+                writable: true,
+                value: Infinity,
+            });
+            fireEvent.loadedMetadata(audio);
+
+            // The duration display should show 0:00 for Infinity
+            const timeDisplays = screen.getAllByText('0:00');
+            expect(timeDisplays.length).toBeGreaterThanOrEqual(1);
+        });
+    });
 });

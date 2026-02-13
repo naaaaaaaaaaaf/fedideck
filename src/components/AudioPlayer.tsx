@@ -114,6 +114,7 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
 
     // Format time as MM:SS
     const formatTime = (time: number): string => {
+        if (!isFinite(time) || isNaN(time) || time < 0) return '0:00';
         const minutes = Math.floor(time / 60);
         const seconds = Math.floor(time % 60);
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
