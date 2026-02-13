@@ -396,6 +396,43 @@ describe('AudioPlayer', () => {
             fireEvent.keyDown(dialog, { key: 'ArrowDown' });
         });
 
+        it('should not intercept arrow keys on range inputs', () => {
+            render(<AudioPlayer isOpen={true} onClose={mockOnClose} tracks={mockTracks} />);
+
+            const seekBar = screen.getByLabelText('シーク');
+            const audio = screen.getByRole('dialog').querySelector('audio') as HTMLAudioElement;
+
+            Object.defineProperty(audio, 'currentTime', {
+                writable: true,
+                value: 10,
+            });
+            Object.defineProperty(audio, 'duration', {
+                writable: true,
+                value: 100,
+            });
+
+            // Arrow key on range input should NOT trigger seekBy
+            const event = new KeyboardEvent('keydown', {
+                key: 'ArrowRight',
+                bubbles: true,
+            });
+            const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
+            seekBar.dispatchEvent(event);
+
+            // preventDefault should NOT have been called by our handler
+            // (the event should pass through to the range input's native behavior)
+            expect(preventDefaultSpy).not.toHaveBeenCalled();
+        });
+
+        it('should allow Escape on range inputs to close modal', () => {
+            render(<AudioPlayer isOpen={true} onClose={mockOnClose} tracks={mockTracks} />);
+
+            const seekBar = screen.getByLabelText('シーク');
+            fireEvent.keyDown(seekBar, { key: 'Escape' });
+
+            expect(mockOnClose).toHaveBeenCalled();
+        });
+
         it('should close on Escape key', () => {
             render(<AudioPlayer isOpen={true} onClose={mockOnClose} tracks={mockTracks} />);
 

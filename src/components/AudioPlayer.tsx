@@ -122,6 +122,33 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
     // Keyboard shortcuts
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+
+            // Special handling for interactive elements
+            const isInteractiveElement =
+                target.tagName === 'INPUT' ||
+                target.tagName === 'BUTTON' ||
+                target.isContentEditable;
+
+            if (isInteractiveElement) {
+                // For range inputs, allow only Tab/Escape for focus trap
+                if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'range') {
+                    if (e.key === 'Escape' || e.key === 'Tab') {
+                        baseHandleKeyDown(e);
+                    }
+                    return;
+                }
+
+                // For buttons: delegate Tab/Escape, allow other shortcuts except Space
+                if (target.tagName === 'BUTTON') {
+                    if (e.key === 'Escape' || e.key === 'Tab') {
+                        baseHandleKeyDown(e);
+                        return;
+                    }
+                    if (e.key === ' ') return;
+                }
+            }
+
             // Space: play/pause
             if (e.key === ' ') {
                 e.preventDefault();
