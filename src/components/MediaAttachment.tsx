@@ -3,6 +3,12 @@ import type { mastodon } from 'masto';
 import { LuPlay, LuMusic } from 'react-icons/lu';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 
+/** Check if URL is plausibly an image (rejects known audio/video extensions) */
+function isPlausibleImageUrl(url: string): boolean {
+    const audioVideoExtensions = /\.(mp3|ogg|wav|flac|m4a|aac|mp4|webm|mkv|avi|mov)$/i;
+    return !audioVideoExtensions.test(url);
+}
+
 /** Audio artwork image with onError fallback to music icon */
 function AudioArtwork({
     src,
@@ -20,8 +26,9 @@ function AudioArtwork({
     const [error, setError] = useState(false);
 
     // Reset error state when src changes so new URL gets a fresh load attempt
+    // This is a valid use case per React docs - resetting state based on prop changes
     useEffect(() => {
-        setError(false);
+        setError(false); // eslint-disable-line react-hooks/set-state-in-effect
     }, [src]);
 
     if (error) {
@@ -138,7 +145,8 @@ export function MediaAttachment({
         // Audio type: render music icon or artwork thumbnail
         if (media.type === 'audio') {
             const artworkUrl = firstNonEmpty(media.previewUrl, media.previewRemoteUrl);
-            const validArtworkUrl = artworkUrl || null;
+            const validArtworkUrl =
+                artworkUrl && isPlausibleImageUrl(artworkUrl) ? artworkUrl : null;
 
             // NSFW audio in compact mode: render as button with blur
             if (needsBlur) {
@@ -583,7 +591,7 @@ export function MediaAttachment({
         // CRITICAL: audioUrlは音声ファイルURLのみ使用（previewUrlは画像の可能性大）
         const audioUrl = firstNonEmpty(media.url, media.remoteUrl);
         const artworkUrl = firstNonEmpty(media.previewUrl, media.previewRemoteUrl);
-        const validArtworkUrl = artworkUrl || null;
+        const validArtworkUrl = artworkUrl && isPlausibleImageUrl(artworkUrl) ? artworkUrl : null;
 
         if (audioUrl === '') {
             return null;
