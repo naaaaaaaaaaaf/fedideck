@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MediaAttachment } from './MediaAttachment';
 import type { mastodon } from 'masto';
@@ -1280,6 +1280,22 @@ describe('MediaAttachment', () => {
                 expect(audio).not.toHaveAttribute('src', 'https://example.com/artwork.png');
             });
 
+            it('should render artwork for CDN previewUrl without file extension', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://cdn.example.com/media/abc123',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://cdn.example.com/media/abc123');
+            });
+
             it('should return null for invalid URL', () => {
                 const media = createMockMedia({
                     type: 'audio',
@@ -1562,11 +1578,11 @@ describe('MediaAttachment', () => {
                 expect(icon).toBeInTheDocument();
             });
 
-            it('should render music icon when previewUrl is not an image (e.g., audio file)', () => {
+            it('should render artwork when previewUrl has no image extension (CDN URL)', () => {
                 const media = createMockMedia({
                     type: 'audio',
                     url: 'https://example.com/audio.mp3',
-                    previewUrl: 'https://example.com/preview.mp3', // Not an image URL
+                    previewUrl: 'https://cdn.example.com/media/abc123', // CDN URL without extension
                 });
                 const onNsfwToggle = vi.fn();
 
@@ -1582,12 +1598,10 @@ describe('MediaAttachment', () => {
                 const button = container.querySelector('button');
                 expect(button).toBeInTheDocument();
 
-                // Should show music icon, not artwork, because previewUrl is not an image
-                const icon = container.querySelector('svg');
-                expect(icon).toBeInTheDocument();
-
+                // Should show artwork img, trusting previewUrl from API
                 const img = container.querySelector('img');
-                expect(img).not.toBeInTheDocument();
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://cdn.example.com/media/abc123');
             });
 
             it('should render artwork with blur overlay when NSFW and not revealed (with artwork)', () => {
@@ -1734,6 +1748,67 @@ describe('MediaAttachment', () => {
                     name: '閲覧注意の音声プレーヤーを表示',
                 });
                 expect(button).toBeInTheDocument();
+            });
+
+            it('should fallback to default label when audio description is empty string', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    description: '',
+                });
+                const onAudioClick = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                        onAudioClick={onAudioClick}
+                    />
+                );
+
+                const button = screen.getByRole('button', {
+                    name: '音声プレーヤーを拡大',
+                });
+                expect(button).toBeInTheDocument();
+            });
+        });
+
+        describe('artwork error fallback', () => {
+            it('should show music icon when artwork image fails to load', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/bad-artwork.jpg',
+                    description: 'Test audio',
+                });
+                const onAudioClick = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                        onAudioClick={onAudioClick}
+                    />
+                );
+
+                // Artwork img should be rendered initially
+                const img = screen.getByRole('button').querySelector('img');
+                expect(img).toBeInTheDocument();
+
+                // Simulate image load error
+                fireEvent.error(img!);
+
+                // Should now show music icon fallback instead of broken img
+                expect(screen.getByRole('button').querySelector('img')).not.toBeInTheDocument();
+                // Check for the fallback container with bg-slate-700 class (specific to AudioArtwork fallback)
+                const fallbackContainer = screen
+                    .getByRole('button')
+                    .querySelector('.bg-slate-700.flex.items-center.justify-center');
+                expect(fallbackContainer).toBeInTheDocument();
+                // Verify the music icon is inside the fallback container
+                expect(fallbackContainer?.querySelector('svg')).toBeInTheDocument();
             });
         });
 

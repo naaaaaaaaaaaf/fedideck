@@ -21,8 +21,10 @@ import { formatDate } from '../utils/dateFormat';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
+import { toAudioViewerTracks } from '../utils/audioAttachments';
 import type { ImageViewerImage } from './ImageViewer';
 import type { VideoViewerVideo } from '../types/video';
+import type { AudioViewerTrack } from '../types/audio';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
 
@@ -35,6 +37,7 @@ interface StatusCardProps {
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
+    onAudioClick?: (tracks: AudioViewerTrack[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
     nsfwRevealedStatusIds?: Set<string>;
@@ -49,6 +52,7 @@ export function StatusCard({
     onStatusClick,
     onImageClick,
     onVideoClick,
+    onAudioClick,
     onAccountClick,
     onNsfwReveal,
     nsfwRevealedStatusIds,
@@ -153,6 +157,12 @@ export function StatusCard({
     // Convert video/gifv attachments to VideoViewerVideo format (memoized)
     const videoViewerVideos = useMemo(
         () => toVideoViewerVideos(displayStatus.mediaAttachments),
+        [displayStatus.mediaAttachments]
+    );
+
+    // Convert audio attachments to AudioViewerTrack format (memoized)
+    const audioViewerTracks = useMemo(
+        () => toAudioViewerTracks(displayStatus.mediaAttachments),
         [displayStatus.mediaAttachments]
     );
 
@@ -506,6 +516,14 @@ export function StatusCard({
                                               (v) => v.url === firstNonEmpty(media.url)
                                           )
                                         : undefined;
+                                const audioIndex =
+                                    media.type === 'audio'
+                                        ? audioViewerTracks.findIndex(
+                                              (t) =>
+                                                  t.url ===
+                                                  firstNonEmpty(media.url, media.remoteUrl)
+                                          )
+                                        : undefined;
 
                                 return (
                                     <MediaAttachment
@@ -532,6 +550,13 @@ export function StatusCard({
                                             videoIndex !== -1 &&
                                             onVideoClick
                                                 ? () => onVideoClick(videoViewerVideos, videoIndex)
+                                                : undefined
+                                        }
+                                        onAudioClick={
+                                            audioIndex !== undefined &&
+                                            audioIndex !== -1 &&
+                                            onAudioClick
+                                                ? () => onAudioClick(audioViewerTracks, audioIndex)
                                                 : undefined
                                         }
                                     />
