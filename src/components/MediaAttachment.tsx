@@ -593,7 +593,7 @@ export function MediaAttachment({
                         onAudioClick();
                     }}
                     className={`w-full rounded-lg bg-slate-800 p-3 text-left hover:bg-slate-700 transition-colors ${className}`}
-                    aria-label={media.description ?? '音声プレーヤーを開く'}
+                    aria-label={getAccessibleLabel('audio')}
                 >
                     <div className="flex items-center gap-3">
                         {validArtworkUrl ? (

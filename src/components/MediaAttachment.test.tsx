@@ -1749,6 +1749,29 @@ describe('MediaAttachment', () => {
                 });
                 expect(button).toBeInTheDocument();
             });
+
+            it('should fallback to default label when audio description is empty string', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    description: '',
+                });
+                const onAudioClick = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                        onAudioClick={onAudioClick}
+                    />
+                );
+
+                const button = screen.getByRole('button', {
+                    name: '音声プレーヤーを拡大',
+                });
+                expect(button).toBeInTheDocument();
+            });
         });
 
         describe('edge cases', () => {
