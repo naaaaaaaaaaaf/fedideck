@@ -646,7 +646,7 @@ export function MediaAttachment({
                             <div className="flex items-center gap-2 text-slate-300">
                                 <LuPlay className="w-4 h-4 shrink-0" aria-hidden="true" />
                                 <span className="text-sm truncate">
-                                    {media.description ?? '音声を再生'}
+                                    {media.description || '音声を再生'}
                                 </span>
                             </div>
                         </div>
