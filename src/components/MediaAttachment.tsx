@@ -1,6 +1,39 @@
+import { useState } from 'react';
 import type { mastodon } from 'masto';
 import { LuPlay, LuMusic } from 'react-icons/lu';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
+
+/** Audio artwork image with onError fallback to music icon */
+function AudioArtwork({
+    src,
+    alt = '',
+    className,
+    fallbackClassName,
+    iconClassName = 'w-8 h-8 text-slate-400',
+}: {
+    src: string;
+    alt?: string;
+    className: string;
+    fallbackClassName?: string;
+    iconClassName?: string;
+}) {
+    const [error, setError] = useState(false);
+
+    if (error) {
+        return (
+            <div
+                className={
+                    fallbackClassName ??
+                    className + ' bg-slate-700 flex items-center justify-center'
+                }
+            >
+                <LuMusic className={iconClassName} aria-hidden="true" />
+            </div>
+        );
+    }
+
+    return <img src={src} alt={alt} className={className} onError={() => setError(true)} />;
+}
 
 export interface MediaAttachmentProps {
     media: mastodon.v1.MediaAttachment;
@@ -118,10 +151,11 @@ export function MediaAttachment({
                         aria-label={getAccessibleLabel('audio')}
                     >
                         {validArtworkUrl ? (
-                            <img
+                            <AudioArtwork
                                 src={validArtworkUrl}
                                 alt={media.description ?? ''}
                                 className={`${variantClasses} ${objectFitClass} nsfw-blur`}
+                                iconClassName="w-6 h-6 text-slate-300"
                             />
                         ) : (
                             <LuMusic className="w-6 h-6 text-slate-300" aria-hidden="true" />
@@ -145,10 +179,10 @@ export function MediaAttachment({
                     aria-label={media.description || '音声'}
                 >
                     {validArtworkUrl ? (
-                        <img
+                        <AudioArtwork
                             src={validArtworkUrl}
-                            alt=""
                             className={`${variantClasses} ${objectFitClass}`}
+                            iconClassName="w-6 h-6 text-slate-400"
                         />
                     ) : (
                         <LuMusic className="w-6 h-6 text-slate-400" aria-hidden="true" />
@@ -565,10 +599,10 @@ export function MediaAttachment({
                     aria-label={getAccessibleLabel('audio')}
                 >
                     {validArtworkUrl ? (
-                        <img
+                        <AudioArtwork
                             src={validArtworkUrl}
-                            alt=""
                             className="w-20 h-20 rounded mb-2 object-cover nsfw-blur"
+                            iconClassName="w-6 h-6 text-slate-300"
                         />
                     ) : (
                         <LuMusic className="w-6 h-6 text-slate-300" aria-hidden="true" />
@@ -597,10 +631,11 @@ export function MediaAttachment({
                 >
                     <div className="flex items-center gap-3">
                         {validArtworkUrl ? (
-                            <img
+                            <AudioArtwork
                                 src={validArtworkUrl}
-                                alt=""
                                 className="w-16 h-16 rounded object-cover shrink-0"
+                                fallbackClassName="w-16 h-16 rounded bg-slate-700 flex items-center justify-center shrink-0"
+                                iconClassName="w-8 h-8 text-slate-400"
                             />
                         ) : (
                             <div className="w-16 h-16 rounded bg-slate-700 flex items-center justify-center shrink-0">
@@ -624,9 +659,8 @@ export function MediaAttachment({
         return (
             <div className={`w-full rounded-lg bg-slate-800 p-3 ${className}`}>
                 {validArtworkUrl && (
-                    <img
+                    <AudioArtwork
                         src={validArtworkUrl}
-                        alt=""
                         className="w-20 h-20 rounded mb-2 object-cover"
                     />
                 )}

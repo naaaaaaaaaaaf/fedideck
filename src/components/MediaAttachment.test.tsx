@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MediaAttachment } from './MediaAttachment';
 import type { mastodon } from 'masto';
@@ -1771,6 +1771,39 @@ describe('MediaAttachment', () => {
                     name: '音声プレーヤーを拡大',
                 });
                 expect(button).toBeInTheDocument();
+            });
+        });
+
+        describe('artwork error fallback', () => {
+            it('should show music icon when artwork image fails to load', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/bad-artwork.jpg',
+                    description: 'Test audio',
+                });
+                const onAudioClick = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                        onAudioClick={onAudioClick}
+                    />
+                );
+
+                // Artwork img should be rendered initially
+                const img = screen.getByRole('button').querySelector('img');
+                expect(img).toBeInTheDocument();
+
+                // Simulate image load error
+                fireEvent.error(img!);
+
+                // Should now show music icon fallback instead of broken img
+                expect(screen.getByRole('button').querySelector('img')).not.toBeInTheDocument();
+                const fallback = screen.getByRole('button').querySelector('svg');
+                expect(fallback).toBeInTheDocument();
             });
         });
 
