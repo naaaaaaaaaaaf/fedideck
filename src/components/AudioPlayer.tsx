@@ -27,6 +27,7 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const audioRef = useRef<HTMLAudioElement>(null);
     const rafRef = useRef<number | null>(null);
+    const wasPlayingRef = useRef(false);
 
     const { handleKeyDown: baseHandleKeyDown } = useModalAccessibility({
         isOpen,
@@ -58,7 +59,8 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
         const audio = audioRef.current;
         if (!audio) return;
 
-        const wasPlaying = !audio.paused;
+        const wasPlaying = wasPlayingRef.current;
+        wasPlayingRef.current = false; // Reset after reading
         audio.pause();
         setCurrentTime(0);
         setDuration(0);
@@ -84,10 +86,12 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
 
     // Navigation callbacks
     const goToPrevious = useCallback(() => {
+        wasPlayingRef.current = audioRef.current ? !audioRef.current.paused : false;
         setCurrentIndex((prev) => (prev > 0 ? prev - 1 : tracks.length - 1));
     }, [tracks.length]);
 
     const goToNext = useCallback(() => {
+        wasPlayingRef.current = audioRef.current ? !audioRef.current.paused : false;
         setCurrentIndex((prev) => (prev < tracks.length - 1 ? prev + 1 : 0));
     }, [tracks.length]);
 
