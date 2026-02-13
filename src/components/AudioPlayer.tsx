@@ -119,19 +119,24 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
         if (!audioRef.current) return;
         const vol = parseFloat(e.target.value);
         audioRef.current.volume = vol;
-        setVolume(vol);
+        audioRef.current.muted = false;
         setIsMuted(vol === 0);
+        if (vol > 0) {
+            setVolume(vol);
+        }
     }, []);
 
     const toggleMute = useCallback(() => {
         if (!audioRef.current) return;
-        if (isMuted) {
-            audioRef.current.volume = volume || 0.5;
-            setIsMuted(false);
-        } else {
-            audioRef.current.volume = 0;
-            setIsMuted(true);
+        const newMuted = !isMuted;
+        audioRef.current.muted = newMuted;
+        if (!newMuted) {
+            // Restore to saved volume (or default 0.5 if volume was never set above 0)
+            const restoreVol = volume > 0 ? volume : 0.5;
+            audioRef.current.volume = restoreVol;
+            setVolume(restoreVol);
         }
+        setIsMuted(newMuted);
     }, [isMuted, volume]);
 
     const seekBy = useCallback((seconds: number) => {
@@ -147,12 +152,16 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
     const adjustVolume = useCallback(
         (delta: number) => {
             if (!audioRef.current) return;
-            const newVolume = Math.max(0, Math.min(1, volume + delta));
+            const baseVolume = isMuted ? 0 : volume;
+            const newVolume = Math.max(0, Math.min(1, baseVolume + delta));
             audioRef.current.volume = newVolume;
-            setVolume(newVolume);
+            audioRef.current.muted = false;
             setIsMuted(newVolume === 0);
+            if (newVolume > 0) {
+                setVolume(newVolume);
+            }
         },
-        [volume]
+        [volume, isMuted]
     );
 
     // Format time as MM:SS

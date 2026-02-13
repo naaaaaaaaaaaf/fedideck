@@ -225,6 +225,44 @@ describe('AudioPlayer', () => {
 
             expect(screen.getByLabelText('ミュート解除')).toBeInTheDocument();
         });
+
+        it('should restore volume state when unmuting after slider set to 0', () => {
+            render(<AudioPlayer isOpen={true} onClose={mockOnClose} tracks={mockTracks} />);
+
+            const audio = screen.getByRole('dialog').querySelector('audio') as HTMLAudioElement;
+            Object.defineProperty(audio, 'volume', { writable: true, value: 1 });
+            Object.defineProperty(audio, 'muted', { writable: true, value: false });
+
+            const volumeBar = screen.getByLabelText('音量');
+
+            // Set volume to 0.7 via slider
+            fireEvent.change(volumeBar, { target: { value: '0.7' } });
+            expect(audio.volume).toBe(0.7);
+
+            // Set volume to 0 via slider (triggers muted state)
+            fireEvent.change(volumeBar, { target: { value: '0' } });
+            expect(screen.getByLabelText('ミュート解除')).toBeInTheDocument();
+
+            // Click unmute — should restore to last non-zero volume (0.7)
+            const unmuteButton = screen.getByLabelText('ミュート解除');
+            fireEvent.click(unmuteButton);
+
+            expect(audio.volume).toBe(0.7);
+            expect(screen.getByLabelText('ミュート')).toBeInTheDocument();
+        });
+
+        it('should use audio.muted for mute toggle instead of setting volume to 0', () => {
+            render(<AudioPlayer isOpen={true} onClose={mockOnClose} tracks={mockTracks} />);
+
+            const audio = screen.getByRole('dialog').querySelector('audio') as HTMLAudioElement;
+            Object.defineProperty(audio, 'volume', { writable: true, value: 1 });
+            Object.defineProperty(audio, 'muted', { writable: true, value: false });
+
+            const muteButton = screen.getByLabelText('ミュート');
+            fireEvent.click(muteButton);
+
+            expect(audio.muted).toBe(true);
+        });
     });
 
     describe('track navigation', () => {
