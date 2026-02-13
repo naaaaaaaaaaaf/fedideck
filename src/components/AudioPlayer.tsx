@@ -217,16 +217,6 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
         }
     }, [hasMultipleTracks, goToNext]);
 
-    // Reset state when track changes
-    const handleTrackChange = useCallback(() => {
-        setArtworkError(false);
-        setCurrentTime(0);
-        setIsPlaying(false);
-        if (audioRef.current) {
-            audioRef.current.currentTime = 0;
-        }
-    }, []);
-
     // Cleanup on close or unmount
     const cleanup = useCallback(() => {
         if (audioRef.current) {
@@ -243,16 +233,6 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
         cleanup();
         onClose();
     }, [cleanup, onClose]);
-
-    // Handle track index changes
-    const handleIndexChange = useCallback(() => {
-        handleTrackChange();
-    }, [handleTrackChange]);
-
-    // Effect for track changes
-    useState(() => {
-        handleIndexChange();
-    });
 
     if (!isOpen || tracks.length === 0) return null;
 
