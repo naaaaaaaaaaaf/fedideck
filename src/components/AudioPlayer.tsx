@@ -68,7 +68,10 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
         if (wasPlaying) {
             // Wait for the new src to load before playing
             const handleCanPlay = () => {
-                audio.play().catch(() => setIsPlaying(false));
+                const playPromise = audio.play();
+                if (playPromise && typeof playPromise.catch === 'function') {
+                    playPromise.catch(() => setIsPlaying(false));
+                }
                 audio.removeEventListener('canplay', handleCanPlay);
             };
             audio.addEventListener('canplay', handleCanPlay);
@@ -95,9 +98,12 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
         if (isPlaying) {
             audioRef.current.pause();
         } else {
-            audioRef.current.play().catch(() => {
-                setIsPlaying(false);
-            });
+            const playPromise = audioRef.current.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+                playPromise.catch(() => {
+                    setIsPlaying(false);
+                });
+            }
         }
         setIsPlaying(!isPlaying);
     }, [isPlaying]);
