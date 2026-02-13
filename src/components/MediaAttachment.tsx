@@ -5,7 +5,8 @@ import { firstNonEmpty } from '../utils/firstNonEmpty';
 
 /** Check if URL is plausibly an image (rejects known audio/video extensions) */
 function isPlausibleImageUrl(url: string): boolean {
-    const audioVideoExtensions = /\.(mp3|ogg|wav|flac|m4a|aac|mp4|webm|mkv|avi|mov)$/i;
+    // Reject URLs ending with audio/video extensions, even if followed by query string or fragment
+    const audioVideoExtensions = /\.(mp3|ogg|wav|flac|m4a|aac|mp4|webm|mkv|avi|mov)([?#]|$)/i;
     return !audioVideoExtensions.test(url);
 }
 
