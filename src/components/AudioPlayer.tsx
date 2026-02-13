@@ -35,10 +35,23 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
         modalRef,
     });
 
+    // Update currentIndex when initialIndex changes
+    useEffect(() => {
+        setCurrentIndex(initialIndex);
+    }, [initialIndex]);
+
     const hasMultipleTracks = tracks.length > 1;
     const safeIndex =
         tracks.length > 0 ? Math.max(0, Math.min(currentIndex, tracks.length - 1)) : 0;
     const currentTrack = tracks[safeIndex];
+
+    // Sync currentIndex to safeIndex when it diverges (e.g., initialIndex out of bounds,
+    // tracks array shrinks)
+    useEffect(() => {
+        if (currentIndex !== safeIndex) {
+            setCurrentIndex(safeIndex);
+        }
+    }, [currentIndex, safeIndex]);
 
     // Navigation callbacks
     const goToPrevious = useCallback(() => {

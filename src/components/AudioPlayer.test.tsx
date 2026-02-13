@@ -139,6 +139,57 @@ describe('AudioPlayer', () => {
             // Should show last track
             expect(screen.getByText('Test audio 3')).toBeInTheDocument();
         });
+
+        it('should sync currentIndex when initialIndex prop changes', () => {
+            const { rerender } = render(
+                <AudioPlayer
+                    isOpen={true}
+                    onClose={mockOnClose}
+                    tracks={mockTracks}
+                    initialIndex={0}
+                />
+            );
+
+            expect(screen.getByText('Test audio 1')).toBeInTheDocument();
+
+            rerender(
+                <AudioPlayer
+                    isOpen={true}
+                    onClose={mockOnClose}
+                    tracks={mockTracks}
+                    initialIndex={2}
+                />
+            );
+
+            expect(screen.getByText('Test audio 3')).toBeInTheDocument();
+        });
+
+        it('should clamp currentIndex when tracks array shrinks', () => {
+            const { rerender } = render(
+                <AudioPlayer
+                    isOpen={true}
+                    onClose={mockOnClose}
+                    tracks={mockTracks}
+                    initialIndex={2}
+                />
+            );
+
+            // Currently on track 3
+            expect(screen.getByText('Test audio 3')).toBeInTheDocument();
+
+            // Shrink tracks to only 1
+            rerender(
+                <AudioPlayer
+                    isOpen={true}
+                    onClose={mockOnClose}
+                    tracks={[mockTracks[0]]}
+                    initialIndex={2}
+                />
+            );
+
+            // Should clamp to the only available track
+            expect(screen.getByText('Test audio 1')).toBeInTheDocument();
+        });
     });
 
     describe('playback controls', () => {
