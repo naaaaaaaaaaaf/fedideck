@@ -1802,8 +1802,13 @@ describe('MediaAttachment', () => {
 
                 // Should now show music icon fallback instead of broken img
                 expect(screen.getByRole('button').querySelector('img')).not.toBeInTheDocument();
-                const fallback = screen.getByRole('button').querySelector('svg');
-                expect(fallback).toBeInTheDocument();
+                // Check for the fallback container with bg-slate-700 class (specific to AudioArtwork fallback)
+                const fallbackContainer = screen
+                    .getByRole('button')
+                    .querySelector('.bg-slate-700.flex.items-center.justify-center');
+                expect(fallbackContainer).toBeInTheDocument();
+                // Verify the music icon is inside the fallback container
+                expect(fallbackContainer?.querySelector('svg')).toBeInTheDocument();
             });
         });
 
