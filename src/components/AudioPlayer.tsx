@@ -274,7 +274,7 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
 
     // Audio event handlers
     const handleTimeUpdate = useCallback(() => {
-        if (rafRef.current) return; // Already scheduled
+        if (rafRef.current !== null) return; // Already scheduled
 
         rafRef.current = requestAnimationFrame(() => {
             if (audioRef.current) {
@@ -308,7 +308,7 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
                     audio.pause();
                 }
                 const raf = getRaf();
-                if (raf) {
+                if (raf !== null) {
                     cancelAnimationFrame(raf);
                     rafRef.current = null;
                 }
