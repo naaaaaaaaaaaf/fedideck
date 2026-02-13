@@ -1280,6 +1280,22 @@ describe('MediaAttachment', () => {
                 expect(audio).not.toHaveAttribute('src', 'https://example.com/artwork.png');
             });
 
+            it('should render artwork for CDN previewUrl without file extension', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://cdn.example.com/media/abc123',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://cdn.example.com/media/abc123');
+            });
+
             it('should return null for invalid URL', () => {
                 const media = createMockMedia({
                     type: 'audio',
@@ -1562,11 +1578,11 @@ describe('MediaAttachment', () => {
                 expect(icon).toBeInTheDocument();
             });
 
-            it('should render music icon when previewUrl is not an image (e.g., audio file)', () => {
+            it('should render artwork when previewUrl has no image extension (CDN URL)', () => {
                 const media = createMockMedia({
                     type: 'audio',
                     url: 'https://example.com/audio.mp3',
-                    previewUrl: 'https://example.com/preview.mp3', // Not an image URL
+                    previewUrl: 'https://cdn.example.com/media/abc123', // CDN URL without extension
                 });
                 const onNsfwToggle = vi.fn();
 
@@ -1582,12 +1598,10 @@ describe('MediaAttachment', () => {
                 const button = container.querySelector('button');
                 expect(button).toBeInTheDocument();
 
-                // Should show music icon, not artwork, because previewUrl is not an image
-                const icon = container.querySelector('svg');
-                expect(icon).toBeInTheDocument();
-
+                // Should show artwork img, trusting previewUrl from API
                 const img = container.querySelector('img');
-                expect(img).not.toBeInTheDocument();
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://cdn.example.com/media/abc123');
             });
 
             it('should render artwork with blur overlay when NSFW and not revealed (with artwork)', () => {

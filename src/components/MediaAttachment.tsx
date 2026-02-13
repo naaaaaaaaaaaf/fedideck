@@ -2,16 +2,6 @@ import type { mastodon } from 'masto';
 import { LuPlay, LuMusic } from 'react-icons/lu';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 
-/**
- * Check if a URL appears to be an image URL based on file extension
- * Returns false for null/undefined, or URLs without image extensions
- */
-const isImageUrl = (url: string | null | undefined): boolean => {
-    if (!url) return false;
-    const imageExtensions = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(?:[?#]|$)/i;
-    return imageExtensions.test(url);
-};
-
 export interface MediaAttachmentProps {
     media: mastodon.v1.MediaAttachment;
     variant?: 'compact' | 'card' | 'detail';
@@ -110,7 +100,7 @@ export function MediaAttachment({
         // Audio type: render music icon or artwork thumbnail
         if (media.type === 'audio') {
             const artworkUrl = firstNonEmpty(media.previewUrl, media.previewRemoteUrl);
-            const validArtworkUrl = artworkUrl && isImageUrl(artworkUrl) ? artworkUrl : null;
+            const validArtworkUrl = artworkUrl || null;
 
             // NSFW audio in compact mode: render as button with blur
             if (needsBlur) {
@@ -554,7 +544,7 @@ export function MediaAttachment({
         // CRITICAL: audioUrlは音声ファイルURLのみ使用（previewUrlは画像の可能性大）
         const audioUrl = firstNonEmpty(media.url, media.remoteUrl);
         const artworkUrl = firstNonEmpty(media.previewUrl, media.previewRemoteUrl);
-        const validArtworkUrl = artworkUrl && isImageUrl(artworkUrl) ? artworkUrl : null;
+        const validArtworkUrl = artworkUrl || null;
 
         if (audioUrl === '') {
             return null;
