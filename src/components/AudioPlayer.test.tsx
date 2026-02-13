@@ -291,6 +291,40 @@ describe('AudioPlayer', () => {
 
             expect(screen.getByText('Test audio 3')).toBeInTheDocument();
         });
+
+        it('should reset time and duration when switching tracks', () => {
+            render(<AudioPlayer isOpen={true} onClose={mockOnClose} tracks={mockTracks} />);
+
+            const audio = screen.getByRole('dialog').querySelector('audio') as HTMLAudioElement;
+            Object.defineProperty(audio, 'currentTime', { writable: true, value: 30 });
+            Object.defineProperty(audio, 'duration', { writable: true, value: 120 });
+            fireEvent.loadedMetadata(audio);
+
+            const nextButton = screen.getByLabelText('次のトラック');
+            fireEvent.click(nextButton);
+
+            // Time displays should reset to 0:00
+            const timeDisplays = screen.getAllByText('0:00');
+            expect(timeDisplays.length).toBeGreaterThanOrEqual(2);
+        });
+
+        it('should pause audio when switching tracks', () => {
+            render(<AudioPlayer isOpen={true} onClose={mockOnClose} tracks={mockTracks} />);
+
+            const nextButton = screen.getByLabelText('次のトラック');
+            fireEvent.click(nextButton);
+
+            expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
+        });
+
+        it('should show play button after switching tracks when not playing', () => {
+            render(<AudioPlayer isOpen={true} onClose={mockOnClose} tracks={mockTracks} />);
+
+            const nextButton = screen.getByLabelText('次のトラック');
+            fireEvent.click(nextButton);
+
+            expect(screen.getByLabelText('再生')).toBeInTheDocument();
+        });
     });
 
     describe('closing', () => {

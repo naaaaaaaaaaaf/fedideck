@@ -53,15 +53,39 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
         }
     }, [currentIndex, safeIndex]);
 
+    // Reset playback state when track changes
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        const wasPlaying = !audio.paused;
+        audio.pause();
+        setCurrentTime(0);
+        setDuration(0);
+        setArtworkError(false);
+
+        // If was playing before track switch, auto-play the new track
+        if (wasPlaying) {
+            // Wait for the new src to load before playing
+            const handleCanPlay = () => {
+                audio.play().catch(() => setIsPlaying(false));
+                audio.removeEventListener('canplay', handleCanPlay);
+            };
+            audio.addEventListener('canplay', handleCanPlay);
+            return () => audio.removeEventListener('canplay', handleCanPlay);
+        } else {
+            setIsPlaying(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [safeIndex]);
+
     // Navigation callbacks
     const goToPrevious = useCallback(() => {
         setCurrentIndex((prev) => (prev > 0 ? prev - 1 : tracks.length - 1));
-        setArtworkError(false);
     }, [tracks.length]);
 
     const goToNext = useCallback(() => {
         setCurrentIndex((prev) => (prev < tracks.length - 1 ? prev + 1 : 0));
-        setArtworkError(false);
     }, [tracks.length]);
 
     // Playback controls
