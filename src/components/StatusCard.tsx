@@ -21,6 +21,7 @@ import { formatDate } from '../utils/dateFormat';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
+import { toAudioViewerTracks } from '../utils/audioAttachments';
 import type { ImageViewerImage } from './ImageViewer';
 import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
@@ -156,6 +157,12 @@ export function StatusCard({
     // Convert video/gifv attachments to VideoViewerVideo format (memoized)
     const videoViewerVideos = useMemo(
         () => toVideoViewerVideos(displayStatus.mediaAttachments),
+        [displayStatus.mediaAttachments]
+    );
+
+    // Convert audio attachments to AudioViewerTrack format (memoized)
+    const audioViewerTracks = useMemo(
+        () => toAudioViewerTracks(displayStatus.mediaAttachments),
         [displayStatus.mediaAttachments]
     );
 
@@ -509,6 +516,14 @@ export function StatusCard({
                                               (v) => v.url === firstNonEmpty(media.url)
                                           )
                                         : undefined;
+                                const audioIndex =
+                                    media.type === 'audio'
+                                        ? audioViewerTracks.findIndex(
+                                              (t) =>
+                                                  t.url ===
+                                                  firstNonEmpty(media.url, media.remoteUrl)
+                                          )
+                                        : undefined;
 
                                 return (
                                     <MediaAttachment
@@ -535,6 +550,13 @@ export function StatusCard({
                                             videoIndex !== -1 &&
                                             onVideoClick
                                                 ? () => onVideoClick(videoViewerVideos, videoIndex)
+                                                : undefined
+                                        }
+                                        onAudioClick={
+                                            audioIndex !== undefined &&
+                                            audioIndex !== -1 &&
+                                            onAudioClick
+                                                ? () => onAudioClick(audioViewerTracks, audioIndex)
                                                 : undefined
                                         }
                                     />

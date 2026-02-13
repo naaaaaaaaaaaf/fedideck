@@ -22,6 +22,7 @@ export interface MediaAttachmentProps {
     imageIndex?: number;
     totalImages?: number;
     onVideoClick?: () => void;
+    onAudioClick?: () => void;
     className?: string;
 }
 
@@ -35,6 +36,7 @@ export function MediaAttachment({
     imageIndex,
     totalImages,
     onVideoClick,
+    onAudioClick,
     className = '',
 }: MediaAttachmentProps) {
     const needsBlur = isSensitive && !nsfwRevealed;
@@ -591,6 +593,44 @@ export function MediaAttachment({
         }
 
         // 音声専用レイアウト（variantClassesの h-36/max-h-96 を使わない）
+        // onAudioClickがある場合はクリックでAudioPlayerを開く
+        if (onAudioClick) {
+            return (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onAudioClick();
+                    }}
+                    className={`w-full rounded-lg bg-slate-800 p-3 text-left hover:bg-slate-700 transition-colors ${className}`}
+                    aria-label={media.description ?? '音声プレーヤーを開く'}
+                >
+                    <div className="flex items-center gap-3">
+                        {validArtworkUrl ? (
+                            <img
+                                src={validArtworkUrl}
+                                alt=""
+                                className="w-16 h-16 rounded object-cover shrink-0"
+                            />
+                        ) : (
+                            <div className="w-16 h-16 rounded bg-slate-700 flex items-center justify-center shrink-0">
+                                <LuMusic className="w-8 h-8 text-slate-400" aria-hidden="true" />
+                            </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 text-slate-300">
+                                <LuPlay className="w-4 h-4 shrink-0" aria-hidden="true" />
+                                <span className="text-sm truncate">
+                                    {media.description ?? '音声を再生'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </button>
+            );
+        }
+
+        // Fallback: use standard audio element when onAudioClick is not provided
         return (
             <div className={`w-full rounded-lg bg-slate-800 p-3 ${className}`}>
                 {validArtworkUrl && (
