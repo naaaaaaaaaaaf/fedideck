@@ -393,8 +393,8 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
                         <input
                             type="range"
                             min="0"
-                            max={duration || 0}
-                            value={currentTime}
+                            max={Number.isFinite(duration) ? duration : 0}
+                            value={Math.min(currentTime, Number.isFinite(duration) ? duration : 0)}
                             onChange={handleSeek}
                             className="flex-1 h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer"
                             aria-label="シーク"
