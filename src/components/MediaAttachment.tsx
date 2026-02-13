@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { mastodon } from 'masto';
 import { LuPlay, LuMusic } from 'react-icons/lu';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
@@ -18,6 +18,11 @@ function AudioArtwork({
     iconClassName?: string;
 }) {
     const [error, setError] = useState(false);
+
+    // Reset error state when src changes so new URL gets a fresh load attempt
+    useEffect(() => {
+        setError(false);
+    }, [src]);
 
     if (error) {
         return (
