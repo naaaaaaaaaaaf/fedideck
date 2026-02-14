@@ -253,14 +253,13 @@ function App() {
 
     // Handle delete request from StatusCard - show confirmation modal
     const handleStatusDeleteRequest = useCallback(
-        (status: mastodon.v1.Status) => {
-            if (!detailAccountSession) return;
+        (status: mastodon.v1.Status, accountId: string) => {
             setDeleteTargetStatus(status);
-            setDeleteAccountId(detailAccountSession.id);
+            setDeleteAccountId(accountId);
             setDeleteError(null);
             setIsDeleteConfirmOpen(true);
         },
-        [detailAccountSession]
+        []
     );
 
     // Handle confirmed delete

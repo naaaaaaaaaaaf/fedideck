@@ -32,7 +32,7 @@ interface ColumnProps {
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
     nsfwRevealedStatusIds?: Set<string>;
-    onStatusDelete?: (status: mastodon.v1.Status) => void;
+    onStatusDelete?: (status: mastodon.v1.Status, accountId: string) => void;
 }
 
 export function Column({
@@ -316,7 +316,9 @@ export function Column({
                             }
                             onNsfwReveal={onNsfwReveal}
                             nsfwRevealedStatusIds={nsfwRevealedStatusIds}
-                            onStatusDelete={onStatusDelete}
+                            onStatusDelete={
+                                onStatusDelete ? (s) => onStatusDelete(s, accountId) : undefined
+                            }
                         />
                     ))}
 
