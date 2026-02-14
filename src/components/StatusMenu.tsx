@@ -20,13 +20,20 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
     const [copySuccess, setCopySuccess] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
+    const copySuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [focusedIndex, setFocusedIndex] = useState(-1);
 
     async function copyToClipboard(text: string) {
+        // Clear any existing timeout before setting a new one
+        if (copySuccessTimeoutRef.current !== null) {
+            clearTimeout(copySuccessTimeoutRef.current);
+            copySuccessTimeoutRef.current = null;
+        }
+
         try {
             await navigator.clipboard.writeText(text);
             setCopySuccess(true);
-            setTimeout(() => setCopySuccess(false), 2000);
+            copySuccessTimeoutRef.current = setTimeout(() => setCopySuccess(false), 2000);
         } catch {
             // Fallback for older browsers
             try {
@@ -39,7 +46,7 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
                 setCopySuccess(true);
-                setTimeout(() => setCopySuccess(false), 2000);
+                copySuccessTimeoutRef.current = setTimeout(() => setCopySuccess(false), 2000);
             } catch (err) {
                 console.error('Failed to copy link:', err);
             }
@@ -84,6 +91,15 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
         setIsOpen(false);
         setCopySuccess(false);
         setFocusedIndex(-1);
+    }, []);
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (copySuccessTimeoutRef.current !== null) {
+                clearTimeout(copySuccessTimeoutRef.current);
+            }
+        };
     }, []);
 
     const handleToggle = () => {
