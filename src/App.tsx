@@ -87,8 +87,13 @@ function App() {
     const accounts = useAccountsStore((state) => state.accounts);
     const columns = useColumnsStore((state) => state.columns);
     const addColumn = useColumnsStore((state) => state.addColumn);
-    const { prependStatus, removeStatus, updateStatus, updateStatusGlobal, prependNotification } =
-        useStreamsStore();
+    const {
+        prependStatus,
+        removeStatusForAccountStreams,
+        updateStatus,
+        updateStatusGlobal,
+        prependNotification,
+    } = useStreamsStore();
 
     // Ref to track if default columns have been added
     const hasAddedDefaultColumns = useRef(false);
@@ -108,8 +113,7 @@ function App() {
             },
             onDelete: (accountId, statusId) => {
                 // Remove from all streams for this account
-                const homeKey = getStreamKey(accountId, 'home');
-                removeStatus(homeKey, statusId);
+                removeStatusForAccountStreams(accountId, statusId);
             },
             onNotification: (accountId, notification) => {
                 const notifKey = getStreamKey(accountId, 'notifications');
@@ -129,7 +133,7 @@ function App() {
                 console.error(`Streaming error for ${accountId}:`, error);
             },
         });
-    }, [prependStatus, removeStatus, updateStatus, prependNotification]);
+    }, [prependStatus, removeStatusForAccountStreams, updateStatus, prependNotification]);
 
     // Mark as initialized if columns already exist (from storage or manual addition)
     useEffect(() => {
