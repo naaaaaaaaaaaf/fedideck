@@ -4,6 +4,7 @@ import {
     useState,
     useCallback,
     useMemo,
+    useId,
     type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { LuEllipsis, LuLink, LuTrash2 } from 'react-icons/lu';
@@ -23,6 +24,7 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
     const copySuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const menuItemRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const [focusedIndex, setFocusedIndex] = useState(-1);
+    const menuId = useId();
 
     const scheduleCopySuccessReset = useCallback(() => {
         if (copySuccessTimeoutRef.current !== null) {
@@ -217,6 +219,7 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
         <div className="relative">
             <button
                 ref={triggerRef}
+                id={`${menuId}-trigger`}
                 type="button"
                 onClick={handleToggle}
                 onKeyDown={handleTriggerKeyDown}
@@ -225,6 +228,7 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
                 aria-label="メニュー"
                 aria-expanded={isOpen}
                 aria-haspopup="menu"
+                aria-controls={menuId}
             >
                 <LuEllipsis aria-hidden="true" />
             </button>
@@ -232,8 +236,10 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
             {isOpen && (
                 <div
                     ref={menuRef}
+                    id={menuId}
                     role="menu"
                     aria-orientation="vertical"
+                    aria-labelledby={`${menuId}-trigger`}
                     onKeyDownCapture={handleMenuKeyDown}
                     className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-lg overflow-hidden z-[60]"
                 >
