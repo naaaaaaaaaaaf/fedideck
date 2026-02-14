@@ -243,7 +243,7 @@ export function StatusDetailModal({
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const mainStatusRef = useRef<HTMLDivElement>(null);
 
-    const { handleKeyDown } = useModalAccessibility({
+    const { handleKeyDown, handleBackdropClick } = useModalAccessibility({
         isOpen,
         onClose,
         closeButtonRef,
@@ -493,7 +493,7 @@ export function StatusDetailModal({
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                onClick={onClose}
+                onClick={handleBackdropClick}
                 aria-hidden="true"
             />
 
