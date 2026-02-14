@@ -5,6 +5,7 @@ import {
     unfavouriteStatus,
     reblogStatus,
     unreblogStatus,
+    deleteStatus,
     getStatusContext,
     fetchAccount,
     waitForMediaReady,
@@ -432,5 +433,63 @@ describe('waitForMediaReady', () => {
 
         // The function should have polled at least once before throwing
         expect(callCount).toBeGreaterThanOrEqual(1);
+    });
+});
+
+describe('deleteStatus', () => {
+    it('calls remove endpoint with correct status ID', async () => {
+        const mockRemove = vi.fn().mockResolvedValue({
+            id: '123',
+            content: '<p>Deleted post</p>',
+        });
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        remove: mockRemove,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await deleteStatus(mockClient, '123');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('123');
+        expect(mockRemove).toHaveBeenCalled();
+        expect(result.id).toBe('123');
+    });
+
+    it('throws 404 error when status not found', async () => {
+        const error = new Error('Record not found');
+        (error as Error & { statusCode?: number }).statusCode = 404;
+        const mockRemove = vi.fn().mockRejectedValue(error);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        remove: mockRemove,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(deleteStatus(mockClient, 'nonexistent')).rejects.toThrow('Record not found');
+    });
+
+    it('throws 403 error when not authorized to delete', async () => {
+        const error = new Error('This action is not allowed');
+        (error as Error & { statusCode?: number }).statusCode = 403;
+        const mockRemove = vi.fn().mockRejectedValue(error);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        remove: mockRemove,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(deleteStatus(mockClient, '456')).rejects.toThrow('This action is not allowed');
     });
 });
