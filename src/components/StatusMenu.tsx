@@ -31,33 +31,36 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
         copySuccessTimeoutRef.current = setTimeout(() => setCopySuccess(false), 2000);
     }, []);
 
-    async function copyToClipboard(text: string) {
-        try {
-            await navigator.clipboard.writeText(text);
-            setCopySuccess(true);
-            scheduleCopySuccessReset();
-        } catch {
-            // Fallback for older browsers
+    const copyToClipboard = useCallback(
+        async (text: string) => {
             try {
-                const textArea = document.createElement('textarea');
-                textArea.value = text;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-9999px';
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
+                await navigator.clipboard.writeText(text);
                 setCopySuccess(true);
                 scheduleCopySuccessReset();
-            } catch (err) {
-                console.error('Failed to copy link:', err);
+            } catch {
+                // Fallback for older browsers
+                try {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-9999px';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    setCopySuccess(true);
+                    scheduleCopySuccessReset();
+                } catch (err) {
+                    console.error('Failed to copy link:', err);
+                }
             }
-        }
-    }
+        },
+        [scheduleCopySuccessReset]
+    );
 
     const handleCopyLink = useCallback(() => {
         copyToClipboard(statusUrl);
-    }, [statusUrl]);
+    }, [statusUrl, copyToClipboard]);
 
     const handleDeleteClick = useCallback(() => {
         setIsOpen(false);
