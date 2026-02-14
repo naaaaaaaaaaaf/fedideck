@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { StatusMenu } from './StatusMenu';
 
@@ -10,8 +10,21 @@ describe('StatusMenu', () => {
         onDelete: mockOnDelete,
     };
 
+    let originalClipboard: typeof navigator.clipboard | undefined;
+
     beforeEach(() => {
         mockOnDelete.mockClear();
+        // Save original clipboard
+        originalClipboard = navigator.clipboard;
+    });
+
+    afterEach(() => {
+        // Restore original clipboard
+        Object.defineProperty(navigator, 'clipboard', {
+            value: originalClipboard,
+            writable: true,
+            configurable: true,
+        });
     });
 
     it('renders menu trigger button', () => {
