@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { LuEllipsis, LuLink, LuTrash2 } from 'react-icons/lu';
 
 interface StatusMenuProps {
@@ -14,37 +14,6 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
     const menuRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const [focusedIndex, setFocusedIndex] = useState(0);
-
-    // Calculate menu items based on canDelete
-    const menuItems = [
-        {
-            id: 'copy-link',
-            label: copySuccess ? 'コピーしました' : 'リンクをコピー',
-            icon: LuLink,
-            onClick: handleCopyLink,
-            danger: false,
-        },
-        ...(canDelete
-            ? [
-                  {
-                      id: 'delete',
-                      label: '削除',
-                      icon: LuTrash2,
-                      onClick: handleDeleteClick,
-                      danger: true,
-                  },
-              ]
-            : []),
-    ];
-
-    function handleCopyLink() {
-        copyToClipboard(statusUrl);
-    }
-
-    function handleDeleteClick() {
-        setIsOpen(false);
-        onDelete();
-    }
 
     async function copyToClipboard(text: string) {
         try {
@@ -69,6 +38,40 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
             }
         }
     }
+
+    const handleCopyLink = useCallback(() => {
+        copyToClipboard(statusUrl);
+    }, [statusUrl]);
+
+    const handleDeleteClick = useCallback(() => {
+        setIsOpen(false);
+        onDelete();
+    }, [onDelete]);
+
+    // Calculate menu items based on canDelete
+    const menuItems = useMemo(
+        () => [
+            {
+                id: 'copy-link',
+                label: copySuccess ? 'コピーしました' : 'リンクをコピー',
+                icon: LuLink,
+                onClick: handleCopyLink,
+                danger: false,
+            },
+            ...(canDelete
+                ? [
+                      {
+                          id: 'delete',
+                          label: '削除',
+                          icon: LuTrash2,
+                          onClick: handleDeleteClick,
+                          danger: true,
+                      },
+                  ]
+                : []),
+        ],
+        [copySuccess, canDelete, handleCopyLink, handleDeleteClick]
+    );
 
     const handleToggle = () => {
         if (disabled) return;
