@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import {
+    useEffect,
+    useRef,
+    useState,
+    useCallback,
+    useMemo,
+    type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { LuEllipsis, LuLink, LuTrash2 } from 'react-icons/lu';
 
 interface StatusMenuProps {
@@ -13,7 +20,7 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
     const [copySuccess, setCopySuccess] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
-    const [focusedIndex, setFocusedIndex] = useState(0);
+    const [focusedIndex, setFocusedIndex] = useState(-1);
 
     async function copyToClipboard(text: string) {
         try {
@@ -73,16 +80,43 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
         [copySuccess, canDelete, handleCopyLink, handleDeleteClick]
     );
 
-    const handleToggle = () => {
-        if (disabled) return;
-        setIsOpen((prev) => !prev);
-        setFocusedIndex(0);
-    };
-
     const handleClose = useCallback(() => {
         setIsOpen(false);
         setCopySuccess(false);
+        setFocusedIndex(-1);
     }, []);
+
+    const handleToggle = () => {
+        if (disabled) return;
+
+        if (isOpen) {
+            handleClose();
+            return;
+        }
+
+        setIsOpen(true);
+        setFocusedIndex(-1);
+    };
+
+    const handleTriggerKeyDown = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
+        if (disabled || isOpen) return;
+
+        switch (e.key) {
+            case 'ArrowDown':
+            case 'Enter':
+            case ' ': {
+                e.preventDefault();
+                setIsOpen(true);
+                setFocusedIndex(0);
+                break;
+            }
+            case 'ArrowUp':
+                e.preventDefault();
+                setIsOpen(true);
+                setFocusedIndex(menuItems.length - 1);
+                break;
+        }
+    };
 
     // Click outside to close
     useEffect(() => {
@@ -116,16 +150,22 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
                     break;
                 case 'ArrowDown':
                     e.preventDefault();
-                    setFocusedIndex((prev) => (prev + 1) % menuItems.length);
+                    setFocusedIndex((prev) => (prev < 0 ? 0 : (prev + 1) % menuItems.length));
                     break;
                 case 'ArrowUp':
                     e.preventDefault();
-                    setFocusedIndex((prev) => (prev - 1 + menuItems.length) % menuItems.length);
+                    setFocusedIndex((prev) =>
+                        prev < 0
+                            ? menuItems.length - 1
+                            : (prev - 1 + menuItems.length) % menuItems.length
+                    );
                     break;
                 case 'Enter':
                 case ' ':
                     e.preventDefault();
-                    menuItems[focusedIndex]?.onClick();
+                    if (focusedIndex >= 0) {
+                        menuItems[focusedIndex]?.onClick();
+                    }
                     break;
             }
         };
@@ -140,6 +180,7 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
                 ref={triggerRef}
                 type="button"
                 onClick={handleToggle}
+                onKeyDown={handleTriggerKeyDown}
                 disabled={disabled}
                 className={`hover:text-indigo-400 transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 aria-label="メニュー"

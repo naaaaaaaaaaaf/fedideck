@@ -30,6 +30,27 @@ describe('StatusMenu', () => {
         expect(screen.getByText('リンクをコピー')).toBeInTheDocument();
     });
 
+    it('does not pre-focus first item when opened by mouse', () => {
+        render(<StatusMenu {...defaultProps} />);
+
+        const trigger = screen.getByRole('button', { name: 'メニュー' });
+        fireEvent.click(trigger);
+
+        const copyItem = screen.getByRole('menuitem', { name: 'リンクをコピー' });
+        expect(copyItem).not.toHaveClass('bg-slate-700');
+    });
+
+    it('pre-focuses first item when opened by keyboard', () => {
+        render(<StatusMenu {...defaultProps} />);
+
+        const trigger = screen.getByRole('button', { name: 'メニュー' });
+        trigger.focus();
+        fireEvent.keyDown(trigger, { key: 'Enter' });
+
+        const copyItem = screen.getByRole('menuitem', { name: 'リンクをコピー' });
+        expect(copyItem).toHaveClass('bg-slate-700');
+    });
+
     it('does not show delete option when canDelete is false', () => {
         render(<StatusMenu {...defaultProps} canDelete={false} />);
 
