@@ -118,7 +118,7 @@ describe('ConfirmModal', () => {
     it('closes on Escape key when not loading', () => {
         render(<ConfirmModal {...defaultProps} isLoading={false} />);
 
-        fireEvent.keyDown(screen.getByRole('dialog').parentElement!, { key: 'Escape' });
+        fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
 
         expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
@@ -126,7 +126,7 @@ describe('ConfirmModal', () => {
     it('does not close on Escape key when loading', () => {
         render(<ConfirmModal {...defaultProps} isLoading={true} />);
 
-        fireEvent.keyDown(screen.getByRole('dialog').parentElement!, { key: 'Escape' });
+        fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
 
         expect(mockOnClose).not.toHaveBeenCalled();
     });

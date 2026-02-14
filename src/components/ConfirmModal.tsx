@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { LuX } from 'react-icons/lu';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 
 interface ConfirmModalProps {
@@ -46,19 +47,27 @@ export function ConfirmModal({
 
     return (
         <div
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+            className="fixed inset-0 z-50 flex items-center justify-center"
             onKeyDown={handleKeyDown}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-modal-title"
+            aria-describedby="confirm-modal-message"
         >
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={onClose}
+                aria-hidden="true"
+            />
+
+            {/* Modal */}
             <div
                 ref={modalRef}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="confirm-modal-title"
-                aria-describedby="confirm-modal-message"
-                className="bg-slate-800 rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden"
+                className="relative w-full max-w-md mx-4 bg-slate-900 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden"
             >
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50">
                     <h2 id="confirm-modal-title" className="text-lg font-semibold text-slate-100">
                         {title}
                     </h2>
@@ -67,10 +76,10 @@ export function ConfirmModal({
                         type="button"
                         onClick={onClose}
                         disabled={isLoading}
-                        className="text-slate-400 hover:text-slate-200 transition-colors disabled:opacity-50"
+                        className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-slate-200 disabled:opacity-50"
                         aria-label="閉じる"
                     >
-                        ✕
+                        <LuX className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
 
@@ -89,12 +98,12 @@ export function ConfirmModal({
                 </div>
 
                 {/* Actions */}
-                <div className="flex justify-end gap-3 px-4 py-3 border-t border-slate-700 bg-slate-800/50">
+                <div className="flex justify-end gap-3 px-4 py-3 border-t border-slate-700/50 bg-slate-800/50">
                     <button
                         type="button"
                         onClick={onClose}
                         disabled={isLoading}
-                        className="px-4 py-2 text-sm text-slate-300 hover:text-slate-100 transition-colors disabled:opacity-50"
+                        className="px-4 py-2 text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors disabled:opacity-50"
                     >
                         {cancelLabel}
                     </button>
@@ -102,7 +111,7 @@ export function ConfirmModal({
                         type="button"
                         onClick={onConfirm}
                         disabled={isLoading}
-                        className={`px-4 py-2 text-sm text-white rounded transition-colors ${confirmButtonClass}`}
+                        className={`px-4 py-2 text-sm text-white rounded-lg transition-colors ${confirmButtonClass}`}
                     >
                         {isLoading ? '処理中...' : confirmLabel}
                     </button>
