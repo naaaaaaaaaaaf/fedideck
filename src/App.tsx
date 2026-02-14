@@ -11,10 +11,12 @@ import { ProfileModal } from './components/ProfileModal';
 import { ImageViewer, type ImageViewerImage } from './components/ImageViewer';
 import { VideoViewer } from './components/VideoViewer';
 import { AudioPlayer } from './components/AudioPlayer';
+import { ConfirmModal } from './components/ConfirmModal';
 import type { VideoViewerVideo } from './types/video';
 import type { AudioViewerTrack } from './types/audio';
 import { useAccountsStore } from './store/accounts';
 import type { AccountSession } from './api/mastoClient';
+import { getClient, deleteStatus } from './api/mastoClient';
 import { useColumnsStore } from './store/columns';
 import { useStreamsStore, getStreamKey } from './store/streams';
 import { initStreamManager } from './streaming/streamManager';
@@ -82,6 +84,13 @@ function App() {
     const [audioTracks, setAudioTracks] = useState<AudioViewerTrack[]>([]);
     const [audioInitialIndex, setAudioInitialIndex] = useState(0);
     const [audioPlayerKey, setAudioPlayerKey] = useState(0);
+
+    // Delete confirmation modal state
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [deleteTargetStatus, setDeleteTargetStatus] = useState<mastodon.v1.Status | null>(null);
+    const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
+    const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
 
     const loadFromStorage = useAccountsStore((state) => state.loadFromStorage);
     const accounts = useAccountsStore((state) => state.accounts);
@@ -242,6 +251,60 @@ function App() {
         setIsAudioPlayerOpen(false);
     }, []);
 
+    // Handle delete request from StatusCard - show confirmation modal
+    const handleStatusDeleteRequest = useCallback(
+        (status: mastodon.v1.Status) => {
+            if (!detailAccountSession) return;
+            setDeleteTargetStatus(status);
+            setDeleteAccountId(detailAccountSession.id);
+            setDeleteError(null);
+            setIsDeleteConfirmOpen(true);
+        },
+        [detailAccountSession]
+    );
+
+    // Handle confirmed delete
+    const handleStatusDeleteConfirm = async () => {
+        if (!deleteTargetStatus || !deleteAccountId) return;
+
+        const session = accounts.find((a) => a.id === deleteAccountId);
+        if (!session) return;
+
+        setIsDeleteLoading(true);
+        setDeleteError(null);
+
+        try {
+            const client = getClient(session);
+            await deleteStatus(client, deleteTargetStatus.id);
+            removeStatusForAccountStreams(deleteAccountId, deleteTargetStatus.id);
+
+            // Close detail modal if viewing the deleted status
+            if (
+                detailStatus?.id === deleteTargetStatus.id ||
+                detailStatus?.reblog?.id === deleteTargetStatus.id
+            ) {
+                handleDetailModalClose();
+            }
+
+            setIsDeleteConfirmOpen(false);
+            setDeleteTargetStatus(null);
+            setDeleteAccountId(null);
+        } catch (err) {
+            setDeleteError((err as Error).message);
+        } finally {
+            setIsDeleteLoading(false);
+        }
+    };
+
+    const handleDeleteConfirmClose = () => {
+        if (!isDeleteLoading) {
+            setIsDeleteConfirmOpen(false);
+            setDeleteTargetStatus(null);
+            setDeleteAccountId(null);
+            setDeleteError(null);
+        }
+    };
+
     return (
         <div className="h-screen flex overflow-hidden">
             <Sidebar
@@ -260,6 +323,7 @@ function App() {
                     onAccountClick={handleAccountClick}
                     onNsfwReveal={addNsfwRevealedStatusId}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
+                    onStatusDelete={handleStatusDeleteRequest}
                 />
             </main>
 
@@ -318,6 +382,17 @@ function App() {
                 onClose={handleAudioPlayerClose}
                 tracks={audioTracks}
                 initialIndex={audioInitialIndex}
+            />
+            <ConfirmModal
+                isOpen={isDeleteConfirmOpen}
+                onClose={handleDeleteConfirmClose}
+                onConfirm={handleStatusDeleteConfirm}
+                title="投稿を削除"
+                message="この投稿を削除してもよろしいですか？この操作は取り消せません。"
+                confirmLabel="削除"
+                variant="danger"
+                isLoading={isDeleteLoading}
+                error={deleteError}
             />
         </div>
     );

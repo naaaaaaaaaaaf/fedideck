@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { StatusCard } from './StatusCard';
 import { formatDate } from '../utils/dateFormat';
 import type { mastodon } from 'masto';
+import type { AccountSession } from '../api/mastoClient';
 
 // Minimal mock status for testing
 const createMockStatus = (overrides: Partial<mastodon.v1.Status> = {}): mastodon.v1.Status => {
@@ -1660,7 +1661,7 @@ describe('StatusCard', () => {
                 acct: 'testuser',
                 displayName: 'Test User',
             },
-        } as const;
+        } as unknown as AccountSession;
 
         it('should render StatusMenu with menu button', () => {
             const status = createMockStatus();
