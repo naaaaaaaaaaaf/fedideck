@@ -343,3 +343,15 @@ export async function fetchAccount(
     const account = await client.v1.accounts.$select(accountId).fetch();
     return account;
 }
+
+/**
+ * Delete a status (post)
+ * Only the author of a status can delete it.
+ */
+export async function deleteStatus(
+    client: MastoClient,
+    statusId: string
+): Promise<mastodon.v1.Status> {
+    const status = await client.v1.statuses.$select(statusId).remove();
+    return status;
+}

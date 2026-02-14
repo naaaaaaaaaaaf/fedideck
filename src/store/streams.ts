@@ -21,6 +21,7 @@ interface StreamsState {
     prependStatus: (key: string, status: mastodon.v1.Status) => void;
     appendStatuses: (key: string, statuses: mastodon.v1.Status[]) => void;
     removeStatus: (key: string, statusId: string) => void;
+    removeStatusForAccountStreams: (accountId: string, statusId: string) => void;
     updateStatus: (key: string, status: mastodon.v1.Status) => void;
     updateStatusGlobal: (status: mastodon.v1.Status) => void;
     setNotifications: (
@@ -189,6 +190,34 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
             }
 
             return hasAnyChanges ? { data: newData } : state;
+        });
+    },
+
+    // Remove status from all streams belonging to a specific account
+    // This handles both direct statuses and reblogs containing the status
+    removeStatusForAccountStreams: (accountId: string, statusId: string) => {
+        set((state) => {
+            const prefix = `${accountId}:`;
+            const next = { ...state.data };
+            let changed = false;
+
+            for (const key of Object.keys(next)) {
+                // Only process streams belonging to this account
+                if (!key.startsWith(prefix)) continue;
+
+                const current = next[key];
+                // Remove both direct statuses and reblogs containing the status
+                const filtered = current.statuses.filter(
+                    (s) => s.id !== statusId && s.reblog?.id !== statusId
+                );
+
+                if (filtered.length !== current.statuses.length) {
+                    next[key] = { ...current, statuses: filtered };
+                    changed = true;
+                }
+            }
+
+            return changed ? { data: next } : state;
         });
     },
 

@@ -4,7 +4,6 @@ import {
     LuRepeat2,
     LuMessageCircle,
     LuStar,
-    LuLink,
     LuTriangleAlert,
     LuCornerUpLeft,
 } from 'react-icons/lu';
@@ -27,6 +26,7 @@ import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
+import { StatusMenu } from './StatusMenu';
 
 interface StatusCardProps {
     status: mastodon.v1.Status;
@@ -41,6 +41,7 @@ interface StatusCardProps {
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
     nsfwRevealedStatusIds?: Set<string>;
+    onStatusDelete?: (status: mastodon.v1.Status) => void;
 }
 
 export function StatusCard({
@@ -56,6 +57,7 @@ export function StatusCard({
     onAccountClick,
     onNsfwReveal,
     nsfwRevealedStatusIds,
+    onStatusDelete,
 }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
@@ -642,13 +644,15 @@ export function StatusCard({
                             />
                             <span className="text-sm">{localFavouritesCount || ''}</span>
                         </button>
-                        <button
-                            type="button"
-                            className="hover:text-indigo-400 transition-colors"
-                            aria-label="リンクをコピー"
-                        >
-                            <LuLink aria-hidden="true" />
-                        </button>
+                        <StatusMenu
+                            statusUrl={displayStatus.url ?? displayStatus.uri}
+                            canDelete={
+                                Boolean(accountSession) &&
+                                Boolean(onStatusDelete) &&
+                                displayStatus.account.id === accountSession?.account.id
+                            }
+                            onDelete={() => onStatusDelete?.(displayStatus)}
+                        />
                     </div>
                 </div>
             </div>

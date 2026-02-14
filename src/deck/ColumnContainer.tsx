@@ -18,6 +18,7 @@ interface ColumnContainerProps {
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
     nsfwRevealedStatusIds?: Set<string>;
+    onStatusDelete?: (status: mastodon.v1.Status, accountId: string) => void;
 }
 
 export function ColumnContainer({
@@ -30,6 +31,7 @@ export function ColumnContainer({
     onAccountClick,
     onNsfwReveal,
     nsfwRevealedStatusIds,
+    onStatusDelete,
 }: ColumnContainerProps) {
     const columns = useColumnsStore((state) => state.columns);
     const removeColumn = useColumnsStore((state) => state.removeColumn);
@@ -57,6 +59,7 @@ export function ColumnContainer({
                     onAccountClick={onAccountClick}
                     onNsfwReveal={onNsfwReveal}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    onStatusDelete={onStatusDelete}
                 />
             ))}
 
