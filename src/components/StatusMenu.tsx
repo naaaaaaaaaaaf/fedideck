@@ -203,6 +203,7 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
                 case 'Enter':
                 case ' ':
                     e.preventDefault();
+                    e.stopPropagation(); // Prevent bubbling to parent (e.g., page scroll)
                     if (focusedIndex >= 0) {
                         menuItems[focusedIndex]?.onClick();
                     }
