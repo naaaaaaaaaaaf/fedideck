@@ -267,7 +267,10 @@ function App() {
         if (!deleteTargetStatus || !deleteAccountId) return;
 
         const session = accounts.find((a) => a.id === deleteAccountId);
-        if (!session) return;
+        if (!session) {
+            setDeleteError('アカウントセッションが見つかりません。再度ログインしてください。');
+            return;
+        }
 
         setIsDeleteLoading(true);
         setDeleteError(null);
