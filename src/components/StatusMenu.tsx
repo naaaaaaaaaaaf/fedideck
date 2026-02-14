@@ -124,21 +124,31 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
     };
 
     const handleTriggerKeyDown = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
-        if (disabled || isOpen) return;
+        if (disabled) return;
 
         switch (e.key) {
             case 'ArrowDown':
             case 'Enter':
             case ' ': {
                 e.preventDefault();
-                setIsOpen(true);
-                setFocusedIndex(0);
+                if (isOpen) {
+                    // Menu is open, move focus to first item
+                    setFocusedIndex(0);
+                } else {
+                    setIsOpen(true);
+                    setFocusedIndex(0);
+                }
                 break;
             }
             case 'ArrowUp':
                 e.preventDefault();
-                setIsOpen(true);
-                setFocusedIndex(menuItems.length - 1);
+                if (isOpen) {
+                    // Menu is open, move focus to last item
+                    setFocusedIndex(menuItems.length - 1);
+                } else {
+                    setIsOpen(true);
+                    setFocusedIndex(menuItems.length - 1);
+                }
                 break;
         }
     };
@@ -230,7 +240,7 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
                             }}
                             type="button"
                             role="menuitem"
-                            tabIndex={index === focusedIndex ? 0 : -1}
+                            tabIndex={index === (focusedIndex < 0 ? 0 : focusedIndex) ? 0 : -1}
                             onClick={item.onClick}
                             className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors ${
                                 index === focusedIndex ? 'bg-slate-700' : ''
