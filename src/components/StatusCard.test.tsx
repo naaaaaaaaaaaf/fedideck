@@ -1648,4 +1648,124 @@ describe('StatusCard', () => {
             expect(onStatusClick).not.toHaveBeenCalled();
         });
     });
+
+    describe('StatusMenu integration', () => {
+        const mockAccountSession = {
+            id: 'session-1',
+            instanceUrl: 'https://mastodon.social',
+            accessToken: 'test-token',
+            account: {
+                id: '1',
+                username: 'testuser',
+                acct: 'testuser',
+                displayName: 'Test User',
+            },
+        } as const;
+
+        it('should render StatusMenu with menu button', () => {
+            const status = createMockStatus();
+            render(<StatusCard status={status} />);
+
+            expect(screen.getByRole('button', { name: 'メニュー' })).toBeInTheDocument();
+        });
+
+        it('should not show delete option when no accountSession', async () => {
+            const user = userEvent.setup();
+            const onStatusDelete = vi.fn();
+            const status = createMockStatus();
+
+            render(<StatusCard status={status} onStatusDelete={onStatusDelete} />);
+
+            const menuButton = screen.getByRole('button', { name: 'メニュー' });
+            await user.click(menuButton);
+
+            // Delete option should not be shown (user is not logged in)
+            expect(screen.queryByText('削除')).not.toBeInTheDocument();
+        });
+
+        it('should not show delete option for other users posts', async () => {
+            const user = userEvent.setup();
+            const onStatusDelete = vi.fn();
+            // Status from a different user
+            const status = createMockStatus({
+                account: {
+                    id: 'other-user',
+                    username: 'otheruser',
+                    acct: 'otheruser',
+                    displayName: 'Other User',
+                } as unknown as mastodon.v1.Account,
+            });
+
+            render(
+                <StatusCard
+                    status={status}
+                    accountSession={mockAccountSession}
+                    onStatusDelete={onStatusDelete}
+                />
+            );
+
+            const menuButton = screen.getByRole('button', { name: 'メニュー' });
+            await user.click(menuButton);
+
+            // Delete option should not be shown (not own post)
+            expect(screen.queryByText('削除')).not.toBeInTheDocument();
+        });
+
+        it('should show delete option for own posts', async () => {
+            const user = userEvent.setup();
+            const onStatusDelete = vi.fn();
+            // Status from the same user as accountSession
+            const status = createMockStatus({
+                account: {
+                    id: '1', // matches mockAccountSession.account.id
+                    username: 'testuser',
+                    acct: 'testuser',
+                    displayName: 'Test User',
+                } as unknown as mastodon.v1.Account,
+            });
+
+            render(
+                <StatusCard
+                    status={status}
+                    accountSession={mockAccountSession}
+                    onStatusDelete={onStatusDelete}
+                />
+            );
+
+            const menuButton = screen.getByRole('button', { name: 'メニュー' });
+            await user.click(menuButton);
+
+            // Delete option should be shown (own post)
+            expect(screen.getByText('削除')).toBeInTheDocument();
+        });
+
+        it('should call onStatusDelete when delete is clicked', async () => {
+            const user = userEvent.setup();
+            const onStatusDelete = vi.fn();
+            const status = createMockStatus({
+                account: {
+                    id: '1',
+                    username: 'testuser',
+                    acct: 'testuser',
+                    displayName: 'Test User',
+                } as unknown as mastodon.v1.Account,
+            });
+
+            render(
+                <StatusCard
+                    status={status}
+                    accountSession={mockAccountSession}
+                    onStatusDelete={onStatusDelete}
+                />
+            );
+
+            const menuButton = screen.getByRole('button', { name: 'メニュー' });
+            await user.click(menuButton);
+
+            const deleteButton = screen.getByText('削除');
+            await user.click(deleteButton);
+
+            expect(onStatusDelete).toHaveBeenCalledWith(expect.objectContaining({ id: '12345' }));
+        });
+    });
 });
