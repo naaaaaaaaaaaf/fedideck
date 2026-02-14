@@ -192,6 +192,69 @@ describe('useStreamsStore', () => {
             expect(publicStreamAfter).toBe(publicStreamBefore);
         });
     });
+
+    describe('removeStatusForAccountStreams', () => {
+        it('removes status from all streams of an account', () => {
+            const status1 = makeStatus('1');
+            const status2 = makeStatus('2');
+
+            useStreamsStore.getState().setStatuses('acc1:home', [status1, status2]);
+            useStreamsStore.getState().setStatuses('acc1:public', [status1, status2]);
+
+            useStreamsStore.getState().removeStatusForAccountStreams('acc1', '1');
+
+            const homeStream = useStreamsStore.getState().data['acc1:home'];
+            const publicStream = useStreamsStore.getState().data['acc1:public'];
+
+            expect(homeStream.statuses.map((s) => s.id)).toEqual(['2']);
+            expect(publicStream.statuses.map((s) => s.id)).toEqual(['2']);
+        });
+
+        it('does not affect streams of other accounts', () => {
+            const status1 = makeStatus('1');
+
+            useStreamsStore.getState().setStatuses('acc1:home', [status1]);
+            useStreamsStore.getState().setStatuses('acc2:home', [status1]);
+
+            useStreamsStore.getState().removeStatusForAccountStreams('acc1', '1');
+
+            const acc1Stream = useStreamsStore.getState().data['acc1:home'];
+            const acc2Stream = useStreamsStore.getState().data['acc2:home'];
+
+            expect(acc1Stream.statuses).toEqual([]);
+            expect(acc2Stream.statuses.map((s) => s.id)).toEqual(['1']);
+        });
+
+        it('removes reblog wrapper when inner status is deleted', () => {
+            const innerStatus = makeStatus('inner-1');
+            const reblogStatus = {
+                id: 'reblog-1',
+                reblog: innerStatus,
+            } as mastodon.v1.Status;
+            const otherStatus = makeStatus('other');
+
+            useStreamsStore.getState().setStatuses('acc1:home', [reblogStatus, otherStatus]);
+
+            useStreamsStore.getState().removeStatusForAccountStreams('acc1', 'inner-1');
+
+            const stream = useStreamsStore.getState().data['acc1:home'];
+            // Reblog wrapper should be removed entirely
+            expect(stream.statuses.map((s) => s.id)).toEqual(['other']);
+        });
+
+        it('is no-op when status does not exist', () => {
+            const status1 = makeStatus('1');
+
+            useStreamsStore.getState().setStatuses('acc1:home', [status1]);
+
+            const originalState = useStreamsStore.getState();
+            useStreamsStore.getState().removeStatusForAccountStreams('acc1', 'nonexistent');
+            const newState = useStreamsStore.getState();
+
+            // State should be unchanged (same reference)
+            expect(newState.data).toBe(originalState.data);
+        });
+    });
 });
 
 describe('getStreamKey', () => {
