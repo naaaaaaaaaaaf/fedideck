@@ -113,14 +113,23 @@ describe('StatusMenu', () => {
         // Navigate down to first item
         fireEvent.keyDown(menu, { key: 'ArrowDown' });
         expect(menuItems[0]).toHaveFocus();
+        expect(menuItems[0]).toHaveAttribute('tabIndex', '0');
+        expect(menuItems[1]).toHaveAttribute('tabIndex', '-1');
+        expect(menuItems[0]).toHaveClass('bg-slate-700');
 
         // Navigate down to second item
         fireEvent.keyDown(menu, { key: 'ArrowDown' });
         expect(menuItems[1]).toHaveFocus();
+        expect(menuItems[1]).toHaveAttribute('tabIndex', '0');
+        expect(menuItems[0]).toHaveAttribute('tabIndex', '-1');
+        expect(menuItems[1]).toHaveClass('bg-slate-700');
 
         // Should wrap around to first item
         fireEvent.keyDown(menu, { key: 'ArrowDown' });
         expect(menuItems[0]).toHaveFocus();
+        expect(menuItems[0]).toHaveAttribute('tabIndex', '0');
+        expect(menuItems[1]).toHaveAttribute('tabIndex', '-1');
+        expect(menuItems[0]).toHaveClass('bg-slate-700');
     });
 
     it('navigates menu items with arrow up key', () => {
@@ -135,6 +144,9 @@ describe('StatusMenu', () => {
         // Navigate up (should wrap to last item)
         fireEvent.keyDown(menu, { key: 'ArrowUp' });
         expect(menuItems[1]).toHaveFocus();
+        expect(menuItems[1]).toHaveAttribute('tabIndex', '0');
+        expect(menuItems[0]).toHaveAttribute('tabIndex', '-1');
+        expect(menuItems[1]).toHaveClass('bg-slate-700');
     });
 
     it('calls onDelete when delete is clicked', () => {
