@@ -169,11 +169,8 @@ describe('StatusDetailModal', () => {
 
             render(<StatusDetailModal isOpen={true} onClose={onClose} status={status} />);
 
-            const closeButton = screen
-                .getAllByRole('button')
-                .find((btn) => btn.querySelector('svg'));
-            expect(closeButton).toBeDefined();
-            await user.click(closeButton!);
+            const closeButton = screen.getByRole('button', { name: '閉じる' });
+            await user.click(closeButton);
 
             expect(onClose).toHaveBeenCalledTimes(1);
         });

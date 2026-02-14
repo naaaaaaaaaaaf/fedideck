@@ -349,6 +349,7 @@ function App() {
                 accountSession={detailAccountSession}
                 onReply={handleStatusDetailReply}
                 onStatusUpdate={updateStatusGlobal}
+                onStatusDelete={handleStatusDeleteRequest}
                 onImageClick={handleImageClick}
                 onVideoClick={handleVideoClick}
                 onAudioClick={handleAudioClick}

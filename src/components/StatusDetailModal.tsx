@@ -1,14 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { mastodon } from 'masto';
-import {
-    LuX,
-    LuRepeat2,
-    LuMessageCircle,
-    LuStar,
-    LuLink,
-    LuTriangleAlert,
-    LuLoader,
-} from 'react-icons/lu';
+import { LuX, LuRepeat2, LuMessageCircle, LuStar, LuTriangleAlert, LuLoader } from 'react-icons/lu';
 import {
     type AccountSession,
     type MastoClient,
@@ -31,6 +23,7 @@ import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
+import { StatusMenu } from './StatusMenu';
 
 interface StatusDetailModalProps {
     isOpen: boolean;
@@ -39,6 +32,7 @@ interface StatusDetailModalProps {
     accountSession?: AccountSession;
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusUpdate?: (status: mastodon.v1.Status) => void;
+    onStatusDelete?: (status: mastodon.v1.Status, accountId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
     onAudioClick?: (tracks: AudioViewerTrack[], index: number) => void;
@@ -207,6 +201,7 @@ export function StatusDetailModal({
     accountSession,
     onReply,
     onStatusUpdate,
+    onStatusDelete,
     onImageClick,
     onVideoClick,
     onAudioClick,
@@ -380,6 +375,17 @@ export function StatusDetailModal({
         [displayStatus?.mediaAttachments]
     );
 
+    // Check if current user can delete this status (must be before early return)
+    const canDelete =
+        accountSession && displayStatus && accountSession.account.id === displayStatus.account.id;
+
+    // Handle status delete (must be before early return due to useCallback)
+    const handleStatusDelete = useCallback(() => {
+        if (!displayStatus || !accountSession || !canDelete) return;
+        onStatusDelete?.(displayStatus, accountSession.account.id);
+        onClose();
+    }, [displayStatus, accountSession, canDelete, onStatusDelete, onClose]);
+
     if (!isOpen || !status || !displayStatus) return null;
 
     const reblogger = navigatedStatus ? null : status.reblog ? status.account : null;
@@ -494,7 +500,7 @@ export function StatusDetailModal({
             {/* Modal */}
             <div
                 ref={modalRef}
-                className="relative w-full max-w-2xl mx-4 bg-slate-900 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden max-h-[90vh] flex flex-col"
+                className="relative w-full max-w-2xl mx-4 bg-slate-900 rounded-2xl shadow-2xl border border-slate-700/50 overflow-visible max-h-[90vh] flex flex-col"
             >
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
@@ -771,56 +777,6 @@ export function StatusDetailModal({
                                 </span>
                             )}
                         </div>
-
-                        {/* Action bar */}
-                        <div className="flex items-center justify-around text-slate-400">
-                            <button
-                                onClick={handleReply}
-                                className="flex items-center gap-2 px-4 py-2 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
-                            >
-                                <LuMessageCircle className="w-5 h-5" aria-hidden="true" />
-                                <span>返信</span>
-                            </button>
-                            <button
-                                onClick={handleReblog}
-                                disabled={!accountSession || isLoading.reblog || !canReblog}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                                    !canReblog
-                                        ? 'opacity-50 cursor-not-allowed'
-                                        : localReblogged
-                                          ? 'text-green-400 hover:bg-green-400/10'
-                                          : 'hover:text-green-400 hover:bg-green-400/10'
-                                } ${isLoading.reblog ? 'opacity-50' : ''}`}
-                                title={!canReblog ? 'この投稿はブーストできません' : undefined}
-                            >
-                                <LuRepeat2 className="w-5 h-5" aria-hidden="true" />
-                                <span>ブースト</span>
-                            </button>
-                            <button
-                                onClick={handleFavourite}
-                                disabled={!accountSession || isLoading.favourite}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                                    localFavourited
-                                        ? 'text-amber-400 hover:bg-amber-400/10'
-                                        : 'hover:text-amber-400 hover:bg-amber-400/10'
-                                } ${isLoading.favourite ? 'opacity-50' : ''}`}
-                            >
-                                <LuStar
-                                    className={`w-5 h-5 ${localFavourited ? 'fill-current' : ''}`}
-                                    aria-hidden="true"
-                                />
-                                <span>お気に入り</span>
-                            </button>
-                            <a
-                                href={displayStatus.url ?? '#'}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-colors"
-                            >
-                                <LuLink className="w-5 h-5" aria-hidden="true" />
-                                <span>リンク</span>
-                            </a>
-                        </div>
                     </div>
 
                     {/* Descendants (replies) */}
@@ -828,6 +784,54 @@ export function StatusDetailModal({
                         <DescendantsThread
                             descendants={context.descendants}
                             onThreadNavigate={handleThreadNavigate}
+                        />
+                    )}
+                </div>
+
+                {/* Action bar - outside scroll container to allow menu overflow */}
+                <div className="flex items-center justify-around text-slate-400 border-t border-slate-700/50 px-4 py-2 shrink-0">
+                    <button
+                        onClick={handleReply}
+                        className="flex items-center gap-2 px-4 py-2 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
+                    >
+                        <LuMessageCircle className="w-5 h-5" aria-hidden="true" />
+                        <span>返信</span>
+                    </button>
+                    <button
+                        onClick={handleReblog}
+                        disabled={!accountSession || isLoading.reblog || !canReblog}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                            !canReblog
+                                ? 'opacity-50 cursor-not-allowed'
+                                : localReblogged
+                                  ? 'text-green-400 hover:bg-green-400/10'
+                                  : 'hover:text-green-400 hover:bg-green-400/10'
+                        } ${isLoading.reblog ? 'opacity-50' : ''}`}
+                        title={!canReblog ? 'この投稿はブーストできません' : undefined}
+                    >
+                        <LuRepeat2 className="w-5 h-5" aria-hidden="true" />
+                        <span>ブースト</span>
+                    </button>
+                    <button
+                        onClick={handleFavourite}
+                        disabled={!accountSession || isLoading.favourite}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                            localFavourited
+                                ? 'text-amber-400 hover:bg-amber-400/10'
+                                : 'hover:text-amber-400 hover:bg-amber-400/10'
+                        } ${isLoading.favourite ? 'opacity-50' : ''}`}
+                    >
+                        <LuStar
+                            className={`w-5 h-5 ${localFavourited ? 'fill-current' : ''}`}
+                            aria-hidden="true"
+                        />
+                        <span>お気に入り</span>
+                    </button>
+                    {displayStatus && (
+                        <StatusMenu
+                            statusUrl={displayStatus.url ?? ''}
+                            canDelete={canDelete ?? false}
+                            onDelete={handleStatusDelete}
                         />
                     )}
                 </div>

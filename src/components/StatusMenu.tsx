@@ -195,7 +195,7 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
                     ref={menuRef}
                     role="menu"
                     aria-orientation="vertical"
-                    className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-lg overflow-hidden z-50"
+                    className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-lg overflow-hidden z-[60]"
                 >
                     {menuItems.map((item, index) => (
                         <button
