@@ -21,6 +21,7 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
     const menuRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const copySuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const menuItemRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const [focusedIndex, setFocusedIndex] = useState(-1);
 
     const scheduleCopySuccessReset = useCallback(() => {
@@ -102,6 +103,13 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
             }
         };
     }, []);
+
+    // Move DOM focus when focusedIndex changes (roving tabindex pattern)
+    useEffect(() => {
+        if (focusedIndex >= 0 && menuItemRefs.current[focusedIndex]) {
+            menuItemRefs.current[focusedIndex]?.focus();
+        }
+    }, [focusedIndex]);
 
     const handleToggle = () => {
         if (disabled) return;
@@ -217,8 +225,12 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
                     {menuItems.map((item, index) => (
                         <button
                             key={item.id}
+                            ref={(el) => {
+                                menuItemRefs.current[index] = el;
+                            }}
                             type="button"
                             role="menuitem"
+                            tabIndex={index === focusedIndex ? 0 : -1}
                             onClick={item.onClick}
                             className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors ${
                                 index === focusedIndex ? 'bg-slate-700' : ''
