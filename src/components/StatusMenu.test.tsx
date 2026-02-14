@@ -91,9 +91,10 @@ describe('StatusMenu', () => {
         const trigger = screen.getByRole('button', { name: 'メニュー' });
         fireEvent.click(trigger);
 
-        expect(screen.getByRole('menu')).toBeInTheDocument();
+        const menu = screen.getByRole('menu');
+        expect(menu).toBeInTheDocument();
 
-        fireEvent.keyDown(document, { key: 'Escape' });
+        fireEvent.keyDown(menu, { key: 'Escape' });
 
         await waitFor(() => {
             expect(screen.queryByRole('menu')).not.toBeInTheDocument();
@@ -106,12 +107,14 @@ describe('StatusMenu', () => {
         const trigger = screen.getByRole('button', { name: 'メニュー' });
         fireEvent.click(trigger);
 
+        const menu = screen.getByRole('menu');
+
         // Navigate down
-        fireEvent.keyDown(document, { key: 'ArrowDown' });
-        fireEvent.keyDown(document, { key: 'ArrowDown' });
+        fireEvent.keyDown(menu, { key: 'ArrowDown' });
+        fireEvent.keyDown(menu, { key: 'ArrowDown' });
 
         // Should wrap around to first item
-        fireEvent.keyDown(document, { key: 'ArrowDown' });
+        fireEvent.keyDown(menu, { key: 'ArrowDown' });
     });
 
     it('navigates menu items with arrow up key', () => {
@@ -120,8 +123,10 @@ describe('StatusMenu', () => {
         const trigger = screen.getByRole('button', { name: 'メニュー' });
         fireEvent.click(trigger);
 
+        const menu = screen.getByRole('menu');
+
         // Navigate up (should wrap to last item)
-        fireEvent.keyDown(document, { key: 'ArrowUp' });
+        fireEvent.keyDown(menu, { key: 'ArrowUp' });
     });
 
     it('calls onDelete when delete is clicked', () => {

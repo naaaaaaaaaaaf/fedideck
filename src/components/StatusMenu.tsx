@@ -154,14 +154,15 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isOpen, handleClose]);
 
-    // Keyboard navigation
-    useEffect(() => {
-        if (!isOpen) return;
+    // Keyboard navigation using React capture phase to prevent bubbling to parent modals
+    const handleMenuKeyDown = useCallback(
+        (e: ReactKeyboardEvent) => {
+            if (!isOpen) return;
 
-        const handleKeyDown = (e: KeyboardEvent) => {
             switch (e.key) {
                 case 'Escape':
                     e.preventDefault();
+                    e.stopPropagation(); // Prevent bubbling to parent modal's Escape handler
                     handleClose();
                     triggerRef.current?.focus();
                     break;
@@ -185,11 +186,9 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
                     }
                     break;
             }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, focusedIndex, menuItems, handleClose]);
+        },
+        [isOpen, focusedIndex, menuItems, handleClose]
+    );
 
     return (
         <div className="relative">
@@ -212,6 +211,7 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
                     ref={menuRef}
                     role="menu"
                     aria-orientation="vertical"
+                    onKeyDownCapture={handleMenuKeyDown}
                     className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-lg overflow-hidden z-[60]"
                 >
                     {menuItems.map((item, index) => (
