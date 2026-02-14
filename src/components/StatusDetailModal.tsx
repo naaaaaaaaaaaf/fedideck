@@ -829,7 +829,7 @@ export function StatusDetailModal({
                     </button>
                     {displayStatus && (
                         <StatusMenu
-                            statusUrl={displayStatus.url ?? ''}
+                            statusUrl={displayStatus.url ?? displayStatus.uri}
                             canDelete={canDelete ?? false}
                             onDelete={handleStatusDelete}
                         />
