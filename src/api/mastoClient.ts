@@ -355,3 +355,67 @@ export async function deleteStatus(
     const status = await client.v1.statuses.$select(statusId).remove();
     return status;
 }
+
+/**
+ * Status source containing raw text for editing
+ * Mastodon 3.5.0+ API response from /api/v1/statuses/:id/source
+ */
+export interface StatusSource {
+    id: string;
+    text: string;
+    spoilerText: string;
+}
+
+/**
+ * Fetch the source of a status for editing
+ * Returns raw text and spoiler text without HTML formatting
+ * Mastodon 3.5.0+ only
+ */
+export async function getStatusSource(
+    client: MastoClient,
+    statusId: string
+): Promise<StatusSource> {
+    const source = await client.v1.statuses.$select(statusId).source.fetch();
+    return source;
+}
+
+/**
+ * Parameters for editing an existing status
+ * Note: visibility cannot be changed after posting (Mastodon API limitation)
+ */
+export interface EditStatusParams {
+    status: string;
+    spoilerText?: string;
+    sensitive?: boolean;
+    language?: string;
+    mediaIds?: string[];
+    mediaAttributes?: Array<{ id: string; description?: string }>;
+}
+
+/**
+ * Edit an existing status (Mastodon 3.5.0+)
+ * Only the author of a status can edit it.
+ * Note: visibility cannot be changed after posting
+ */
+export async function editStatus(
+    client: MastoClient,
+    statusId: string,
+    params: EditStatusParams
+): Promise<mastodon.v1.Status> {
+    // Build params conditionally to satisfy masto.js types
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const editParams: any = {
+        status: params.status,
+    };
+
+    if (params.spoilerText !== undefined) editParams.spoilerText = params.spoilerText;
+    if (params.sensitive !== undefined) editParams.sensitive = params.sensitive;
+    if (params.language !== undefined) editParams.language = params.language;
+    if (params.mediaIds && params.mediaIds.length > 0) editParams.mediaIds = params.mediaIds;
+    if (params.mediaAttributes && params.mediaAttributes.length > 0) {
+        editParams.mediaAttributes = params.mediaAttributes;
+    }
+
+    const status = await client.v1.statuses.$select(statusId).update(editParams);
+    return status;
+}

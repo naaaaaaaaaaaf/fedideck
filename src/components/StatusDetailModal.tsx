@@ -33,6 +33,7 @@ interface StatusDetailModalProps {
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusUpdate?: (status: mastodon.v1.Status) => void;
     onStatusDelete?: (status: mastodon.v1.Status, accountId: string) => void;
+    onStatusEdit?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
     onAudioClick?: (tracks: AudioViewerTrack[], index: number) => void;
@@ -202,6 +203,7 @@ export function StatusDetailModal({
     onReply,
     onStatusUpdate,
     onStatusDelete,
+    onStatusEdit,
     onImageClick,
     onVideoClick,
     onAudioClick,
@@ -379,12 +381,23 @@ export function StatusDetailModal({
     const canDelete =
         accountSession && displayStatus && accountSession.account.id === displayStatus.account.id;
 
+    // Check if current user can edit this status (must be before early return)
+    const canEdit =
+        accountSession && displayStatus && accountSession.account.id === displayStatus.account.id;
+
     // Handle status delete (must be before early return due to useCallback)
     const handleStatusDelete = useCallback(() => {
         if (!displayStatus || !accountSession || !canDelete) return;
         onStatusDelete?.(displayStatus, accountSession.account.id);
         onClose();
     }, [displayStatus, accountSession, canDelete, onStatusDelete, onClose]);
+
+    // Handle status edit (must be before early return due to useCallback)
+    const handleStatusEdit = useCallback(() => {
+        if (!displayStatus || !accountSession || !canEdit) return;
+        onStatusEdit?.(displayStatus, accountSession.account.id);
+        onClose();
+    }, [displayStatus, accountSession, canEdit, onStatusEdit, onClose]);
 
     if (!isOpen || !status || !displayStatus) return null;
 
@@ -831,7 +844,9 @@ export function StatusDetailModal({
                         <StatusMenu
                             statusUrl={displayStatus.url ?? displayStatus.uri}
                             canDelete={canDelete ?? false}
+                            canEdit={canEdit ?? false}
                             onDelete={handleStatusDelete}
+                            onEdit={handleStatusEdit}
                         />
                     )}
                 </div>
