@@ -58,8 +58,9 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
         [scheduleCopySuccessReset]
     );
 
-    const handleCopyLink = useCallback(() => {
-        copyToClipboard(statusUrl);
+    const handleCopyLink = useCallback(async () => {
+        await copyToClipboard(statusUrl);
+        setIsOpen(false);
     }, [statusUrl, copyToClipboard]);
 
     const handleDeleteClick = useCallback(() => {

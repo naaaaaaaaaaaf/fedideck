@@ -191,7 +191,7 @@ describe('StatusMenu', () => {
         expect(mockWriteText).toHaveBeenCalledWith('https://mastodon.social/@test/123');
     });
 
-    it('shows success message after copying', async () => {
+    it('closes menu after copying', async () => {
         const mockWriteText = vi.fn().mockResolvedValue(undefined);
         Object.assign(navigator, {
             clipboard: { writeText: mockWriteText },
@@ -206,7 +206,8 @@ describe('StatusMenu', () => {
         fireEvent.click(copyButton);
 
         await waitFor(() => {
-            expect(screen.getByText('コピーしました')).toBeInTheDocument();
+            expect(mockWriteText).toHaveBeenCalledWith('https://mastodon.social/@test/123');
+            expect(screen.queryByRole('menu')).not.toBeInTheDocument();
         });
     });
 
