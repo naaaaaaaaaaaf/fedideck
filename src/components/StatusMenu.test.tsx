@@ -108,13 +108,19 @@ describe('StatusMenu', () => {
         fireEvent.click(trigger);
 
         const menu = screen.getByRole('menu');
+        const menuItems = screen.getAllByRole('menuitem');
 
-        // Navigate down
+        // Navigate down to first item
         fireEvent.keyDown(menu, { key: 'ArrowDown' });
+        expect(menuItems[0]).toHaveFocus();
+
+        // Navigate down to second item
         fireEvent.keyDown(menu, { key: 'ArrowDown' });
+        expect(menuItems[1]).toHaveFocus();
 
         // Should wrap around to first item
         fireEvent.keyDown(menu, { key: 'ArrowDown' });
+        expect(menuItems[0]).toHaveFocus();
     });
 
     it('navigates menu items with arrow up key', () => {
@@ -124,9 +130,11 @@ describe('StatusMenu', () => {
         fireEvent.click(trigger);
 
         const menu = screen.getByRole('menu');
+        const menuItems = screen.getAllByRole('menuitem');
 
         // Navigate up (should wrap to last item)
         fireEvent.keyDown(menu, { key: 'ArrowUp' });
+        expect(menuItems[1]).toHaveFocus();
     });
 
     it('calls onDelete when delete is clicked', () => {
