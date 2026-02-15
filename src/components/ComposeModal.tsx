@@ -563,7 +563,7 @@ export function ComposeModal({
                             if (media.isExisting || trimmedAlt.length > 0) {
                                 mediaAttributes.push({
                                     id: media.uploadedId,
-                                    description: trimmedAlt.length > 0 ? trimmedAlt : undefined,
+                                    description: trimmedAlt.length > 0 ? trimmedAlt : '',
                                 });
                             }
                         }
