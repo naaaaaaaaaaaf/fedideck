@@ -7,6 +7,7 @@ import { NotificationCard } from '../components/NotificationCard';
 import { useStreamsStore, getStreamKey } from '../store/streams';
 import { useAccountsStore } from '../store/accounts';
 import { getClient } from '../api/mastoClient';
+import { formatAccountHandle } from '../utils/accountHandle';
 import {
     fetchHomeTimeline,
     fetchPublicTimeline,
@@ -225,15 +226,24 @@ export function Column({
         return () => observer.disconnect();
     }, [loadMore]);
 
+    const accountHandle = account ? formatAccountHandle(account) : null;
+
     return (
         <div className="flex flex-col h-full w-80 min-w-80 bg-slate-900/80 backdrop-blur-sm border-r border-slate-700/50 shrink-0">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 bg-slate-800/50">
-                <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-lg">{getStreamIcon(stream.type)}</span>
-                    <span className="font-medium text-slate-100 truncate">
-                        {getStreamDisplayName(stream)}
-                    </span>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="text-lg shrink-0">{getStreamIcon(stream.type)}</span>
+                    <div className="min-w-0 flex-1">
+                        <div className="font-medium text-slate-100 truncate">
+                            {getStreamDisplayName(stream)}
+                        </div>
+                        {accountHandle && (
+                            <div className="text-xs text-slate-400 truncate" title={accountHandle}>
+                                {accountHandle}
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className="flex items-center gap-1">
                     <button
