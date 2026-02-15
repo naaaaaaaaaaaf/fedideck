@@ -250,11 +250,9 @@ export function ComposeModal({
                 // Set text content from source
                 setContent(source.text);
 
-                // Set CW if present
-                if (source.spoilerText) {
-                    setCwText(source.spoilerText);
-                    setShowCW(true);
-                }
+                // Set CW state explicitly (even if empty, to clear stale state)
+                setCwText(source.spoilerText);
+                setShowCW(!!source.spoilerText);
 
                 // Set visibility (cannot be changed in edit mode, but prefill for display)
                 setVisibility(status.visibility as Visibility);
