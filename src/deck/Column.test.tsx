@@ -261,7 +261,7 @@ describe('Column', () => {
         it('should not show account handle when account is missing', () => {
             mockAccount = undefined;
             render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
-            expect(screen.queryByText(/@testuser/)).not.toBeInTheDocument();
+            expect(screen.queryByTitle(/^@/)).not.toBeInTheDocument();
         });
 
         it('should not duplicate domain when acct already contains domain', () => {

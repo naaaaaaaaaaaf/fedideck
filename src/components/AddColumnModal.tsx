@@ -4,6 +4,7 @@ import { useAccountsStore } from '../store/accounts';
 import { useColumnsStore } from '../store/columns';
 import type { StreamType } from '../streaming/streamTypes';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
+import { formatAccountHandle } from '../utils/accountHandle';
 
 interface AddColumnModalProps {
     isOpen: boolean;
@@ -152,8 +153,7 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                                         selectedAccount.account.username}
                                 </div>
                                 <div className="text-xs text-slate-400 truncate">
-                                    @{selectedAccount.account.acct}@
-                                    {new URL(selectedAccount.instanceUrl).hostname}
+                                    {formatAccountHandle(selectedAccount)}
                                 </div>
                             </div>
                             {accounts.length > 1 && (
@@ -231,8 +231,7 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
                                                 {acc.account.displayName || acc.account.username}
                                             </div>
                                             <div className="text-xs text-slate-400 truncate">
-                                                @{acc.account.acct}@
-                                                {new URL(acc.instanceUrl).hostname}
+                                                {formatAccountHandle(acc)}
                                             </div>
                                         </div>
                                         {acc.id === selectedAccountId && (

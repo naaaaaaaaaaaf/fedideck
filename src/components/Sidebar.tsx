@@ -1,5 +1,6 @@
 import { LuPencil } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
+import { formatAccountHandle } from '../utils/accountHandle';
 
 interface SidebarProps {
     onAddAccount: () => void;
@@ -38,35 +39,38 @@ export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
                 className="flex-1 flex flex-col items-center gap-2 overflow-y-auto"
                 aria-label="アカウント一覧"
             >
-                {accounts.map((account) => (
-                    <div key={account.id} className="relative group">
-                        <div
-                            className="w-10 h-10 rounded-xl overflow-hidden"
-                            title={`@${account.account.acct}@${new URL(account.instanceUrl).hostname}`}
-                        >
-                            <img
-                                src={account.account.avatar}
-                                alt={`${account.account.displayName || account.account.username}のアバター`}
-                                className="w-full h-full object-cover"
-                            />
-                        </div>
+                {accounts.map((account) => {
+                    const handle = formatAccountHandle(account);
+                    return (
+                        <div key={account.id} className="relative group">
+                            <div
+                                className="w-10 h-10 rounded-xl overflow-hidden"
+                                title={handle ?? ''}
+                            >
+                                <img
+                                    src={account.account.avatar}
+                                    alt={`${account.account.displayName || account.account.username}のアバター`}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
 
-                        {/* Remove button (on hover) */}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (confirm('このアカウントをログアウトしますか？')) {
-                                    removeAccount(account.id);
-                                }
-                            }}
-                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 rounded-full text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                            aria-label={`${account.account.displayName || account.account.username}をログアウト`}
-                            title="ログアウト"
-                        >
-                            <span aria-hidden="true">×</span>
-                        </button>
-                    </div>
-                ))}
+                            {/* Remove button (on hover) */}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm('このアカウントをログアウトしますか？')) {
+                                        removeAccount(account.id);
+                                    }
+                                }}
+                                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 rounded-full text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                aria-label={`${account.account.displayName || account.account.username}をログアウト`}
+                                title="ログアウト"
+                            >
+                                <span aria-hidden="true">×</span>
+                            </button>
+                        </div>
+                    );
+                })}
             </nav>
 
             {/* Add account button */}
