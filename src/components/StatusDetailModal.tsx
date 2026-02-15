@@ -134,11 +134,14 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
                                 const { label: visibilityLabel, icon: VisibilityIcon } =
                                     getVisibilityMeta(status.visibility);
                                 return (
-                                    <VisibilityIcon
-                                        className="w-4 h-4"
-                                        aria-label={`公開範囲: ${visibilityLabel}`}
-                                        title={visibilityLabel}
-                                    />
+                                    <>
+                                        <VisibilityIcon
+                                            className="w-4 h-4"
+                                            aria-hidden="true"
+                                            title={visibilityLabel}
+                                        />
+                                        <span className="sr-only">公開範囲: {visibilityLabel}</span>
+                                    </>
                                 );
                             })()}
                             {formatDate(status.createdAt)}
