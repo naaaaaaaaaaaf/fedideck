@@ -14,6 +14,7 @@ import {
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { formatDate } from '../utils/dateFormat';
+import { getVisibilityMeta } from '../utils/statusVisibility';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
@@ -128,7 +129,21 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
                             <DisplayName account={account} className="font-medium text-slate-200" />
                             <span className="text-slate-500 ml-1">@{account.acct}</span>
                         </a>
-                        <span className="text-slate-500 text-sm shrink-0">
+                        <span className="inline-flex items-center gap-1 text-slate-500 text-sm shrink-0">
+                            {(() => {
+                                const { label: visibilityLabel, icon: VisibilityIcon } =
+                                    getVisibilityMeta(status.visibility);
+                                return (
+                                    <>
+                                        <VisibilityIcon
+                                            className="w-4 h-4"
+                                            aria-hidden="true"
+                                            title={visibilityLabel}
+                                        />
+                                        <span className="sr-only">公開範囲: {visibilityLabel}</span>
+                                    </>
+                                );
+                            })()}
                             {formatDate(status.createdAt)}
                         </span>
                     </div>
@@ -759,16 +774,26 @@ export function StatusDetailModal({
                             </div>
                         )}
 
-                        {/* Timestamp */}
+                        {/* Timestamp and visibility */}
                         <div className="text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">
-                            <a
-                                href={displayStatus.url ?? '#'}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="hover:underline"
-                            >
-                                {formatFullDate(displayStatus.createdAt)}
-                            </a>
+                            {(() => {
+                                const fullDateText = formatFullDate(displayStatus.createdAt);
+                                const { label: visibilityLabel, icon: VisibilityIcon } =
+                                    getVisibilityMeta(displayStatus.visibility);
+                                return (
+                                    <a
+                                        href={displayStatus.url ?? '#'}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 hover:underline"
+                                        aria-label={`公開範囲: ${visibilityLabel}、投稿日時: ${fullDateText}`}
+                                        title={`公開範囲: ${visibilityLabel}`}
+                                    >
+                                        <VisibilityIcon className="w-4 h-4" aria-hidden="true" />
+                                        <span>{fullDateText}</span>
+                                    </a>
+                                );
+                            })()}
                         </div>
 
                         {/* Stats */}

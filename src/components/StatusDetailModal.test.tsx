@@ -115,6 +115,13 @@ describe('StatusDetailModal', () => {
             expect(screen.getByText('@testuser')).toBeInTheDocument();
         });
 
+        it('should display visibility in main status timestamp area', () => {
+            const status = createMockStatus({ visibility: 'public' });
+            render(<StatusDetailModal isOpen={true} onClose={() => {}} status={status} />);
+
+            expect(screen.getByLabelText(/公開範囲: 公開、投稿日時:/)).toBeInTheDocument();
+        });
+
         it('should display boost and favourite counts', () => {
             const status = createMockStatus({
                 reblogsCount: 5,

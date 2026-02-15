@@ -3,10 +3,6 @@ import type { mastodon } from 'masto';
 import {
     LuX,
     LuTriangleAlert,
-    LuGlobe,
-    LuLockOpen,
-    LuLock,
-    LuMail,
     LuLoader,
     LuImage,
     LuListOrdered,
@@ -30,6 +26,7 @@ import {
 } from '../api/mastoClient';
 import { getInstanceConfig, getDefaultConfig, type InstanceConfig } from '../api/instanceConfig';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
+import { type Visibility, getVisibilityOptions } from '../utils/statusVisibility';
 import { useTextareaCursor } from '../hooks/useTextareaCursor';
 import { DisplayName } from './DisplayName';
 import { EmojiPalette } from './EmojiPalette';
@@ -63,15 +60,6 @@ interface ComposeModalProps {
     onStatusEdited?: (status: mastodon.v1.Status) => void;
 }
 
-type Visibility = 'public' | 'unlisted' | 'private' | 'direct';
-
-interface VisibilityOption {
-    value: Visibility;
-    label: string;
-    description: string;
-    icon: React.ReactNode;
-}
-
 interface MediaFile {
     file?: File; // Optional for existing media from edit
     preview: string;
@@ -83,32 +71,7 @@ interface MediaFile {
     kind?: 'image' | 'video' | 'audio' | 'gifv' | 'unknown'; // Media type for existing attachments
 }
 
-const VISIBILITY_OPTIONS: VisibilityOption[] = [
-    {
-        value: 'public',
-        label: '公開',
-        description: '全員に表示',
-        icon: <LuGlobe aria-hidden="true" />,
-    },
-    {
-        value: 'unlisted',
-        label: '未収載',
-        description: '公開タイムラインに表示しない',
-        icon: <LuLockOpen aria-hidden="true" />,
-    },
-    {
-        value: 'private',
-        label: 'フォロワーのみ',
-        description: 'フォロワーにのみ表示',
-        icon: <LuLock aria-hidden="true" />,
-    },
-    {
-        value: 'direct',
-        label: 'ダイレクト',
-        description: 'メンションしたユーザーにのみ表示',
-        icon: <LuMail aria-hidden="true" />,
-    },
-];
+const VISIBILITY_OPTIONS = getVisibilityOptions();
 
 const MAX_POLL_OPTIONS = 4;
 const MIN_POLL_OPTIONS = 2;
