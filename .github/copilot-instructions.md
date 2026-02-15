@@ -34,6 +34,7 @@ npm run prepare       # Husky git hooksセットアップ（インストール�
 ### Auto-Formatting
 
 Prettier + Husky + lint-stagedによる自動フォーマット:
+
 - Pre-commitフックがステージングされたTypeScript/TSX/JS/JSXファイルを自動フォーマット
 - 手動フォーマット: `npm run format`
 - チェックのみ: `npm run format:check`
@@ -68,6 +69,7 @@ Prettier + Husky + lint-stagedによる自動フォーマット:
 ### ストリーミングアーキテクチャ（`src/streaming/`）
 
 **`streamManager.ts`** はアカウントごとに1つのWebSocket接続を維持:
+
 - ユーザーストリーム購読はホームタイムラインと通知の両方をカバー
 - リスト/ハッシュタグストリームは別の購読
 - ページ表示変更時に再接続
@@ -90,6 +92,7 @@ App.tsx
 ### 認証フロー
 
 `src/auth/`でのOAuth 2.0 Out-of-Band (OOB)フロー:
+
 1. `registerApp()` - インスタンスにアプリを作成（ドメインごとにlocalStorageにキャッシュ）
 2. ユーザーがOAuth URLを訪問、認証コードをコピー
 3. `exchangeCodeForToken()` - アクセストークン取得
@@ -105,6 +108,7 @@ App.tsx
 サポートされるカラムタイプ: `home`, `public`, `public:local`, `list`, `hashtag`, `notifications`
 
 ストリームキー例:
+
 - `123@mastodon.social:home`
 - `123@mastodon.social:list:456`
 - `123@mastodon.social:hashtag:typescript`
@@ -132,6 +136,7 @@ StatusCardはお気に入り/ブーストカウントのローカルステート
 - 破壊的変更は禁止（別途合意がある場合を除く）
 
 推奨フォーマット:
+
 - `feat: add home timeline streaming`
 - `fix: handle reconnect on ws close`
 - `refactor: extract stream manager`
@@ -146,6 +151,7 @@ StatusCardはお気に入り/ブーストカウントのローカルステート
 - UIとAPIロジックを密結合させない
 
 推奨ツール:
+
 - Vitest
 - Testing Library (UI)
 
@@ -160,6 +166,7 @@ StatusCardはお気に入り/ブーストカウントのローカルステート
 CIが存在することを前提にコードを書く。
 
 最小要件:
+
 - `npm run build` が通る
 - `npm run test` が通る
 - `npm run format:check` が通る
@@ -169,12 +176,16 @@ CIが存在することを前提にコードを書く。
 ---
 
 ## レビューに関して
+
 レビューする際には、以下のprefix(接頭辞)を付けましょう。  
 また、レビューコメントは日本語で書いてください。
+
 <!-- for GitHub Copilot review rule -->
+
 [must] → かならず変更  
 [imo] → 自分の意見だとこうだけど修正必須ではない(in my opinion)  
 [nits] → ささいな指摘(nitpick)  
 [ask] → 質問  
-[fyi] → 参考情報  
+[fyi] → 参考情報
+
 <!-- for GitHub Copilot review rule-->

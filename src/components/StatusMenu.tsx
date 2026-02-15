@@ -16,6 +16,7 @@ interface StatusMenuProps {
     onDelete: () => void;
     onEdit: () => void;
     disabled?: boolean;
+    className?: string;
 }
 
 export function StatusMenu({
@@ -25,6 +26,7 @@ export function StatusMenu({
     onDelete,
     onEdit,
     disabled = false,
+    className,
 }: StatusMenuProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
@@ -241,7 +243,7 @@ export function StatusMenu({
     );
 
     return (
-        <div className="relative">
+        <div className={`relative ${className ?? ''}`}>
             <button
                 ref={triggerRef}
                 id={`${menuId}-trigger`}
@@ -249,13 +251,17 @@ export function StatusMenu({
                 onClick={handleToggle}
                 onKeyDown={handleTriggerKeyDown}
                 disabled={disabled}
-                className={`hover:text-indigo-400 transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`inline-flex h-[44px] w-[44px] items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 ${
+                    disabled
+                        ? 'opacity-50 cursor-not-allowed'
+                        : 'hover:text-indigo-400 hover:bg-indigo-400/10'
+                }`}
                 aria-label="メニュー"
                 aria-expanded={isOpen}
                 aria-haspopup="menu"
                 aria-controls={menuId}
             >
-                <LuEllipsis aria-hidden="true" />
+                <LuEllipsis className="w-5 h-5" aria-hidden="true" />
             </button>
 
             {isOpen && (
@@ -268,6 +274,7 @@ export function StatusMenu({
                     onKeyDownCapture={handleMenuKeyDown}
                     className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-lg overflow-hidden z-[60]"
                 >
+                    {/* eslint-disable-next-line react-hooks/refs -- callback ref pattern for roving tabindex */}
                     {menuItems.map((item, index) => (
                         <button
                             key={item.id}

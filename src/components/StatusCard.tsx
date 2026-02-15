@@ -61,6 +61,10 @@ export function StatusCard({
     onStatusDelete,
     onStatusEdit,
 }: StatusCardProps) {
+    // Common action button base styles (WCAG 44px minimum touch target)
+    const actionButtonBase =
+        'inline-flex min-h-[44px] items-center gap-2 rounded-lg px-2.5 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 disabled:opacity-50 disabled:cursor-not-allowed';
+
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
     const reblogger = status.reblog ? status.account : null;
@@ -600,14 +604,19 @@ export function StatusCard({
                     )}
 
                     {/* Action bar */}
-                    <div className="flex items-center gap-6 mt-3 text-slate-400">
+                    <div className="flex items-center gap-2 mt-3 text-slate-400">
                         <button
                             type="button"
                             onClick={() => onReply?.(displayStatus)}
-                            className="flex items-center gap-1.5 hover:text-blue-400 transition-colors"
+                            disabled={!onReply}
+                            className={`${actionButtonBase} ${
+                                !onReply
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:text-blue-400 hover:bg-blue-400/10'
+                            }`}
                             aria-label="返信"
                         >
-                            <LuMessageCircle aria-hidden="true" />
+                            <LuMessageCircle className="w-5 h-5" aria-hidden="true" />
                             <span className="text-sm">{displayStatus.repliesCount || ''}</span>
                         </button>
                         <button
@@ -615,33 +624,33 @@ export function StatusCard({
                             onClick={handleReblog}
                             disabled={!accountSession || isLoading.reblog || !canReblog}
                             tabIndex={!canReblog ? -1 : undefined}
-                            className={`flex items-center gap-1.5 transition-colors ${
+                            className={`${actionButtonBase} ${
                                 !canReblog
                                     ? 'opacity-50 cursor-not-allowed'
                                     : localReblogged
-                                      ? 'text-green-400 hover:text-green-300'
-                                      : 'hover:text-green-400'
+                                      ? 'text-green-400 hover:text-green-300 hover:bg-green-400/10'
+                                      : 'hover:text-green-400 hover:bg-green-400/10'
                             } ${isLoading.reblog ? 'opacity-50' : ''}`}
                             title={!canReblog ? 'この投稿はブーストできません' : undefined}
                             aria-label={localReblogged ? 'ブースト解除' : 'ブースト'}
                             aria-disabled={!canReblog}
                         >
-                            <LuRepeat2 aria-hidden="true" />
+                            <LuRepeat2 className="w-5 h-5" aria-hidden="true" />
                             <span className="text-sm">{localReblogsCount || ''}</span>
                         </button>
                         <button
                             type="button"
                             onClick={handleFavourite}
                             disabled={!accountSession || isLoading.favourite}
-                            className={`flex items-center gap-1.5 transition-colors ${
+                            className={`${actionButtonBase} ${
                                 localFavourited
-                                    ? 'text-amber-400 hover:text-amber-300'
-                                    : 'hover:text-amber-400'
+                                    ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-400/10'
+                                    : 'hover:text-amber-400 hover:bg-amber-400/10'
                             } ${isLoading.favourite ? 'opacity-50' : ''}`}
                             aria-label={localFavourited ? 'お気に入り解除' : 'お気に入り'}
                         >
                             <LuStar
-                                className={localFavourited ? 'fill-current' : ''}
+                                className={`w-5 h-5 ${localFavourited ? 'fill-current' : ''}`}
                                 aria-hidden="true"
                             />
                             <span className="text-sm">{localFavouritesCount || ''}</span>
@@ -660,6 +669,7 @@ export function StatusCard({
                             }
                             onDelete={() => onStatusDelete?.(displayStatus)}
                             onEdit={() => onStatusEdit?.(displayStatus)}
+                            className="ml-auto"
                         />
                     </div>
                 </div>
