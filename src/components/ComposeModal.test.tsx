@@ -922,6 +922,7 @@ describe('ComposeModal', () => {
         });
 
         it('locks account selector in edit mode', async () => {
+            const user = userEvent.setup();
             render(<ComposeModal isOpen={true} onClose={() => {}} editTarget={mockEditTarget} />);
 
             // Wait for loading to complete
@@ -931,8 +932,12 @@ describe('ComposeModal', () => {
                 name: /投稿アカウント:/i,
             });
 
-            // Should not have chevron (dropdown indicator) when locked
-            expect(accountSelector).not.toContainHTML('LuChevronDown');
+            // Account selector should not open dropdown when clicked in edit mode
+            await user.click(accountSelector);
+
+            // No dropdown should appear (no listbox for account selection)
+            const dropdown = screen.queryByRole('listbox', { name: 'アカウント一覧' });
+            expect(dropdown).not.toBeInTheDocument();
         });
 
         it('calls onStatusEdited callback after successful edit', async () => {
