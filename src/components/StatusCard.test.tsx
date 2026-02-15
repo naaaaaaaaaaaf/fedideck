@@ -1769,4 +1769,37 @@ describe('StatusCard', () => {
             expect(onStatusDelete).toHaveBeenCalledWith(expect.objectContaining({ id: '12345' }));
         });
     });
+
+    describe('visibility icon', () => {
+        it.each([
+            ['public', '公開'],
+            ['unlisted', '未収載'],
+            ['private', 'フォロワーのみ'],
+            ['direct', 'ダイレクト'],
+        ] as const)('visibility=%s のラベルを表示', (visibility, label) => {
+            render(<StatusCard status={createMockStatus({ visibility })} />);
+            expect(screen.getByLabelText(new RegExp(`公開範囲: ${label}`))).toBeInTheDocument();
+        });
+
+        it('リブログ時は元投稿の公開範囲を使う', () => {
+            const original = createMockStatus({ visibility: 'direct' });
+            const reblog = createMockStatus({ visibility: 'public', reblog: original });
+            render(<StatusCard status={reblog} />);
+            expect(screen.getByLabelText(/公開範囲: ダイレクト/)).toBeInTheDocument();
+        });
+
+        it('visibility不正値でもフォールバック表示する', () => {
+            render(<StatusCard status={createMockStatus({ visibility: 'unknown' as never })} />);
+            expect(screen.getByLabelText(/公開範囲: 公開範囲不明/)).toBeInTheDocument();
+        });
+
+        it('リンククリックでは onStatusClick が発火しない', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            render(<StatusCard status={createMockStatus()} onStatusClick={onStatusClick} />);
+            const link = screen.getByRole('link', { name: /公開範囲/ });
+            await user.click(link);
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+    });
 });
