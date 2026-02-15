@@ -274,7 +274,7 @@ export function StatusMenu({
                     onKeyDownCapture={handleMenuKeyDown}
                     className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-lg overflow-hidden z-[60]"
                 >
-                    {/* eslint-disable-next-line react-hooks/refs -- callback ref pattern for roving tabindex */}
+                    {/* eslint-disable-next-line react-hooks/refs -- callback ref for roving tabindex is a valid pattern */}
                     {menuItems.map((item, index) => (
                         <button
                             key={item.id}

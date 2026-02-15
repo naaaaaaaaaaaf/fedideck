@@ -617,7 +617,9 @@ export function StatusCard({
                             aria-label="返信"
                         >
                             <LuMessageCircle className="w-4 h-4" aria-hidden="true" />
-                            <span className="text-sm">{displayStatus.repliesCount || ''}</span>
+                            {(displayStatus.repliesCount ?? 0) > 0 && (
+                                <span className="text-sm">{displayStatus.repliesCount}</span>
+                            )}
                         </button>
                         <button
                             type="button"
@@ -636,7 +638,9 @@ export function StatusCard({
                             aria-disabled={!canReblog}
                         >
                             <LuRepeat2 className="w-4 h-4" aria-hidden="true" />
-                            <span className="text-sm">{localReblogsCount || ''}</span>
+                            {(localReblogsCount ?? 0) > 0 && (
+                                <span className="text-sm">{localReblogsCount}</span>
+                            )}
                         </button>
                         <button
                             type="button"
@@ -653,7 +657,9 @@ export function StatusCard({
                                 className={`w-4 h-4 ${localFavourited ? 'fill-current' : ''}`}
                                 aria-hidden="true"
                             />
-                            <span className="text-sm">{localFavouritesCount || ''}</span>
+                            {(localFavouritesCount ?? 0) > 0 && (
+                                <span className="text-sm">{localFavouritesCount}</span>
+                            )}
                         </button>
                         <StatusMenu
                             statusUrl={displayStatus.url ?? displayStatus.uri}
