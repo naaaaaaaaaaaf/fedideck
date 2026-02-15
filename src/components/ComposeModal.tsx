@@ -680,6 +680,7 @@ export function ComposeModal({
         setPollExpiresIn(86400);
         setPollMultiple(false);
         setShowEmojiPalette(false);
+        setError(null);
         setIsLoadingEditSource(false);
         onClose();
     };
