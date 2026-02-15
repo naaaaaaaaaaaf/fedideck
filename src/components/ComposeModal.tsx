@@ -279,7 +279,7 @@ export function ComposeModal({
                 // API supports it but resets votes
             } catch (err) {
                 console.error('Failed to fetch status source for edit:', err);
-                // On error, close modal and notify user
+                // On error, display error message to user
                 setError('編集用データの取得に失敗しました');
             } finally {
                 if (requestGen === editSourceRequestRef.current) {
