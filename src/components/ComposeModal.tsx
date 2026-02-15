@@ -686,7 +686,7 @@ export function ComposeModal({
     };
 
     const handleClose = () => {
-        if (isSubmitting || isUploading) return;
+        if (isSubmitting || isUploading || isLoadingEditSource) return;
 
         // Clean up previews (only locally created URLs)
         mediaFiles.forEach((m) => {
