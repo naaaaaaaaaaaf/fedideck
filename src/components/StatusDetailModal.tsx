@@ -395,7 +395,7 @@ export function StatusDetailModal({
     // Handle status edit (must be before early return due to useCallback)
     const handleStatusEdit = useCallback(() => {
         if (!displayStatus || !accountSession || !canEdit) return;
-        onStatusEdit?.(displayStatus, accountSession.account.id);
+        onStatusEdit?.(displayStatus, accountSession.id);
         onClose();
     }, [displayStatus, accountSession, canEdit, onStatusEdit, onClose]);
 
