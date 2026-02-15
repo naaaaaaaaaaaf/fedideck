@@ -388,7 +388,7 @@ export function StatusDetailModal({
     // Handle status delete (must be before early return due to useCallback)
     const handleStatusDelete = useCallback(() => {
         if (!displayStatus || !accountSession || !canDelete) return;
-        onStatusDelete?.(displayStatus, accountSession.account.id);
+        onStatusDelete?.(displayStatus, accountSession.id);
         onClose();
     }, [displayStatus, accountSession, canDelete, onStatusDelete, onClose]);
 
