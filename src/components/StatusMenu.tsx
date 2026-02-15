@@ -7,16 +7,25 @@ import {
     useId,
     type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { LuEllipsis, LuLink, LuTrash2 } from 'react-icons/lu';
+import { LuEllipsis, LuLink, LuPencil, LuTrash2 } from 'react-icons/lu';
 
 interface StatusMenuProps {
     statusUrl: string;
     canDelete: boolean;
+    canEdit: boolean;
     onDelete: () => void;
+    onEdit: () => void;
     disabled?: boolean;
 }
 
-export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }: StatusMenuProps) {
+export function StatusMenu({
+    statusUrl,
+    canDelete,
+    canEdit,
+    onDelete,
+    onEdit,
+    disabled = false,
+}: StatusMenuProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -70,7 +79,12 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
         onDelete();
     }, [onDelete]);
 
-    // Calculate menu items based on canDelete
+    const handleEditClick = useCallback(() => {
+        setIsOpen(false);
+        onEdit();
+    }, [onEdit]);
+
+    // Calculate menu items based on canDelete and canEdit
     const menuItems = useMemo(
         () => [
             {
@@ -80,6 +94,17 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
                 onClick: handleCopyLink,
                 danger: false,
             },
+            ...(canEdit
+                ? [
+                      {
+                          id: 'edit',
+                          label: '編集',
+                          icon: LuPencil,
+                          onClick: handleEditClick,
+                          danger: false,
+                      },
+                  ]
+                : []),
             ...(canDelete
                 ? [
                       {
@@ -92,7 +117,7 @@ export function StatusMenu({ statusUrl, canDelete, onDelete, disabled = false }:
                   ]
                 : []),
         ],
-        [copySuccess, canDelete, handleCopyLink, handleDeleteClick]
+        [copySuccess, canEdit, canDelete, handleCopyLink, handleEditClick, handleDeleteClick]
     );
 
     const handleClose = useCallback(() => {

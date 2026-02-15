@@ -4,16 +4,20 @@ import { StatusMenu } from './StatusMenu';
 
 describe('StatusMenu', () => {
     const mockOnDelete = vi.fn();
+    const mockOnEdit = vi.fn();
     const defaultProps = {
         statusUrl: 'https://mastodon.social/@test/123',
         canDelete: false,
+        canEdit: false,
         onDelete: mockOnDelete,
+        onEdit: mockOnEdit,
     };
 
     let originalClipboard: typeof navigator.clipboard | undefined;
 
     beforeEach(() => {
         mockOnDelete.mockClear();
+        mockOnEdit.mockClear();
         // Save original clipboard
         originalClipboard = navigator.clipboard;
     });
@@ -80,6 +84,64 @@ describe('StatusMenu', () => {
         fireEvent.click(trigger);
 
         expect(screen.getByText('削除')).toBeInTheDocument();
+    });
+
+    it('does not show edit option when canEdit is false', () => {
+        render(<StatusMenu {...defaultProps} canEdit={false} />);
+
+        const trigger = screen.getByRole('button', { name: 'メニュー' });
+        fireEvent.click(trigger);
+
+        expect(screen.queryByText('編集')).not.toBeInTheDocument();
+    });
+
+    it('shows edit option when canEdit is true', () => {
+        render(<StatusMenu {...defaultProps} canEdit={true} />);
+
+        const trigger = screen.getByRole('button', { name: 'メニュー' });
+        fireEvent.click(trigger);
+
+        expect(screen.getByText('編集')).toBeInTheDocument();
+    });
+
+    it('shows edit option before delete option', () => {
+        render(<StatusMenu {...defaultProps} canEdit={true} canDelete={true} />);
+
+        const trigger = screen.getByRole('button', { name: 'メニュー' });
+        fireEvent.click(trigger);
+
+        const menuItems = screen.getAllByRole('menuitem');
+        // Order: copy link, edit, delete
+        expect(menuItems[0]).toHaveTextContent('リンクをコピー');
+        expect(menuItems[1]).toHaveTextContent('編集');
+        expect(menuItems[2]).toHaveTextContent('削除');
+    });
+
+    it('calls onEdit when edit is clicked', () => {
+        render(<StatusMenu {...defaultProps} canEdit={true} />);
+
+        const trigger = screen.getByRole('button', { name: 'メニュー' });
+        fireEvent.click(trigger);
+
+        const editButton = screen.getByText('編集');
+        fireEvent.click(editButton);
+
+        expect(mockOnEdit).toHaveBeenCalledTimes(1);
+    });
+
+    it('closes menu after clicking edit', async () => {
+        render(<StatusMenu {...defaultProps} canEdit={true} />);
+
+        const trigger = screen.getByRole('button', { name: 'メニュー' });
+        fireEvent.click(trigger);
+
+        const editButton = screen.getByText('編集');
+        fireEvent.click(editButton);
+
+        await waitFor(() => {
+            expect(mockOnEdit).toHaveBeenCalledTimes(1);
+            expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+        });
     });
 
     it('closes menu when clicking outside', async () => {

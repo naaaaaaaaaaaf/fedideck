@@ -9,7 +9,10 @@ import {
     getStatusContext,
     fetchAccount,
     waitForMediaReady,
+    getStatusSource,
+    editStatus,
     type CreateStatusParams,
+    type EditStatusParams,
     type MastoClient,
 } from './mastoClient';
 
@@ -491,5 +494,286 @@ describe('deleteStatus', () => {
         } as unknown as MastoClient;
 
         await expect(deleteStatus(mockClient, '456')).rejects.toThrow('This action is not allowed');
+    });
+});
+
+describe('getStatusSource', () => {
+    it('fetches status source with raw text', async () => {
+        const mockSource = {
+            id: '123',
+            text: 'Raw text without HTML',
+            spoilerText: 'CW text',
+        };
+        const mockSourceFetch = vi.fn().mockResolvedValue(mockSource);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        source: {
+                            fetch: mockSourceFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await getStatusSource(mockClient, '123');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('123');
+        expect(mockSourceFetch).toHaveBeenCalled();
+        expect(result.id).toBe('123');
+        expect(result.text).toBe('Raw text without HTML');
+        expect(result.spoilerText).toBe('CW text');
+    });
+
+    it('returns empty text and spoilerText for empty status', async () => {
+        const mockSource = {
+            id: '456',
+            text: '',
+            spoilerText: '',
+        };
+        const mockSourceFetch = vi.fn().mockResolvedValue(mockSource);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        source: {
+                            fetch: mockSourceFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await getStatusSource(mockClient, '456');
+
+        expect(result.text).toBe('');
+        expect(result.spoilerText).toBe('');
+    });
+
+    it('throws error when status not found', async () => {
+        const mockSourceFetch = vi.fn().mockRejectedValue(new Error('Record not found'));
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        source: {
+                            fetch: mockSourceFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(getStatusSource(mockClient, 'nonexistent')).rejects.toThrow(
+            'Record not found'
+        );
+    });
+
+    it('throws error when not authorized to view source', async () => {
+        const error = new Error('This action is not allowed');
+        (error as Error & { statusCode?: number }).statusCode = 403;
+        const mockSourceFetch = vi.fn().mockRejectedValue(error);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        source: {
+                            fetch: mockSourceFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(getStatusSource(mockClient, '789')).rejects.toThrow(
+            'This action is not allowed'
+        );
+    });
+});
+
+describe('editStatus', () => {
+    it('edits a status with minimal params', async () => {
+        const mockResponse = {
+            id: '123',
+            content: '<p>Edited content</p>',
+            text: 'Edited content',
+        };
+        const mockUpdate = vi.fn().mockResolvedValue(mockResponse);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        update: mockUpdate,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const params: EditStatusParams = {
+            status: 'Edited content',
+        };
+
+        const result = await editStatus(mockClient, '123', params);
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('123');
+        expect(mockUpdate).toHaveBeenCalledWith({
+            status: 'Edited content',
+        });
+        expect(result.id).toBe('123');
+    });
+
+    it('edits a status with all params', async () => {
+        const mockResponse = {
+            id: '123',
+            content: '<p>Full edit</p>',
+            spoilerText: 'Updated CW',
+            sensitive: true,
+        };
+        const mockUpdate = vi.fn().mockResolvedValue(mockResponse);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        update: mockUpdate,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const params: EditStatusParams = {
+            status: 'Full edit',
+            spoilerText: 'Updated CW',
+            sensitive: true,
+            language: 'en',
+            mediaIds: ['media1', 'media2'],
+            mediaAttributes: [
+                { id: 'media1', description: 'Alt text 1' },
+                { id: 'media2', description: 'Alt text 2' },
+            ],
+        };
+
+        const result = await editStatus(mockClient, '123', params);
+
+        expect(mockUpdate).toHaveBeenCalledWith({
+            status: 'Full edit',
+            spoilerText: 'Updated CW',
+            sensitive: true,
+            language: 'en',
+            mediaIds: ['media1', 'media2'],
+            mediaAttributes: [
+                { id: 'media1', description: 'Alt text 1' },
+                { id: 'media2', description: 'Alt text 2' },
+            ],
+        });
+        expect(result.sensitive).toBe(true);
+    });
+
+    it('edits spoiler text only', async () => {
+        const mockResponse = {
+            id: '123',
+            content: '<p>Original content</p>',
+            spoilerText: 'New CW',
+        };
+        const mockUpdate = vi.fn().mockResolvedValue(mockResponse);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        update: mockUpdate,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const params: EditStatusParams = {
+            status: 'Original content',
+            spoilerText: 'New CW',
+        };
+
+        await editStatus(mockClient, '123', params);
+
+        expect(mockUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                status: 'Original content',
+                spoilerText: 'New CW',
+            })
+        );
+    });
+
+    it('edits media descriptions', async () => {
+        const mockResponse = {
+            id: '123',
+            mediaAttachments: [{ id: 'media1', description: 'Updated description' }],
+        };
+        const mockUpdate = vi.fn().mockResolvedValue(mockResponse);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        update: mockUpdate,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const params: EditStatusParams = {
+            status: 'Post with media',
+            mediaIds: ['media1'],
+            mediaAttributes: [{ id: 'media1', description: 'Updated description' }],
+        };
+
+        await editStatus(mockClient, '123', params);
+
+        expect(mockUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                mediaIds: ['media1'],
+                mediaAttributes: [{ id: 'media1', description: 'Updated description' }],
+            })
+        );
+    });
+
+    it('throws error when not authorized to edit', async () => {
+        const error = new Error('This action is not allowed');
+        (error as Error & { statusCode?: number }).statusCode = 403;
+        const mockUpdate = vi.fn().mockRejectedValue(error);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        update: mockUpdate,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const params: EditStatusParams = {
+            status: 'Unauthorized edit',
+        };
+
+        await expect(editStatus(mockClient, '456', params)).rejects.toThrow(
+            'This action is not allowed'
+        );
+    });
+
+    it('throws error when status not found', async () => {
+        const mockUpdate = vi.fn().mockRejectedValue(new Error('Record not found'));
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        update: mockUpdate,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const params: EditStatusParams = {
+            status: 'Edit nonexistent',
+        };
+
+        await expect(editStatus(mockClient, 'nonexistent', params)).rejects.toThrow(
+            'Record not found'
+        );
     });
 });

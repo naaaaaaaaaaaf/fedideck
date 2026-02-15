@@ -42,6 +42,7 @@ interface StatusCardProps {
     onNsfwReveal?: (statusId: string) => void;
     nsfwRevealedStatusIds?: Set<string>;
     onStatusDelete?: (status: mastodon.v1.Status) => void;
+    onStatusEdit?: (status: mastodon.v1.Status) => void;
 }
 
 export function StatusCard({
@@ -58,6 +59,7 @@ export function StatusCard({
     onNsfwReveal,
     nsfwRevealedStatusIds,
     onStatusDelete,
+    onStatusEdit,
 }: StatusCardProps) {
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
@@ -651,7 +653,13 @@ export function StatusCard({
                                 Boolean(onStatusDelete) &&
                                 displayStatus.account.id === accountSession?.account.id
                             }
+                            canEdit={
+                                Boolean(accountSession) &&
+                                Boolean(onStatusEdit) &&
+                                displayStatus.account.id === accountSession?.account.id
+                            }
                             onDelete={() => onStatusDelete?.(displayStatus)}
+                            onEdit={() => onStatusEdit?.(displayStatus)}
                         />
                     </div>
                 </div>

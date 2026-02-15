@@ -33,6 +33,7 @@ interface ColumnProps {
     onNsfwReveal?: (statusId: string) => void;
     nsfwRevealedStatusIds?: Set<string>;
     onStatusDelete?: (status: mastodon.v1.Status, accountId: string) => void;
+    onStatusEdit?: (status: mastodon.v1.Status, accountSessionId: string) => void;
 }
 
 export function Column({
@@ -48,6 +49,7 @@ export function Column({
     onNsfwReveal,
     nsfwRevealedStatusIds,
     onStatusDelete,
+    onStatusEdit,
 }: ColumnProps) {
     const account = useAccountsStore((state) => state.accounts.find((a) => a.id === accountId));
     const streamKey = getStreamKey(accountId, stream.type, stream);
@@ -318,6 +320,9 @@ export function Column({
                             nsfwRevealedStatusIds={nsfwRevealedStatusIds}
                             onStatusDelete={
                                 onStatusDelete ? (s) => onStatusDelete(s, accountId) : undefined
+                            }
+                            onStatusEdit={
+                                onStatusEdit ? (s) => onStatusEdit(s, accountId) : undefined
                             }
                         />
                     ))}

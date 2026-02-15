@@ -5,7 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { ColumnContainer } from './deck/ColumnContainer';
 import { LoginModal } from './components/LoginModal';
 import { AddColumnModal } from './components/AddColumnModal';
-import { ComposeModal, type ReplyToStatus } from './components/ComposeModal';
+import { ComposeModal, type ReplyToStatus, type EditTarget } from './components/ComposeModal';
 import { StatusDetailModal } from './components/StatusDetailModal';
 import { ProfileModal } from './components/ProfileModal';
 import { ImageViewer, type ImageViewerImage } from './components/ImageViewer';
@@ -30,6 +30,7 @@ function App() {
     const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
     const [replyToStatus, setReplyToStatus] = useState<ReplyToStatus | undefined>(undefined);
     const [replyAccountId, setReplyAccountId] = useState<string | undefined>(undefined);
+    const [editTarget, setEditTarget] = useState<EditTarget | undefined>(undefined);
     const [isStatusDetailOpen, setIsStatusDetailOpen] = useState(false);
     const [detailStatus, setDetailStatus] = useState<mastodon.v1.Status | null>(null);
     const [detailAccountSession, setDetailAccountSession] = useState<AccountSession | undefined>();
@@ -216,7 +217,33 @@ function App() {
         setIsComposeModalOpen(false);
         setReplyToStatus(undefined);
         setReplyAccountId(undefined);
+        setEditTarget(undefined);
     };
+
+    // Handle edit request from StatusCard/StatusDetailModal
+    const handleStatusEditRequest = useCallback(
+        (status: mastodon.v1.Status, accountSessionId: string) => {
+            // Clear reply state when entering edit mode
+            setReplyToStatus(undefined);
+            setReplyAccountId(undefined);
+            setEditTarget({ status, accountSessionId });
+            setIsComposeModalOpen(true);
+        },
+        []
+    );
+
+    // Handle successful status edit
+    const handleStatusEdited = useCallback(
+        (updatedStatus: mastodon.v1.Status) => {
+            // Update the status in all streams
+            updateStatusGlobal(updatedStatus);
+            // Update detail modal if viewing the edited status
+            if (detailStatus?.id === updatedStatus.id) {
+                setDetailStatus(updatedStatus);
+            }
+        },
+        [updateStatusGlobal, detailStatus]
+    );
 
     const handleImageClick = useCallback((images: ImageViewerImage[], index: number) => {
         setViewerImages(images);
@@ -326,6 +353,7 @@ function App() {
                     onNsfwReveal={addNsfwRevealedStatusId}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
                     onStatusDelete={handleStatusDeleteRequest}
+                    onStatusEdit={handleStatusEditRequest}
                 />
             </main>
 
@@ -344,6 +372,8 @@ function App() {
                 onClose={handleComposeClose}
                 replyToStatus={replyToStatus}
                 accountId={replyAccountId}
+                editTarget={editTarget}
+                onStatusEdited={handleStatusEdited}
             />
             <StatusDetailModal
                 isOpen={isStatusDetailOpen}
@@ -353,6 +383,7 @@ function App() {
                 onReply={handleStatusDetailReply}
                 onStatusUpdate={updateStatusGlobal}
                 onStatusDelete={handleStatusDeleteRequest}
+                onStatusEdit={handleStatusEditRequest}
                 onImageClick={handleImageClick}
                 onVideoClick={handleVideoClick}
                 onAudioClick={handleAudioClick}
