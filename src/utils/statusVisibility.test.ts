@@ -32,5 +32,11 @@ describe('statusVisibility', () => {
             expect(getVisibilityMeta(null).label).toBe('公開範囲不明');
             expect(getVisibilityMeta(undefined).label).toBe('公開範囲不明');
         });
+
+        it('プロトタイプ継承プロパティの場合はフォールバックを返す', () => {
+            expect(getVisibilityMeta('toString').label).toBe('公開範囲不明');
+            expect(getVisibilityMeta('constructor').label).toBe('公開範囲不明');
+            expect(getVisibilityMeta('hasOwnProperty').label).toBe('公開範囲不明');
+        });
     });
 });
