@@ -1790,7 +1790,7 @@ describe('StatusCard', () => {
 
         it('visibility不正値でもフォールバック表示する', () => {
             render(<StatusCard status={createMockStatus({ visibility: 'unknown' as never })} />);
-            expect(screen.getByLabelText(/公開範囲: 公開範囲不明/)).toBeInTheDocument();
+            expect(screen.getByLabelText(/公開範囲: 不明/)).toBeInTheDocument();
         });
 
         it('リンククリックでは onStatusClick が発火しない', async () => {

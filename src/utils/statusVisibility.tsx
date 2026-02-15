@@ -48,7 +48,7 @@ export const VISIBILITY_META: Record<Visibility, VisibilityMeta> = {
 export const VISIBILITY_ORDER: Visibility[] = ['public', 'unlisted', 'private', 'direct'];
 
 const FALLBACK_META: VisibilityMeta = {
-    label: '公開範囲不明',
+    label: '不明',
     icon: LuGlobe,
     description: '',
 };
