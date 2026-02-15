@@ -134,10 +134,11 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
                                 const { label: visibilityLabel, icon: VisibilityIcon } =
                                     getVisibilityMeta(status.visibility);
                                 return (
-                                    <>
-                                        <VisibilityIcon className="w-4 h-4" aria-hidden="true" />
-                                        <span className="sr-only">公開範囲: {visibilityLabel}</span>
-                                    </>
+                                    <VisibilityIcon
+                                        className="w-4 h-4"
+                                        aria-label={`公開範囲: ${visibilityLabel}`}
+                                        title={visibilityLabel}
+                                    />
                                 );
                             })()}
                             {formatDate(status.createdAt)}
@@ -770,16 +771,26 @@ export function StatusDetailModal({
                             </div>
                         )}
 
-                        {/* Timestamp */}
+                        {/* Timestamp and visibility */}
                         <div className="text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">
-                            <a
-                                href={displayStatus.url ?? '#'}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="hover:underline"
-                            >
-                                {formatFullDate(displayStatus.createdAt)}
-                            </a>
+                            {(() => {
+                                const fullDateText = formatFullDate(displayStatus.createdAt);
+                                const { label: visibilityLabel, icon: VisibilityIcon } =
+                                    getVisibilityMeta(displayStatus.visibility);
+                                return (
+                                    <a
+                                        href={displayStatus.url ?? '#'}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 hover:underline"
+                                        aria-label={`公開範囲: ${visibilityLabel}、投稿日時: ${fullDateText}`}
+                                        title={`公開範囲: ${visibilityLabel}`}
+                                    >
+                                        <VisibilityIcon className="w-4 h-4" aria-hidden="true" />
+                                        <span>{fullDateText}</span>
+                                    </a>
+                                );
+                            })()}
                         </div>
 
                         {/* Stats */}
