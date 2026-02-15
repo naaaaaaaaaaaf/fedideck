@@ -251,7 +251,7 @@ export function StatusMenu({
                 onClick={handleToggle}
                 onKeyDown={handleTriggerKeyDown}
                 disabled={disabled}
-                className={`inline-flex h-[44px] w-[44px] items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 ${
+                className={`inline-flex h-[36px] w-[36px] items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 ${
                     disabled
                         ? 'opacity-50 cursor-not-allowed'
                         : 'hover:text-indigo-400 hover:bg-indigo-400/10'
@@ -261,7 +261,7 @@ export function StatusMenu({
                 aria-haspopup="menu"
                 aria-controls={menuId}
             >
-                <LuEllipsis className="w-5 h-5" aria-hidden="true" />
+                <LuEllipsis className="w-4 h-4" aria-hidden="true" />
             </button>
 
             {isOpen && (
