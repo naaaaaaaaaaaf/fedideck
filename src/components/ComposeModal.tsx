@@ -80,6 +80,7 @@ interface MediaFile {
     error?: string;
     altText: string;
     isExisting?: boolean; // Flag for existing attachments from edit
+    kind?: 'image' | 'video' | 'audio' | 'gifv' | 'unknown'; // Media type for existing attachments
 }
 
 const VISIBILITY_OPTIONS: VisibilityOption[] = [
@@ -269,6 +270,7 @@ export function ComposeModal({
                         uploadedId: media.id,
                         altText: media.description ?? '',
                         isExisting: true,
+                        kind: media.type,
                     }));
                     setMediaFiles(existingMedia);
                 }
@@ -400,6 +402,11 @@ export function ComposeModal({
               ? /\.(mp4|webm|mov|m4v)$/i.test(file.name)
               : false;
 
+    // MediaFile helpers that consider both kind (from existing attachments) and file type
+    const isAudioMedia = (m: MediaFile) => m.kind === 'audio' || (m.file && isAudioFile(m.file));
+    const isVideoMedia = (m: MediaFile) =>
+        m.kind === 'video' || m.kind === 'gifv' || (m.file && isVideoFile(m.file));
+
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || !composingAccount) return;
@@ -410,11 +417,11 @@ export function ComposeModal({
         if (filesToAdd.length === 0) return;
 
         // Check for video - video can only be alone
-        const hasVideo = mediaFiles.some((m) => isVideoFile(m.file));
+        const hasVideo = mediaFiles.some((m) => isVideoMedia(m));
         const newHasVideo = filesToAdd.some((f) => isVideoFile(f));
 
         // Check for audio - audio can only be alone (Mastodon specification)
-        const hasAudio = mediaFiles.some((m) => isAudioFile(m.file));
+        const hasAudio = mediaFiles.some((m) => isAudioMedia(m));
         const newHasAudio = filesToAdd.some((f) => isAudioFile(f));
 
         // Video cannot be mixed with other media
@@ -524,13 +531,9 @@ export function ComposeModal({
                     status: content,
                 };
 
-                if (showCW && cwText.trim()) {
-                    editParams.spoilerText = cwText.trim();
-                }
-
-                if (isSensitive) {
-                    editParams.sensitive = true;
-                }
+                // In edit mode, always send spoilerText and sensitive to allow removal
+                editParams.spoilerText = showCW ? cwText.trim() : '';
+                editParams.sensitive = isSensitive;
 
                 // Handle media
                 if (hasMedia && allMediaUploaded) {
@@ -1115,16 +1118,16 @@ export function ComposeModal({
                                     className="bg-slate-800 rounded-lg overflow-hidden"
                                 >
                                     <div
-                                        className={`relative ${isAudioFile(media.file) ? 'p-3' : 'aspect-video'}`}
+                                        className={`relative ${isAudioMedia(media) ? 'p-3' : 'aspect-video'}`}
                                     >
-                                        {isAudioFile(media.file) ? (
+                                        {isAudioMedia(media) ? (
                                             <audio
                                                 src={media.preview}
                                                 controls
                                                 preload="none"
                                                 className="w-full"
                                             />
-                                        ) : isVideoFile(media.file) ? (
+                                        ) : isVideoMedia(media) ? (
                                             <video
                                                 src={media.preview}
                                                 className="w-full h-full object-cover"

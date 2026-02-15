@@ -411,7 +411,8 @@ export async function editStatus(
     if (params.spoilerText !== undefined) editParams.spoilerText = params.spoilerText;
     if (params.sensitive !== undefined) editParams.sensitive = params.sensitive;
     if (params.language !== undefined) editParams.language = params.language;
-    if (params.mediaIds && params.mediaIds.length > 0) editParams.mediaIds = params.mediaIds;
+    // Allow empty array to clear all media
+    if (params.mediaIds !== undefined) editParams.mediaIds = params.mediaIds;
     if (params.mediaAttributes && params.mediaAttributes.length > 0) {
         editParams.mediaAttributes = params.mediaAttributes;
     }
