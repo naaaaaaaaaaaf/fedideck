@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { mastodon } from 'masto';
 import { formatAccountHandle } from './accountHandle';
 
 describe('formatAccountHandle', () => {
@@ -9,7 +10,7 @@ describe('formatAccountHandle', () => {
                 id: '1',
                 username: 'testuser',
                 acct: 'testuser',
-            } as const,
+            } as unknown as mastodon.v1.Account,
         });
         expect(result).toBe('@testuser@mastodon.social');
     });
@@ -21,7 +22,7 @@ describe('formatAccountHandle', () => {
                 id: '1',
                 username: 'remoteuser',
                 acct: 'remoteuser@example.com',
-            } as const,
+            } as unknown as mastodon.v1.Account,
         });
         expect(result).toBe('@remoteuser@example.com');
     });
@@ -33,7 +34,7 @@ describe('formatAccountHandle', () => {
                 id: '1',
                 username: 'testuser',
                 acct: 'testuser',
-            } as const,
+            } as unknown as mastodon.v1.Account,
         });
         expect(result).toBe('@testuser@invalid-url');
     });
@@ -45,7 +46,7 @@ describe('formatAccountHandle', () => {
                 id: '1',
                 username: 'testuser',
                 acct: '@testuser',
-            } as const,
+            } as unknown as mastodon.v1.Account,
         });
         expect(result).toBe('@testuser@mastodon.social');
     });
@@ -57,7 +58,7 @@ describe('formatAccountHandle', () => {
                 id: '1',
                 username: 'testuser',
                 acct: 'testuser',
-            } as const,
+            } as unknown as mastodon.v1.Account,
         });
         expect(result).toBe('@testuser@mastodon.social');
     });

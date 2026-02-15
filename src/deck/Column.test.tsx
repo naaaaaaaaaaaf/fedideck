@@ -252,6 +252,28 @@ describe('Column', () => {
             );
             expect(screen.getByText('連合タイムライン')).toBeInTheDocument();
         });
+
+        it('should show account handle in header', () => {
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
+            expect(screen.getByTitle('@testuser@mastodon.social')).toBeInTheDocument();
+        });
+
+        it('should not show account handle when account is missing', () => {
+            mockAccount = undefined;
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
+            expect(screen.queryByText(/@testuser/)).not.toBeInTheDocument();
+        });
+
+        it('should not duplicate domain when acct already contains domain', () => {
+            mockAccount = createMockSession({
+                account: {
+                    ...createMockSession().account,
+                    acct: 'testuser@mastodon.social',
+                },
+            });
+            render(<Column id="col-1" accountId="1@mastodon.social" stream={{ type: 'home' }} />);
+            expect(screen.getByTitle('@testuser@mastodon.social')).toBeInTheDocument();
+        });
     });
 
     describe('states', () => {
