@@ -30,6 +30,7 @@ import {
 } from '../api/mastoClient';
 import { getInstanceConfig, getDefaultConfig, type InstanceConfig } from '../api/instanceConfig';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
+import { type Visibility } from '../utils/statusVisibility';
 import { useTextareaCursor } from '../hooks/useTextareaCursor';
 import { DisplayName } from './DisplayName';
 import { EmojiPalette } from './EmojiPalette';
@@ -62,8 +63,6 @@ interface ComposeModalProps {
     editTarget?: EditTarget;
     onStatusEdited?: (status: mastodon.v1.Status) => void;
 }
-
-type Visibility = 'public' | 'unlisted' | 'private' | 'direct';
 
 interface VisibilityOption {
     value: Visibility;
