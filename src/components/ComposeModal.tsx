@@ -261,6 +261,7 @@ export function ComposeModal({
                 setIsSensitive(status.sensitive ?? false);
 
                 // Convert existing media attachments to MediaFile format
+                // Always set mediaFiles to clear stale state from previous edits
                 if (status.mediaAttachments && status.mediaAttachments.length > 0) {
                     const existingMedia: MediaFile[] = status.mediaAttachments.map((media) => ({
                         preview: media.url ?? media.previewUrl ?? '',
@@ -271,6 +272,8 @@ export function ComposeModal({
                         kind: media.type,
                     }));
                     setMediaFiles(existingMedia);
+                } else {
+                    setMediaFiles([]);
                 }
 
                 // Poll editing is disabled for first version (product scope decision)
