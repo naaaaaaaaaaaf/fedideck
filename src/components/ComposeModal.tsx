@@ -697,6 +697,7 @@ export function ComposeModal({
         setMediaFiles([]);
         setShowEmojiPalette(false);
         setIsLoadingEditSource(false);
+        setError(null);
         onClose();
     };
 
