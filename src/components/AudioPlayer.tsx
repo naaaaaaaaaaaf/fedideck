@@ -81,7 +81,6 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
         } else {
             setIsPlaying(false);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [safeIndex]);
 
     // Navigation callbacks
