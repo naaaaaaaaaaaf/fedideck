@@ -17,6 +17,7 @@ import {
     unreblogStatus,
 } from '../api/mastoClient';
 import { formatDate } from '../utils/dateFormat';
+import { getVisibilityMeta } from '../utils/statusVisibility';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
@@ -455,14 +456,24 @@ export function StatusCard({
                                 </a>
                             )}
                         </div>
-                        <a
-                            href={displayStatus.url ?? '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-slate-400 hover:text-slate-300 shrink-0"
-                        >
-                            {formatDate(displayStatus.createdAt)}
-                        </a>
+                        {(() => {
+                            const createdAtText = formatDate(displayStatus.createdAt);
+                            const { label: visibilityLabel, icon: VisibilityIcon } =
+                                getVisibilityMeta(displayStatus.visibility);
+                            return (
+                                <a
+                                    href={displayStatus.url ?? '#'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-300 shrink-0"
+                                    aria-label={`公開範囲: ${visibilityLabel}、投稿日時: ${createdAtText}`}
+                                    title={`公開範囲: ${visibilityLabel}`}
+                                >
+                                    <VisibilityIcon className="w-4 h-4" aria-hidden="true" />
+                                    <span>{createdAtText}</span>
+                                </a>
+                            );
+                        })()}
                     </div>
 
                     {/* Content Warning */}
