@@ -14,6 +14,7 @@ import {
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { formatDate } from '../utils/dateFormat';
+import { getVisibilityMeta } from '../utils/statusVisibility';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
@@ -128,7 +129,17 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
                             <DisplayName account={account} className="font-medium text-slate-200" />
                             <span className="text-slate-500 ml-1">@{account.acct}</span>
                         </a>
-                        <span className="text-slate-500 text-sm shrink-0">
+                        <span className="inline-flex items-center gap-1 text-slate-500 text-sm shrink-0">
+                            {(() => {
+                                const { label: visibilityLabel, icon: VisibilityIcon } =
+                                    getVisibilityMeta(status.visibility);
+                                return (
+                                    <>
+                                        <VisibilityIcon className="w-4 h-4" aria-hidden="true" />
+                                        <span className="sr-only">公開範囲: {visibilityLabel}</span>
+                                    </>
+                                );
+                            })()}
                             {formatDate(status.createdAt)}
                         </span>
                     </div>
