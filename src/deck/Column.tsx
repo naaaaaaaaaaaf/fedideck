@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useMemo } from 'react';
 import type { mastodon } from 'masto';
 import { LuRefreshCw, LuX, LuTriangleAlert, LuInbox } from 'react-icons/lu';
 import { getStreamDisplayName, getStreamIcon, type StreamConfig } from '../streaming/streamTypes';
@@ -71,30 +71,39 @@ export function Column({
     const isNotificationColumn = stream.type === 'notifications';
 
     // Stable callback wrappers to prevent React.memo invalidation in card components
-    const handleStatusClick = useCallback(
-        onStatusClick
-            ? (status: mastodon.v1.Status) => onStatusClick(status, accountId)
-            : undefined,
+    // Using useMemo instead of useCallback to safely handle undefined values
+    const handleStatusClick = useMemo(
+        () =>
+            onStatusClick
+                ? (status: mastodon.v1.Status) => onStatusClick(status, accountId)
+                : undefined,
         [onStatusClick, accountId]
-    ) as ((status: mastodon.v1.Status) => void) | undefined;
-    const handleAccountClick = useCallback(
-        onAccountClick ? (acc: mastodon.v1.Account) => onAccountClick(acc, accountId) : undefined,
+    );
+    const handleAccountClick = useMemo(
+        () =>
+            onAccountClick
+                ? (acc: mastodon.v1.Account) => onAccountClick(acc, accountId)
+                : undefined,
         [onAccountClick, accountId]
-    ) as ((account: mastodon.v1.Account) => void) | undefined;
-    const handleReply = useCallback(
-        onReply ? (status: mastodon.v1.Status) => onReply(status, accountId) : undefined,
+    );
+    const handleReply = useMemo(
+        () => (onReply ? (status: mastodon.v1.Status) => onReply(status, accountId) : undefined),
         [onReply, accountId]
-    ) as ((status: mastodon.v1.Status) => void) | undefined;
-    const handleStatusDelete = useCallback(
-        onStatusDelete
-            ? (status: mastodon.v1.Status) => onStatusDelete(status, accountId)
-            : undefined,
+    );
+    const handleStatusDelete = useMemo(
+        () =>
+            onStatusDelete
+                ? (status: mastodon.v1.Status) => onStatusDelete(status, accountId)
+                : undefined,
         [onStatusDelete, accountId]
-    ) as ((status: mastodon.v1.Status) => void) | undefined;
-    const handleStatusEdit = useCallback(
-        onStatusEdit ? (status: mastodon.v1.Status) => onStatusEdit(status, accountId) : undefined,
+    );
+    const handleStatusEdit = useMemo(
+        () =>
+            onStatusEdit
+                ? (status: mastodon.v1.Status) => onStatusEdit(status, accountId)
+                : undefined,
         [onStatusEdit, accountId]
-    ) as ((status: mastodon.v1.Status) => void) | undefined;
+    );
 
     // Define loadInitialData before useEffect that uses it
     const loadInitialData = useCallback(async () => {
