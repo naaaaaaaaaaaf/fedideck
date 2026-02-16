@@ -84,18 +84,21 @@ export const NotificationCard = React.memo(function NotificationCard({
         nsfwRevealedRef.current = nsfwRevealed;
     }, [nsfwRevealed]);
 
+    // Extract displayStatus.id for stable callback dependency
+    const displayStatusId = displayStatus?.id;
+
     const handleNsfwToggle = useCallback(() => {
         // Controlled mode: parent provides the state via isNsfwRevealed
         if (onNsfwToggle) {
-            if (!nsfwRevealedRef.current && displayStatus) {
-                onNsfwToggle(displayStatus.id);
+            if (!nsfwRevealedRef.current && displayStatusId) {
+                onNsfwToggle(displayStatusId);
             }
             return;
         }
 
         // Uncontrolled mode: toggle local state
         setLocalNsfwRevealed((prev) => !prev);
-    }, [onNsfwToggle, displayStatus]);
+    }, [onNsfwToggle, displayStatusId]);
 
     // Note: nsfwRevealed state is automatically reset when notification changes
     // because NotificationCard is rendered with key={notification.id} in parent
