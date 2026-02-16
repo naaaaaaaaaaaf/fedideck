@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 import type { mastodon } from 'masto';
 
+/** Maximum number of statuses to keep per stream (prevents memory bloat) */
+export const MAX_STATUSES_PER_STREAM = 200;
+/** Maximum number of notifications to keep per stream */
+export const MAX_NOTIFICATIONS_PER_STREAM = 100;
+
+/** Clamps array to maximum size, keeping newest items (at the start for prepend, at the end for append) */
+const clampToMax = <T>(items: T[], max: number): T[] =>
+    items.length > max ? items.slice(0, max) : items;
+
 interface StreamData {
     statuses: mastodon.v1.Status[];
     notifications: mastodon.v1.Notification[];
@@ -77,7 +86,7 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                 ...state.data,
                 [key]: {
                     ...(state.data[key] ?? initialStreamData),
-                    statuses,
+                    statuses: clampToMax(statuses, MAX_STATUSES_PER_STREAM),
                     hasMore,
                     isLoading: false,
                     error: null,
@@ -93,12 +102,13 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
             if (current.statuses.some((s) => s.id === status.id)) {
                 return state;
             }
+            const newStatuses = clampToMax([status, ...current.statuses], MAX_STATUSES_PER_STREAM);
             return {
                 data: {
                     ...state.data,
                     [key]: {
                         ...current,
-                        statuses: [status, ...current.statuses],
+                        statuses: newStatuses,
                     },
                 },
             };
@@ -109,14 +119,17 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
         set((state) => {
             const current = state.data[key] ?? initialStreamData;
             const existingIds = new Set(current.statuses.map((s) => s.id));
-            const newStatuses = statuses.filter((s) => !existingIds.has(s.id));
+            const incoming = statuses.filter((s) => !existingIds.has(s.id));
+            const merged = clampToMax([...current.statuses, ...incoming], MAX_STATUSES_PER_STREAM);
+            const reachedCap = merged.length >= MAX_STATUSES_PER_STREAM;
             return {
                 data: {
                     ...state.data,
                     [key]: {
                         ...current,
-                        statuses: [...current.statuses, ...newStatuses],
-                        hasMore: newStatuses.length > 0,
+                        statuses: merged,
+                        // hasMore is false if no new items or we've reached the cap
+                        hasMore: incoming.length > 0 && !reachedCap,
                         isLoading: false,
                     },
                 },
@@ -227,7 +240,7 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                 ...state.data,
                 [key]: {
                     ...(state.data[key] ?? initialStreamData),
-                    notifications,
+                    notifications: clampToMax(notifications, MAX_NOTIFICATIONS_PER_STREAM),
                     hasMore,
                     isLoading: false,
                     error: null,
@@ -242,12 +255,16 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
             if (current.notifications.some((n) => n.id === notification.id)) {
                 return state;
             }
+            const newNotifications = clampToMax(
+                [notification, ...current.notifications],
+                MAX_NOTIFICATIONS_PER_STREAM
+            );
             return {
                 data: {
                     ...state.data,
                     [key]: {
                         ...current,
-                        notifications: [notification, ...current.notifications],
+                        notifications: newNotifications,
                     },
                 },
             };
@@ -258,14 +275,19 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
         set((state) => {
             const current = state.data[key] ?? initialStreamData;
             const existingIds = new Set(current.notifications.map((n) => n.id));
-            const newNotifications = notifications.filter((n) => !existingIds.has(n.id));
+            const incoming = notifications.filter((n) => !existingIds.has(n.id));
+            const merged = clampToMax(
+                [...current.notifications, ...incoming],
+                MAX_NOTIFICATIONS_PER_STREAM
+            );
+            const reachedCap = merged.length >= MAX_NOTIFICATIONS_PER_STREAM;
             return {
                 data: {
                     ...state.data,
                     [key]: {
                         ...current,
-                        notifications: [...current.notifications, ...newNotifications],
-                        hasMore: newNotifications.length > 0,
+                        notifications: merged,
+                        hasMore: incoming.length > 0 && !reachedCap,
                         isLoading: false,
                     },
                 },
