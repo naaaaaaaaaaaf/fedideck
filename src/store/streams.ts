@@ -84,13 +84,15 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
     },
 
     setStatuses: (key, statuses, hasMore = true) => {
+        const clamped = clampToMax(statuses, MAX_STATUSES_PER_STREAM);
+        const reachedCap = clamped.length >= MAX_STATUSES_PER_STREAM;
         set((state) => ({
             data: {
                 ...state.data,
                 [key]: {
                     ...(state.data[key] ?? initialStreamData),
-                    statuses: clampToMax(statuses, MAX_STATUSES_PER_STREAM),
-                    hasMore,
+                    statuses: clamped,
+                    hasMore: reachedCap ? false : hasMore,
                     isLoading: false,
                     error: null,
                 },
@@ -238,13 +240,15 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
     },
 
     setNotifications: (key, notifications, hasMore = true) => {
+        const clamped = clampToMax(notifications, MAX_NOTIFICATIONS_PER_STREAM);
+        const reachedCap = clamped.length >= MAX_NOTIFICATIONS_PER_STREAM;
         set((state) => ({
             data: {
                 ...state.data,
                 [key]: {
                     ...(state.data[key] ?? initialStreamData),
-                    notifications: clampToMax(notifications, MAX_NOTIFICATIONS_PER_STREAM),
-                    hasMore,
+                    notifications: clamped,
+                    hasMore: reachedCap ? false : hasMore,
                     isLoading: false,
                     error: null,
                 },
