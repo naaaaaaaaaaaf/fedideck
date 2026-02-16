@@ -323,21 +323,21 @@ describe('item limits', () => {
             expect(stream.statuses.length).toBe(MAX_STATUSES_PER_STREAM);
         });
 
-        it('sets hasMore true when new items arrive, even at cap', () => {
-            // Start with 200 statuses (at cap)
+        it('respects capped pagination when new items arrive at cap', () => {
+            // Start with statuses at the client cap
             const initialStatuses = Array.from({ length: MAX_STATUSES_PER_STREAM }, (_, i) =>
                 makeStatus(String(i))
             );
             useStreamsStore.getState().setStatuses('account:home', initialStatuses);
 
-            // Append more (new items from server)
+            // Append more (new items from server) while already at cap
             const moreStatuses = Array.from({ length: 50 }, (_, i) => makeStatus(String(200 + i)));
             useStreamsStore.getState().appendStatuses('account:home', moreStatuses);
 
             const stream = useStreamsStore.getState().data['account:home'];
-            // hasMore is true because server has more data (incoming.length > 0)
-            // Client cap only limits array size, not loading capability
-            expect(stream.hasMore).toBe(true);
+            // Once the client cap is reached and clamping occurs, hasMore should be false
+            // to avoid repeatedly loading with an unchanged lastId and causing loops.
+            expect(stream.hasMore).toBe(false);
         });
 
         it('preserves hasMore true when under cap after append', () => {
@@ -403,7 +403,7 @@ describe('item limits', () => {
             expect(stream.notifications.length).toBe(MAX_NOTIFICATIONS_PER_STREAM);
         });
 
-        it('sets hasMore true when new items arrive, even at cap', () => {
+        it('respects capped pagination when new items arrive at cap', () => {
             const initialNotifications = Array.from(
                 { length: MAX_NOTIFICATIONS_PER_STREAM },
                 (_, i) => makeNotification(String(i))
@@ -420,9 +420,9 @@ describe('item limits', () => {
                 .appendNotifications('account:notifications', moreNotifications);
 
             const stream = useStreamsStore.getState().data['account:notifications'];
-            // hasMore is true because server has more data (incoming.length > 0)
-            // Client cap only limits array size, not loading capability
-            expect(stream.hasMore).toBe(true);
+            // Once the client cap is reached and clamping occurs, hasMore should be false
+            // to avoid repeatedly loading with an unchanged lastId and causing loops.
+            expect(stream.hasMore).toBe(false);
         });
     });
 });

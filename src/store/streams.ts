@@ -85,13 +85,16 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
 
     setStatuses: (key, statuses, hasMore = true) => {
         const clamped = clampToMax(statuses, MAX_STATUSES_PER_STREAM);
+        const reachedCap = clamped.length >= MAX_STATUSES_PER_STREAM;
         set((state) => ({
             data: {
                 ...state.data,
                 [key]: {
                     ...(state.data[key] ?? initialStreamData),
                     statuses: clamped,
-                    hasMore, // Server-side availability, not client capacity
+                    // hasMore is false if client cap reached to prevent infinite load loops
+                    // (lastId wouldn't change when items are dropped)
+                    hasMore: reachedCap ? false : hasMore,
                     isLoading: false,
                     error: null,
                 },
@@ -125,14 +128,15 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
             const existingIds = new Set(current.statuses.map((s) => s.id));
             const incoming = statuses.filter((s) => !existingIds.has(s.id));
             const merged = clampToMax([...current.statuses, ...incoming], MAX_STATUSES_PER_STREAM);
+            const reachedCap = merged.length >= MAX_STATUSES_PER_STREAM;
             return {
                 data: {
                     ...state.data,
                     [key]: {
                         ...current,
                         statuses: merged,
-                        // hasMore indicates server-side availability, not client capacity
-                        hasMore: incoming.length > 0,
+                        // hasMore is false if client cap reached to prevent infinite load loops
+                        hasMore: incoming.length > 0 && !reachedCap,
                         isLoading: false,
                     },
                 },
@@ -239,13 +243,15 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
 
     setNotifications: (key, notifications, hasMore = true) => {
         const clamped = clampToMax(notifications, MAX_NOTIFICATIONS_PER_STREAM);
+        const reachedCap = clamped.length >= MAX_NOTIFICATIONS_PER_STREAM;
         set((state) => ({
             data: {
                 ...state.data,
                 [key]: {
                     ...(state.data[key] ?? initialStreamData),
                     notifications: clamped,
-                    hasMore, // Server-side availability, not client capacity
+                    // hasMore is false if client cap reached to prevent infinite load loops
+                    hasMore: reachedCap ? false : hasMore,
                     isLoading: false,
                     error: null,
                 },
@@ -284,14 +290,15 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                 [...current.notifications, ...incoming],
                 MAX_NOTIFICATIONS_PER_STREAM
             );
+            const reachedCap = merged.length >= MAX_NOTIFICATIONS_PER_STREAM;
             return {
                 data: {
                     ...state.data,
                     [key]: {
                         ...current,
                         notifications: merged,
-                        // hasMore indicates server-side availability, not client capacity
-                        hasMore: incoming.length > 0,
+                        // hasMore is false if client cap reached to prevent infinite load loops
+                        hasMore: incoming.length > 0 && !reachedCap,
                         isLoading: false,
                     },
                 },
