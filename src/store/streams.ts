@@ -110,12 +110,15 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                 return state;
             }
             const newStatuses = clampToMax([status, ...current.statuses], MAX_STATUSES_PER_STREAM);
+            const reachedCap = newStatuses.length >= MAX_STATUSES_PER_STREAM;
             return {
                 data: {
                     ...state.data,
                     [key]: {
                         ...current,
                         statuses: newStatuses,
+                        // hasMore is false if client cap reached to prevent infinite load loops
+                        hasMore: reachedCap ? false : current.hasMore,
                     },
                 },
             };
@@ -135,8 +138,12 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                     [key]: {
                         ...current,
                         statuses: merged,
-                        // hasMore is false if client cap reached to prevent infinite load loops
-                        hasMore: incoming.length > 0 && !reachedCap,
+                        // Preserve hasMore when no new items are added, but stop when client cap is reached
+                        hasMore: reachedCap
+                            ? false
+                            : incoming.length === 0
+                              ? current.hasMore
+                              : true,
                         isLoading: false,
                     },
                 },
@@ -269,12 +276,15 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                 [notification, ...current.notifications],
                 MAX_NOTIFICATIONS_PER_STREAM
             );
+            const reachedCap = newNotifications.length >= MAX_NOTIFICATIONS_PER_STREAM;
             return {
                 data: {
                     ...state.data,
                     [key]: {
                         ...current,
                         notifications: newNotifications,
+                        // hasMore is false if client cap reached to prevent infinite load loops
+                        hasMore: reachedCap ? false : current.hasMore,
                     },
                 },
             };
@@ -297,8 +307,12 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                     [key]: {
                         ...current,
                         notifications: merged,
-                        // hasMore is false if client cap reached to prevent infinite load loops
-                        hasMore: incoming.length > 0 && !reachedCap,
+                        // Preserve hasMore when no new items are added, but stop when client cap is reached
+                        hasMore: reachedCap
+                            ? false
+                            : incoming.length === 0
+                              ? current.hasMore
+                              : true,
                         isLoading: false,
                     },
                 },
