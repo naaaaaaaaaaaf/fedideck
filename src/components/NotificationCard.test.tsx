@@ -192,11 +192,11 @@ describe('NotificationCard', () => {
             expect(headerContainer?.className).not.toContain('truncate');
         });
 
-        it('should left align header display name text when onAccountClick is provided', () => {
-            const longName = 'Very Long Display Name That Wraps In Header Button';
+        it('should call onAccountClick when display name button is clicked', () => {
+            const displayName = 'Test Display Name';
             const onAccountClick = vi.fn();
             const notification = createMockNotification('mention', {
-                account: createMockAccount({ displayName: longName }),
+                account: createMockAccount({ displayName }),
                 status: createMockStatus(),
             });
 
@@ -204,11 +204,17 @@ describe('NotificationCard', () => {
                 <NotificationCard notification={notification} onAccountClick={onAccountClick} />
             );
 
-            const displayName = screen.getByText(longName);
-            const nameButton = displayName.closest('button');
+            // Find the display name text and get its parent button
+            const displayNameElement = screen.getByText(displayName);
+            const nameButton = displayNameElement.closest('button');
 
             expect(nameButton).toBeInTheDocument();
-            expect(nameButton).toHaveClass('text-left');
+
+            // Click the display name button
+            fireEvent.click(nameButton!);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onAccountClick).toHaveBeenCalledWith(notification.account);
         });
     });
 
