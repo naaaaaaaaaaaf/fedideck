@@ -36,7 +36,7 @@ export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
 
             {/* Account avatars */}
             <nav
-                className="flex-1 flex flex-col items-center gap-2 overflow-y-auto"
+                className="flex-1 flex flex-col items-center gap-2 overflow-y-auto overflow-x-hidden"
                 aria-label="アカウント一覧"
             >
                 {accounts.map((account) => {
