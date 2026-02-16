@@ -51,7 +51,7 @@ export function NotificationCard({
                     color: 'text-purple-400',
                 };
             case 'poll':
-                return { icon: <LuChartBar />, label: '投票終了', color: 'text-indigo-400' };
+                return { icon: <LuChartBar />, label: '投票が終了', color: 'text-indigo-400' };
             case 'status':
                 return { icon: <LuFileText />, label: '新規投稿', color: 'text-slate-400' };
             case 'update':
@@ -266,7 +266,12 @@ export function NotificationCard({
                                     <DisplayName account={account} />
                                 </a>
                             )}
-                            <span className="text-slate-400"> さんが{info.label}しました</span>
+                            <span className="text-slate-400">
+                                {' '}
+                                {notification.type === 'poll'
+                                    ? info.label + 'しました'
+                                    : 'さんが' + info.label + 'しました'}
+                            </span>
                         </span>
                     </div>
                 </div>

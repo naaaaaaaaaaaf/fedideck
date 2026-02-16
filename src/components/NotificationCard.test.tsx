@@ -120,7 +120,7 @@ describe('NotificationCard', () => {
                 status: createMockStatus(),
             });
             render(<NotificationCard notification={notification} />);
-            expect(screen.getByText(/投票終了/)).toBeInTheDocument();
+            expect(screen.getByText(/投票が終了しました/)).toBeInTheDocument();
         });
 
         it('should display status notification', () => {
