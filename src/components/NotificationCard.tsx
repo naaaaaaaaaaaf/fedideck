@@ -1,5 +1,5 @@
 import type { mastodon } from 'masto';
-import React, { useState, useMemo, useCallback, type ReactNode } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from 'react';
 import {
     LuMessageCircle,
     LuRepeat2,
@@ -78,10 +78,16 @@ export const NotificationCard = React.memo(function NotificationCard({
     // Use controlled prop if provided, otherwise local state
     const nsfwRevealed = onNsfwToggle !== undefined ? isNsfwRevealed : localNsfwRevealed;
 
+    // Use ref to track nsfwRevealed state without causing callback recreation
+    const nsfwRevealedRef = useRef(nsfwRevealed);
+    useEffect(() => {
+        nsfwRevealedRef.current = nsfwRevealed;
+    }, [nsfwRevealed]);
+
     const handleNsfwToggle = useCallback(() => {
         // Controlled mode: parent provides the state via isNsfwRevealed
         if (onNsfwToggle) {
-            if (!nsfwRevealed && displayStatus) {
+            if (!nsfwRevealedRef.current && displayStatus) {
                 onNsfwToggle(displayStatus.id);
             }
             return;
@@ -89,7 +95,7 @@ export const NotificationCard = React.memo(function NotificationCard({
 
         // Uncontrolled mode: toggle local state
         setLocalNsfwRevealed((prev) => !prev);
-    }, [onNsfwToggle, nsfwRevealed, displayStatus]);
+    }, [onNsfwToggle, displayStatus]);
 
     // Note: nsfwRevealed state is automatically reset when notification changes
     // because NotificationCard is rendered with key={notification.id} in parent

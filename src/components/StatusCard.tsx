@@ -181,11 +181,17 @@ export const StatusCard = React.memo(function StatusCard({
     // Safely access account
     const account = displayStatus.account;
 
+    // Use ref to track nsfwRevealed state without causing callback recreation
+    const nsfwRevealedRef = useRef(nsfwRevealed);
+    useEffect(() => {
+        nsfwRevealedRef.current = nsfwRevealed;
+    }, [nsfwRevealed]);
+
     // NSFW toggle handler - must be defined before early return to follow hooks rules
     const handleNsfwToggle = useCallback(() => {
         // Controlled mode: parent provides the state via isNsfwRevealed
         if (onNsfwToggle) {
-            if (!nsfwRevealed) {
+            if (!nsfwRevealedRef.current) {
                 onNsfwToggle(displayStatus.id);
             }
             return;
@@ -193,7 +199,7 @@ export const StatusCard = React.memo(function StatusCard({
 
         // Uncontrolled mode: toggle local state
         setLocalNsfwRevealed((prev) => !prev);
-    }, [onNsfwToggle, nsfwRevealed, displayStatus.id]);
+    }, [onNsfwToggle, displayStatus.id]);
 
     if (!account) {
         return null; // Cannot render without account
