@@ -69,6 +69,8 @@ export function NotificationCard({
     const account = notification.account;
     const status = notification.status;
     const displayStatus = status?.reblog ?? status;
+    const actionText =
+        notification.type === 'poll' ? `${info.label}しました` : `さんが${info.label}しました`;
 
     // NSFW state: controlled from parent or local
     // If parent provides state (nsfwRevealedStatusIds), always use it
@@ -251,27 +253,31 @@ export function NotificationCard({
                                         e.stopPropagation();
                                         onAccountClick(account);
                                     }}
-                                    className="font-semibold text-slate-100 text-left hover:underline inline"
+                                    className="inline appearance-none whitespace-normal bg-transparent border-0 p-0 m-0 align-baseline font-semibold text-slate-100 text-left hover:underline cursor-pointer"
                                     aria-label={`${account.displayName || account.username}のプロフィールを表示`}
                                 >
                                     <DisplayName account={account} />
+                                    <span className="text-slate-400 font-normal">
+                                        {' '}
+                                        {actionText}
+                                    </span>
                                 </button>
                             ) : (
-                                <a
-                                    href={account.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="font-semibold text-slate-100 hover:underline"
-                                >
-                                    <DisplayName account={account} />
-                                </a>
+                                <>
+                                    <a
+                                        href={account.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="font-semibold text-slate-100 hover:underline"
+                                    >
+                                        <DisplayName account={account} />
+                                    </a>
+                                    <span className="text-slate-400"> {actionText}</span>
+                                </>
                             )}
-                            <span className="text-slate-400">
-                                {' '}
-                                {notification.type === 'poll'
-                                    ? info.label + 'しました'
-                                    : 'さんが' + info.label + 'しました'}
-                            </span>
+                            {isCardClickable && (
+                                <span className="text-slate-400"> {actionText}</span>
+                            )}
                         </span>
                     </div>
                 </div>
