@@ -192,7 +192,7 @@ describe('NotificationCard', () => {
             expect(headerContainer?.className).not.toContain('truncate');
         });
 
-        it('should call onAccountClick when display name button is clicked', () => {
+        it('should call onAccountClick when display name button is clicked', async () => {
             const displayName = 'Test Display Name';
             const onAccountClick = vi.fn();
             const notification = createMockNotification('mention', {
@@ -211,7 +211,7 @@ describe('NotificationCard', () => {
             expect(nameButton).toBeInTheDocument();
 
             // Click the display name button
-            fireEvent.click(nameButton!);
+            await userEvent.click(nameButton!);
 
             expect(onAccountClick).toHaveBeenCalledTimes(1);
             expect(onAccountClick).toHaveBeenCalledWith(notification.account);
