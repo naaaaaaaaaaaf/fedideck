@@ -105,10 +105,10 @@ export function Column({
                 : undefined,
         [onStatusEdit, accountId]
     );
-    // Pass-through callbacks (no transformation needed, but memoized for consistency)
-    const handleImageClick = useMemo(() => onImageClick, [onImageClick]);
-    const handleVideoClick = useMemo(() => onVideoClick, [onVideoClick]);
-    const handleAudioClick = useMemo(() => onAudioClick, [onAudioClick]);
+    // Pass-through callbacks (no transformation needed; props are already stable)
+    const handleImageClick = onImageClick;
+    const handleVideoClick = onVideoClick;
+    const handleAudioClick = onAudioClick;
 
     // Define loadInitialData before useEffect that uses it
     const loadInitialData = useCallback(async () => {
