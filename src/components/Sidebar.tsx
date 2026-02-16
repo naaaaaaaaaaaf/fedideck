@@ -44,7 +44,7 @@ export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
                     return (
                         <div key={account.id} className="relative group">
                             <div
-                                className="w-10 h-10 rounded-xl overflow-hidden"
+                                className="w-10 h-10 rounded-lg overflow-hidden"
                                 title={handle ?? ''}
                             >
                                 <img
