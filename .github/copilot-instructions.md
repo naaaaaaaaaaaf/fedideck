@@ -19,7 +19,6 @@ FediDeckはReact、TypeScript、Vite、Zustandで構築されたマルチカラ�
 
 <!-- for GitHub Copilot review rule-->
 
-
 ## 開発コマンド
 
 ```bash
