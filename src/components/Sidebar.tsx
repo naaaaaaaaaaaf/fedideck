@@ -42,7 +42,7 @@ export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
                 {accounts.map((account) => {
                     const handle = formatAccountHandle(account);
                     return (
-                        <div key={account.id} className="relative group">
+                        <div key={account.id} className="relative group m-1">
                             <div
                                 className="w-10 h-10 rounded-lg overflow-hidden"
                                 title={handle ?? ''}
