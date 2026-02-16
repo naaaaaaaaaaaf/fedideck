@@ -166,9 +166,13 @@ describe('NotificationCard', () => {
             });
             render(<NotificationCard notification={notification} />);
 
-            // 「Test User さんがブースト」が省略されずに表示されることを確認
-            expect(screen.getByText(/Test User/)).toBeInTheDocument();
-            expect(screen.getByText(/さんがブースト/)).toBeInTheDocument();
+            // ヘッダーのメッセージコンテナを取得
+            const actionText = screen.getByText(/さんがブースト/);
+            const headerContainer = actionText.closest('div');
+
+            // truncateクラスが含まれていないことを検証
+            expect(headerContainer).not.toHaveClass('truncate');
+            expect(headerContainer?.className).not.toContain('truncate');
         });
 
         it('should not truncate long display names in notification header', () => {
@@ -179,8 +183,13 @@ describe('NotificationCard', () => {
             });
             render(<NotificationCard notification={notification} />);
 
-            // 長い名前が省略されずに全文表示されることを確認
-            expect(screen.getByText(longName)).toBeInTheDocument();
+            // ヘッダーのメッセージコンテナを取得
+            const displayName = screen.getByText(longName);
+            const headerContainer = displayName.closest('div');
+
+            // truncateクラスが含まれていないことを検証
+            expect(headerContainer).not.toHaveClass('truncate');
+            expect(headerContainer?.className).not.toContain('truncate');
         });
 
         it('should left align header display name text when onAccountClick is provided', () => {
