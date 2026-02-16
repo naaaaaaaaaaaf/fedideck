@@ -4,6 +4,26 @@ import { escapeHtml } from './html';
 // Re-export EmojiEntity for use in other modules
 export type { EmojiEntity };
 
+// Unicode constants for FE0F handling
+const VS16_REGEX = /\uFE0F/g; // Variation Selector-16 (U+FE0F)
+const ZERO_WIDTH_JOINER = String.fromCharCode(0x200d); // U+200D
+
+/**
+ * Removes Variation Selector-16 (FE0F) from emoji text if it doesn't contain
+ * Zero Width Joiner (ZWJ/U+200D).
+ *
+ * The Twemoji CDN doesn't host files with -fe0f suffix for non-ZWJ emojis.
+ * ZWJ sequences keep FE0F because it's part of the emoji sequence.
+ *
+ * This matches the internal logic of @twemoji/parser's parse() function.
+ *
+ * @param rawEmoji - The raw emoji text
+ * @returns Emoji text with FE0F removed if not a ZWJ sequence
+ */
+function removeVariationSelector16(rawEmoji: string): string {
+    return rawEmoji.indexOf(ZERO_WIDTH_JOINER) < 0 ? rawEmoji.replace(VS16_REGEX, '') : rawEmoji;
+}
+
 /**
  * Builds a Twemoji CDN URL for the given emoji codepoints.
  * Uses jsDelivr CDN for the jdecked/twemoji fork.
@@ -62,8 +82,9 @@ export function validateTwemojiUrl(url: string): boolean {
  */
 export function createTwemojiImgTag(emoji: EmojiEntity): string {
     const escapedText = escapeHtml(emoji.text);
-    // Build URL from codepoints instead of trusting emoji.url
-    const codepoints = toCodePoints(emoji.text);
+    // Remove FE0F for non-ZWJ sequences before converting to codepoints
+    const normalizedEmoji = removeVariationSelector16(emoji.text);
+    const codepoints = toCodePoints(normalizedEmoji);
     const url = buildTwemojiUrl(codepoints, 'svg');
 
     // Validate URL before using it

@@ -267,3 +267,67 @@ describe('createTwemojiImgTag security', () => {
         expect(tag).toContain('1f44b-1f3fd.svg');
     });
 });
+
+describe('FE0F (Variation Selector-16) handling', () => {
+    it('should remove FE0F from simple emoji without ZWJ', () => {
+        // 🗓️ = U+1F5D3 U+FE0F (calendar with VS16)
+        const emojis = parseUnicodeEmojis('Test 🗓️');
+        const tag = createTwemojiImgTag(emojis[0]);
+
+        expect(tag).not.toContain('-fe0f');
+        expect(tag).toContain('1f5d3.svg');
+        expect(tag).toContain('alt="🗓️"');
+    });
+
+    it('should remove FE0F from BMP emoji without ZWJ', () => {
+        // ❤️ = U+2764 U+FE0F (red heart with VS16)
+        const emojis = parseUnicodeEmojis('I ❤️ you');
+        const tag = createTwemojiImgTag(emojis[0]);
+
+        expect(tag).not.toContain('-fe0f');
+        expect(tag).toContain('2764.svg');
+    });
+
+    it('should preserve emoji in ZWJ sequences', () => {
+        // 👨‍👩‍👧‍👦 = family emoji with ZWJ sequences
+        const emojis = parseUnicodeEmojis('👨‍👩‍👧‍👦');
+        const tag = createTwemojiImgTag(emojis[0]);
+
+        expect(tag).toContain('1f468-200d-1f469-200d-1f467-200d-1f466.svg');
+    });
+
+    it('should handle keycap emoji with FE0F', () => {
+        // #️⃣ = U+0023 U+FE0F U+20E3
+        const emojis = parseUnicodeEmojis('#️⃣');
+        const tag = createTwemojiImgTag(emojis[0]);
+
+        expect(tag).not.toContain('-fe0f');
+        expect(tag).toContain('23-20e3.svg');
+    });
+
+    it('should handle check mark with VS16', () => {
+        // ✔️ = U+2714 U+FE0F
+        const emojis = parseUnicodeEmojis('✔️');
+        const tag = createTwemojiImgTag(emojis[0]);
+
+        expect(tag).not.toContain('-fe0f');
+        expect(tag).toContain('2714.svg');
+    });
+
+    it('should handle emoji without FE0F unchanged', () => {
+        // 😀 = U+1F600 (no FE0F)
+        const emojis = parseUnicodeEmojis('😀');
+        const tag = createTwemojiImgTag(emojis[0]);
+
+        expect(tag).toContain('1f600.svg');
+    });
+
+    it('should handle multiple emojis with FE0F in single text', () => {
+        const result = replaceUnicodeEmojisWithImages('🗓️ ❤️ 👨‍👩‍👧‍👦');
+
+        expect(result).toContain('1f5d3.svg');
+        expect(result).toContain('2764.svg');
+        expect(result).toContain('1f468-200d-1f469-200d-1f467-200d-1f466.svg');
+        expect(result).not.toContain('-fe0f');
+    });
+});
