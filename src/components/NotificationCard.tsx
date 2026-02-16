@@ -245,17 +245,17 @@ export function NotificationCard({
                                     <DisplayName account={account} />
                                 </span>
                             ) : onAccountClick ? (
-                                <a
-                                    href={account.url}
+                                <button
+                                    type="button"
                                     onClick={(e) => {
-                                        e.preventDefault();
+                                        e.stopPropagation();
                                         onAccountClick(account);
                                     }}
-                                    className="font-semibold text-slate-100 text-left hover:underline"
+                                    className="font-semibold text-slate-100 text-left hover:underline inline"
                                     aria-label={`${account.displayName || account.username}のプロフィールを表示`}
                                 >
                                     <DisplayName account={account} />
-                                </a>
+                                </button>
                             ) : (
                                 <a
                                     href={account.url}

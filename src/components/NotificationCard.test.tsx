@@ -205,10 +205,10 @@ describe('NotificationCard', () => {
             );
 
             const displayName = screen.getByText(longName);
-            const nameLink = displayName.closest('a');
+            const nameButton = displayName.closest('button');
 
-            expect(nameLink).toBeInTheDocument();
-            expect(nameLink).toHaveClass('text-left');
+            expect(nameButton).toBeInTheDocument();
+            expect(nameButton).toHaveClass('text-left');
         });
     });
 
