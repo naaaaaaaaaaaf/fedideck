@@ -111,7 +111,7 @@ export const NotificationCard = React.memo(function NotificationCard({
             displayStatus
                 ? replaceEmojisWithImages(displayStatus.content, displayStatus.emojis)
                 : null,
-        [displayStatus]
+        [displayStatus?.content, displayStatus?.emojis]
     );
 
     // Check if status area should be clickable
