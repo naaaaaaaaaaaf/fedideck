@@ -71,10 +71,10 @@ export function ColumnContainer({
                 <div className="flex items-center justify-center w-20 shrink-0 bg-slate-900/30">
                     <button
                         onClick={onAddColumn}
-                        className="w-12 h-12 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600 text-slate-400 hover:text-slate-200 text-2xl transition-all duration-200 hover:scale-105"
+                        className="w-12 h-12 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all duration-200 hover:scale-105"
                         title="カラムを追加"
                     >
-                        <LuPlus />
+                        <LuPlus className="w-6 h-6" />
                     </button>
                 </div>
             )}
