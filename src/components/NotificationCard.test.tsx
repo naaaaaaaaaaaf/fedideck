@@ -1082,9 +1082,9 @@ describe('NotificationCard', () => {
             );
         });
 
-        it('should call onNsfwReveal with status.id when revealing sensitive image', async () => {
+        it('should call onNsfwToggle with status.id when revealing sensitive image', async () => {
             const user = userEvent.setup();
-            const onNsfwReveal = vi.fn();
+            const onNsfwToggle = vi.fn();
 
             const notification = createMockNotification('mention', {
                 status: createMockStatus({
@@ -1102,18 +1102,18 @@ describe('NotificationCard', () => {
                 }),
             });
 
-            render(<NotificationCard notification={notification} onNsfwReveal={onNsfwReveal} />);
+            render(<NotificationCard notification={notification} onNsfwToggle={onNsfwToggle} />);
 
             const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
             await user.click(button);
 
-            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
-            expect(onNsfwReveal).toHaveBeenCalledWith('status-123');
+            expect(onNsfwToggle).toHaveBeenCalledTimes(1);
+            expect(onNsfwToggle).toHaveBeenCalledWith('status-123');
         });
 
-        it('should call onNsfwReveal with reblogged status.id when revealing', async () => {
+        it('should call onNsfwToggle with reblogged status.id when revealing', async () => {
             const user = userEvent.setup();
-            const onNsfwReveal = vi.fn();
+            const onNsfwToggle = vi.fn();
 
             const originalStatus = createMockStatus({
                 id: 'original-123',
@@ -1136,17 +1136,17 @@ describe('NotificationCard', () => {
                 }),
             });
 
-            render(<NotificationCard notification={notification} onNsfwReveal={onNsfwReveal} />);
+            render(<NotificationCard notification={notification} onNsfwToggle={onNsfwToggle} />);
 
             const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
             await user.click(button);
 
             // displayStatus.id（original-123）が通知されるべき
-            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
-            expect(onNsfwReveal).toHaveBeenCalledWith('original-123');
+            expect(onNsfwToggle).toHaveBeenCalledTimes(1);
+            expect(onNsfwToggle).toHaveBeenCalledWith('original-123');
         });
 
-        it('should check nsfwRevealedStatusIds for current displayStatus.id', () => {
+        it('should check isNsfwRevealed for current displayStatus.id', () => {
             const status1 = createMockStatus({
                 id: 'status-1',
                 sensitive: true,
@@ -1174,8 +1174,7 @@ describe('NotificationCard', () => {
             });
 
             // status1は表示済み、status2は未表示
-            const nsfwRevealedStatusIds = new Set(['status-1']);
-            const onNsfwReveal = vi.fn();
+            const onNsfwToggle = vi.fn();
 
             const notification1 = createMockNotification('mention', {
                 status: status1,
@@ -1189,8 +1188,8 @@ describe('NotificationCard', () => {
             render(
                 <NotificationCard
                     notification={notification1}
-                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
-                    onNsfwReveal={onNsfwReveal}
+                    isNsfwRevealed={true}
+                    onNsfwToggle={onNsfwToggle}
                 />
             );
 
@@ -1201,8 +1200,8 @@ describe('NotificationCard', () => {
             render(
                 <NotificationCard
                     notification={notification2}
-                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
-                    onNsfwReveal={onNsfwReveal}
+                    isNsfwRevealed={false}
+                    onNsfwToggle={onNsfwToggle}
                 />
             );
 

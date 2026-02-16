@@ -1,5 +1,5 @@
 import type { mastodon } from 'masto';
-import { useState, type ReactNode } from 'react';
+import React, { useState, useMemo, useCallback, type ReactNode } from 'react';
 import {
     LuMessageCircle,
     LuRepeat2,
@@ -23,16 +23,16 @@ interface NotificationCardProps {
     notification: mastodon.v1.Notification;
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onAccountClick?: (account: mastodon.v1.Account) => void;
-    onNsfwReveal?: (statusId: string) => void;
-    nsfwRevealedStatusIds?: Set<string>;
+    onNsfwToggle?: (statusId: string) => void;
+    isNsfwRevealed?: boolean;
 }
 
-export function NotificationCard({
+export const NotificationCard = React.memo(function NotificationCard({
     notification,
     onStatusClick,
     onAccountClick,
-    onNsfwReveal,
-    nsfwRevealedStatusIds,
+    onNsfwToggle,
+    isNsfwRevealed = false,
 }: NotificationCardProps) {
     const getNotificationInfo = (): { icon: ReactNode; label: string; color: string } => {
         switch (notification.type) {
@@ -72,36 +72,41 @@ export function NotificationCard({
     const actionText =
         notification.type === 'poll' ? `${info.label}しました` : `さんが${info.label}しました`;
 
-    // NSFW state: controlled from parent or local
-    // If parent provides state (nsfwRevealedStatusIds), always use it
-    // When onNsfwReveal is missing, operates in read-only mode
-    const isControlled = nsfwRevealedStatusIds !== undefined;
+    // NSFW state: controlled from parent via isNsfwRevealed prop (boolean)
+    // When onNsfwToggle is missing, operates in read-only mode
     const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-    const nsfwRevealed = isControlled
-        ? displayStatus
-            ? nsfwRevealedStatusIds.has(displayStatus.id)
-            : false
-        : localNsfwRevealed;
+    // Use controlled prop if provided, otherwise local state
+    const nsfwRevealed = onNsfwToggle !== undefined ? isNsfwRevealed : localNsfwRevealed;
 
-    const handleNsfwToggle = () => {
-        // Controlled mode: use parent state
-        if (isControlled) {
-            // If callback provided, notify parent (read-only mode if no callback)
-            if (!nsfwRevealed && onNsfwReveal && displayStatus) {
-                onNsfwReveal(displayStatus.id);
+    const handleNsfwToggle = useCallback(() => {
+        // Controlled mode: parent provides the state via isNsfwRevealed
+        if (onNsfwToggle) {
+            if (!nsfwRevealed && displayStatus) {
+                onNsfwToggle(displayStatus.id);
             }
             return;
         }
 
-        // Uncontrolled mode: notify parent if callback provided, then toggle local state
-        if (!nsfwRevealed && onNsfwReveal && displayStatus) {
-            onNsfwReveal(displayStatus.id);
-        }
+        // Uncontrolled mode: toggle local state
         setLocalNsfwRevealed((prev) => !prev);
-    };
+    }, [onNsfwToggle, nsfwRevealed, displayStatus]);
 
     // Note: nsfwRevealed state is automatically reset when notification changes
     // because NotificationCard is rendered with key={notification.id} in parent
+
+    // Memoize emoji processing to avoid redundant work on re-renders
+    const accountNoteWithEmojis = useMemo(
+        () => (account.note ? replaceEmojisWithImages(account.note, account.emojis ?? []) : null),
+        [account.note, account.emojis]
+    );
+
+    const statusContentWithEmojis = useMemo(
+        () =>
+            displayStatus
+                ? replaceEmojisWithImages(displayStatus.content, displayStatus.emojis)
+                : null,
+        [displayStatus]
+    );
 
     // Check if status area should be clickable
     const isStatusClickable = Boolean(status && onStatusClick);
@@ -343,15 +348,10 @@ export function NotificationCard({
                                 />
                             )}
                             <div className="text-sm text-slate-400 truncate">@{account.acct}</div>
-                            {account.note && (
+                            {accountNoteWithEmojis && (
                                 <div
                                     className="text-sm text-slate-300 mt-1 line-clamp-2 profile-bio"
-                                    dangerouslySetInnerHTML={{
-                                        __html: replaceEmojisWithImages(
-                                            account.note,
-                                            account.emojis ?? []
-                                        ),
-                                    }}
+                                    dangerouslySetInnerHTML={{ __html: accountNoteWithEmojis }}
                                 />
                             )}
                         </div>
@@ -396,10 +396,7 @@ export function NotificationCard({
                             <div
                                 className="mt-2 text-sm text-slate-300 wrap-break-word"
                                 dangerouslySetInnerHTML={{
-                                    __html: replaceEmojisWithImages(
-                                        displayStatus.content,
-                                        displayStatus.emojis
-                                    ),
+                                    __html: statusContentWithEmojis ?? '',
                                 }}
                             />
                         </details>
@@ -407,10 +404,7 @@ export function NotificationCard({
                         <div
                             className="text-sm text-slate-300 wrap-break-word line-clamp-4"
                             dangerouslySetInnerHTML={{
-                                __html: replaceEmojisWithImages(
-                                    displayStatus.content,
-                                    displayStatus.emojis
-                                ),
+                                __html: statusContentWithEmojis ?? '',
                             }}
                         />
                     )}
@@ -441,4 +435,4 @@ export function NotificationCard({
             )}
         </article>
     );
-}
+});

@@ -292,49 +292,66 @@ export function Column({
 
                 {/* Notifications */}
                 {isNotificationColumn &&
-                    data?.notifications.map((notification) => (
-                        <NotificationCard
-                            key={notification.id}
-                            notification={notification}
-                            onStatusClick={
-                                onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
-                            }
-                            onAccountClick={
-                                onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
-                            }
-                            onNsfwReveal={onNsfwReveal}
-                            nsfwRevealedStatusIds={nsfwRevealedStatusIds}
-                        />
-                    ))}
+                    data?.notifications.map((notification) => {
+                        // Get the display status ID for NSFW check (handle reblog case)
+                        const displayStatus = notification.status?.reblog ?? notification.status;
+                        const statusId = displayStatus?.id;
+
+                        return (
+                            <NotificationCard
+                                key={notification.id}
+                                notification={notification}
+                                onStatusClick={
+                                    onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
+                                }
+                                onAccountClick={
+                                    onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
+                                }
+                                onNsfwToggle={onNsfwReveal}
+                                isNsfwRevealed={
+                                    statusId
+                                        ? (nsfwRevealedStatusIds?.has(statusId) ?? false)
+                                        : false
+                                }
+                            />
+                        );
+                    })}
 
                 {/* Statuses */}
                 {!isNotificationColumn &&
-                    data?.statuses.map((status) => (
-                        <StatusCard
-                            key={status.id}
-                            status={status}
-                            accountSession={account}
-                            onStatusUpdate={updateStatusGlobal}
-                            onReply={onReply ? (s) => onReply(s, accountId) : undefined}
-                            onStatusClick={
-                                onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
-                            }
-                            onImageClick={onImageClick}
-                            onVideoClick={onVideoClick}
-                            onAudioClick={onAudioClick}
-                            onAccountClick={
-                                onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
-                            }
-                            onNsfwReveal={onNsfwReveal}
-                            nsfwRevealedStatusIds={nsfwRevealedStatusIds}
-                            onStatusDelete={
-                                onStatusDelete ? (s) => onStatusDelete(s, accountId) : undefined
-                            }
-                            onStatusEdit={
-                                onStatusEdit ? (s) => onStatusEdit(s, accountId) : undefined
-                            }
-                        />
-                    ))}
+                    data?.statuses.map((status) => {
+                        // Get the display status ID for NSFW check (handle reblog case)
+                        const displayStatus = status.reblog ?? status;
+
+                        return (
+                            <StatusCard
+                                key={status.id}
+                                status={status}
+                                accountSession={account}
+                                onStatusUpdate={updateStatusGlobal}
+                                onReply={onReply ? (s) => onReply(s, accountId) : undefined}
+                                onStatusClick={
+                                    onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
+                                }
+                                onImageClick={onImageClick}
+                                onVideoClick={onVideoClick}
+                                onAudioClick={onAudioClick}
+                                onAccountClick={
+                                    onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
+                                }
+                                onNsfwToggle={onNsfwReveal}
+                                isNsfwRevealed={
+                                    nsfwRevealedStatusIds?.has(displayStatus.id) ?? false
+                                }
+                                onStatusDelete={
+                                    onStatusDelete ? (s) => onStatusDelete(s, accountId) : undefined
+                                }
+                                onStatusEdit={
+                                    onStatusEdit ? (s) => onStatusEdit(s, accountId) : undefined
+                                }
+                            />
+                        );
+                    })}
 
                 {/* Load more trigger */}
                 {data?.hasMore && (data.statuses.length > 0 || data.notifications.length > 0) && (
