@@ -4,6 +4,22 @@
 
 FediDeckはReact、TypeScript、Vite、Zustandで構築されたマルチカラムMastodon/Fediverseクライアント。TweetDeckスタイルのインターフェースを提供し、複数のアカウントとインスタンスにわたる複数のタイムラインを監視できる。
 
+## レビューに関して
+
+レビューする際には、以下のprefix(接頭辞)を付けましょう。  
+また、レビューコメントは日本語で書いてください。
+
+<!-- for GitHub Copilot review rule -->
+
+[must] → かならず変更  
+[imo] → 自分の意見だとこうだけど修正必須ではない(in my opinion)  
+[nits] → ささいな指摘(nitpick)  
+[ask] → 質問  
+[fyi] → 参考情報
+
+<!-- for GitHub Copilot review rule-->
+
+
 ## 開発コマンド
 
 ```bash
@@ -172,20 +188,3 @@ CIが存在することを前提にコードを書く。
 - `npm run format:check` が通る
 - `npm run lint` が通る
 - 型エラーなし
-
----
-
-## レビューに関して
-
-レビューする際には、以下のprefix(接頭辞)を付けましょう。  
-また、レビューコメントは日本語で書いてください。
-
-<!-- for GitHub Copilot review rule -->
-
-[must] → かならず変更  
-[imo] → 自分の意見だとこうだけど修正必須ではない(in my opinion)  
-[nits] → ささいな指摘(nitpick)  
-[ask] → 質問  
-[fyi] → 参考情報
-
-<!-- for GitHub Copilot review rule-->
