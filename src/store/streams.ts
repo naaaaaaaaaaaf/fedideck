@@ -6,7 +6,10 @@ export const MAX_STATUSES_PER_STREAM = 200;
 /** Maximum number of notifications to keep per stream */
 export const MAX_NOTIFICATIONS_PER_STREAM = 100;
 
-/** Clamps array to maximum size, keeping newest items (at the start for prepend, at the end for append) */
+/** Clamps array to maximum size by keeping the first `max` items.
+ *  Assumes arrays are ordered newest-first (most recent at index 0).
+ *  For prepend: new items added to start, slice keeps them.
+ *  For append: older items added to end, slice drops them. */
 const clampToMax = <T>(items: T[], max: number): T[] =>
     items.length > max ? items.slice(0, max) : items;
 
