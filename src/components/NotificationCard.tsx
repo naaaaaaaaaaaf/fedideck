@@ -51,7 +51,7 @@ export function NotificationCard({
                     color: 'text-purple-400',
                 };
             case 'poll':
-                return { icon: <LuChartBar />, label: '投票終了', color: 'text-indigo-400' };
+                return { icon: <LuChartBar />, label: '投票が終了', color: 'text-indigo-400' };
             case 'status':
                 return { icon: <LuFileText />, label: '新規投稿', color: 'text-slate-400' };
             case 'update':
@@ -197,11 +197,11 @@ export function NotificationCard({
             }
         >
             {/* Notification header */}
-            <div className="flex items-center gap-3 mb-2">
-                <span className={`text-lg ${info.color}`} aria-hidden="true">
+            <div className="flex items-start gap-3 mb-2">
+                <span className={`text-lg ${info.color} mt-0.5`} aria-hidden="true">
                     {info.icon}
                 </span>
-                <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="flex items-start gap-2 min-w-0 flex-1">
                     {isCardClickable ? (
                         // Card is clickable - use non-interactive elements
                         <img
@@ -238,37 +238,44 @@ export function NotificationCard({
                             />
                         </a>
                     )}
-                    <span className="text-sm truncate">
-                        {isCardClickable ? (
-                            // Card is clickable - use span with visual hover effect
-                            <span className="font-semibold text-slate-100 hover:underline">
-                                <DisplayName account={account} />
+                    <div className="min-w-0 text-sm leading-relaxed">
+                        <span>
+                            {isCardClickable ? (
+                                <span className="font-semibold text-slate-100 hover:underline">
+                                    <DisplayName account={account} />
+                                </span>
+                            ) : onAccountClick ? (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onAccountClick(account);
+                                    }}
+                                    className="font-semibold text-slate-100 text-left hover:underline inline"
+                                    aria-label={`${account.displayName || account.username}のプロフィールを表示`}
+                                >
+                                    <DisplayName account={account} />
+                                </button>
+                            ) : (
+                                <a
+                                    href={account.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-semibold text-slate-100 hover:underline"
+                                >
+                                    <DisplayName account={account} />
+                                </a>
+                            )}
+                            <span className="text-slate-400">
+                                {' '}
+                                {notification.type === 'poll'
+                                    ? info.label + 'しました'
+                                    : 'さんが' + info.label + 'しました'}
                             </span>
-                        ) : onAccountClick ? (
-                            // Card not clickable but has onAccountClick - use button
-                            <button
-                                type="button"
-                                onClick={() => onAccountClick(account)}
-                                className="font-semibold text-slate-100 hover:underline"
-                                aria-label={`${account.displayName || account.username}のプロフィールを表示`}
-                            >
-                                <DisplayName account={account} />
-                            </button>
-                        ) : (
-                            // No onAccountClick - use external link
-                            <a
-                                href={account.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-semibold text-slate-100 hover:underline"
-                            >
-                                <DisplayName account={account} />
-                            </a>
-                        )}
-                        <span className="text-slate-400"> さんが{info.label}</span>
-                    </span>
+                        </span>
+                    </div>
                 </div>
-                <span className="text-xs text-slate-500 shrink-0">
+                <span className="text-xs text-slate-500 shrink-0 whitespace-nowrap">
                     {formatDate(notification.createdAt)}
                 </span>
             </div>

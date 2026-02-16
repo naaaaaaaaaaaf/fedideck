@@ -120,7 +120,7 @@ describe('NotificationCard', () => {
                 status: createMockStatus(),
             });
             render(<NotificationCard notification={notification} />);
-            expect(screen.getByText(/投票終了/)).toBeInTheDocument();
+            expect(screen.getByText(/投票が終了しました/)).toBeInTheDocument();
         });
 
         it('should display status notification', () => {
@@ -155,6 +155,66 @@ describe('NotificationCard', () => {
             const notification = createMockNotification('custom_type');
             render(<NotificationCard notification={notification} />);
             expect(screen.getByText(/custom_type/)).toBeInTheDocument();
+        });
+    });
+
+    describe('notification header full text', () => {
+        it('should display full notification message without truncation', () => {
+            const notification = createMockNotification('reblog', {
+                account: createMockAccount({ displayName: 'Test User' }),
+                status: createMockStatus(),
+            });
+            render(<NotificationCard notification={notification} />);
+
+            // ヘッダーのメッセージコンテナを取得
+            const actionText = screen.getByText(/さんがブースト/);
+            const headerContainer = actionText.closest('div');
+
+            // truncateクラスが含まれていないことを検証
+            expect(headerContainer).not.toHaveClass('truncate');
+            expect(headerContainer?.className).not.toContain('truncate');
+        });
+
+        it('should not truncate long display names in notification header', () => {
+            const longName = 'Very Long Display Name That Would Normally Be Truncated';
+            const notification = createMockNotification('favourite', {
+                account: createMockAccount({ displayName: longName }),
+                status: createMockStatus(),
+            });
+            render(<NotificationCard notification={notification} />);
+
+            // ヘッダーのメッセージコンテナを取得
+            const displayName = screen.getByText(longName);
+            const headerContainer = displayName.closest('div');
+
+            // truncateクラスが含まれていないことを検証
+            expect(headerContainer).not.toHaveClass('truncate');
+            expect(headerContainer?.className).not.toContain('truncate');
+        });
+
+        it('should call onAccountClick when display name button is clicked', async () => {
+            const displayName = 'Test Display Name';
+            const onAccountClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                account: createMockAccount({ displayName }),
+                status: createMockStatus(),
+            });
+
+            render(
+                <NotificationCard notification={notification} onAccountClick={onAccountClick} />
+            );
+
+            // Find the display name text and get its parent button
+            const displayNameElement = screen.getByText(displayName);
+            const nameButton = displayNameElement.closest('button');
+
+            expect(nameButton).toBeInTheDocument();
+
+            // Click the display name button
+            await userEvent.click(nameButton!);
+
+            expect(onAccountClick).toHaveBeenCalledTimes(1);
+            expect(onAccountClick).toHaveBeenCalledWith(notification.account);
         });
     });
 
