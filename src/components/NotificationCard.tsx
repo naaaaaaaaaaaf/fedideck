@@ -72,10 +72,10 @@ export const NotificationCard = React.memo(function NotificationCard({
     const actionText =
         notification.type === 'poll' ? `${info.label}しました` : `さんが${info.label}しました`;
 
-    // NSFW state: controlled from parent via isNsfwRevealed prop (boolean)
-    // When onNsfwToggle is missing, operates in read-only mode
+    // NSFW state:
+    // - onNsfwToggle provided: controlled mode, uses isNsfwRevealed from parent
+    // - onNsfwToggle missing: uncontrolled mode, toggles local state
     const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-    // Use controlled prop if provided, otherwise local state
     const nsfwRevealed = onNsfwToggle !== undefined ? isNsfwRevealed : localNsfwRevealed;
 
     // Use ref to track nsfwRevealed state without causing callback recreation
