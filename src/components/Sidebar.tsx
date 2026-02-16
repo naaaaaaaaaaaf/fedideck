@@ -1,4 +1,4 @@
-import { LuPencil, LuPlus } from 'react-icons/lu';
+import { LuPencil, LuPlus, LuX } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
 import { formatAccountHandle } from '../utils/accountHandle';
 
@@ -62,11 +62,11 @@ export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
                                         removeAccount(account.id);
                                     }
                                 }}
-                                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 rounded-full text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
                                 aria-label={`${account.account.displayName || account.account.username}をログアウト`}
                                 title="ログアウト"
                             >
-                                <span aria-hidden="true">×</span>
+                                <LuX className="w-3 h-3" aria-hidden="true" />
                             </button>
                         </div>
                     );
