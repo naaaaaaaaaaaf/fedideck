@@ -323,20 +323,21 @@ describe('item limits', () => {
             expect(stream.statuses.length).toBe(MAX_STATUSES_PER_STREAM);
         });
 
-        it('sets hasMore to false when cap is reached on append', () => {
+        it('sets hasMore true when new items arrive, even at cap', () => {
             // Start with 200 statuses (at cap)
             const initialStatuses = Array.from({ length: MAX_STATUSES_PER_STREAM }, (_, i) =>
                 makeStatus(String(i))
             );
             useStreamsStore.getState().setStatuses('account:home', initialStatuses);
 
-            // Try to append more
+            // Append more (new items from server)
             const moreStatuses = Array.from({ length: 50 }, (_, i) => makeStatus(String(200 + i)));
             useStreamsStore.getState().appendStatuses('account:home', moreStatuses);
 
             const stream = useStreamsStore.getState().data['account:home'];
-            // hasMore should be false because we're at the cap
-            expect(stream.hasMore).toBe(false);
+            // hasMore is true because server has more data (incoming.length > 0)
+            // Client cap only limits array size, not loading capability
+            expect(stream.hasMore).toBe(true);
         });
 
         it('preserves hasMore true when under cap after append', () => {
@@ -402,7 +403,7 @@ describe('item limits', () => {
             expect(stream.notifications.length).toBe(MAX_NOTIFICATIONS_PER_STREAM);
         });
 
-        it('sets hasMore to false when cap is reached on append', () => {
+        it('sets hasMore true when new items arrive, even at cap', () => {
             const initialNotifications = Array.from(
                 { length: MAX_NOTIFICATIONS_PER_STREAM },
                 (_, i) => makeNotification(String(i))
@@ -419,7 +420,9 @@ describe('item limits', () => {
                 .appendNotifications('account:notifications', moreNotifications);
 
             const stream = useStreamsStore.getState().data['account:notifications'];
-            expect(stream.hasMore).toBe(false);
+            // hasMore is true because server has more data (incoming.length > 0)
+            // Client cap only limits array size, not loading capability
+            expect(stream.hasMore).toBe(true);
         });
     });
 });
