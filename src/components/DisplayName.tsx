@@ -22,7 +22,7 @@ export const DisplayName = React.memo(function DisplayName({
 
     // Memoize emoji replacement to avoid redundant processing
     const html = useMemo(() => {
-        if (hasEmojis) {
+        if (account.emojis && account.emojis.length > 0) {
             return replaceEmojisInPlainText(displayName, account.emojis);
         }
         return null;
