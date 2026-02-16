@@ -201,7 +201,7 @@ export function NotificationCard({
                 <span className={`text-lg ${info.color}`} aria-hidden="true">
                     {info.icon}
                 </span>
-                <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="flex items-baseline gap-2 min-w-0 flex-1">
                     {isCardClickable ? (
                         // Card is clickable - use non-interactive elements
                         <img
@@ -238,7 +238,7 @@ export function NotificationCard({
                             />
                         </a>
                     )}
-                    <span className="text-sm truncate">
+                    <span className="text-sm">
                         {isCardClickable ? (
                             // Card is clickable - use span with visual hover effect
                             <span className="font-semibold text-slate-100 hover:underline">
