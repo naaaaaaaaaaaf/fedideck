@@ -26,7 +26,7 @@ export const DisplayName = React.memo(function DisplayName({
             return replaceEmojisInPlainText(displayName, account.emojis);
         }
         return null;
-    }, [displayName, hasEmojis, account.emojis]);
+    }, [displayName, account.emojis]);
 
     if (hasEmojis && html) {
         return <span className={className} dangerouslySetInnerHTML={{ __html: html }} />;
