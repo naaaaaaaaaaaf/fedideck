@@ -1,4 +1,4 @@
-import { LuPencil } from 'react-icons/lu';
+import { LuPencil, LuPlus } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
 import { formatAccountHandle } from '../utils/accountHandle';
 
@@ -36,7 +36,7 @@ export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
 
             {/* Account avatars */}
             <nav
-                className="flex-1 flex flex-col items-center gap-2 overflow-y-auto"
+                className="flex-1 flex flex-col items-center gap-2 overflow-y-auto overflow-x-hidden"
                 aria-label="アカウント一覧"
             >
                 {accounts.map((account) => {
@@ -76,11 +76,11 @@ export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
             {/* Add account button */}
             <button
                 onClick={onAddAccount}
-                className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-400 hover:text-slate-200 text-xl transition-all"
+                className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all"
                 aria-label="アカウントを追加"
                 title="アカウントを追加"
             >
-                <span aria-hidden="true">+</span>
+                <LuPlus className="w-5 h-5" aria-hidden="true" />
             </button>
         </aside>
     );

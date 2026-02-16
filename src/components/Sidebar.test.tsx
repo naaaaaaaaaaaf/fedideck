@@ -143,4 +143,20 @@ describe('Sidebar', () => {
             expect(mockRemoveAccount).not.toHaveBeenCalled();
         });
     });
+
+    describe('layout', () => {
+        it('should have overflow-x-hidden on nav container', () => {
+            render(<Sidebar onAddAccount={vi.fn()} onCompose={vi.fn()} />);
+            const nav = screen.getByLabelText('アカウント一覧');
+            expect(nav.classList.contains('overflow-x-hidden')).toBe(true);
+        });
+
+        it('should have centering classes on add account button', () => {
+            render(<Sidebar onAddAccount={vi.fn()} onCompose={vi.fn()} />);
+            const addButton = screen.getByLabelText('アカウントを追加');
+            expect(addButton.classList.contains('flex')).toBe(true);
+            expect(addButton.classList.contains('items-center')).toBe(true);
+            expect(addButton.classList.contains('justify-center')).toBe(true);
+        });
+    });
 });
