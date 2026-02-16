@@ -40,7 +40,7 @@ interface StatusCardProps {
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
     onAudioClick?: (tracks: AudioViewerTrack[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
-    onNsfwToggle?: (statusId: string) => void;
+    onNsfwReveal?: (statusId: string) => void;
     isNsfwRevealed?: boolean;
     onStatusDelete?: (status: mastodon.v1.Status) => void;
     onStatusEdit?: (status: mastodon.v1.Status) => void;
@@ -57,7 +57,7 @@ export const StatusCard = React.memo(function StatusCard({
     onVideoClick,
     onAudioClick,
     onAccountClick,
-    onNsfwToggle,
+    onNsfwReveal,
     isNsfwRevealed = false,
     onStatusDelete,
     onStatusEdit,
@@ -80,10 +80,10 @@ export const StatusCard = React.memo(function StatusCard({
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
     // NSFW state:
-    // - onNsfwToggle provided: controlled mode, uses isNsfwRevealed from parent
-    // - onNsfwToggle missing: uncontrolled mode, toggles local state
+    // - onNsfwReveal provided: controlled mode, uses isNsfwRevealed from parent
+    // - onNsfwReveal missing: uncontrolled mode, toggles local state
     const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-    const nsfwRevealed = onNsfwToggle !== undefined ? isNsfwRevealed : localNsfwRevealed;
+    const nsfwRevealed = onNsfwReveal !== undefined ? isNsfwRevealed : localNsfwRevealed;
 
     // Track pending props updates that arrived during loading
     const pendingPropsRef = useRef<{
@@ -190,16 +190,16 @@ export const StatusCard = React.memo(function StatusCard({
     // NSFW toggle handler - must be defined before early return to follow hooks rules
     const handleNsfwToggle = useCallback(() => {
         // Controlled mode: parent provides the state via isNsfwRevealed
-        if (onNsfwToggle) {
+        if (onNsfwReveal) {
             if (!nsfwRevealedRef.current) {
-                onNsfwToggle(displayStatus.id);
+                onNsfwReveal(displayStatus.id);
             }
             return;
         }
 
         // Uncontrolled mode: toggle local state
         setLocalNsfwRevealed((prev) => !prev);
-    }, [onNsfwToggle, displayStatus.id]);
+    }, [onNsfwReveal, displayStatus.id]);
 
     if (!account) {
         return null; // Cannot render without account
@@ -553,7 +553,7 @@ export const StatusCard = React.memo(function StatusCard({
                                         variant="card"
                                         isSensitive={isSensitive}
                                         nsfwRevealed={nsfwRevealed}
-                                        onNsfwToggle={handleNsfwToggle}
+                                        onNsfwReveal={handleNsfwToggle}
                                         onImageClick={
                                             imageIndex !== undefined && imageIndex !== -1
                                                 ? () =>

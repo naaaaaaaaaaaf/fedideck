@@ -23,7 +23,7 @@ interface NotificationCardProps {
     notification: mastodon.v1.Notification;
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onAccountClick?: (account: mastodon.v1.Account) => void;
-    onNsfwToggle?: (statusId: string) => void;
+    onNsfwReveal?: (statusId: string) => void;
     isNsfwRevealed?: boolean;
 }
 
@@ -31,7 +31,7 @@ export const NotificationCard = React.memo(function NotificationCard({
     notification,
     onStatusClick,
     onAccountClick,
-    onNsfwToggle,
+    onNsfwReveal,
     isNsfwRevealed = false,
 }: NotificationCardProps) {
     const getNotificationInfo = (): { icon: ReactNode; label: string; color: string } => {
@@ -73,10 +73,10 @@ export const NotificationCard = React.memo(function NotificationCard({
         notification.type === 'poll' ? `${info.label}しました` : `さんが${info.label}しました`;
 
     // NSFW state:
-    // - onNsfwToggle provided: controlled mode, uses isNsfwRevealed from parent
-    // - onNsfwToggle missing: uncontrolled mode, toggles local state
+    // - onNsfwReveal provided: controlled mode, uses isNsfwRevealed from parent
+    // - onNsfwReveal missing: uncontrolled mode, toggles local state
     const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-    const nsfwRevealed = onNsfwToggle !== undefined ? isNsfwRevealed : localNsfwRevealed;
+    const nsfwRevealed = onNsfwReveal !== undefined ? isNsfwRevealed : localNsfwRevealed;
 
     // Use ref to track nsfwRevealed state without causing callback recreation
     const nsfwRevealedRef = useRef(nsfwRevealed);
@@ -89,16 +89,16 @@ export const NotificationCard = React.memo(function NotificationCard({
 
     const handleNsfwToggle = useCallback(() => {
         // Controlled mode: parent provides the state via isNsfwRevealed
-        if (onNsfwToggle) {
+        if (onNsfwReveal) {
             if (!nsfwRevealedRef.current && displayStatusId) {
-                onNsfwToggle(displayStatusId);
+                onNsfwReveal(displayStatusId);
             }
             return;
         }
 
         // Uncontrolled mode: toggle local state
         setLocalNsfwRevealed((prev) => !prev);
-    }, [onNsfwToggle, displayStatusId]);
+    }, [onNsfwReveal, displayStatusId]);
 
     // Note: nsfwRevealed state is automatically reset when notification changes
     // because NotificationCard is rendered with key={notification.id} in parent
@@ -432,7 +432,7 @@ export const NotificationCard = React.memo(function NotificationCard({
                                         variant="compact"
                                         isSensitive={isSensitive}
                                         nsfwRevealed={nsfwRevealed}
-                                        onNsfwToggle={handleNsfwToggle}
+                                        onNsfwReveal={handleNsfwToggle}
                                         imageIndex={index}
                                         totalImages={totalCount}
                                     />

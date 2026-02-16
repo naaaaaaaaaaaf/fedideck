@@ -338,7 +338,7 @@ export function Column({
                                 notification={notification}
                                 onStatusClick={handleStatusClick}
                                 onAccountClick={handleAccountClick}
-                                onNsfwToggle={onNsfwReveal}
+                                onNsfwReveal={onNsfwReveal}
                                 isNsfwRevealed={
                                     statusId
                                         ? (nsfwRevealedStatusIds?.has(statusId) ?? false)
@@ -366,7 +366,7 @@ export function Column({
                                 onVideoClick={onVideoClick}
                                 onAudioClick={onAudioClick}
                                 onAccountClick={handleAccountClick}
-                                onNsfwToggle={onNsfwReveal}
+                                onNsfwReveal={onNsfwReveal}
                                 isNsfwRevealed={
                                     nsfwRevealedStatusIds?.has(displayStatus.id) ?? false
                                 }

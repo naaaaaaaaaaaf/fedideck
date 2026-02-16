@@ -1389,9 +1389,9 @@ describe('StatusCard', () => {
             expect(button).toBeInTheDocument();
         });
 
-        it('should call onNsfwToggle with displayStatus.id for reblogged posts', async () => {
+        it('should call onNsfwReveal with displayStatus.id for reblogged posts', async () => {
             const user = userEvent.setup();
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             const originalStatus = createMockStatus({
                 id: 'original-123',
@@ -1412,14 +1412,14 @@ describe('StatusCard', () => {
                 reblog: originalStatus,
             });
 
-            render(<StatusCard status={reblogStatus} onNsfwToggle={onNsfwToggle} />);
+            render(<StatusCard status={reblogStatus} onNsfwReveal={onNsfwReveal} />);
 
             const button = screen.getByRole('button', { name: /閲覧注意の画像を表示/ });
             await user.click(button);
 
             // displayStatus.id（original-123）が通知されるべき
-            expect(onNsfwToggle).toHaveBeenCalledTimes(1);
-            expect(onNsfwToggle).toHaveBeenCalledWith('original-123');
+            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
+            expect(onNsfwReveal).toHaveBeenCalledWith('original-123');
         });
 
         it('should blur sensitive video and show overlay', async () => {
