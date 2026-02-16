@@ -97,13 +97,12 @@ function App() {
     const accounts = useAccountsStore((state) => state.accounts);
     const columns = useColumnsStore((state) => state.columns);
     const addColumn = useColumnsStore((state) => state.addColumn);
-    const {
-        prependStatus,
-        removeStatusForAccountStreams,
-        updateStatus,
-        updateStatusGlobal,
-        prependNotification,
-    } = useStreamsStore();
+    // Use selectors to prevent cascade re-renders when stream updates occur
+    const prependStatus = useStreamsStore((s) => s.prependStatus);
+    const removeStatusForAccountStreams = useStreamsStore((s) => s.removeStatusForAccountStreams);
+    const updateStatus = useStreamsStore((s) => s.updateStatus);
+    const updateStatusGlobal = useStreamsStore((s) => s.updateStatusGlobal);
+    const prependNotification = useStreamsStore((s) => s.prependNotification);
 
     // Ref to track if default columns have been added
     const hasAddedDefaultColumns = useRef(false);

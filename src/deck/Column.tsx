@@ -55,16 +55,15 @@ export function Column({
     const account = useAccountsStore((state) => state.accounts.find((a) => a.id === accountId));
     const streamKey = getStreamKey(accountId, stream.type, stream);
     const data = useStreamsStore((state) => state.data[streamKey]);
-    const {
-        initStream,
-        setLoading,
-        setStatuses,
-        setNotifications,
-        appendStatuses,
-        appendNotifications,
-        setError,
-        updateStatusGlobal,
-    } = useStreamsStore();
+    // Use selectors to prevent cascade re-renders when stream updates occur
+    const initStream = useStreamsStore((s) => s.initStream);
+    const setLoading = useStreamsStore((s) => s.setLoading);
+    const setStatuses = useStreamsStore((s) => s.setStatuses);
+    const setNotifications = useStreamsStore((s) => s.setNotifications);
+    const appendStatuses = useStreamsStore((s) => s.appendStatuses);
+    const appendNotifications = useStreamsStore((s) => s.appendNotifications);
+    const setError = useStreamsStore((s) => s.setError);
+    const updateStatusGlobal = useStreamsStore((s) => s.updateStatusGlobal);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
