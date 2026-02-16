@@ -615,7 +615,7 @@ export function StatusCard({
                     )}
 
                     {/* Action bar */}
-                    <div className="flex items-center gap-2 mt-3 text-slate-400">
+                    <div className="flex items-center gap-2 mt-1 text-slate-400">
                         <button
                             type="button"
                             onClick={() => onReply?.(displayStatus)}
