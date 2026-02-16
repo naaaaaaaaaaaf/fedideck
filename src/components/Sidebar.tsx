@@ -76,7 +76,7 @@ export function Sidebar({ onAddAccount, onCompose }: SidebarProps) {
             {/* Add account button */}
             <button
                 onClick={onAddAccount}
-                className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-400 hover:text-slate-200 text-xl transition-all"
+                className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-400 hover:text-slate-200 text-xl flex items-center justify-center transition-all"
                 aria-label="アカウントを追加"
                 title="アカウントを追加"
             >
