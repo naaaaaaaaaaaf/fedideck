@@ -148,15 +148,15 @@ describe('Sidebar', () => {
         it('should have overflow-x-hidden on nav container', () => {
             render(<Sidebar onAddAccount={vi.fn()} onCompose={vi.fn()} />);
             const nav = screen.getByLabelText('アカウント一覧');
-            expect(nav.className).toContain('overflow-x-hidden');
+            expect(nav.classList.contains('overflow-x-hidden')).toBe(true);
         });
 
         it('should have centering classes on add account button', () => {
             render(<Sidebar onAddAccount={vi.fn()} onCompose={vi.fn()} />);
             const addButton = screen.getByLabelText('アカウントを追加');
-            expect(addButton.className).toContain('flex');
-            expect(addButton.className).toContain('items-center');
-            expect(addButton.className).toContain('justify-center');
+            expect(addButton.classList.contains('flex')).toBe(true);
+            expect(addButton.classList.contains('items-center')).toBe(true);
+            expect(addButton.classList.contains('justify-center')).toBe(true);
         });
     });
 });

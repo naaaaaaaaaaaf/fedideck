@@ -142,9 +142,9 @@ describe('ColumnContainer', () => {
             mockActiveAccountId = '1@mastodon.social';
             render(<ColumnContainer />);
             const addButton = screen.getByTitle('カラムを追加');
-            expect(addButton.className).toContain('flex');
-            expect(addButton.className).toContain('items-center');
-            expect(addButton.className).toContain('justify-center');
+            expect(addButton.classList.contains('flex')).toBe(true);
+            expect(addButton.classList.contains('items-center')).toBe(true);
+            expect(addButton.classList.contains('justify-center')).toBe(true);
         });
 
         it('should render LuPlus icon with size class', () => {
@@ -155,10 +155,8 @@ describe('ColumnContainer', () => {
             // LuPlus is an SVG icon rendered inside the button
             const svg = addButton.querySelector('svg');
             expect(svg).toBeInTheDocument();
-            // Use getAttribute for SVG className compatibility
-            const svgClass = svg?.getAttribute('class') ?? '';
-            expect(svgClass).toContain('w-6');
-            expect(svgClass).toContain('h-6');
+            expect(svg?.classList.contains('w-6')).toBe(true);
+            expect(svg?.classList.contains('h-6')).toBe(true);
         });
     });
 
