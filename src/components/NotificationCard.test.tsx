@@ -196,7 +196,7 @@ describe('NotificationCard', () => {
             );
 
             const displayName = screen.getByText(longName);
-            const nameLink = displayName.closest('[role="link"]');
+            const nameLink = displayName.closest('a');
 
             expect(nameLink).toBeInTheDocument();
             expect(nameLink).toHaveClass('text-left');

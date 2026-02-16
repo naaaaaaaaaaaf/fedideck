@@ -245,20 +245,17 @@ export function NotificationCard({
                                     <DisplayName account={account} />
                                 </span>
                             ) : onAccountClick ? (
-                                <span
-                                    onClick={() => onAccountClick(account)}
-                                    className="font-semibold text-slate-100 text-left hover:underline cursor-pointer"
-                                    role="link"
-                                    tabIndex={0}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === ' ') {
-                                            e.preventDefault();
-                                            onAccountClick(account);
-                                        }
+                                <a
+                                    href={account.url}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        onAccountClick(account);
                                     }}
+                                    className="font-semibold text-slate-100 text-left hover:underline"
+                                    aria-label={`${account.displayName || account.username}のプロフィールを表示`}
                                 >
                                     <DisplayName account={account} />
-                                </span>
+                                </a>
                             ) : (
                                 <a
                                     href={account.url}
