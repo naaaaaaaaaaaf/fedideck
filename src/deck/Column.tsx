@@ -70,6 +70,32 @@ export function Column({
 
     const isNotificationColumn = stream.type === 'notifications';
 
+    // Stable callback wrappers to prevent React.memo invalidation in card components
+    const handleStatusClick = useCallback(
+        onStatusClick
+            ? (status: mastodon.v1.Status) => onStatusClick(status, accountId)
+            : undefined,
+        [onStatusClick, accountId]
+    ) as ((status: mastodon.v1.Status) => void) | undefined;
+    const handleAccountClick = useCallback(
+        onAccountClick ? (acc: mastodon.v1.Account) => onAccountClick(acc, accountId) : undefined,
+        [onAccountClick, accountId]
+    ) as ((account: mastodon.v1.Account) => void) | undefined;
+    const handleReply = useCallback(
+        onReply ? (status: mastodon.v1.Status) => onReply(status, accountId) : undefined,
+        [onReply, accountId]
+    ) as ((status: mastodon.v1.Status) => void) | undefined;
+    const handleStatusDelete = useCallback(
+        onStatusDelete
+            ? (status: mastodon.v1.Status) => onStatusDelete(status, accountId)
+            : undefined,
+        [onStatusDelete, accountId]
+    ) as ((status: mastodon.v1.Status) => void) | undefined;
+    const handleStatusEdit = useCallback(
+        onStatusEdit ? (status: mastodon.v1.Status) => onStatusEdit(status, accountId) : undefined,
+        [onStatusEdit, accountId]
+    ) as ((status: mastodon.v1.Status) => void) | undefined;
+
     // Define loadInitialData before useEffect that uses it
     const loadInitialData = useCallback(async () => {
         if (!account) return;
@@ -301,12 +327,8 @@ export function Column({
                             <NotificationCard
                                 key={notification.id}
                                 notification={notification}
-                                onStatusClick={
-                                    onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
-                                }
-                                onAccountClick={
-                                    onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
-                                }
+                                onStatusClick={handleStatusClick}
+                                onAccountClick={handleAccountClick}
                                 onNsfwToggle={onNsfwReveal}
                                 isNsfwRevealed={
                                     statusId
@@ -329,26 +351,18 @@ export function Column({
                                 status={status}
                                 accountSession={account}
                                 onStatusUpdate={updateStatusGlobal}
-                                onReply={onReply ? (s) => onReply(s, accountId) : undefined}
-                                onStatusClick={
-                                    onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
-                                }
+                                onReply={handleReply}
+                                onStatusClick={handleStatusClick}
                                 onImageClick={onImageClick}
                                 onVideoClick={onVideoClick}
                                 onAudioClick={onAudioClick}
-                                onAccountClick={
-                                    onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
-                                }
+                                onAccountClick={handleAccountClick}
                                 onNsfwToggle={onNsfwReveal}
                                 isNsfwRevealed={
                                     nsfwRevealedStatusIds?.has(displayStatus.id) ?? false
                                 }
-                                onStatusDelete={
-                                    onStatusDelete ? (s) => onStatusDelete(s, accountId) : undefined
-                                }
-                                onStatusEdit={
-                                    onStatusEdit ? (s) => onStatusEdit(s, accountId) : undefined
-                                }
+                                onStatusDelete={handleStatusDelete}
+                                onStatusEdit={handleStatusEdit}
                             />
                         );
                     })}
