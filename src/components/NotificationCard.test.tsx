@@ -158,6 +158,32 @@ describe('NotificationCard', () => {
         });
     });
 
+    describe('notification header full text', () => {
+        it('should display full notification message without truncation', () => {
+            const notification = createMockNotification('reblog', {
+                account: createMockAccount({ displayName: 'Test User' }),
+                status: createMockStatus(),
+            });
+            render(<NotificationCard notification={notification} />);
+
+            // 「Test User さんがブースト」が省略されずに表示されることを確認
+            expect(screen.getByText(/Test User/)).toBeInTheDocument();
+            expect(screen.getByText(/さんがブースト/)).toBeInTheDocument();
+        });
+
+        it('should not truncate long display names in notification header', () => {
+            const longName = 'Very Long Display Name That Would Normally Be Truncated';
+            const notification = createMockNotification('favourite', {
+                account: createMockAccount({ displayName: longName }),
+                status: createMockStatus(),
+            });
+            render(<NotificationCard notification={notification} />);
+
+            // 長い名前が省略されずに全文表示されることを確認
+            expect(screen.getByText(longName)).toBeInTheDocument();
+        });
+    });
+
     describe('account display', () => {
         it('should display account avatar', () => {
             const notification = createMockNotification('mention', {
