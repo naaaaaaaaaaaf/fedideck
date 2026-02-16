@@ -238,37 +238,42 @@ export function NotificationCard({
                             />
                         </a>
                     )}
-                    <span className="text-sm">
-                        {isCardClickable ? (
-                            // Card is clickable - use span with visual hover effect
-                            <span className="font-semibold text-slate-100 hover:underline">
-                                <DisplayName account={account} />
-                            </span>
-                        ) : onAccountClick ? (
-                            // Card not clickable but has onAccountClick - use button
-                            <button
-                                type="button"
-                                onClick={() => onAccountClick(account)}
-                                className="font-semibold text-slate-100 text-left hover:underline"
-                                aria-label={`${account.displayName || account.username}のプロフィールを表示`}
-                            >
-                                <DisplayName account={account} />
-                            </button>
-                        ) : (
-                            // No onAccountClick - use external link
-                            <a
-                                href={account.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-semibold text-slate-100 hover:underline"
-                            >
-                                <DisplayName account={account} />
-                            </a>
-                        )}
-                        <span className="text-slate-400"> さんが{info.label}</span>
-                    </span>
+                    <div className="min-w-0 text-sm leading-relaxed">
+                        <span>
+                            {isCardClickable ? (
+                                <span className="font-semibold text-slate-100 hover:underline">
+                                    <DisplayName account={account} />
+                                </span>
+                            ) : onAccountClick ? (
+                                <span
+                                    onClick={() => onAccountClick(account)}
+                                    className="font-semibold text-slate-100 text-left hover:underline cursor-pointer"
+                                    role="link"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            onAccountClick(account);
+                                        }
+                                    }}
+                                >
+                                    <DisplayName account={account} />
+                                </span>
+                            ) : (
+                                <a
+                                    href={account.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-semibold text-slate-100 hover:underline"
+                                >
+                                    <DisplayName account={account} />
+                                </a>
+                            )}
+                            <span className="text-slate-400"> さんが{info.label}しました</span>
+                        </span>
+                    </div>
                 </div>
-                <span className="text-xs text-slate-500 shrink-0">
+                <span className="text-xs text-slate-500 shrink-0 whitespace-nowrap">
                     {formatDate(notification.createdAt)}
                 </span>
             </div>
