@@ -136,6 +136,30 @@ describe('ColumnContainer', () => {
             await user.click(screen.getByTitle('カラムを追加'));
             expect(onAddColumn).toHaveBeenCalledTimes(1);
         });
+
+        it('should have centering classes on add column button', () => {
+            mockAccounts.push(createMockSession());
+            mockActiveAccountId = '1@mastodon.social';
+            render(<ColumnContainer />);
+            const addButton = screen.getByTitle('カラムを追加');
+            expect(addButton.className).toContain('flex');
+            expect(addButton.className).toContain('items-center');
+            expect(addButton.className).toContain('justify-center');
+        });
+
+        it('should render LuPlus icon with size class', () => {
+            mockAccounts.push(createMockSession());
+            mockActiveAccountId = '1@mastodon.social';
+            render(<ColumnContainer />);
+            const addButton = screen.getByTitle('カラムを追加');
+            // LuPlus is an SVG icon rendered inside the button
+            const svg = addButton.querySelector('svg');
+            expect(svg).toBeInTheDocument();
+            // Use getAttribute for SVG className compatibility
+            const svgClass = svg?.getAttribute('class') ?? '';
+            expect(svgClass).toContain('w-6');
+            expect(svgClass).toContain('h-6');
+        });
     });
 
     describe('column removal', () => {
