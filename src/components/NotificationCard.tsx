@@ -197,11 +197,11 @@ export function NotificationCard({
             }
         >
             {/* Notification header */}
-            <div className="flex items-center gap-3 mb-2">
-                <span className={`text-lg ${info.color}`} aria-hidden="true">
+            <div className="flex items-start gap-3 mb-2">
+                <span className={`text-lg ${info.color} mt-0.5`} aria-hidden="true">
                     {info.icon}
                 </span>
-                <div className="flex items-baseline gap-2 min-w-0 flex-1">
+                <div className="flex items-start gap-2 min-w-0 flex-1">
                     {isCardClickable ? (
                         // Card is clickable - use non-interactive elements
                         <img
@@ -249,7 +249,7 @@ export function NotificationCard({
                             <button
                                 type="button"
                                 onClick={() => onAccountClick(account)}
-                                className="font-semibold text-slate-100 hover:underline"
+                                className="font-semibold text-slate-100 text-left hover:underline"
                                 aria-label={`${account.displayName || account.username}のプロフィールを表示`}
                             >
                                 <DisplayName account={account} />

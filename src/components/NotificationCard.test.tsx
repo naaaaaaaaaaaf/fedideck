@@ -182,6 +182,29 @@ describe('NotificationCard', () => {
             // 長い名前が省略されずに全文表示されることを確認
             expect(screen.getByText(longName)).toBeInTheDocument();
         });
+
+        it('should left align header display name button text when onAccountClick is provided', () => {
+            const longName = 'Very Long Display Name That Wraps In Header Button';
+            const onAccountClick = vi.fn();
+            const notification = createMockNotification('mention', {
+                account: createMockAccount({ displayName: longName }),
+                status: createMockStatus(),
+            });
+
+            render(
+                <NotificationCard notification={notification} onAccountClick={onAccountClick} />
+            );
+
+            const profileButtons = screen.getAllByRole('button', {
+                name: `${longName}のプロフィールを表示`,
+            });
+            const nameButtons = profileButtons.filter((button) =>
+                button.className.includes('font-semibold')
+            );
+
+            expect(nameButtons).toHaveLength(1);
+            expect(nameButtons[0]).toHaveClass('text-left');
+        });
     });
 
     describe('account display', () => {
