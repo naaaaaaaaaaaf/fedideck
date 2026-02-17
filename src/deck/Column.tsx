@@ -71,8 +71,8 @@ export function Column({
     const isNotificationColumn = stream.type === 'notifications';
 
     // Stable callback wrappers to prevent React.memo invalidation in card components
-    // Using useMemo because we need to return either a function or undefined.
-    // useCallback(fn, deps) only memoizes functions and cannot return undefined directly.
+    // Using useMemo to memoize conditional expressions that return either a callback or undefined.
+    // useCallback only memoizes the function itself, not conditional values.
     const handleStatusClick = useMemo(
         () =>
             onStatusClick
