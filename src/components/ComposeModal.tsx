@@ -121,9 +121,6 @@ export function ComposeModal({
     const listboxRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const emojiButtonRef = useRef<HTMLButtonElement>(null);
-    // localId generator for stable media file identification
-    const nextMediaIdRef = useRef(0);
-    const createLocalId = () => `media-${nextMediaIdRef.current++}`;
     // Track media IDs that are currently uploading to prevent duplicate uploads
     const uploadingMediaIdsRef = useRef<Set<string>>(new Set());
     const accounts = useAccountsStore((state) => state.accounts);
@@ -467,7 +464,7 @@ export function ComposeModal({
 
             // Create pending media files with stable localId
             const pending = filesToAdd.map((file) => ({
-                localId: createLocalId(),
+                localId: crypto.randomUUID(),
                 file,
                 preview: URL.createObjectURL(file),
                 uploading: true,
@@ -747,7 +744,6 @@ export function ComposeModal({
         setShowEmojiPalette(false);
         setError(null);
         setIsLoadingEditSource(false);
-        nextMediaIdRef.current = 0;
         onClose();
     };
 
