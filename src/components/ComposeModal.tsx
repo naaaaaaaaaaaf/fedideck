@@ -406,9 +406,9 @@ export function ComposeModal({
         if (filesToAdd.length === 0) return;
 
         // Validate MIME types (important for clipboard which bypasses accept attribute)
-        // Note: application/octet-stream is treated as "unknown" and falls back to extension check
         const unsupported = filesToAdd.find((f) => {
             // Skip validation for files without proper MIME type detection
+            // (browser couldn't determine type, so allow it through)
             if (!f.type || f.type === 'application/octet-stream') return false;
             return !supported.has(f.type.toLowerCase());
         });
