@@ -705,6 +705,7 @@ export function ComposeModal({
         setShowEmojiPalette(false);
         setError(null);
         setIsLoadingEditSource(false);
+        nextMediaIdRef.current = 0;
         onClose();
     };
 
