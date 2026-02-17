@@ -124,6 +124,8 @@ export function ComposeModal({
     // localId generator for stable media file identification
     const nextMediaIdRef = useRef(0);
     const createLocalId = () => `media-${nextMediaIdRef.current++}`;
+    // Track media IDs that are currently uploading to prevent duplicate uploads
+    const uploadingMediaIdsRef = useRef<Set<string>>(new Set());
     const accounts = useAccountsStore((state) => state.accounts);
     const activeAccountId = useAccountsStore((state) => state.activeAccountId);
 
@@ -378,8 +380,9 @@ export function ComposeModal({
 
     /**
      * Process files for upload (shared between file picker and clipboard paste)
+     * Validates and adds files to state; actual upload is handled by useEffect
      */
-    const processFiles = async (rawFiles: File[], source: 'picker' | 'clipboard') => {
+    const processFiles = (rawFiles: File[], source: 'picker' | 'clipboard') => {
         if (!composingAccount) return;
 
         // Poll and media are mutually exclusive
@@ -401,102 +404,136 @@ export function ComposeModal({
         const candidates =
             source === 'clipboard' ? rawFiles.filter((f) => f.type.startsWith('image/')) : rawFiles;
 
-        const remainingSlots = (instanceConfig?.maxMediaAttachments ?? 4) - mediaFiles.length;
-        const filesToAdd = candidates.slice(0, remainingSlots);
-        if (filesToAdd.length === 0) return;
+        // Atomically validate and add files using prev to avoid race conditions
+        setMediaFiles((prev) => {
+            // Calculate remaining slots based on current state
+            const remainingSlots = (instanceConfig?.maxMediaAttachments ?? 4) - prev.length;
+            const filesToAdd = candidates.slice(0, remainingSlots);
+            if (filesToAdd.length === 0) {
+                // Set error outside of setState callback
+                if (candidates.length > 0) {
+                    setTimeout(() => setError('これ以上添付できません'), 0);
+                }
+                return prev;
+            }
 
-        // Validate MIME types (important for clipboard which bypasses accept attribute)
-        const unsupported = filesToAdd.find((f) => {
-            // Skip validation for files without proper MIME type detection
-            // (browser couldn't determine type, so allow it through)
-            if (!f.type || f.type === 'application/octet-stream') return false;
-            return !supported.has(f.type.toLowerCase());
+            // Validate MIME types (important for clipboard which bypasses accept attribute)
+            const unsupported = filesToAdd.find((f) => {
+                // Skip validation for files without proper MIME type detection
+                // (browser couldn't determine type, so allow it through)
+                if (!f.type || f.type === 'application/octet-stream') return false;
+                return !supported.has(f.type.toLowerCase());
+            });
+            if (unsupported) {
+                setTimeout(() => setError(`未対応のファイル形式です: ${unsupported.type}`), 0);
+                return prev;
+            }
+
+            // Check for video - video can only be alone
+            const hasVideo = prev.some((m) => isVideoMedia(m));
+            const newHasVideo = filesToAdd.some((f) => isVideoFile(f));
+
+            // Check for audio - audio can only be alone (Mastodon specification)
+            const hasAudio = prev.some((m) => isAudioMedia(m));
+            const newHasAudio = filesToAdd.some((f) => isAudioFile(f));
+
+            // Video cannot be mixed with other media
+            if (hasVideo || (newHasVideo && prev.length > 0)) {
+                setTimeout(() => setError('動画は他のメディアと同時に添付できません'), 0);
+                return prev;
+            }
+
+            if (newHasVideo && filesToAdd.length > 1) {
+                setTimeout(() => setError('動画は1つのみ添付できます'), 0);
+                return prev;
+            }
+
+            // Audio cannot be mixed with other media (Mastodon spec)
+            if (hasAudio || (newHasAudio && prev.length > 0)) {
+                setTimeout(() => setError('音声は他のメディアと同時に添付できません'), 0);
+                return prev;
+            }
+
+            if (newHasAudio && filesToAdd.length > 1) {
+                setTimeout(() => setError('音声は1つのみ添付できます'), 0);
+                return prev;
+            }
+
+            // Audio and video cannot be mixed even when both are new
+            if (newHasAudio && newHasVideo) {
+                setTimeout(() => setError('音声と動画を同時に添付できません'), 0);
+                return prev;
+            }
+
+            // Create pending media files with stable localId
+            const pending = filesToAdd.map((file) => ({
+                localId: createLocalId(),
+                file,
+                preview: URL.createObjectURL(file),
+                uploading: true,
+                altText: '',
+            }));
+
+            // Clear error on successful add
+            setTimeout(() => setError(null), 0);
+
+            return [...prev, ...pending];
         });
-        if (unsupported) {
-            setError(`未対応のファイル形式です: ${unsupported.type}`);
-            return;
-        }
+    };
 
-        // Check for video - video can only be alone
-        const hasVideo = mediaFiles.some((m) => isVideoMedia(m));
-        const newHasVideo = filesToAdd.some((f) => isVideoFile(f));
+    // Upload media files that are pending (uploading: true)
+    // This effect ensures uploads are triggered after React state updates are committed
+    useEffect(() => {
+        if (!composingAccount) return;
 
-        // Check for audio - audio can only be alone (Mastodon specification)
-        const hasAudio = mediaFiles.some((m) => isAudioMedia(m));
-        const newHasAudio = filesToAdd.some((f) => isAudioFile(f));
+        // Find items that need uploading
+        const itemsToUpload = mediaFiles.filter(
+            (m) => m.uploading && m.file && !uploadingMediaIdsRef.current.has(m.localId)
+        );
 
-        // Video cannot be mixed with other media
-        if (hasVideo || (newHasVideo && mediaFiles.length > 0)) {
-            setError('動画は他のメディアと同時に添付できません');
-            return;
-        }
-
-        if (newHasVideo && filesToAdd.length > 1) {
-            setError('動画は1つのみ添付できます');
-            return;
-        }
-
-        // Audio cannot be mixed with other media (Mastodon spec)
-        if (hasAudio || (newHasAudio && mediaFiles.length > 0)) {
-            setError('音声は他のメディアと同時に添付できません');
-            return;
-        }
-
-        if (newHasAudio && filesToAdd.length > 1) {
-            setError('音声は1つのみ添付できます');
-            return;
-        }
-
-        // Audio and video cannot be mixed even when both are new
-        if (newHasAudio && newHasVideo) {
-            setError('音声と動画を同時に添付できません');
-            return;
-        }
+        if (itemsToUpload.length === 0) return;
 
         const client = getClient(composingAccount);
 
-        // Create pending media files with stable localId
-        const pending: MediaFile[] = filesToAdd.map((file) => ({
-            localId: createLocalId(),
-            file,
-            preview: URL.createObjectURL(file),
-            uploading: true,
-            altText: '',
-        }));
+        // Mark items as being uploaded to prevent duplicate uploads
+        itemsToUpload.forEach((item) => {
+            uploadingMediaIdsRef.current.add(item.localId);
+        });
 
-        setMediaFiles((prev) => [...prev, ...pending]);
-        setError(null);
-
-        // Upload each file and update by localId
-        for (const item of pending) {
-            try {
-                const media = await uploadMedia(client, item.file!);
-                setMediaFiles((prev) =>
-                    prev.map((m) =>
-                        m.localId === item.localId
-                            ? { ...m, uploading: false, uploadedId: media.id }
-                            : m
-                    )
-                );
-            } catch (err) {
-                console.error('Failed to upload media:', err);
-                setMediaFiles((prev) =>
-                    prev.map((m) =>
-                        m.localId === item.localId
-                            ? {
-                                  ...m,
-                                  uploading: false,
-                                  error:
-                                      err instanceof Error
-                                          ? err.message
-                                          : 'アップロードに失敗しました',
-                              }
-                            : m
-                    )
-                );
-            }
+        // Upload each file
+        for (const item of itemsToUpload) {
+            uploadMedia(client, item.file!)
+                .then((media) => {
+                    setMediaFiles((prev) =>
+                        prev.map((m) =>
+                            m.localId === item.localId
+                                ? { ...m, uploading: false, uploadedId: media.id }
+                                : m
+                        )
+                    );
+                })
+                .catch((err) => {
+                    console.error('Failed to upload media:', err);
+                    setMediaFiles((prev) =>
+                        prev.map((m) =>
+                            m.localId === item.localId
+                                ? {
+                                      ...m,
+                                      uploading: false,
+                                      error:
+                                          err instanceof Error
+                                              ? err.message
+                                              : 'アップロードに失敗しました',
+                                  }
+                                : m
+                        )
+                    );
+                })
+                .finally(() => {
+                    uploadingMediaIdsRef.current.delete(item.localId);
+                });
         }
-    };
+    }, [mediaFiles, composingAccount]);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files ? Array.from(e.target.files) : [];
