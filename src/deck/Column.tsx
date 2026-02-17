@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useMemo } from 'react';
 import type { mastodon } from 'masto';
 import { LuRefreshCw, LuX, LuTriangleAlert, LuInbox } from 'react-icons/lu';
 import { getStreamDisplayName, getStreamIcon, type StreamConfig } from '../streaming/streamTypes';
@@ -55,21 +55,60 @@ export function Column({
     const account = useAccountsStore((state) => state.accounts.find((a) => a.id === accountId));
     const streamKey = getStreamKey(accountId, stream.type, stream);
     const data = useStreamsStore((state) => state.data[streamKey]);
-    const {
-        initStream,
-        setLoading,
-        setStatuses,
-        setNotifications,
-        appendStatuses,
-        appendNotifications,
-        setError,
-        updateStatusGlobal,
-    } = useStreamsStore();
+    // Use selectors to prevent cascade re-renders when stream updates occur
+    const initStream = useStreamsStore((s) => s.initStream);
+    const setLoading = useStreamsStore((s) => s.setLoading);
+    const setStatuses = useStreamsStore((s) => s.setStatuses);
+    const setNotifications = useStreamsStore((s) => s.setNotifications);
+    const appendStatuses = useStreamsStore((s) => s.appendStatuses);
+    const appendNotifications = useStreamsStore((s) => s.appendNotifications);
+    const setError = useStreamsStore((s) => s.setError);
+    const updateStatusGlobal = useStreamsStore((s) => s.updateStatusGlobal);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
 
     const isNotificationColumn = stream.type === 'notifications';
+
+    // Stable callback wrappers to prevent React.memo invalidation in card components
+    // Using useMemo to memoize conditional expressions that return either a callback or undefined.
+    // useCallback only memoizes the function itself, not conditional values.
+    const handleStatusClick = useMemo(
+        () =>
+            onStatusClick
+                ? (status: mastodon.v1.Status) => onStatusClick(status, accountId)
+                : undefined,
+        [onStatusClick, accountId]
+    );
+    const handleAccountClick = useMemo(
+        () =>
+            onAccountClick
+                ? (acc: mastodon.v1.Account) => onAccountClick(acc, accountId)
+                : undefined,
+        [onAccountClick, accountId]
+    );
+    const handleReply = useMemo(
+        () => (onReply ? (status: mastodon.v1.Status) => onReply(status, accountId) : undefined),
+        [onReply, accountId]
+    );
+    const handleStatusDelete = useMemo(
+        () =>
+            onStatusDelete
+                ? (status: mastodon.v1.Status) => onStatusDelete(status, accountId)
+                : undefined,
+        [onStatusDelete, accountId]
+    );
+    const handleStatusEdit = useMemo(
+        () =>
+            onStatusEdit
+                ? (status: mastodon.v1.Status) => onStatusEdit(status, accountId)
+                : undefined,
+        [onStatusEdit, accountId]
+    );
+    // Pass-through callbacks (no transformation needed; props are already stable)
+    const handleImageClick = onImageClick;
+    const handleVideoClick = onVideoClick;
+    const handleAudioClick = onAudioClick;
 
     // Define loadInitialData before useEffect that uses it
     const loadInitialData = useCallback(async () => {
@@ -293,49 +332,54 @@ export function Column({
 
                 {/* Notifications */}
                 {isNotificationColumn &&
-                    data?.notifications.map((notification) => (
-                        <NotificationCard
-                            key={notification.id}
-                            notification={notification}
-                            onStatusClick={
-                                onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
-                            }
-                            onAccountClick={
-                                onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
-                            }
-                            onNsfwReveal={onNsfwReveal}
-                            nsfwRevealedStatusIds={nsfwRevealedStatusIds}
-                        />
-                    ))}
+                    data?.notifications.map((notification) => {
+                        // Get the display status ID for NSFW check (handle reblog case)
+                        const displayStatus = notification.status?.reblog ?? notification.status;
+                        const statusId = displayStatus?.id;
+
+                        return (
+                            <NotificationCard
+                                key={notification.id}
+                                notification={notification}
+                                onStatusClick={handleStatusClick}
+                                onAccountClick={handleAccountClick}
+                                onNsfwReveal={onNsfwReveal}
+                                isNsfwRevealed={
+                                    statusId
+                                        ? (nsfwRevealedStatusIds?.has(statusId) ?? false)
+                                        : false
+                                }
+                            />
+                        );
+                    })}
 
                 {/* Statuses */}
                 {!isNotificationColumn &&
-                    data?.statuses.map((status) => (
-                        <StatusCard
-                            key={status.id}
-                            status={status}
-                            accountSession={account}
-                            onStatusUpdate={updateStatusGlobal}
-                            onReply={onReply ? (s) => onReply(s, accountId) : undefined}
-                            onStatusClick={
-                                onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
-                            }
-                            onImageClick={onImageClick}
-                            onVideoClick={onVideoClick}
-                            onAudioClick={onAudioClick}
-                            onAccountClick={
-                                onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
-                            }
-                            onNsfwReveal={onNsfwReveal}
-                            nsfwRevealedStatusIds={nsfwRevealedStatusIds}
-                            onStatusDelete={
-                                onStatusDelete ? (s) => onStatusDelete(s, accountId) : undefined
-                            }
-                            onStatusEdit={
-                                onStatusEdit ? (s) => onStatusEdit(s, accountId) : undefined
-                            }
-                        />
-                    ))}
+                    data?.statuses.map((status) => {
+                        // Get the display status ID for NSFW check (handle reblog case)
+                        const displayStatus = status.reblog ?? status;
+
+                        return (
+                            <StatusCard
+                                key={status.id}
+                                status={status}
+                                accountSession={account}
+                                onStatusUpdate={updateStatusGlobal}
+                                onReply={handleReply}
+                                onStatusClick={handleStatusClick}
+                                onImageClick={handleImageClick}
+                                onVideoClick={handleVideoClick}
+                                onAudioClick={handleAudioClick}
+                                onAccountClick={handleAccountClick}
+                                onNsfwReveal={onNsfwReveal}
+                                isNsfwRevealed={
+                                    nsfwRevealedStatusIds?.has(displayStatus.id) ?? false
+                                }
+                                onStatusDelete={handleStatusDelete}
+                                onStatusEdit={handleStatusEdit}
+                            />
+                        );
+                    })}
 
                 {/* Load more trigger */}
                 {data?.hasMore && (data.statuses.length > 0 || data.notifications.length > 0) && (

@@ -694,7 +694,7 @@ export function StatusDetailModal({
                                             variant="detail"
                                             isSensitive={isSensitive}
                                             nsfwRevealed={nsfwRevealed}
-                                            onNsfwToggle={handleNsfwToggle}
+                                            onNsfwReveal={handleNsfwToggle}
                                             onImageClick={
                                                 imageIndex !== undefined && imageIndex !== -1
                                                     ? () =>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { mastodon } from 'masto';
 import {
     LuRepeat2,
@@ -41,12 +41,12 @@ interface StatusCardProps {
     onAudioClick?: (tracks: AudioViewerTrack[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
-    nsfwRevealedStatusIds?: Set<string>;
+    isNsfwRevealed?: boolean;
     onStatusDelete?: (status: mastodon.v1.Status) => void;
     onStatusEdit?: (status: mastodon.v1.Status) => void;
 }
 
-export function StatusCard({
+export const StatusCard = React.memo(function StatusCard({
     status,
     isReblog = false,
     accountSession,
@@ -58,7 +58,7 @@ export function StatusCard({
     onAudioClick,
     onAccountClick,
     onNsfwReveal,
-    nsfwRevealedStatusIds,
+    isNsfwRevealed = false,
     onStatusDelete,
     onStatusEdit,
 }: StatusCardProps) {
@@ -79,14 +79,11 @@ export function StatusCard({
     const [localReblogsCount, setLocalReblogsCount] = useState(displayStatus.reblogsCount ?? 0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
-    // NSFW state: controlled from parent or local
-    // If parent provides state (nsfwRevealedStatusIds), always use it
-    // When onNsfwReveal is missing, operates in read-only mode
-    const isControlled = nsfwRevealedStatusIds !== undefined;
+    // NSFW state:
+    // - onNsfwReveal provided: controlled mode, uses isNsfwRevealed from parent
+    // - onNsfwReveal missing: uncontrolled mode, toggles local state
     const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-    const nsfwRevealed = isControlled
-        ? nsfwRevealedStatusIds.has(displayStatus.id)
-        : localNsfwRevealed;
+    const nsfwRevealed = onNsfwReveal !== undefined ? isNsfwRevealed : localNsfwRevealed;
 
     // Track pending props updates that arrived during loading
     const pendingPropsRef = useRef<{
@@ -175,8 +172,35 @@ export function StatusCard({
         [displayStatus.mediaAttachments]
     );
 
+    // Memoize emoji processing for content to avoid redundant work on re-renders
+    const contentWithEmojis = useMemo(
+        () => replaceEmojisWithImages(displayStatus.content, displayStatus.emojis),
+        [displayStatus.content, displayStatus.emojis]
+    );
+
     // Safely access account
     const account = displayStatus.account;
+
+    // Use ref to track nsfwRevealed state without causing callback recreation
+    const nsfwRevealedRef = useRef(nsfwRevealed);
+    useEffect(() => {
+        nsfwRevealedRef.current = nsfwRevealed;
+    }, [nsfwRevealed]);
+
+    // NSFW toggle handler - must be defined before early return to follow hooks rules
+    const handleNsfwToggle = useCallback(() => {
+        // Controlled mode: parent provides the state via isNsfwRevealed
+        if (onNsfwReveal) {
+            if (!nsfwRevealedRef.current) {
+                onNsfwReveal(displayStatus.id);
+            }
+            return;
+        }
+
+        // Uncontrolled mode: toggle local state
+        setLocalNsfwRevealed((prev) => !prev);
+    }, [onNsfwReveal, displayStatus.id]);
+
     if (!account) {
         return null; // Cannot render without account
     }
@@ -248,23 +272,6 @@ export function StatusCard({
         } finally {
             setIsLoading((prev) => ({ ...prev, reblog: false }));
         }
-    };
-
-    const handleNsfwToggle = () => {
-        // Controlled mode: use parent state
-        if (isControlled) {
-            // If callback provided, notify parent (read-only mode if no callback)
-            if (!nsfwRevealed && onNsfwReveal) {
-                onNsfwReveal(displayStatus.id);
-            }
-            return;
-        }
-
-        // Uncontrolled mode: notify parent if callback provided, then toggle local state
-        if (!nsfwRevealed && onNsfwReveal) {
-            onNsfwReveal(displayStatus.id);
-        }
-        setLocalNsfwRevealed((prev) => !prev);
     };
 
     // Check if reblog is allowed (not for private/direct messages)
@@ -485,12 +492,7 @@ export function StatusCard({
                             </summary>
                             <div
                                 className="mt-2 text-slate-200 wrap-break-word status-content"
-                                dangerouslySetInnerHTML={{
-                                    __html: replaceEmojisWithImages(
-                                        displayStatus.content,
-                                        displayStatus.emojis
-                                    ),
-                                }}
+                                dangerouslySetInnerHTML={{ __html: contentWithEmojis }}
                             />
                         </details>
                     )}
@@ -551,7 +553,7 @@ export function StatusCard({
                                         variant="card"
                                         isSensitive={isSensitive}
                                         nsfwRevealed={nsfwRevealed}
-                                        onNsfwToggle={handleNsfwToggle}
+                                        onNsfwReveal={handleNsfwToggle}
                                         onImageClick={
                                             imageIndex !== undefined && imageIndex !== -1
                                                 ? () =>
@@ -693,4 +695,4 @@ export function StatusCard({
             </div>
         </article>
     );
-}
+});

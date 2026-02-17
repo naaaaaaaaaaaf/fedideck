@@ -1146,7 +1146,7 @@ describe('NotificationCard', () => {
             expect(onNsfwReveal).toHaveBeenCalledWith('original-123');
         });
 
-        it('should check nsfwRevealedStatusIds for current displayStatus.id', () => {
+        it('should check isNsfwRevealed for current displayStatus.id', () => {
             const status1 = createMockStatus({
                 id: 'status-1',
                 sensitive: true,
@@ -1174,7 +1174,6 @@ describe('NotificationCard', () => {
             });
 
             // status1は表示済み、status2は未表示
-            const nsfwRevealedStatusIds = new Set(['status-1']);
             const onNsfwReveal = vi.fn();
 
             const notification1 = createMockNotification('mention', {
@@ -1189,7 +1188,7 @@ describe('NotificationCard', () => {
             render(
                 <NotificationCard
                     notification={notification1}
-                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    isNsfwRevealed={true}
                     onNsfwReveal={onNsfwReveal}
                 />
             );
@@ -1201,7 +1200,7 @@ describe('NotificationCard', () => {
             render(
                 <NotificationCard
                     notification={notification2}
-                    nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    isNsfwRevealed={false}
                     onNsfwReveal={onNsfwReveal}
                 />
             );

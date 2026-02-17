@@ -53,7 +53,7 @@ export interface MediaAttachmentProps {
     variant?: 'compact' | 'card' | 'detail';
     isSensitive: boolean;
     nsfwRevealed: boolean;
-    onNsfwToggle?: () => void;
+    onNsfwReveal?: () => void;
     onImageClick?: () => void;
     imageIndex?: number;
     totalImages?: number;
@@ -67,7 +67,7 @@ export function MediaAttachment({
     variant = 'card',
     isSensitive,
     nsfwRevealed,
-    onNsfwToggle,
+    onNsfwReveal,
     onImageClick,
     imageIndex,
     totalImages,
@@ -151,7 +151,7 @@ export function MediaAttachment({
 
             // NSFW audio in compact mode: render as button with blur
             if (needsBlur) {
-                if (!onNsfwToggle) {
+                if (!onNsfwReveal) {
                     return null;
                 }
                 return (
@@ -159,7 +159,7 @@ export function MediaAttachment({
                         type="button"
                         onClick={(e) => {
                             e.stopPropagation();
-                            onNsfwToggle();
+                            onNsfwReveal();
                         }}
                         className={`relative block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className} bg-slate-800 flex items-center justify-center`}
                         aria-label={getAccessibleLabel('audio')}
@@ -229,8 +229,8 @@ export function MediaAttachment({
 
         // NSFW thumbnail in compact mode: render as button with blur
         if (needsBlur) {
-            // If onNsfwToggle is not provided, we cannot properly handle NSFW content
-            if (!onNsfwToggle) {
+            // If onNsfwReveal is not provided, we cannot properly handle NSFW content
+            if (!onNsfwReveal) {
                 return null;
             }
             return (
@@ -238,7 +238,7 @@ export function MediaAttachment({
                     type="button"
                     onClick={(e) => {
                         e.stopPropagation();
-                        onNsfwToggle?.();
+                        onNsfwReveal?.();
                     }}
                     className={`relative block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
                     aria-label={getAccessibleLabel(media.type)}
@@ -308,8 +308,8 @@ export function MediaAttachment({
 
         // For NSFW or when onImageClick is provided, render as button
         if (needsBlur || onImageClick) {
-            // If NSFW content needs blur but onNsfwToggle is not provided, cannot handle properly
-            if (needsBlur && !onNsfwToggle) {
+            // If NSFW content needs blur but onNsfwReveal is not provided, cannot handle properly
+            if (needsBlur && !onNsfwReveal) {
                 return null;
             }
             return (
@@ -318,7 +318,7 @@ export function MediaAttachment({
                     onClick={(e) => {
                         e.stopPropagation();
                         if (isSensitive && !nsfwRevealed) {
-                            onNsfwToggle?.();
+                            onNsfwReveal?.();
                         } else if (onImageClick) {
                             onImageClick();
                         }
@@ -361,8 +361,8 @@ export function MediaAttachment({
 
         // NSFW blur state: render as button with blur toggle
         if (needsBlur) {
-            // If onNsfwToggle is not provided, cannot properly handle NSFW content
-            if (!onNsfwToggle) {
+            // If onNsfwReveal is not provided, cannot properly handle NSFW content
+            if (!onNsfwReveal) {
                 return null;
             }
             // Need at least posterUrl for NSFW blur display
@@ -374,7 +374,7 @@ export function MediaAttachment({
                     type="button"
                     onClick={(e) => {
                         e.stopPropagation();
-                        onNsfwToggle();
+                        onNsfwReveal();
                     }}
                     className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
                     aria-label={getAccessibleLabel(media.type)}
@@ -473,8 +473,8 @@ export function MediaAttachment({
 
         // NSFW blur state: render as button with blur toggle
         if (needsBlur) {
-            // If onNsfwToggle is not provided, cannot properly handle NSFW content
-            if (!onNsfwToggle) {
+            // If onNsfwReveal is not provided, cannot properly handle NSFW content
+            if (!onNsfwReveal) {
                 return null;
             }
             // Need at least posterUrl for NSFW blur display
@@ -486,7 +486,7 @@ export function MediaAttachment({
                     type="button"
                     onClick={(e) => {
                         e.stopPropagation();
-                        onNsfwToggle();
+                        onNsfwReveal();
                     }}
                     className={`block overflow-hidden text-left nsfw-blur-container ${variantClasses} ${className}`}
                     aria-label={getAccessibleLabel(media.type)}
@@ -599,7 +599,7 @@ export function MediaAttachment({
         }
 
         if (needsBlur) {
-            if (!onNsfwToggle) {
+            if (!onNsfwReveal) {
                 return null;
             }
             return (
@@ -607,7 +607,7 @@ export function MediaAttachment({
                     type="button"
                     onClick={(e) => {
                         e.stopPropagation();
-                        onNsfwToggle();
+                        onNsfwReveal();
                     }}
                     className={`w-full rounded-lg p-3 bg-slate-800 text-left nsfw-blur-container relative ${className}`}
                     aria-label={getAccessibleLabel('audio')}
