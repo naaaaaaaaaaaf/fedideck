@@ -10,6 +10,7 @@ export interface UseModalAccessibilityOptions {
 
 export interface UseModalAccessibilityReturn {
     handleKeyDown: (e: React.KeyboardEvent) => void;
+    handleBackdropClick: () => void;
 }
 
 /**
@@ -306,5 +307,12 @@ export function useModalAccessibility({
         [onClose, canClose, modalRef, getCachedFocusableElements]
     );
 
-    return { handleKeyDown };
+    // Handle backdrop click - respects canClose flag
+    const handleBackdropClick = useCallback(() => {
+        if (canClose) {
+            onClose();
+        }
+    }, [onClose, canClose]);
+
+    return { handleKeyDown, handleBackdropClick };
 }

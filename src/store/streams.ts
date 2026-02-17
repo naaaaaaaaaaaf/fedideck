@@ -1,6 +1,18 @@
 import { create } from 'zustand';
 import type { mastodon } from 'masto';
 
+/** Maximum number of statuses to keep per stream (prevents memory bloat) */
+export const MAX_STATUSES_PER_STREAM = 200;
+/** Maximum number of notifications to keep per stream */
+export const MAX_NOTIFICATIONS_PER_STREAM = 100;
+
+/** Clamps array to maximum size by keeping the first `max` items.
+ *  Assumes arrays are ordered newest-first (most recent at index 0).
+ *  For prepend: new items added to start, slice keeps them.
+ *  For append: older items added to end, slice drops them. */
+const clampToMax = <T>(items: T[], max: number): T[] =>
+    items.length > max ? items.slice(0, max) : items;
+
 interface StreamData {
     statuses: mastodon.v1.Status[];
     notifications: mastodon.v1.Notification[];
@@ -21,6 +33,7 @@ interface StreamsState {
     prependStatus: (key: string, status: mastodon.v1.Status) => void;
     appendStatuses: (key: string, statuses: mastodon.v1.Status[]) => void;
     removeStatus: (key: string, statusId: string) => void;
+    removeStatusForAccountStreams: (accountId: string, statusId: string) => void;
     updateStatus: (key: string, status: mastodon.v1.Status) => void;
     updateStatusGlobal: (status: mastodon.v1.Status) => void;
     setNotifications: (
@@ -71,13 +84,17 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
     },
 
     setStatuses: (key, statuses, hasMore = true) => {
+        const clamped = clampToMax(statuses, MAX_STATUSES_PER_STREAM);
+        const reachedCap = clamped.length >= MAX_STATUSES_PER_STREAM;
         set((state) => ({
             data: {
                 ...state.data,
                 [key]: {
                     ...(state.data[key] ?? initialStreamData),
-                    statuses,
-                    hasMore,
+                    statuses: clamped,
+                    // hasMore is false if client cap reached to prevent infinite load loops
+                    // (lastId wouldn't change when items are dropped)
+                    hasMore: reachedCap ? false : hasMore,
                     isLoading: false,
                     error: null,
                 },
@@ -92,12 +109,16 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
             if (current.statuses.some((s) => s.id === status.id)) {
                 return state;
             }
+            const newStatuses = clampToMax([status, ...current.statuses], MAX_STATUSES_PER_STREAM);
+            const reachedCap = newStatuses.length >= MAX_STATUSES_PER_STREAM;
             return {
                 data: {
                     ...state.data,
                     [key]: {
                         ...current,
-                        statuses: [status, ...current.statuses],
+                        statuses: newStatuses,
+                        // hasMore is false if client cap reached to prevent infinite load loops
+                        hasMore: reachedCap ? false : current.hasMore,
                     },
                 },
             };
@@ -108,14 +129,21 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
         set((state) => {
             const current = state.data[key] ?? initialStreamData;
             const existingIds = new Set(current.statuses.map((s) => s.id));
-            const newStatuses = statuses.filter((s) => !existingIds.has(s.id));
+            const incoming = statuses.filter((s) => !existingIds.has(s.id));
+            const merged = clampToMax([...current.statuses, ...incoming], MAX_STATUSES_PER_STREAM);
+            const reachedCap = merged.length >= MAX_STATUSES_PER_STREAM;
             return {
                 data: {
                     ...state.data,
                     [key]: {
                         ...current,
-                        statuses: [...current.statuses, ...newStatuses],
-                        hasMore: newStatuses.length > 0,
+                        statuses: merged,
+                        // Preserve hasMore when no new items are added, but stop when client cap is reached
+                        hasMore: reachedCap
+                            ? false
+                            : incoming.length === 0
+                              ? current.hasMore
+                              : true,
                         isLoading: false,
                     },
                 },
@@ -192,14 +220,45 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
         });
     },
 
+    // Remove status from all streams belonging to a specific account
+    // This handles both direct statuses and reblogs containing the status
+    removeStatusForAccountStreams: (accountId: string, statusId: string) => {
+        set((state) => {
+            const prefix = `${accountId}:`;
+            const next = { ...state.data };
+            let changed = false;
+
+            for (const key of Object.keys(next)) {
+                // Only process streams belonging to this account
+                if (!key.startsWith(prefix)) continue;
+
+                const current = next[key];
+                // Remove both direct statuses and reblogs containing the status
+                const filtered = current.statuses.filter(
+                    (s) => s.id !== statusId && s.reblog?.id !== statusId
+                );
+
+                if (filtered.length !== current.statuses.length) {
+                    next[key] = { ...current, statuses: filtered };
+                    changed = true;
+                }
+            }
+
+            return changed ? { data: next } : state;
+        });
+    },
+
     setNotifications: (key, notifications, hasMore = true) => {
+        const clamped = clampToMax(notifications, MAX_NOTIFICATIONS_PER_STREAM);
+        const reachedCap = clamped.length >= MAX_NOTIFICATIONS_PER_STREAM;
         set((state) => ({
             data: {
                 ...state.data,
                 [key]: {
                     ...(state.data[key] ?? initialStreamData),
-                    notifications,
-                    hasMore,
+                    notifications: clamped,
+                    // hasMore is false if client cap reached to prevent infinite load loops
+                    hasMore: reachedCap ? false : hasMore,
                     isLoading: false,
                     error: null,
                 },
@@ -213,12 +272,19 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
             if (current.notifications.some((n) => n.id === notification.id)) {
                 return state;
             }
+            const newNotifications = clampToMax(
+                [notification, ...current.notifications],
+                MAX_NOTIFICATIONS_PER_STREAM
+            );
+            const reachedCap = newNotifications.length >= MAX_NOTIFICATIONS_PER_STREAM;
             return {
                 data: {
                     ...state.data,
                     [key]: {
                         ...current,
-                        notifications: [notification, ...current.notifications],
+                        notifications: newNotifications,
+                        // hasMore is false if client cap reached to prevent infinite load loops
+                        hasMore: reachedCap ? false : current.hasMore,
                     },
                 },
             };
@@ -229,14 +295,24 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
         set((state) => {
             const current = state.data[key] ?? initialStreamData;
             const existingIds = new Set(current.notifications.map((n) => n.id));
-            const newNotifications = notifications.filter((n) => !existingIds.has(n.id));
+            const incoming = notifications.filter((n) => !existingIds.has(n.id));
+            const merged = clampToMax(
+                [...current.notifications, ...incoming],
+                MAX_NOTIFICATIONS_PER_STREAM
+            );
+            const reachedCap = merged.length >= MAX_NOTIFICATIONS_PER_STREAM;
             return {
                 data: {
                     ...state.data,
                     [key]: {
                         ...current,
-                        notifications: [...current.notifications, ...newNotifications],
-                        hasMore: newNotifications.length > 0,
+                        notifications: merged,
+                        // Preserve hasMore when no new items are added, but stop when client cap is reached
+                        hasMore: reachedCap
+                            ? false
+                            : incoming.length === 0
+                              ? current.hasMore
+                              : true,
                         isLoading: false,
                     },
                 },

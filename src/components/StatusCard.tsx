@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { mastodon } from 'masto';
 import {
     LuRepeat2,
     LuMessageCircle,
     LuStar,
-    LuLink,
     LuTriangleAlert,
     LuCornerUpLeft,
 } from 'react-icons/lu';
@@ -18,13 +17,17 @@ import {
     unreblogStatus,
 } from '../api/mastoClient';
 import { formatDate } from '../utils/dateFormat';
+import { getVisibilityMeta } from '../utils/statusVisibility';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
+import { toAudioViewerTracks } from '../utils/audioAttachments';
 import type { ImageViewerImage } from './ImageViewer';
 import type { VideoViewerVideo } from '../types/video';
+import type { AudioViewerTrack } from '../types/audio';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
+import { StatusMenu } from './StatusMenu';
 
 interface StatusCardProps {
     status: mastodon.v1.Status;
@@ -35,12 +38,15 @@ interface StatusCardProps {
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
+    onAudioClick?: (tracks: AudioViewerTrack[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
-    nsfwRevealedStatusIds?: Set<string>;
+    isNsfwRevealed?: boolean;
+    onStatusDelete?: (status: mastodon.v1.Status) => void;
+    onStatusEdit?: (status: mastodon.v1.Status) => void;
 }
 
-export function StatusCard({
+export const StatusCard = React.memo(function StatusCard({
     status,
     isReblog = false,
     accountSession,
@@ -49,10 +55,17 @@ export function StatusCard({
     onStatusClick,
     onImageClick,
     onVideoClick,
+    onAudioClick,
     onAccountClick,
     onNsfwReveal,
-    nsfwRevealedStatusIds,
+    isNsfwRevealed = false,
+    onStatusDelete,
+    onStatusEdit,
 }: StatusCardProps) {
+    // Common action button base styles (WCAG 36px touch target)
+    const actionButtonBase =
+        'inline-flex min-h-[36px] items-center justify-center gap-2 rounded-lg px-2.5 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 disabled:opacity-50 disabled:cursor-not-allowed';
+
     // If it's a reblog, show the original status with reblog indicator
     const displayStatus = status.reblog ?? status;
     const reblogger = status.reblog ? status.account : null;
@@ -66,14 +79,11 @@ export function StatusCard({
     const [localReblogsCount, setLocalReblogsCount] = useState(displayStatus.reblogsCount ?? 0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
-    // NSFW state: controlled from parent or local
-    // If parent provides state (nsfwRevealedStatusIds), always use it
-    // When onNsfwReveal is missing, operates in read-only mode
-    const isControlled = nsfwRevealedStatusIds !== undefined;
+    // NSFW state:
+    // - onNsfwReveal provided: controlled mode, uses isNsfwRevealed from parent
+    // - onNsfwReveal missing: uncontrolled mode, toggles local state
     const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-    const nsfwRevealed = isControlled
-        ? nsfwRevealedStatusIds.has(displayStatus.id)
-        : localNsfwRevealed;
+    const nsfwRevealed = onNsfwReveal !== undefined ? isNsfwRevealed : localNsfwRevealed;
 
     // Track pending props updates that arrived during loading
     const pendingPropsRef = useRef<{
@@ -156,8 +166,41 @@ export function StatusCard({
         [displayStatus.mediaAttachments]
     );
 
+    // Convert audio attachments to AudioViewerTrack format (memoized)
+    const audioViewerTracks = useMemo(
+        () => toAudioViewerTracks(displayStatus.mediaAttachments),
+        [displayStatus.mediaAttachments]
+    );
+
+    // Memoize emoji processing for content to avoid redundant work on re-renders
+    const contentWithEmojis = useMemo(
+        () => replaceEmojisWithImages(displayStatus.content, displayStatus.emojis),
+        [displayStatus.content, displayStatus.emojis]
+    );
+
     // Safely access account
     const account = displayStatus.account;
+
+    // Use ref to track nsfwRevealed state without causing callback recreation
+    const nsfwRevealedRef = useRef(nsfwRevealed);
+    useEffect(() => {
+        nsfwRevealedRef.current = nsfwRevealed;
+    }, [nsfwRevealed]);
+
+    // NSFW toggle handler - must be defined before early return to follow hooks rules
+    const handleNsfwToggle = useCallback(() => {
+        // Controlled mode: parent provides the state via isNsfwRevealed
+        if (onNsfwReveal) {
+            if (!nsfwRevealedRef.current) {
+                onNsfwReveal(displayStatus.id);
+            }
+            return;
+        }
+
+        // Uncontrolled mode: toggle local state
+        setLocalNsfwRevealed((prev) => !prev);
+    }, [onNsfwReveal, displayStatus.id]);
+
     if (!account) {
         return null; // Cannot render without account
     }
@@ -231,23 +274,6 @@ export function StatusCard({
         }
     };
 
-    const handleNsfwToggle = () => {
-        // Controlled mode: use parent state
-        if (isControlled) {
-            // If callback provided, notify parent (read-only mode if no callback)
-            if (!nsfwRevealed && onNsfwReveal) {
-                onNsfwReveal(displayStatus.id);
-            }
-            return;
-        }
-
-        // Uncontrolled mode: notify parent if callback provided, then toggle local state
-        if (!nsfwRevealed && onNsfwReveal) {
-            onNsfwReveal(displayStatus.id);
-        }
-        setLocalNsfwRevealed((prev) => !prev);
-    };
-
     // Check if reblog is allowed (not for private/direct messages)
     const canReblog =
         displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
@@ -260,6 +286,7 @@ export function StatusCard({
             target.closest('a') ||
             target.closest('button') ||
             target.closest('video') ||
+            target.closest('audio') ||
             target.closest('summary')
         ) {
             return;
@@ -276,6 +303,7 @@ export function StatusCard({
                 target.closest('a') ||
                 target.closest('button') ||
                 target.closest('video') ||
+                target.closest('audio') ||
                 target.closest('summary')
             ) {
                 return;
@@ -435,14 +463,24 @@ export function StatusCard({
                                 </a>
                             )}
                         </div>
-                        <a
-                            href={displayStatus.url ?? '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-slate-400 hover:text-slate-300 shrink-0"
-                        >
-                            {formatDate(displayStatus.createdAt)}
-                        </a>
+                        {(() => {
+                            const createdAtText = formatDate(displayStatus.createdAt);
+                            const { label: visibilityLabel, icon: VisibilityIcon } =
+                                getVisibilityMeta(displayStatus.visibility);
+                            return (
+                                <a
+                                    href={displayStatus.url ?? '#'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-300 shrink-0"
+                                    aria-label={`公開範囲: ${visibilityLabel}、投稿日時: ${createdAtText}`}
+                                    title={`公開範囲: ${visibilityLabel}`}
+                                >
+                                    <VisibilityIcon className="w-4 h-4" aria-hidden="true" />
+                                    <span>{createdAtText}</span>
+                                </a>
+                            );
+                        })()}
                     </div>
 
                     {/* Content Warning */}
@@ -454,12 +492,7 @@ export function StatusCard({
                             </summary>
                             <div
                                 className="mt-2 text-slate-200 wrap-break-word status-content"
-                                dangerouslySetInnerHTML={{
-                                    __html: replaceEmojisWithImages(
-                                        displayStatus.content,
-                                        displayStatus.emojis
-                                    ),
-                                }}
+                                dangerouslySetInnerHTML={{ __html: contentWithEmojis }}
                             />
                         </details>
                     )}
@@ -504,6 +537,14 @@ export function StatusCard({
                                               (v) => v.url === firstNonEmpty(media.url)
                                           )
                                         : undefined;
+                                const audioIndex =
+                                    media.type === 'audio'
+                                        ? audioViewerTracks.findIndex(
+                                              (t) =>
+                                                  t.url ===
+                                                  firstNonEmpty(media.url, media.remoteUrl)
+                                          )
+                                        : undefined;
 
                                 return (
                                     <MediaAttachment
@@ -512,7 +553,7 @@ export function StatusCard({
                                         variant="card"
                                         isSensitive={isSensitive}
                                         nsfwRevealed={nsfwRevealed}
-                                        onNsfwToggle={handleNsfwToggle}
+                                        onNsfwReveal={handleNsfwToggle}
                                         onImageClick={
                                             imageIndex !== undefined && imageIndex !== -1
                                                 ? () =>
@@ -530,6 +571,13 @@ export function StatusCard({
                                             videoIndex !== -1 &&
                                             onVideoClick
                                                 ? () => onVideoClick(videoViewerVideos, videoIndex)
+                                                : undefined
+                                        }
+                                        onAudioClick={
+                                            audioIndex !== undefined &&
+                                            audioIndex !== -1 &&
+                                            onAudioClick
+                                                ? () => onAudioClick(audioViewerTracks, audioIndex)
                                                 : undefined
                                         }
                                     />
@@ -569,62 +617,82 @@ export function StatusCard({
                     )}
 
                     {/* Action bar */}
-                    <div className="flex items-center gap-6 mt-3 text-slate-400">
+                    <div className="flex items-center gap-2 mt-1 text-slate-400">
                         <button
                             type="button"
                             onClick={() => onReply?.(displayStatus)}
-                            className="flex items-center gap-1.5 hover:text-blue-400 transition-colors"
+                            disabled={!onReply}
+                            className={`${actionButtonBase} ${
+                                !onReply
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:text-blue-400 hover:bg-blue-400/10'
+                            }`}
                             aria-label="返信"
                         >
-                            <LuMessageCircle aria-hidden="true" />
-                            <span className="text-sm">{displayStatus.repliesCount || ''}</span>
+                            <LuMessageCircle className="w-4 h-4" aria-hidden="true" />
+                            {(displayStatus.repliesCount ?? 0) > 0 && (
+                                <span className="text-sm">{displayStatus.repliesCount}</span>
+                            )}
                         </button>
                         <button
                             type="button"
                             onClick={handleReblog}
                             disabled={!accountSession || isLoading.reblog || !canReblog}
                             tabIndex={!canReblog ? -1 : undefined}
-                            className={`flex items-center gap-1.5 transition-colors ${
+                            className={`${actionButtonBase} ${
                                 !canReblog
                                     ? 'opacity-50 cursor-not-allowed'
                                     : localReblogged
-                                      ? 'text-green-400 hover:text-green-300'
-                                      : 'hover:text-green-400'
+                                      ? 'text-green-400 hover:text-green-300 hover:bg-green-400/10'
+                                      : 'hover:text-green-400 hover:bg-green-400/10'
                             } ${isLoading.reblog ? 'opacity-50' : ''}`}
                             title={!canReblog ? 'この投稿はブーストできません' : undefined}
                             aria-label={localReblogged ? 'ブースト解除' : 'ブースト'}
                             aria-disabled={!canReblog}
                         >
-                            <LuRepeat2 aria-hidden="true" />
-                            <span className="text-sm">{localReblogsCount || ''}</span>
+                            <LuRepeat2 className="w-4 h-4" aria-hidden="true" />
+                            {(localReblogsCount ?? 0) > 0 && (
+                                <span className="text-sm">{localReblogsCount}</span>
+                            )}
                         </button>
                         <button
                             type="button"
                             onClick={handleFavourite}
                             disabled={!accountSession || isLoading.favourite}
-                            className={`flex items-center gap-1.5 transition-colors ${
+                            className={`${actionButtonBase} ${
                                 localFavourited
-                                    ? 'text-amber-400 hover:text-amber-300'
-                                    : 'hover:text-amber-400'
+                                    ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-400/10'
+                                    : 'hover:text-amber-400 hover:bg-amber-400/10'
                             } ${isLoading.favourite ? 'opacity-50' : ''}`}
                             aria-label={localFavourited ? 'お気に入り解除' : 'お気に入り'}
                         >
                             <LuStar
-                                className={localFavourited ? 'fill-current' : ''}
+                                className={`w-4 h-4 ${localFavourited ? 'fill-current' : ''}`}
                                 aria-hidden="true"
                             />
-                            <span className="text-sm">{localFavouritesCount || ''}</span>
+                            {(localFavouritesCount ?? 0) > 0 && (
+                                <span className="text-sm">{localFavouritesCount}</span>
+                            )}
                         </button>
-                        <button
-                            type="button"
-                            className="hover:text-indigo-400 transition-colors"
-                            aria-label="リンクをコピー"
-                        >
-                            <LuLink aria-hidden="true" />
-                        </button>
+                        <StatusMenu
+                            statusUrl={displayStatus.url ?? displayStatus.uri}
+                            canDelete={
+                                Boolean(accountSession) &&
+                                Boolean(onStatusDelete) &&
+                                displayStatus.account.id === accountSession?.account.id
+                            }
+                            canEdit={
+                                Boolean(accountSession) &&
+                                Boolean(onStatusEdit) &&
+                                displayStatus.account.id === accountSession?.account.id
+                            }
+                            onDelete={() => onStatusDelete?.(displayStatus)}
+                            onEdit={() => onStatusEdit?.(displayStatus)}
+                            className="ml-auto"
+                        />
                     </div>
                 </div>
             </div>
         </article>
     );
-}
+});

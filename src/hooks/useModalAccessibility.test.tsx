@@ -17,7 +17,7 @@ function TestModal({
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-    const { handleKeyDown } = useModalAccessibility({
+    const { handleKeyDown, handleBackdropClick } = useModalAccessibility({
         isOpen,
         onClose,
         closeButtonRef,
@@ -29,6 +29,8 @@ function TestModal({
 
     return (
         <div onKeyDown={handleKeyDown} role="dialog" aria-modal="true" data-testid="modal-wrapper">
+            {/* Backdrop */}
+            <div data-testid="backdrop" onClick={handleBackdropClick} aria-hidden="true" />
             <div ref={modalRef} data-testid="modal-content">
                 <button ref={closeButtonRef} data-testid="close-button">
                     閉じる
@@ -116,6 +118,26 @@ describe('useModalAccessibility', () => {
 
             const modalWrapper = screen.getByTestId('modal-wrapper');
             fireEvent.keyDown(modalWrapper, { key: 'Escape' });
+
+            expect(onClose).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('backdrop click handling', () => {
+        it('バックドロップクリックでonCloseが呼ばれる', () => {
+            render(<TestModal isOpen={true} onClose={onClose} />);
+
+            const backdrop = screen.getByTestId('backdrop');
+            fireEvent.click(backdrop);
+
+            expect(onClose).toHaveBeenCalledTimes(1);
+        });
+
+        it('canClose=falseの場合バックドロップクリックでonCloseが呼ばれない', () => {
+            render(<TestModal isOpen={true} onClose={onClose} canClose={false} />);
+
+            const backdrop = screen.getByTestId('backdrop');
+            fireEvent.click(backdrop);
 
             expect(onClose).not.toHaveBeenCalled();
         });

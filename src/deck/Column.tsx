@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useMemo } from 'react';
 import type { mastodon } from 'masto';
 import { LuRefreshCw, LuX, LuTriangleAlert, LuInbox } from 'react-icons/lu';
 import { getStreamDisplayName, getStreamIcon, type StreamConfig } from '../streaming/streamTypes';
@@ -7,6 +7,7 @@ import { NotificationCard } from '../components/NotificationCard';
 import { useStreamsStore, getStreamKey } from '../store/streams';
 import { useAccountsStore } from '../store/accounts';
 import { getClient } from '../api/mastoClient';
+import { formatAccountHandle } from '../utils/accountHandle';
 import {
     fetchHomeTimeline,
     fetchPublicTimeline,
@@ -17,6 +18,7 @@ import {
 import { subscribeToStream, unsubscribeFromStream } from '../streaming/streamManager';
 import type { ImageViewerImage } from '../components/ImageViewer';
 import type { VideoViewerVideo } from '../types/video';
+import type { AudioViewerTrack } from '../types/audio';
 
 interface ColumnProps {
     id: string;
@@ -27,9 +29,12 @@ interface ColumnProps {
     onStatusClick?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
+    onAudioClick?: (tracks: AudioViewerTrack[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
     nsfwRevealedStatusIds?: Set<string>;
+    onStatusDelete?: (status: mastodon.v1.Status, accountId: string) => void;
+    onStatusEdit?: (status: mastodon.v1.Status, accountSessionId: string) => void;
 }
 
 export function Column({
@@ -40,28 +45,70 @@ export function Column({
     onStatusClick,
     onImageClick,
     onVideoClick,
+    onAudioClick,
     onAccountClick,
     onNsfwReveal,
     nsfwRevealedStatusIds,
+    onStatusDelete,
+    onStatusEdit,
 }: ColumnProps) {
     const account = useAccountsStore((state) => state.accounts.find((a) => a.id === accountId));
     const streamKey = getStreamKey(accountId, stream.type, stream);
     const data = useStreamsStore((state) => state.data[streamKey]);
-    const {
-        initStream,
-        setLoading,
-        setStatuses,
-        setNotifications,
-        appendStatuses,
-        appendNotifications,
-        setError,
-        updateStatusGlobal,
-    } = useStreamsStore();
+    // Use selectors to prevent cascade re-renders when stream updates occur
+    const initStream = useStreamsStore((s) => s.initStream);
+    const setLoading = useStreamsStore((s) => s.setLoading);
+    const setStatuses = useStreamsStore((s) => s.setStatuses);
+    const setNotifications = useStreamsStore((s) => s.setNotifications);
+    const appendStatuses = useStreamsStore((s) => s.appendStatuses);
+    const appendNotifications = useStreamsStore((s) => s.appendNotifications);
+    const setError = useStreamsStore((s) => s.setError);
+    const updateStatusGlobal = useStreamsStore((s) => s.updateStatusGlobal);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
 
     const isNotificationColumn = stream.type === 'notifications';
+
+    // Stable callback wrappers to prevent React.memo invalidation in card components
+    // Using useMemo to memoize conditional expressions that return either a callback or undefined.
+    // useCallback only memoizes the function itself, not conditional values.
+    const handleStatusClick = useMemo(
+        () =>
+            onStatusClick
+                ? (status: mastodon.v1.Status) => onStatusClick(status, accountId)
+                : undefined,
+        [onStatusClick, accountId]
+    );
+    const handleAccountClick = useMemo(
+        () =>
+            onAccountClick
+                ? (acc: mastodon.v1.Account) => onAccountClick(acc, accountId)
+                : undefined,
+        [onAccountClick, accountId]
+    );
+    const handleReply = useMemo(
+        () => (onReply ? (status: mastodon.v1.Status) => onReply(status, accountId) : undefined),
+        [onReply, accountId]
+    );
+    const handleStatusDelete = useMemo(
+        () =>
+            onStatusDelete
+                ? (status: mastodon.v1.Status) => onStatusDelete(status, accountId)
+                : undefined,
+        [onStatusDelete, accountId]
+    );
+    const handleStatusEdit = useMemo(
+        () =>
+            onStatusEdit
+                ? (status: mastodon.v1.Status) => onStatusEdit(status, accountId)
+                : undefined,
+        [onStatusEdit, accountId]
+    );
+    // Pass-through callbacks (no transformation needed; props are already stable)
+    const handleImageClick = onImageClick;
+    const handleVideoClick = onVideoClick;
+    const handleAudioClick = onAudioClick;
 
     // Define loadInitialData before useEffect that uses it
     const loadInitialData = useCallback(async () => {
@@ -218,15 +265,24 @@ export function Column({
         return () => observer.disconnect();
     }, [loadMore]);
 
+    const accountHandle = account ? formatAccountHandle(account) : null;
+
     return (
         <div className="flex flex-col h-full w-80 min-w-80 bg-slate-900/80 backdrop-blur-sm border-r border-slate-700/50 shrink-0">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 bg-slate-800/50">
-                <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-lg">{getStreamIcon(stream.type)}</span>
-                    <span className="font-medium text-slate-100 truncate">
-                        {getStreamDisplayName(stream)}
-                    </span>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="text-lg shrink-0">{getStreamIcon(stream.type)}</span>
+                    <div className="min-w-0 flex-1">
+                        <div className="font-medium text-slate-100 truncate">
+                            {getStreamDisplayName(stream)}
+                        </div>
+                        {accountHandle && (
+                            <div className="text-xs text-slate-400 truncate" title={accountHandle}>
+                                {accountHandle}
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className="flex items-center gap-1">
                     <button
@@ -276,42 +332,54 @@ export function Column({
 
                 {/* Notifications */}
                 {isNotificationColumn &&
-                    data?.notifications.map((notification) => (
-                        <NotificationCard
-                            key={notification.id}
-                            notification={notification}
-                            onStatusClick={
-                                onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
-                            }
-                            onAccountClick={
-                                onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
-                            }
-                            onNsfwReveal={onNsfwReveal}
-                            nsfwRevealedStatusIds={nsfwRevealedStatusIds}
-                        />
-                    ))}
+                    data?.notifications.map((notification) => {
+                        // Get the display status ID for NSFW check (handle reblog case)
+                        const displayStatus = notification.status?.reblog ?? notification.status;
+                        const statusId = displayStatus?.id;
+
+                        return (
+                            <NotificationCard
+                                key={notification.id}
+                                notification={notification}
+                                onStatusClick={handleStatusClick}
+                                onAccountClick={handleAccountClick}
+                                onNsfwReveal={onNsfwReveal}
+                                isNsfwRevealed={
+                                    statusId
+                                        ? (nsfwRevealedStatusIds?.has(statusId) ?? false)
+                                        : false
+                                }
+                            />
+                        );
+                    })}
 
                 {/* Statuses */}
                 {!isNotificationColumn &&
-                    data?.statuses.map((status) => (
-                        <StatusCard
-                            key={status.id}
-                            status={status}
-                            accountSession={account}
-                            onStatusUpdate={updateStatusGlobal}
-                            onReply={onReply ? (s) => onReply(s, accountId) : undefined}
-                            onStatusClick={
-                                onStatusClick ? (s) => onStatusClick(s, accountId) : undefined
-                            }
-                            onImageClick={onImageClick}
-                            onVideoClick={onVideoClick}
-                            onAccountClick={
-                                onAccountClick ? (a) => onAccountClick(a, accountId) : undefined
-                            }
-                            onNsfwReveal={onNsfwReveal}
-                            nsfwRevealedStatusIds={nsfwRevealedStatusIds}
-                        />
-                    ))}
+                    data?.statuses.map((status) => {
+                        // Get the display status ID for NSFW check (handle reblog case)
+                        const displayStatus = status.reblog ?? status;
+
+                        return (
+                            <StatusCard
+                                key={status.id}
+                                status={status}
+                                accountSession={account}
+                                onStatusUpdate={updateStatusGlobal}
+                                onReply={handleReply}
+                                onStatusClick={handleStatusClick}
+                                onImageClick={handleImageClick}
+                                onVideoClick={handleVideoClick}
+                                onAudioClick={handleAudioClick}
+                                onAccountClick={handleAccountClick}
+                                onNsfwReveal={onNsfwReveal}
+                                isNsfwRevealed={
+                                    nsfwRevealedStatusIds?.has(displayStatus.id) ?? false
+                                }
+                                onStatusDelete={handleStatusDelete}
+                                onStatusEdit={handleStatusEdit}
+                            />
+                        );
+                    })}
 
                 {/* Load more trigger */}
                 {data?.hasMore && (data.statuses.length > 0 || data.notifications.length > 0) && (

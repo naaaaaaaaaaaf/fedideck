@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { mastodon } from 'masto';
-import { getStreamKey, useStreamsStore } from './streams';
+import {
+    getStreamKey,
+    useStreamsStore,
+    MAX_STATUSES_PER_STREAM,
+    MAX_NOTIFICATIONS_PER_STREAM,
+} from './streams';
 
 const makeStatus = (id: string) => ({ id }) as mastodon.v1.Status;
 const makeNotification = (id: string) => ({ id }) as mastodon.v1.Notification;
@@ -192,6 +197,69 @@ describe('useStreamsStore', () => {
             expect(publicStreamAfter).toBe(publicStreamBefore);
         });
     });
+
+    describe('removeStatusForAccountStreams', () => {
+        it('removes status from all streams of an account', () => {
+            const status1 = makeStatus('1');
+            const status2 = makeStatus('2');
+
+            useStreamsStore.getState().setStatuses('acc1:home', [status1, status2]);
+            useStreamsStore.getState().setStatuses('acc1:public', [status1, status2]);
+
+            useStreamsStore.getState().removeStatusForAccountStreams('acc1', '1');
+
+            const homeStream = useStreamsStore.getState().data['acc1:home'];
+            const publicStream = useStreamsStore.getState().data['acc1:public'];
+
+            expect(homeStream.statuses.map((s) => s.id)).toEqual(['2']);
+            expect(publicStream.statuses.map((s) => s.id)).toEqual(['2']);
+        });
+
+        it('does not affect streams of other accounts', () => {
+            const status1 = makeStatus('1');
+
+            useStreamsStore.getState().setStatuses('acc1:home', [status1]);
+            useStreamsStore.getState().setStatuses('acc2:home', [status1]);
+
+            useStreamsStore.getState().removeStatusForAccountStreams('acc1', '1');
+
+            const acc1Stream = useStreamsStore.getState().data['acc1:home'];
+            const acc2Stream = useStreamsStore.getState().data['acc2:home'];
+
+            expect(acc1Stream.statuses).toEqual([]);
+            expect(acc2Stream.statuses.map((s) => s.id)).toEqual(['1']);
+        });
+
+        it('removes reblog wrapper when inner status is deleted', () => {
+            const innerStatus = makeStatus('inner-1');
+            const reblogStatus = {
+                id: 'reblog-1',
+                reblog: innerStatus,
+            } as mastodon.v1.Status;
+            const otherStatus = makeStatus('other');
+
+            useStreamsStore.getState().setStatuses('acc1:home', [reblogStatus, otherStatus]);
+
+            useStreamsStore.getState().removeStatusForAccountStreams('acc1', 'inner-1');
+
+            const stream = useStreamsStore.getState().data['acc1:home'];
+            // Reblog wrapper should be removed entirely
+            expect(stream.statuses.map((s) => s.id)).toEqual(['other']);
+        });
+
+        it('is no-op when status does not exist', () => {
+            const status1 = makeStatus('1');
+
+            useStreamsStore.getState().setStatuses('acc1:home', [status1]);
+
+            const originalState = useStreamsStore.getState();
+            useStreamsStore.getState().removeStatusForAccountStreams('acc1', 'nonexistent');
+            const newState = useStreamsStore.getState();
+
+            // State should be unchanged (same reference)
+            expect(newState.data).toBe(originalState.data);
+        });
+    });
 });
 
 describe('getStreamKey', () => {
@@ -204,5 +272,236 @@ describe('getStreamKey', () => {
 
     it('falls back to stream type when no params are provided', () => {
         expect(getStreamKey('account', 'home')).toBe('account:home');
+    });
+});
+
+describe('item limits', () => {
+    beforeEach(() => {
+        useStreamsStore.setState({ data: {} });
+    });
+
+    describe('statuses', () => {
+        it('limits statuses to MAX_STATUSES_PER_STREAM on setStatuses', () => {
+            const statuses = Array.from({ length: 300 }, (_, i) => makeStatus(String(i)));
+            useStreamsStore.getState().setStatuses('account:home', statuses);
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            expect(stream.statuses.length).toBe(MAX_STATUSES_PER_STREAM);
+            // Should keep the first items (newest)
+            expect(stream.statuses[0].id).toBe('0');
+            expect(stream.statuses[MAX_STATUSES_PER_STREAM - 1].id).toBe(
+                String(MAX_STATUSES_PER_STREAM - 1)
+            );
+        });
+
+        it('limits statuses to MAX_STATUSES_PER_STREAM on prepend', () => {
+            // Start with 200 statuses
+            const initialStatuses = Array.from({ length: MAX_STATUSES_PER_STREAM }, (_, i) =>
+                makeStatus(String(i))
+            );
+            useStreamsStore.getState().setStatuses('account:home', initialStatuses);
+
+            // Prepend one more - should still be at max
+            useStreamsStore.getState().prependStatus('account:home', makeStatus('new'));
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            expect(stream.statuses.length).toBe(MAX_STATUSES_PER_STREAM);
+            // Newest item should be at the front
+            expect(stream.statuses[0].id).toBe('new');
+        });
+
+        it('sets hasMore to false when prepend reaches client cap', () => {
+            // Start with 199 statuses (just under cap)
+            const initialStatuses = Array.from({ length: 199 }, (_, i) => makeStatus(String(i)));
+            useStreamsStore.getState().setStatuses('account:home', initialStatuses);
+
+            // Prepend one more - should reach cap and set hasMore to false
+            useStreamsStore.getState().prependStatus('account:home', makeStatus('new'));
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            expect(stream.statuses.length).toBe(MAX_STATUSES_PER_STREAM);
+            expect(stream.hasMore).toBe(false);
+        });
+
+        it('preserves hasMore when prepend does not reach cap', () => {
+            // Start with 100 statuses
+            const initialStatuses = Array.from({ length: 100 }, (_, i) => makeStatus(String(i)));
+            useStreamsStore.getState().setStatuses('account:home', initialStatuses, true);
+
+            // Prepend one more - hasMore should remain true
+            useStreamsStore.getState().prependStatus('account:home', makeStatus('new'));
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            expect(stream.hasMore).toBe(true);
+        });
+
+        it('limits statuses to MAX_STATUSES_PER_STREAM on append', () => {
+            // Start with 150 statuses
+            const initialStatuses = Array.from({ length: 150 }, (_, i) => makeStatus(String(i)));
+            useStreamsStore.getState().setStatuses('account:home', initialStatuses);
+
+            // Append 100 more - total should be clamped to 200
+            const moreStatuses = Array.from({ length: 100 }, (_, i) => makeStatus(String(150 + i)));
+            useStreamsStore.getState().appendStatuses('account:home', moreStatuses);
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            expect(stream.statuses.length).toBe(MAX_STATUSES_PER_STREAM);
+        });
+
+        it('respects capped pagination when new items arrive at cap', () => {
+            // Start with statuses at the client cap
+            const initialStatuses = Array.from({ length: MAX_STATUSES_PER_STREAM }, (_, i) =>
+                makeStatus(String(i))
+            );
+            useStreamsStore.getState().setStatuses('account:home', initialStatuses);
+
+            // Append more (new items from server) while already at cap
+            const moreStatuses = Array.from({ length: 50 }, (_, i) => makeStatus(String(200 + i)));
+            useStreamsStore.getState().appendStatuses('account:home', moreStatuses);
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            // Once the client cap is reached and clamping occurs, hasMore should be false
+            // to avoid repeatedly loading with an unchanged lastId and causing loops.
+            expect(stream.hasMore).toBe(false);
+        });
+
+        it('preserves hasMore true when under cap after append', () => {
+            // Start with 100 statuses (under cap)
+            const initialStatuses = Array.from({ length: 100 }, (_, i) => makeStatus(String(i)));
+            useStreamsStore.getState().setStatuses('account:home', initialStatuses);
+
+            // Append 50 more
+            const moreStatuses = Array.from({ length: 50 }, (_, i) => makeStatus(String(100 + i)));
+            useStreamsStore.getState().appendStatuses('account:home', moreStatuses);
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            // hasMore should be true because we're under cap
+            expect(stream.hasMore).toBe(true);
+        });
+
+        it('preserves hasMore when all appended items are duplicates', () => {
+            // Start with 100 statuses with hasMore=true
+            const initialStatuses = Array.from({ length: 100 }, (_, i) => makeStatus(String(i)));
+            useStreamsStore.getState().setStatuses('account:home', initialStatuses, true);
+
+            // Append only duplicates - hasMore should be preserved
+            useStreamsStore
+                .getState()
+                .appendStatuses('account:home', [makeStatus('0'), makeStatus('1')]);
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            expect(stream.hasMore).toBe(true);
+        });
+    });
+
+    describe('notifications', () => {
+        it('limits notifications to MAX_NOTIFICATIONS_PER_STREAM on setNotifications', () => {
+            const notifications = Array.from({ length: 150 }, (_, i) =>
+                makeNotification(String(i))
+            );
+            useStreamsStore.getState().setNotifications('account:notifications', notifications);
+
+            const stream = useStreamsStore.getState().data['account:notifications'];
+            expect(stream.notifications.length).toBe(MAX_NOTIFICATIONS_PER_STREAM);
+        });
+
+        it('limits notifications to MAX_NOTIFICATIONS_PER_STREAM on prepend', () => {
+            const initialNotifications = Array.from(
+                { length: MAX_NOTIFICATIONS_PER_STREAM },
+                (_, i) => makeNotification(String(i))
+            );
+            useStreamsStore
+                .getState()
+                .setNotifications('account:notifications', initialNotifications);
+
+            useStreamsStore
+                .getState()
+                .prependNotification('account:notifications', makeNotification('new'));
+
+            const stream = useStreamsStore.getState().data['account:notifications'];
+            expect(stream.notifications.length).toBe(MAX_NOTIFICATIONS_PER_STREAM);
+            expect(stream.notifications[0].id).toBe('new');
+        });
+
+        it('sets hasMore to false when prepend reaches client cap', () => {
+            // Start with 99 notifications (just under cap)
+            const initialNotifications = Array.from({ length: 99 }, (_, i) =>
+                makeNotification(String(i))
+            );
+            useStreamsStore
+                .getState()
+                .setNotifications('account:notifications', initialNotifications);
+
+            // Prepend one more - should reach cap and set hasMore to false
+            useStreamsStore
+                .getState()
+                .prependNotification('account:notifications', makeNotification('new'));
+
+            const stream = useStreamsStore.getState().data['account:notifications'];
+            expect(stream.notifications.length).toBe(MAX_NOTIFICATIONS_PER_STREAM);
+            expect(stream.hasMore).toBe(false);
+        });
+
+        it('limits notifications to MAX_NOTIFICATIONS_PER_STREAM on append', () => {
+            const initialNotifications = Array.from({ length: 80 }, (_, i) =>
+                makeNotification(String(i))
+            );
+            useStreamsStore
+                .getState()
+                .setNotifications('account:notifications', initialNotifications);
+
+            const moreNotifications = Array.from({ length: 50 }, (_, i) =>
+                makeNotification(String(80 + i))
+            );
+            useStreamsStore
+                .getState()
+                .appendNotifications('account:notifications', moreNotifications);
+
+            const stream = useStreamsStore.getState().data['account:notifications'];
+            expect(stream.notifications.length).toBe(MAX_NOTIFICATIONS_PER_STREAM);
+        });
+
+        it('respects capped pagination when new items arrive at cap', () => {
+            const initialNotifications = Array.from(
+                { length: MAX_NOTIFICATIONS_PER_STREAM },
+                (_, i) => makeNotification(String(i))
+            );
+            useStreamsStore
+                .getState()
+                .setNotifications('account:notifications', initialNotifications);
+
+            const moreNotifications = Array.from({ length: 20 }, (_, i) =>
+                makeNotification(String(100 + i))
+            );
+            useStreamsStore
+                .getState()
+                .appendNotifications('account:notifications', moreNotifications);
+
+            const stream = useStreamsStore.getState().data['account:notifications'];
+            // Once the client cap is reached and clamping occurs, hasMore should be false
+            // to avoid repeatedly loading with an unchanged lastId and causing loops.
+            expect(stream.hasMore).toBe(false);
+        });
+
+        it('preserves hasMore when all appended notifications are duplicates', () => {
+            // Start with 50 notifications with hasMore=true
+            const initialNotifications = Array.from({ length: 50 }, (_, i) =>
+                makeNotification(String(i))
+            );
+            useStreamsStore
+                .getState()
+                .setNotifications('account:notifications', initialNotifications, true);
+
+            // Append only duplicates - hasMore should be preserved
+            useStreamsStore
+                .getState()
+                .appendNotifications('account:notifications', [
+                    makeNotification('0'),
+                    makeNotification('1'),
+                ]);
+
+            const stream = useStreamsStore.getState().data['account:notifications'];
+            expect(stream.hasMore).toBe(true);
+        });
     });
 });

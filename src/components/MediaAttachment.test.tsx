@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MediaAttachment } from './MediaAttachment';
 import type { mastodon } from 'masto';
@@ -26,9 +26,11 @@ describe('MediaAttachment', () => {
         it('should render image with valid URL', () => {
             const media = createMockMedia({ type: 'image' });
 
-            render(<MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />);
+            const { container } = render(
+                <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+            );
 
-            const img = screen.getByAltText('Test image');
+            const img = container.querySelector('img');
             expect(img).toBeInTheDocument();
             expect(img).toHaveAttribute('src', 'https://example.com/preview.png');
         });
@@ -197,9 +199,11 @@ describe('MediaAttachment', () => {
                 previewUrl: 'https://example.com/preview.png',
             });
 
-            render(<MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />);
+            const { container } = render(
+                <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+            );
 
-            const img = screen.getByAltText('Test image');
+            const img = container.querySelector('img');
             expect(img).toHaveAttribute('src', 'https://example.com/preview.png');
         });
 
@@ -223,57 +227,59 @@ describe('MediaAttachment', () => {
     describe('NSFW blur handling', () => {
         it('should apply blur class to sensitive images', () => {
             const media = createMockMedia({ type: 'image' });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
-            render(
+            const { container } = render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
-            const img = screen.getByAltText('Test image');
+            const img = container.querySelector('img');
             expect(img).toHaveClass('nsfw-blur');
         });
 
         it('should not apply blur to non-sensitive images', () => {
             const media = createMockMedia({ type: 'image' });
 
-            render(<MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />);
+            const { container } = render(
+                <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+            );
 
-            const img = screen.getByAltText('Test image');
+            const img = container.querySelector('img');
             expect(img).not.toHaveClass('nsfw-blur');
         });
 
         it('should remove blur when nsfwRevealed is true', () => {
             const media = createMockMedia({ type: 'image' });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
-            render(
+            const { container } = render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={true}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
-            const img = screen.getByAltText('Test image');
+            const img = container.querySelector('img');
             expect(img).not.toHaveClass('nsfw-blur');
         });
 
         it('should display overlay on sensitive images', () => {
             const media = createMockMedia({ type: 'image' });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
@@ -288,24 +294,24 @@ describe('MediaAttachment', () => {
             expect(screen.queryByText('閲覧注意')).not.toBeInTheDocument();
         });
 
-        it('should call onNsfwToggle when clicking blurred image', async () => {
+        it('should call onNsfwReveal when clicking blurred image', async () => {
             const user = userEvent.setup();
             const media = createMockMedia({ type: 'image' });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
             const button = screen.getByRole('button');
             await user.click(button);
 
-            expect(onNsfwToggle).toHaveBeenCalledTimes(1);
+            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
         });
 
         it('should call onImageClick when clicking revealed image', async () => {
@@ -375,14 +381,14 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/video.mp4',
                 previewUrl: 'https://example.com/video-poster.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
@@ -413,28 +419,28 @@ describe('MediaAttachment', () => {
             expect(container.firstChild).toBeNull();
         });
 
-        it('should call onNsfwToggle when clicking NSFW video', async () => {
+        it('should call onNsfwReveal when clicking NSFW video', async () => {
             const user = userEvent.setup();
             const media = createMockMedia({
                 type: 'video',
                 url: 'https://example.com/video.mp4',
                 previewUrl: 'https://example.com/video-poster.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
             const button = screen.getByRole('button', { name: '閲覧注意の動画を表示' });
             await user.click(button);
 
-            expect(onNsfwToggle).toHaveBeenCalledTimes(1);
+            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
         });
 
         it('should render NSFW video with only previewUrl (no url)', () => {
@@ -443,14 +449,14 @@ describe('MediaAttachment', () => {
                 url: undefined,
                 previewUrl: 'https://example.com/video-poster.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
@@ -464,14 +470,14 @@ describe('MediaAttachment', () => {
                 url: undefined,
                 previewUrl: 'https://example.com/video-poster.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={true}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
@@ -487,7 +493,7 @@ describe('MediaAttachment', () => {
                 url: undefined,
                 previewUrl: 'https://example.com/video-poster.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             // Render with NSFW revealed = false
             const { container: container1, rerender } = render(
@@ -495,7 +501,7 @@ describe('MediaAttachment', () => {
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
             expect(container1.firstChild).not.toBeNull();
@@ -506,7 +512,7 @@ describe('MediaAttachment', () => {
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={true}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
             expect(container1.firstChild).not.toBeNull();
@@ -571,7 +577,7 @@ describe('MediaAttachment', () => {
                     previewUrl: 'https://example.com/video-poster.png',
                     description: 'NSFW video',
                 });
-                const onNsfwToggle = vi.fn();
+                const onNsfwReveal = vi.fn();
                 const onVideoClick = vi.fn();
 
                 const { container } = render(
@@ -579,7 +585,7 @@ describe('MediaAttachment', () => {
                         media={media}
                         isSensitive={true}
                         nsfwRevealed={true}
-                        onNsfwToggle={onNsfwToggle}
+                        onNsfwReveal={onNsfwReveal}
                         onVideoClick={onVideoClick}
                     />
                 );
@@ -600,7 +606,7 @@ describe('MediaAttachment', () => {
                     previewUrl: 'https://example.com/video-poster.png',
                     description: 'NSFW video',
                 });
-                const onNsfwToggle = vi.fn();
+                const onNsfwReveal = vi.fn();
                 const onVideoClick = vi.fn();
 
                 render(
@@ -608,7 +614,7 @@ describe('MediaAttachment', () => {
                         media={media}
                         isSensitive={true}
                         nsfwRevealed={true}
-                        onNsfwToggle={onNsfwToggle}
+                        onNsfwReveal={onNsfwReveal}
                         onVideoClick={onVideoClick}
                     />
                 );
@@ -617,17 +623,17 @@ describe('MediaAttachment', () => {
                 await user.click(button);
 
                 expect(onVideoClick).toHaveBeenCalledTimes(1);
-                expect(onNsfwToggle).not.toHaveBeenCalled();
+                expect(onNsfwReveal).not.toHaveBeenCalled();
             });
 
-            it('should call onNsfwToggle when clicking NSFW blur state video button', async () => {
+            it('should call onNsfwReveal when clicking NSFW blur state video button', async () => {
                 const user = userEvent.setup();
                 const media = createMockMedia({
                     type: 'video',
                     url: 'https://example.com/video.mp4',
                     previewUrl: 'https://example.com/video-poster.png',
                 });
-                const onNsfwToggle = vi.fn();
+                const onNsfwReveal = vi.fn();
                 const onVideoClick = vi.fn();
 
                 render(
@@ -635,7 +641,7 @@ describe('MediaAttachment', () => {
                         media={media}
                         isSensitive={true}
                         nsfwRevealed={false}
-                        onNsfwToggle={onNsfwToggle}
+                        onNsfwReveal={onNsfwReveal}
                         onVideoClick={onVideoClick}
                     />
                 );
@@ -643,7 +649,7 @@ describe('MediaAttachment', () => {
                 const button = screen.getByRole('button', { name: '閲覧注意の動画を表示' });
                 await user.click(button);
 
-                expect(onNsfwToggle).toHaveBeenCalledTimes(1);
+                expect(onNsfwReveal).toHaveBeenCalledTimes(1);
                 expect(onVideoClick).not.toHaveBeenCalled();
             });
         });
@@ -697,14 +703,14 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/animation.mp4',
                 previewUrl: 'https://example.com/animation-poster.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
@@ -726,42 +732,42 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/animation.mp4',
                 previewUrl: undefined,
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
             expect(container.firstChild).toBeNull();
         });
 
-        it('should call onNsfwToggle when clicking NSFW gifv', async () => {
+        it('should call onNsfwReveal when clicking NSFW gifv', async () => {
             const user = userEvent.setup();
             const media = createMockMedia({
                 type: 'gifv',
                 url: 'https://example.com/animation.mp4',
                 previewUrl: 'https://example.com/animation-poster.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
             const button = screen.getByRole('button', { name: '閲覧注意のGIFを表示' });
             await user.click(button);
 
-            expect(onNsfwToggle).toHaveBeenCalledTimes(1);
+            expect(onNsfwReveal).toHaveBeenCalledTimes(1);
         });
 
         it('should render NSFW gifv with only previewUrl (no url)', () => {
@@ -770,14 +776,14 @@ describe('MediaAttachment', () => {
                 url: undefined,
                 previewUrl: 'https://example.com/animation-poster.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
@@ -791,14 +797,14 @@ describe('MediaAttachment', () => {
                 url: undefined,
                 previewUrl: 'https://example.com/animation-poster.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={true}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
@@ -814,7 +820,7 @@ describe('MediaAttachment', () => {
                 url: undefined,
                 previewUrl: 'https://example.com/animation-poster.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             // Render with NSFW revealed = false
             const { container: container1, rerender } = render(
@@ -822,7 +828,7 @@ describe('MediaAttachment', () => {
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
             expect(container1.firstChild).not.toBeNull();
@@ -833,7 +839,7 @@ describe('MediaAttachment', () => {
                     media={media}
                     isSensitive={true}
                     nsfwRevealed={true}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
             expect(container1.firstChild).not.toBeNull();
@@ -903,7 +909,7 @@ describe('MediaAttachment', () => {
                     previewUrl: 'https://example.com/animation-poster.png',
                     description: 'NSFW animation',
                 });
-                const onNsfwToggle = vi.fn();
+                const onNsfwReveal = vi.fn();
                 const onVideoClick = vi.fn();
 
                 const { container } = render(
@@ -911,7 +917,7 @@ describe('MediaAttachment', () => {
                         media={media}
                         isSensitive={true}
                         nsfwRevealed={true}
-                        onNsfwToggle={onNsfwToggle}
+                        onNsfwReveal={onNsfwReveal}
                         onVideoClick={onVideoClick}
                     />
                 );
@@ -934,7 +940,7 @@ describe('MediaAttachment', () => {
                     previewUrl: 'https://example.com/animation-poster.png',
                     description: 'NSFW animation',
                 });
-                const onNsfwToggle = vi.fn();
+                const onNsfwReveal = vi.fn();
                 const onVideoClick = vi.fn();
 
                 render(
@@ -942,7 +948,7 @@ describe('MediaAttachment', () => {
                         media={media}
                         isSensitive={true}
                         nsfwRevealed={true}
-                        onNsfwToggle={onNsfwToggle}
+                        onNsfwReveal={onNsfwReveal}
                         onVideoClick={onVideoClick}
                     />
                 );
@@ -951,17 +957,17 @@ describe('MediaAttachment', () => {
                 await user.click(button);
 
                 expect(onVideoClick).toHaveBeenCalledTimes(1);
-                expect(onNsfwToggle).not.toHaveBeenCalled();
+                expect(onNsfwReveal).not.toHaveBeenCalled();
             });
 
-            it('should call onNsfwToggle when clicking NSFW blur state gifv button', async () => {
+            it('should call onNsfwReveal when clicking NSFW blur state gifv button', async () => {
                 const user = userEvent.setup();
                 const media = createMockMedia({
                     type: 'gifv',
                     url: 'https://example.com/animation.mp4',
                     previewUrl: 'https://example.com/animation-poster.png',
                 });
-                const onNsfwToggle = vi.fn();
+                const onNsfwReveal = vi.fn();
                 const onVideoClick = vi.fn();
 
                 render(
@@ -969,7 +975,7 @@ describe('MediaAttachment', () => {
                         media={media}
                         isSensitive={true}
                         nsfwRevealed={false}
-                        onNsfwToggle={onNsfwToggle}
+                        onNsfwReveal={onNsfwReveal}
                         onVideoClick={onVideoClick}
                     />
                 );
@@ -977,7 +983,7 @@ describe('MediaAttachment', () => {
                 const button = screen.getByRole('button', { name: '閲覧注意のGIFを表示' });
                 await user.click(button);
 
-                expect(onNsfwToggle).toHaveBeenCalledTimes(1);
+                expect(onNsfwReveal).toHaveBeenCalledTimes(1);
                 expect(onVideoClick).not.toHaveBeenCalled();
             });
         });
@@ -986,7 +992,7 @@ describe('MediaAttachment', () => {
     describe('accessibility', () => {
         it('should have correct aria-label for sensitive images', () => {
             const media = createMockMedia({ type: 'image' });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             render(
                 <MediaAttachment
@@ -995,7 +1001,7 @@ describe('MediaAttachment', () => {
                     nsfwRevealed={false}
                     imageIndex={0}
                     totalImages={3}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
@@ -1113,7 +1119,7 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/image.png',
                 previewUrl: 'https://example.com/preview.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
@@ -1121,7 +1127,7 @@ describe('MediaAttachment', () => {
                     variant="compact"
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
@@ -1136,7 +1142,7 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/image.png',
                 previewUrl: 'https://example.com/preview.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
@@ -1144,7 +1150,7 @@ describe('MediaAttachment', () => {
                     variant="card"
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
@@ -1159,7 +1165,7 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/image.png',
                 previewUrl: 'https://example.com/preview.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
@@ -1167,7 +1173,7 @@ describe('MediaAttachment', () => {
                     variant="detail"
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
@@ -1182,7 +1188,7 @@ describe('MediaAttachment', () => {
                 url: 'https://example.com/video.mp4',
                 previewUrl: 'https://example.com/preview.png',
             });
-            const onNsfwToggle = vi.fn();
+            const onNsfwReveal = vi.fn();
 
             const { container } = render(
                 <MediaAttachment
@@ -1190,12 +1196,658 @@ describe('MediaAttachment', () => {
                     variant="compact"
                     isSensitive={true}
                     nsfwRevealed={false}
-                    onNsfwToggle={onNsfwToggle}
+                    onNsfwReveal={onNsfwReveal}
                 />
             );
 
             const overlay = container.querySelector('.nsfw-blur-overlay span');
             expect(overlay).toHaveClass('text-xs');
+        });
+    });
+
+    describe('audio rendering', () => {
+        describe('basic rendering', () => {
+            it('should render audio player with valid URL in card variant', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png',
+                    description: 'Test audio',
+                });
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        variant="card"
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                    />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toBeInTheDocument();
+                expect(audio).toHaveAttribute('src', 'https://example.com/audio.mp3');
+                expect(audio).toHaveAttribute('controls');
+                expect(audio).toHaveAttribute('preload', 'none');
+            });
+
+            it('should render audio player in detail variant', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        variant="detail"
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                    />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toBeInTheDocument();
+            });
+
+            it('should render controls attribute on audio element', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toHaveAttribute('controls');
+            });
+
+            it('should prioritize url over previewUrl for audio playback', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toHaveAttribute('src', 'https://example.com/audio.mp3');
+                expect(audio).not.toHaveAttribute('src', 'https://example.com/artwork.png');
+            });
+
+            it('should render artwork for CDN previewUrl without file extension', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://cdn.example.com/media/abc123',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://cdn.example.com/media/abc123');
+            });
+
+            it('should return null for invalid URL', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: undefined,
+                    previewUrl: undefined,
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                expect(container.firstChild).toBeNull();
+            });
+
+            it('should use remoteUrl as fallback when url is missing', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: undefined,
+                    remoteUrl: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toHaveAttribute('src', 'https://example.com/audio.mp3');
+            });
+
+            it('should display artwork when previewUrl is available', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://example.com/artwork.png');
+            });
+
+            it('should not display artwork when previewUrl is missing', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: undefined,
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).not.toBeInTheDocument();
+            });
+
+            it('should display artwork when previewUrl has query string', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png?size=small',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://example.com/artwork.png?size=small');
+            });
+
+            it('should display artwork when previewUrl has fragment', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png#section',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://example.com/artwork.png#section');
+            });
+
+            it('should display artwork when previewUrl has both query string and fragment', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png?size=small#section',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute(
+                    'src',
+                    'https://example.com/artwork.png?size=small#section'
+                );
+            });
+        });
+
+        describe('compact mode', () => {
+            it('should render music icon in compact mode', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: undefined, // No artwork - should show music icon
+                });
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        variant="compact"
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                    />
+                );
+
+                // Find the wrapper div by class
+                const wrapperDiv = container.querySelector('div.bg-slate-800');
+                expect(wrapperDiv).toBeInTheDocument();
+                // Check for music icon (svg)
+                const icon = wrapperDiv?.querySelector('svg');
+                expect(icon).toBeInTheDocument();
+            });
+
+            it('should render artwork thumbnail in compact mode when available', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.png',
+                });
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        variant="compact"
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                    />
+                );
+
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveClass('w-12', 'h-12', 'rounded');
+            });
+
+            it('should apply w-12 h-12 classes in compact mode', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        variant="compact"
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                    />
+                );
+
+                const wrapper = container.firstChild as HTMLElement;
+                expect(wrapper).toHaveClass('w-12', 'h-12');
+            });
+
+            describe('NSFW blur', () => {
+                it('should render music icon with blur overlay when NSFW and not revealed', () => {
+                    const media = createMockMedia({
+                        type: 'audio',
+                        url: 'https://example.com/audio.mp3',
+                        previewUrl: undefined, // No artwork - should show music icon with blur
+                    });
+                    const onNsfwReveal = vi.fn();
+
+                    const { container } = render(
+                        <MediaAttachment
+                            media={media}
+                            variant="compact"
+                            isSensitive={true}
+                            nsfwRevealed={false}
+                            onNsfwReveal={onNsfwReveal}
+                        />
+                    );
+
+                    const button = container.querySelector('button');
+                    expect(button).toBeInTheDocument();
+                    expect(button).toHaveClass('nsfw-blur-container');
+
+                    const overlay = button?.querySelector('.nsfw-blur-overlay span');
+                    expect(overlay).toBeInTheDocument();
+                    expect(overlay).toHaveClass('text-xs'); // compact mode uses smaller text
+
+                    const icon = button?.querySelector('svg');
+                    expect(icon).toBeInTheDocument();
+                });
+
+                it('should render artwork with blur overlay when NSFW has previewUrl', () => {
+                    const media = createMockMedia({
+                        type: 'audio',
+                        url: 'https://example.com/audio.mp3',
+                        previewUrl: 'https://example.com/artwork.png',
+                    });
+                    const onNsfwReveal = vi.fn();
+
+                    const { container } = render(
+                        <MediaAttachment
+                            media={media}
+                            variant="compact"
+                            isSensitive={true}
+                            nsfwRevealed={false}
+                            onNsfwReveal={onNsfwReveal}
+                        />
+                    );
+
+                    const button = container.querySelector('button');
+                    expect(button).toBeInTheDocument();
+
+                    const img = button?.querySelector('img');
+                    expect(img).toBeInTheDocument();
+                    expect(img).toHaveClass('nsfw-blur');
+                });
+
+                it('should return null when NSFW without onNsfwReveal', () => {
+                    const media = createMockMedia({
+                        type: 'audio',
+                        url: 'https://example.com/audio.mp3',
+                    });
+
+                    const { container } = render(
+                        <MediaAttachment
+                            media={media}
+                            variant="compact"
+                            isSensitive={true}
+                            nsfwRevealed={false}
+                        />
+                    );
+
+                    const wrapper = container.querySelector('div');
+                    expect(wrapper).not.toBeInTheDocument();
+                });
+            });
+        });
+
+        describe('NSFW blur', () => {
+            it('should render music icon with blur overlay when NSFW and not revealed (no artwork)', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: undefined, // No artwork available
+                });
+                const onNsfwReveal = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwReveal={onNsfwReveal}
+                    />
+                );
+
+                const button = container.querySelector('button');
+                expect(button).toBeInTheDocument();
+                expect(button).toHaveAttribute('aria-label', '閲覧注意の音声プレーヤーを表示');
+
+                const icon = container.querySelector('svg');
+                expect(icon).toBeInTheDocument();
+            });
+
+            it('should render artwork when previewUrl has no image extension (CDN URL)', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://cdn.example.com/media/abc123', // CDN URL without extension
+                });
+                const onNsfwReveal = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwReveal={onNsfwReveal}
+                    />
+                );
+
+                const button = container.querySelector('button');
+                expect(button).toBeInTheDocument();
+
+                // Should show artwork img, trusting previewUrl from API
+                const img = container.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://cdn.example.com/media/abc123');
+            });
+
+            it('should render artwork with blur overlay when NSFW and not revealed (with artwork)', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/artwork.jpg',
+                });
+                const onNsfwReveal = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwReveal={onNsfwReveal}
+                    />
+                );
+
+                const button = container.querySelector('button');
+                expect(button).toBeInTheDocument();
+                expect(button).toHaveAttribute('aria-label', '閲覧注意の音声プレーヤーを表示');
+
+                // Artwork should be rendered with blur class
+                const img = container.querySelector('img.nsfw-blur');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://example.com/artwork.jpg');
+
+                // Music icon should not be rendered when artwork is available
+                const icon = container.querySelector('svg');
+                expect(icon).not.toBeInTheDocument();
+            });
+
+            it('should render audio player after NSFW reveal', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+                const onNsfwReveal = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={true}
+                        onNsfwReveal={onNsfwReveal}
+                    />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toBeInTheDocument();
+
+                const button = container.querySelector('button');
+                expect(button).not.toBeInTheDocument();
+            });
+
+            it('should call onNsfwReveal when clicking NSFW audio button', async () => {
+                const user = userEvent.setup();
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+                const onNsfwReveal = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwReveal={onNsfwReveal}
+                    />
+                );
+
+                const button = screen.getByRole('button', {
+                    name: '閲覧注意の音声プレーヤーを表示',
+                });
+                await user.click(button);
+
+                expect(onNsfwReveal).toHaveBeenCalledTimes(1);
+            });
+
+            it('should return null when NSFW and onNsfwReveal not provided', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={true} nsfwRevealed={false} />
+                );
+
+                expect(container.firstChild).toBeNull();
+            });
+        });
+
+        describe('accessibility', () => {
+            it('should have correct aria-label for audio with description', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    description: 'Podcast episode',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toHaveAttribute('aria-label', 'Podcast episode');
+            });
+
+            it('should have default aria-label for audio without description', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    description: undefined,
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                const audio = container.querySelector('audio');
+                expect(audio).toHaveAttribute('aria-label', '音声プレーヤー');
+            });
+
+            it('should have correct NSFW aria-label', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                });
+                const onNsfwReveal = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwReveal={onNsfwReveal}
+                    />
+                );
+
+                const button = screen.getByRole('button', {
+                    name: '閲覧注意の音声プレーヤーを表示',
+                });
+                expect(button).toBeInTheDocument();
+            });
+
+            it('should fallback to default label when audio description is empty string', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    description: '',
+                });
+                const onAudioClick = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                        onAudioClick={onAudioClick}
+                    />
+                );
+
+                const button = screen.getByRole('button', {
+                    name: '音声プレーヤーを拡大',
+                });
+                expect(button).toBeInTheDocument();
+            });
+        });
+
+        describe('artwork error fallback', () => {
+            it('should show music icon when artwork image fails to load', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: 'https://example.com/bad-artwork.jpg',
+                    description: 'Test audio',
+                });
+                const onAudioClick = vi.fn();
+
+                render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={false}
+                        nsfwRevealed={false}
+                        onAudioClick={onAudioClick}
+                    />
+                );
+
+                // Artwork img should be rendered initially
+                const img = screen.getByRole('button').querySelector('img');
+                expect(img).toBeInTheDocument();
+
+                // Simulate image load error
+                fireEvent.error(img!);
+
+                // Should now show music icon fallback instead of broken img
+                expect(screen.getByRole('button').querySelector('img')).not.toBeInTheDocument();
+                // Check for the fallback container with bg-slate-700 class (specific to AudioArtwork fallback)
+                const fallbackContainer = screen
+                    .getByRole('button')
+                    .querySelector('.bg-slate-700.flex.items-center.justify-center');
+                expect(fallbackContainer).toBeInTheDocument();
+                // Verify the music icon is inside the fallback container
+                expect(fallbackContainer?.querySelector('svg')).toBeInTheDocument();
+            });
+        });
+
+        describe('edge cases', () => {
+            it('should return null when both url and previewUrl are empty', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: '',
+                    previewUrl: '',
+                });
+
+                const { container } = render(
+                    <MediaAttachment media={media} isSensitive={false} nsfwRevealed={false} />
+                );
+
+                expect(container.firstChild).toBeNull();
+            });
+
+            it('should handle NSFW audio with missing previewUrl', () => {
+                const media = createMockMedia({
+                    type: 'audio',
+                    url: 'https://example.com/audio.mp3',
+                    previewUrl: undefined,
+                });
+                const onNsfwReveal = vi.fn();
+
+                const { container } = render(
+                    <MediaAttachment
+                        media={media}
+                        isSensitive={true}
+                        nsfwRevealed={false}
+                        onNsfwReveal={onNsfwReveal}
+                    />
+                );
+
+                const button = container.querySelector('button');
+                expect(button).toBeInTheDocument();
+                expect(button).toHaveClass('nsfw-blur-container');
+            });
         });
     });
 });

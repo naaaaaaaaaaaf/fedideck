@@ -17,6 +17,14 @@ vi.mock('../api/mastoClient', () => ({
         },
     })),
     createStatus: vi.fn(),
+    uploadMedia: vi.fn().mockResolvedValue({ id: 'mock-media-id' }),
+    waitForMediaReady: vi.fn().mockResolvedValue(undefined),
+    getStatusSource: vi.fn().mockResolvedValue({
+        id: 'status-123',
+        text: 'Original post text',
+        spoilerText: '',
+    }),
+    editStatus: vi.fn().mockResolvedValue({} as unknown as mastodon.v1.Status),
 }));
 
 // Mock the instanceConfig module
@@ -553,5 +561,511 @@ describe('ComposeModal', () => {
         // Both should have px-3 class for consistent horizontal padding
         expect(accountSelector).toHaveClass('px-3');
         expect(textarea).toHaveClass('px-3');
+    });
+
+    // Edit mode tests
+    const mockEditTarget = {
+        status: {
+            id: 'status-456',
+            account: {
+                id: '123',
+                username: 'testuser',
+                acct: 'testuser@mastodon.social',
+                displayName: 'Test User',
+                avatar: 'https://example.com/avatar.png',
+            },
+            content: '<p>Original post content</p>',
+            text: 'Original post text',
+            visibility: 'public',
+            sensitive: false,
+            spoilerText: '',
+            mediaAttachments: [],
+            createdAt: new Date().toISOString(),
+            uri: 'https://mastodon.social/status/456',
+            url: 'https://mastodon.social/status/456',
+        } as unknown as mastodon.v1.Status,
+        accountSessionId: mockAccount.id,
+    };
+
+    describe('edit mode', () => {
+        it('shows edit header when editTarget is provided', async () => {
+            render(<ComposeModal isOpen={true} onClose={() => {}} editTarget={mockEditTarget} />);
+            // Wait for loading to complete
+            expect(await screen.findByText('投稿を編集')).toBeInTheDocument();
+            expect(screen.queryByText('新しい投稿')).not.toBeInTheDocument();
+        });
+
+        it('prefills content from getStatusSource API', async () => {
+            render(<ComposeModal isOpen={true} onClose={() => {}} editTarget={mockEditTarget} />);
+
+            // Wait for loading to complete
+            await screen.findByText('投稿を編集');
+
+            // Check that content was prefilled
+            const textarea = screen.getByPlaceholderText('今なにしてる？') as HTMLTextAreaElement;
+            expect(textarea.value).toBe('Original post text');
+        });
+
+        it('shows loading state while fetching status source', async () => {
+            // Delay the getStatusSource response
+            const mockGetStatusSource = vi.mocked(mastoClient.getStatusSource);
+            mockGetStatusSource.mockImplementationOnce(
+                () =>
+                    new Promise((resolve) =>
+                        setTimeout(
+                            () => resolve({ id: 'status-456', text: 'Delayed', spoilerText: '' }),
+                            100
+                        )
+                    )
+            );
+
+            render(<ComposeModal isOpen={true} onClose={() => {}} editTarget={mockEditTarget} />);
+
+            // Should show loading state
+            expect(screen.getByText('編集データを読み込み中...')).toBeInTheDocument();
+        });
+
+        it('displays error when getStatusSource fails', async () => {
+            const mockGetStatusSource = vi.mocked(mastoClient.getStatusSource);
+            mockGetStatusSource.mockRejectedValueOnce(new Error('API Error'));
+
+            render(<ComposeModal isOpen={true} onClose={() => {}} editTarget={mockEditTarget} />);
+
+            // Wait for error to appear
+            await waitFor(() => {
+                expect(screen.getByText('編集用データの取得に失敗しました')).toBeInTheDocument();
+            });
+        });
+
+        it('calls editStatus with empty mediaIds when all media is removed', async () => {
+            const user = userEvent.setup();
+            const onStatusEdited = vi.fn();
+            const mockEditStatus = vi.mocked(mastoClient.editStatus);
+            const mockGetStatusSource = vi.mocked(mastoClient.getStatusSource);
+
+            // Create edit target with media
+            const editTargetWithMedia = {
+                status: {
+                    ...mockEditTarget.status,
+                    mediaAttachments: [
+                        {
+                            id: 'media-1',
+                            type: 'image' as const,
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/image-preview.png',
+                            description: 'Test image',
+                        },
+                    ],
+                } as unknown as mastodon.v1.Status,
+                accountSessionId: mockAccount.id,
+            };
+
+            mockGetStatusSource.mockResolvedValueOnce({
+                id: 'status-456',
+                text: 'Post with image',
+                spoilerText: '',
+            });
+
+            render(
+                <ComposeModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    editTarget={editTargetWithMedia}
+                    onStatusEdited={onStatusEdited}
+                />
+            );
+
+            // Wait for loading to complete
+            await screen.findByText('投稿を編集');
+
+            // Wait for media preview to appear
+            await waitFor(() => {
+                expect(
+                    screen.getByRole('button', { name: 'メディア 1 を削除' })
+                ).toBeInTheDocument();
+            });
+
+            // Remove the media
+            await user.click(screen.getByRole('button', { name: 'メディア 1 を削除' }));
+
+            // Submit the edit
+            const submitButton = screen.getByRole('button', { name: /更新/ });
+            await user.click(submitButton);
+
+            await waitFor(() => {
+                expect(mockEditStatus).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'status-456',
+                    expect.objectContaining({
+                        mediaIds: [],
+                    })
+                );
+            });
+        });
+
+        it('sends empty spoilerText when CW is disabled in edit mode', async () => {
+            const user = userEvent.setup();
+            const mockEditStatus = vi.mocked(mastoClient.editStatus);
+            const mockGetStatusSource = vi.mocked(mastoClient.getStatusSource);
+
+            // Create edit target with CW
+            const editTargetWithCW = {
+                status: {
+                    ...mockEditTarget.status,
+                    sensitive: true,
+                    spoilerText: 'Spoiler warning',
+                } as unknown as mastodon.v1.Status,
+                accountSessionId: mockAccount.id,
+            };
+
+            mockGetStatusSource.mockResolvedValueOnce({
+                id: 'status-456',
+                text: 'Hidden content',
+                spoilerText: 'Spoiler warning',
+            });
+
+            render(<ComposeModal isOpen={true} onClose={() => {}} editTarget={editTargetWithCW} />);
+
+            // Wait for loading and CW to appear
+            await screen.findByText('投稿を編集');
+            await waitFor(() => {
+                expect(screen.getByPlaceholderText('警告文を入力...')).toBeInTheDocument();
+            });
+
+            // Clear CW text and toggle off
+            const cwInput = screen.getByPlaceholderText('警告文を入力...');
+            await user.clear(cwInput);
+
+            // Click CW button to disable
+            const cwButton = screen.getByRole('button', { name: /CW/i });
+            await user.click(cwButton);
+
+            // Submit the edit
+            const submitButton = screen.getByRole('button', { name: /更新/ });
+            await user.click(submitButton);
+
+            await waitFor(() => {
+                expect(mockEditStatus).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'status-456',
+                    expect.objectContaining({
+                        spoilerText: '',
+                    })
+                );
+            });
+        });
+
+        it('sends sensitive: false when NSFW is disabled in edit mode', async () => {
+            const user = userEvent.setup();
+            const mockEditStatus = vi.mocked(mastoClient.editStatus);
+            const mockGetStatusSource = vi.mocked(mastoClient.getStatusSource);
+
+            // Create edit target with NSFW media
+            const editTargetWithNSFW = {
+                status: {
+                    ...mockEditTarget.status,
+                    sensitive: true,
+                    mediaAttachments: [
+                        {
+                            id: 'media-1',
+                            type: 'image' as const,
+                            url: 'https://example.com/image.png',
+                            previewUrl: 'https://example.com/image-preview.png',
+                        },
+                    ],
+                } as unknown as mastodon.v1.Status,
+                accountSessionId: mockAccount.id,
+            };
+
+            mockGetStatusSource.mockResolvedValueOnce({
+                id: 'status-456',
+                text: 'NSFW post',
+                spoilerText: '',
+            });
+
+            render(
+                <ComposeModal isOpen={true} onClose={() => {}} editTarget={editTargetWithNSFW} />
+            );
+
+            // Wait for loading to complete
+            await screen.findByText('投稿を編集');
+
+            // Wait for NSFW checkbox to appear
+            await waitFor(() => {
+                const nsfwCheckbox = screen.getByRole('checkbox', { name: /閲覧注意/i });
+                expect(nsfwCheckbox).toBeChecked();
+            });
+
+            // Uncheck NSFW
+            const nsfwCheckbox = screen.getByRole('checkbox', { name: /閲覧注意/i });
+            await user.click(nsfwCheckbox);
+            expect(nsfwCheckbox).not.toBeChecked();
+
+            // Submit the edit
+            const submitButton = screen.getByRole('button', { name: /更新/ });
+            await user.click(submitButton);
+
+            await waitFor(() => {
+                expect(mockEditStatus).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'status-456',
+                    expect.objectContaining({
+                        sensitive: false,
+                    })
+                );
+            });
+        });
+
+        it('displays existing video with correct preview', async () => {
+            const mockGetStatusSource = vi.mocked(mastoClient.getStatusSource);
+
+            const editTargetWithVideo = {
+                status: {
+                    ...mockEditTarget.status,
+                    mediaAttachments: [
+                        {
+                            id: 'video-1',
+                            type: 'video' as const,
+                            url: 'https://example.com/video.mp4',
+                            previewUrl: 'https://example.com/video-preview.png',
+                            description: 'Test video',
+                        },
+                    ],
+                } as unknown as mastodon.v1.Status,
+                accountSessionId: mockAccount.id,
+            };
+
+            mockGetStatusSource.mockResolvedValueOnce({
+                id: 'status-456',
+                text: 'Post with video',
+                spoilerText: '',
+            });
+
+            const { container } = render(
+                <ComposeModal isOpen={true} onClose={() => {}} editTarget={editTargetWithVideo} />
+            );
+
+            // Wait for loading to complete
+            await screen.findByText('投稿を編集');
+
+            // Wait for video preview
+            await waitFor(() => {
+                const videoPreview = container.querySelector('video');
+                expect(videoPreview).toBeInTheDocument();
+                expect(videoPreview).toHaveAttribute('src', 'https://example.com/video.mp4');
+            });
+        });
+
+        it('displays existing audio with correct preview', async () => {
+            const mockGetStatusSource = vi.mocked(mastoClient.getStatusSource);
+
+            const editTargetWithAudio = {
+                status: {
+                    ...mockEditTarget.status,
+                    mediaAttachments: [
+                        {
+                            id: 'audio-1',
+                            type: 'audio' as const,
+                            url: 'https://example.com/audio.mp3',
+                            previewUrl: undefined,
+                            description: 'Test audio',
+                        },
+                    ],
+                } as unknown as mastodon.v1.Status,
+                accountSessionId: mockAccount.id,
+            };
+
+            mockGetStatusSource.mockResolvedValueOnce({
+                id: 'status-456',
+                text: 'Post with audio',
+                spoilerText: '',
+            });
+
+            const { container } = render(
+                <ComposeModal isOpen={true} onClose={() => {}} editTarget={editTargetWithAudio} />
+            );
+
+            // Wait for loading to complete
+            await screen.findByText('投稿を編集');
+
+            // Wait for audio preview
+            await waitFor(() => {
+                const audioPreview = container.querySelector('audio');
+                expect(audioPreview).toBeInTheDocument();
+                expect(audioPreview).toHaveAttribute('src', 'https://example.com/audio.mp3');
+            });
+        });
+
+        it('disables poll button in edit mode', async () => {
+            render(<ComposeModal isOpen={true} onClose={() => {}} editTarget={mockEditTarget} />);
+
+            // Wait for loading to complete
+            await screen.findByText('投稿を編集');
+
+            const pollButton = screen.getByRole('button', { name: /投票/i });
+            expect(pollButton).toBeDisabled();
+        });
+
+        it('disables visibility change in edit mode', async () => {
+            render(<ComposeModal isOpen={true} onClose={() => {}} editTarget={mockEditTarget} />);
+
+            // Wait for loading to complete
+            await screen.findByText('投稿を編集');
+
+            // Try to click on private visibility
+            const privateOption = screen.getByText('フォロワーのみ');
+            await userEvent.click(privateOption);
+
+            // Visibility should remain public (default from editTarget)
+            const publicOption = screen.getByText('公開').closest('label');
+            expect(publicOption).toHaveClass('bg-indigo-500/20');
+        });
+
+        it('locks account selector in edit mode', async () => {
+            const user = userEvent.setup();
+            render(<ComposeModal isOpen={true} onClose={() => {}} editTarget={mockEditTarget} />);
+
+            // Wait for loading to complete
+            await screen.findByText('投稿を編集');
+
+            const accountSelector = screen.getByRole('button', {
+                name: /投稿アカウント:/i,
+            });
+
+            // Account selector should not open dropdown when clicked in edit mode
+            await user.click(accountSelector);
+
+            // No dropdown should appear (no listbox for account selection)
+            const dropdown = screen.queryByRole('listbox', { name: 'アカウント一覧' });
+            expect(dropdown).not.toBeInTheDocument();
+        });
+
+        it('calls onStatusEdited callback after successful edit', async () => {
+            const user = userEvent.setup();
+            const onStatusEdited = vi.fn();
+            const mockEditStatus = vi.mocked(mastoClient.editStatus);
+            const editedStatus = { id: 'status-456' } as unknown as mastodon.v1.Status;
+            mockEditStatus.mockResolvedValueOnce(editedStatus);
+
+            render(
+                <ComposeModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    editTarget={mockEditTarget}
+                    onStatusEdited={onStatusEdited}
+                />
+            );
+
+            // Wait for loading to complete
+            await screen.findByText('投稿を編集');
+
+            // Submit the edit
+            const submitButton = screen.getByRole('button', { name: /更新/ });
+            await user.click(submitButton);
+
+            await waitFor(() => {
+                expect(onStatusEdited).toHaveBeenCalledWith(editedStatus);
+            });
+        });
+    });
+
+    describe('file type detection', () => {
+        it('should detect video file by extension when MIME is empty', async () => {
+            // Create a file without proper MIME type (browsers may not detect it)
+            const videoFile = new File([''], 'video.webm', { type: '' });
+            Object.defineProperty(videoFile, 'name', {
+                value: 'video.webm',
+                writable: false,
+            });
+
+            // user-event v14 applies input accept filtering by default.
+            // We disable it here to verify ComposeModal's extension fallback logic itself.
+            const user = userEvent.setup({ applyAccept: false });
+            const onClose = vi.fn();
+            const { container } = render(<ComposeModal isOpen={true} onClose={onClose} />);
+
+            // Wait for instance config to load and submit button to appear
+            let submitButton: HTMLButtonElement | null = null;
+            await waitFor(
+                () => {
+                    submitButton = container.querySelector('button');
+                    expect(submitButton).toBeInTheDocument();
+                },
+                { timeout: 3000 }
+            );
+
+            const fileInput = container.querySelector('input[type="file"]');
+            expect(fileInput).toBeInTheDocument();
+
+            if (fileInput) {
+                await user.upload(fileInput as HTMLInputElement, videoFile);
+
+                // Video preview should be rendered, not image
+                const videoPreview = container.querySelector('video');
+                expect(videoPreview).toBeInTheDocument();
+            }
+        });
+
+        it('should detect audio file by extension when MIME is application/octet-stream', async () => {
+            const audioFile = new File([''], 'audio.mp3', { type: 'application/octet-stream' });
+            Object.defineProperty(audioFile, 'name', {
+                value: 'audio.mp3',
+                writable: false,
+            });
+
+            const user = userEvent.setup({ applyAccept: false });
+            const onClose = vi.fn();
+            const { container } = render(<ComposeModal isOpen={true} onClose={onClose} />);
+
+            await waitFor(
+                () => {
+                    const button = container.querySelector('button');
+                    expect(button).toBeInTheDocument();
+                },
+                { timeout: 3000 }
+            );
+
+            const fileInput = container.querySelector('input[type="file"]');
+            expect(fileInput).toBeInTheDocument();
+
+            if (fileInput) {
+                await user.upload(fileInput as HTMLInputElement, audioFile);
+
+                // Audio preview should be rendered
+                const audioPreview = container.querySelector('audio');
+                expect(audioPreview).toBeInTheDocument();
+            }
+        });
+
+        it('should detect audio file by extension when MIME is empty string', async () => {
+            const audioFile = new File([''], 'song.wav', { type: '' });
+            Object.defineProperty(audioFile, 'name', {
+                value: 'song.wav',
+                writable: false,
+            });
+
+            const user = userEvent.setup({ applyAccept: false });
+            const onClose = vi.fn();
+            const { container } = render(<ComposeModal isOpen={true} onClose={onClose} />);
+
+            await waitFor(
+                () => {
+                    const button = container.querySelector('button');
+                    expect(button).toBeInTheDocument();
+                },
+                { timeout: 3000 }
+            );
+
+            const fileInput = container.querySelector('input[type="file"]');
+            expect(fileInput).toBeInTheDocument();
+
+            if (fileInput) {
+                await user.upload(fileInput as HTMLInputElement, audioFile);
+
+                // Audio preview should be rendered
+                const audioPreview = container.querySelector('audio');
+                expect(audioPreview).toBeInTheDocument();
+            }
+        });
     });
 });

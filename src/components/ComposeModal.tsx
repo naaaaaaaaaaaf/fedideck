@@ -1,11 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
+import type { mastodon } from 'masto';
 import {
     LuX,
     LuTriangleAlert,
-    LuGlobe,
-    LuLockOpen,
-    LuLock,
-    LuMail,
     LuLoader,
     LuImage,
     LuListOrdered,
@@ -21,10 +18,15 @@ import {
     createStatus,
     uploadMedia,
     updateMediaDescription,
+    waitForMediaReady,
+    getStatusSource,
+    editStatus,
     type CreateStatusParams,
+    type EditStatusParams,
 } from '../api/mastoClient';
 import { getInstanceConfig, getDefaultConfig, type InstanceConfig } from '../api/instanceConfig';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
+import { type Visibility, getVisibilityOptions } from '../utils/statusVisibility';
 import { useTextareaCursor } from '../hooks/useTextareaCursor';
 import { DisplayName } from './DisplayName';
 import { EmojiPalette } from './EmojiPalette';
@@ -40,57 +42,36 @@ export interface ReplyToStatus {
     avatar: string;
 }
 
+/**
+ * Edit target status information
+ * Contains the full Status object for prefilling media/visibility/sensitive
+ */
+export interface EditTarget {
+    status: mastodon.v1.Status;
+    accountSessionId: string;
+}
+
 interface ComposeModalProps {
     isOpen: boolean;
     onClose: () => void;
     replyToStatus?: ReplyToStatus;
     accountId?: string; // If provided (reply), lock to this account; otherwise allow switching
-}
-
-type Visibility = 'public' | 'unlisted' | 'private' | 'direct';
-
-interface VisibilityOption {
-    value: Visibility;
-    label: string;
-    description: string;
-    icon: React.ReactNode;
+    editTarget?: EditTarget;
+    onStatusEdited?: (status: mastodon.v1.Status) => void;
 }
 
 interface MediaFile {
-    file: File;
+    file?: File; // Optional for existing media from edit
     preview: string;
     uploading: boolean;
     uploadedId?: string;
     error?: string;
     altText: string;
+    isExisting?: boolean; // Flag for existing attachments from edit
+    kind?: 'image' | 'video' | 'audio' | 'gifv' | 'unknown'; // Media type for existing attachments
 }
 
-const VISIBILITY_OPTIONS: VisibilityOption[] = [
-    {
-        value: 'public',
-        label: '公開',
-        description: '全員に表示',
-        icon: <LuGlobe aria-hidden="true" />,
-    },
-    {
-        value: 'unlisted',
-        label: '未収載',
-        description: '公開タイムラインに表示しない',
-        icon: <LuLockOpen aria-hidden="true" />,
-    },
-    {
-        value: 'private',
-        label: 'フォロワーのみ',
-        description: 'フォロワーにのみ表示',
-        icon: <LuLock aria-hidden="true" />,
-    },
-    {
-        value: 'direct',
-        label: 'ダイレクト',
-        description: 'メンションしたユーザーにのみ表示',
-        icon: <LuMail aria-hidden="true" />,
-    },
-];
+const VISIBILITY_OPTIONS = getVisibilityOptions();
 
 const MAX_POLL_OPTIONS = 4;
 const MIN_POLL_OPTIONS = 2;
@@ -105,7 +86,14 @@ const POLL_DURATION_OPTIONS = [
     { value: 604800, label: '7日' },
 ];
 
-export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: ComposeModalProps) {
+export function ComposeModal({
+    isOpen,
+    onClose,
+    replyToStatus,
+    accountId,
+    editTarget,
+    onStatusEdited,
+}: ComposeModalProps) {
     const [content, setContent] = useState('');
     const [visibility, setVisibility] = useState<Visibility>('public');
     const [showCW, setShowCW] = useState(false);
@@ -121,6 +109,11 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     const [pollExpiresIn, setPollExpiresIn] = useState(86400); // 1 day default
     const [pollMultiple, setPollMultiple] = useState(false);
 
+    // Edit mode state
+    const isEditMode = Boolean(editTarget);
+    const [isLoadingEditSource, setIsLoadingEditSource] = useState(false);
+    const editSourceRequestRef = useRef<number>(0);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -130,8 +123,8 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     const accounts = useAccountsStore((state) => state.accounts);
     const activeAccountId = useAccountsStore((state) => state.activeAccountId);
 
-    // Whether account switching is allowed (disabled for replies)
-    const isAccountLocked = !!accountId;
+    // Whether account switching is allowed (disabled for replies and edit mode)
+    const isAccountLocked = !!accountId || isEditMode;
 
     // State for selected account (can be changed by user for new posts, but locked for replies)
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
@@ -151,14 +144,17 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     // Textarea cursor hook - pass setContent to update React state
     const { insertAtCursor } = useTextareaCursor(textareaRef, setContent);
 
-    // Get the account to compose from (for replies, use locked accountId; for new posts, use selected)
+    // Get the account to compose from (for replies, use locked accountId; for edit mode, use editTarget's session; for new posts, use selected)
     const composingAccount = isAccountLocked
-        ? accounts.find((a) => a.id === accountId)
+        ? (accounts.find((a) => a.id === accountId) ??
+          (isEditMode && editTarget
+              ? accounts.find((a) => a.id === editTarget.accountSessionId)
+              : undefined))
         : (accounts.find((a) => a.id === selectedAccountId) ??
           accounts.find((a) => a.id === activeAccountId));
 
     const isUploading = mediaFiles.some((m) => m.uploading);
-    const canCloseModal = !isSubmitting && !isUploading;
+    const canCloseModal = !isSubmitting && !isUploading && !isLoadingEditSource;
 
     const { handleKeyDown } = useModalAccessibility({
         isOpen,
@@ -178,12 +174,15 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
     // Reset selected account when modal opens
     useEffect(() => {
         if (isOpen) {
-            // For replies, always use the provided accountId; for new posts, use active account
-            setSelectedAccountId(accountId ?? activeAccountId);
+            // For replies, use accountId; for edit mode, use editTarget's session; for new posts, use active account
+            setSelectedAccountId(
+                accountId ??
+                    (isEditMode && editTarget ? editTarget.accountSessionId : activeAccountId)
+            );
             setShowAccountSelector(false);
             setShowEmojiPalette(false);
         }
-    }, [isOpen, activeAccountId, accountId]);
+    }, [isOpen, activeAccountId, accountId, isEditMode, editTarget]);
 
     // Prefill content with mention when replying
     useEffect(() => {
@@ -192,6 +191,76 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
             setContent(mention);
         }
     }, [replyToStatus, isOpen]);
+
+    // Prefill content for edit mode
+    useEffect(() => {
+        if (!editTarget || !isOpen || !composingAccount) return;
+
+        // Increment request generation for race condition prevention
+        const requestGen = ++editSourceRequestRef.current;
+        setIsLoadingEditSource(true);
+
+        const prefillEdit = async () => {
+            try {
+                const client = getClient(composingAccount);
+                const source = await getStatusSource(client, editTarget.status.id);
+
+                // Ignore stale responses
+                if (requestGen !== editSourceRequestRef.current) return;
+
+                const status = editTarget.status;
+
+                // Set text content from source
+                setContent(source.text);
+
+                // Set CW state explicitly (even if empty, to clear stale state)
+                setCwText(source.spoilerText);
+                setShowCW(!!source.spoilerText);
+
+                // Set visibility (cannot be changed in edit mode, but prefill for display)
+                setVisibility(status.visibility as Visibility);
+
+                // Set sensitive flag
+                setIsSensitive(status.sensitive ?? false);
+
+                // Convert existing media attachments to MediaFile format
+                // Always set mediaFiles to clear stale state from previous edits
+                if (status.mediaAttachments && status.mediaAttachments.length > 0) {
+                    const existingMedia: MediaFile[] = status.mediaAttachments.map((media) => ({
+                        preview: media.url ?? media.previewUrl ?? '',
+                        uploading: false,
+                        uploadedId: media.id,
+                        altText: media.description ?? '',
+                        isExisting: true,
+                        kind: media.type,
+                    }));
+                    setMediaFiles(existingMedia);
+                } else {
+                    setMediaFiles([]);
+                }
+
+                // Poll editing is disabled for first version (product scope decision)
+                // API supports it but resets votes
+            } catch (err) {
+                console.error('Failed to fetch status source for edit:', err);
+                // On error, display error message to user
+                setError('編集用データの取得に失敗しました');
+            } finally {
+                if (requestGen === editSourceRequestRef.current) {
+                    setIsLoadingEditSource(false);
+                }
+            }
+        };
+
+        prefillEdit();
+
+        // Cleanup: invalidate pending requests
+        // Copy ref to local variable for use in cleanup function
+        const ref = editSourceRequestRef;
+        return () => {
+            ref.current++;
+        };
+    }, [editTarget, isOpen, composingAccount]);
 
     // Fetch instance configuration when composing account changes
     useEffect(() => {
@@ -244,6 +313,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         !isOverLimit &&
         !isSubmitting &&
         !isUploading &&
+        !isLoadingEditSource &&
         composingAccount &&
         (!hasMedia || allMediaUploaded) &&
         isPollValid;
@@ -280,6 +350,27 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         setPollOptions(newOptions);
     };
 
+    // Robust file type detection with extension fallback.
+    // MIME is authoritative when available to avoid ambiguous extensions like .webm.
+    // Explicitly check for application/octet-stream and treat as "MIME not available".
+    const isAudioFile = (file: File | undefined) =>
+        file && file.type && file.type !== 'application/octet-stream'
+            ? file.type.startsWith('audio/')
+            : file
+              ? /\.(mp3|m4a|aac|ogg|wav|flac|opus|weba|3gp|3gpp)$/i.test(file.name)
+              : false;
+    const isVideoFile = (file: File | undefined) =>
+        file && file.type && file.type !== 'application/octet-stream'
+            ? file.type.startsWith('video/')
+            : file
+              ? /\.(mp4|webm|mov|m4v)$/i.test(file.name)
+              : false;
+
+    // MediaFile helpers that consider both kind (from existing attachments) and file type
+    const isAudioMedia = (m: MediaFile) => m.kind === 'audio' || (m.file && isAudioFile(m.file));
+    const isVideoMedia = (m: MediaFile) =>
+        m.kind === 'video' || m.kind === 'gifv' || (m.file && isVideoFile(m.file));
+
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || !composingAccount) return;
@@ -290,9 +381,14 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         if (filesToAdd.length === 0) return;
 
         // Check for video - video can only be alone
-        const hasVideo = mediaFiles.some((m) => m.file.type.startsWith('video/'));
-        const newHasVideo = filesToAdd.some((f) => f.type.startsWith('video/'));
+        const hasVideo = mediaFiles.some((m) => isVideoMedia(m));
+        const newHasVideo = filesToAdd.some((f) => isVideoFile(f));
 
+        // Check for audio - audio can only be alone (Mastodon specification)
+        const hasAudio = mediaFiles.some((m) => isAudioMedia(m));
+        const newHasAudio = filesToAdd.some((f) => isAudioFile(f));
+
+        // Video cannot be mixed with other media
         if (hasVideo || (newHasVideo && mediaFiles.length > 0)) {
             setError('動画は他のメディアと同時に添付できません');
             return;
@@ -300,6 +396,23 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
         if (newHasVideo && filesToAdd.length > 1) {
             setError('動画は1つのみ添付できます');
+            return;
+        }
+
+        // Audio cannot be mixed with other media (Mastodon spec)
+        if (hasAudio || (newHasAudio && mediaFiles.length > 0)) {
+            setError('音声は他のメディアと同時に添付できません');
+            return;
+        }
+
+        if (newHasAudio && filesToAdd.length > 1) {
+            setError('音声は1つのみ添付できます');
+            return;
+        }
+
+        // Audio and video cannot be mixed even when both are new
+        if (newHasAudio && newHasVideo) {
+            setError('音声と動画を同時に添付できません');
             return;
         }
 
@@ -375,6 +488,69 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
         try {
             const client = getClient(composingAccount);
+
+            // Edit mode: update existing status
+            if (isEditMode && editTarget) {
+                const editParams: EditStatusParams = {
+                    status: content,
+                };
+
+                // In edit mode, always send spoilerText and sensitive to allow removal
+                editParams.spoilerText = showCW ? cwText.trim() : '';
+                editParams.sensitive = isSensitive;
+
+                // Handle media
+                if (hasMedia && allMediaUploaded) {
+                    // Wait for media processing (new uploads only)
+                    for (const media of mediaFiles) {
+                        if (media.uploadedId && !media.isExisting) {
+                            const needsProcessing =
+                                isAudioFile(media.file) || isVideoFile(media.file);
+                            if (needsProcessing) {
+                                try {
+                                    await waitForMediaReady(client, media.uploadedId);
+                                } catch (err) {
+                                    console.error('Media processing timeout:', err);
+                                    setError('メディアの処理が完了しませんでした');
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
+                    // Update alt text for media that has it
+                    const mediaAttributes: Array<{ id: string; description?: string }> = [];
+                    for (const media of mediaFiles) {
+                        const trimmedAlt = media.altText?.trim() ?? '';
+                        if (media.uploadedId) {
+                            // For existing media, always include in mediaAttributes
+                            if (media.isExisting || trimmedAlt.length > 0) {
+                                mediaAttributes.push({
+                                    id: media.uploadedId,
+                                    description: trimmedAlt.length > 0 ? trimmedAlt : '',
+                                });
+                            }
+                        }
+                    }
+
+                    editParams.mediaIds = mediaFiles.map((m) => m.uploadedId!);
+                    if (mediaAttributes.length > 0) {
+                        editParams.mediaAttributes = mediaAttributes;
+                    }
+                } else if (!hasMedia) {
+                    // Clear all media if none attached
+                    editParams.mediaIds = [];
+                }
+
+                const updatedStatus = await editStatus(client, editTarget.status.id, editParams);
+                onStatusEdited?.(updatedStatus);
+
+                // Reset form and close modal
+                resetFormAndClose();
+                return;
+            }
+
+            // Create mode: create new status
             const params: CreateStatusParams = {
                 status: content,
                 visibility,
@@ -389,6 +565,25 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
             }
 
             if (hasMedia && allMediaUploaded) {
+                // Wait for media processing to complete (only needed for audio/video)
+                // Images are typically ready immediately after upload
+                // Use isAudioFile/isVideoFile for robust detection with extension fallback
+                for (const media of mediaFiles) {
+                    if (media.uploadedId) {
+                        const needsProcessing = isAudioFile(media.file) || isVideoFile(media.file);
+                        if (!needsProcessing) {
+                            continue;
+                        }
+                        try {
+                            await waitForMediaReady(client, media.uploadedId);
+                        } catch (err) {
+                            console.error('Media processing timeout:', err);
+                            setError('メディアの処理が完了しませんでした');
+                            return;
+                        }
+                    }
+                }
+
                 // Update alt text for media that has it
                 for (const media of mediaFiles) {
                     const trimmedAlt = media.altText?.trim() ?? '';
@@ -418,24 +613,8 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
             await createStatus(client, params);
 
-            // Clean up previews
-            mediaFiles.forEach((m) => {
-                if (m.preview) URL.revokeObjectURL(m.preview);
-            });
-
             // Reset form and close modal on success
-            setContent('');
-            setCwText('');
-            setShowCW(false);
-            setVisibility('public');
-            setMediaFiles([]);
-            setIsSensitive(false);
-            setShowPoll(false);
-            setPollOptions(['', '']);
-            setPollExpiresIn(86400);
-            setPollMultiple(false);
-            setShowEmojiPalette(false);
-            onClose();
+            resetFormAndClose();
         } catch (err) {
             console.error('Failed to post status:', err);
             setError(err instanceof Error ? err.message : '投稿に失敗しました');
@@ -444,15 +623,45 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
         }
     };
 
-    const handleClose = () => {
-        if (isSubmitting || isUploading) return;
-
+    const resetFormAndClose = () => {
         // Clean up previews
         mediaFiles.forEach((m) => {
-            if (m.preview) URL.revokeObjectURL(m.preview);
+            // Only revoke URLs that were created locally (not existing media)
+            if (m.preview && !m.isExisting) {
+                URL.revokeObjectURL(m.preview);
+            }
+        });
+
+        // Reset all form state
+        setContent('');
+        setCwText('');
+        setShowCW(false);
+        setVisibility('public');
+        setMediaFiles([]);
+        setIsSensitive(false);
+        setShowPoll(false);
+        setPollOptions(['', '']);
+        setPollExpiresIn(86400);
+        setPollMultiple(false);
+        setShowEmojiPalette(false);
+        setError(null);
+        setIsLoadingEditSource(false);
+        onClose();
+    };
+
+    const handleClose = () => {
+        if (isSubmitting || isUploading || isLoadingEditSource) return;
+
+        // Clean up previews (only locally created URLs)
+        mediaFiles.forEach((m) => {
+            if (m.preview && !m.isExisting) {
+                URL.revokeObjectURL(m.preview);
+            }
         });
         setMediaFiles([]);
         setShowEmojiPalette(false);
+        setIsLoadingEditSource(false);
+        setError(null);
         onClose();
     };
 
@@ -478,10 +687,22 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                 ref={modalRef}
                 className="relative w-full max-w-lg mx-4 bg-slate-900 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden max-h-[90vh] flex flex-col"
             >
+                {/* Loading overlay for edit mode */}
+                {isLoadingEditSource && (
+                    <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center z-10">
+                        <div className="flex flex-col items-center gap-3">
+                            <LuLoader
+                                className="w-8 h-8 text-indigo-400 animate-spin"
+                                aria-hidden="true"
+                            />
+                            <span className="text-slate-300">編集データを読み込み中...</span>
+                        </div>
+                    </div>
+                )}
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
                     <h2 id="compose-modal-title" className="text-lg font-semibold text-slate-100">
-                        {replyToStatus ? '返信' : '新しい投稿'}
+                        {isEditMode ? '投稿を編集' : replyToStatus ? '返信' : '新しい投稿'}
                     </h2>
                     <button
                         ref={closeButtonRef}
@@ -716,14 +937,14 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
                                     : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
-                            aria-label={`画像/動画を追加${
+                            aria-label={`メディアを追加${
                                 hasMedia
                                     ? ` (${mediaFiles.length}/${instanceConfig?.maxMediaAttachments ?? 4})`
                                     : ''
                             }`}
                         >
                             <LuImage className="w-4 h-4" aria-hidden="true" />
-                            画像/動画
+                            画像/動画/音声
                             {hasMedia && (
                                 <span className="text-xs">
                                     ({mediaFiles.length}/{instanceConfig?.maxMediaAttachments ?? 4})
@@ -733,13 +954,14 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
                         <button
                             onClick={togglePoll}
-                            disabled={hasMedia}
+                            disabled={hasMedia || isEditMode}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
                                 showPoll
                                     ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                                     : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                             aria-pressed={showPoll}
+                            title={isEditMode ? '編集中は投票を変更できません' : undefined}
                         >
                             <LuListOrdered className="w-4 h-4" aria-hidden="true" />
                             投票
@@ -750,7 +972,7 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                             type="file"
                             accept={
                                 instanceConfig?.supportedMimeTypes?.join(',') ??
-                                'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm'
+                                getDefaultConfig().supportedMimeTypes.join(',')
                             }
                             multiple
                             onChange={handleFileSelect}
@@ -861,8 +1083,17 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                                     key={index}
                                     className="bg-slate-800 rounded-lg overflow-hidden"
                                 >
-                                    <div className="relative aspect-video">
-                                        {media.file.type.startsWith('video/') ? (
+                                    <div
+                                        className={`relative ${isAudioMedia(media) ? 'p-3' : 'aspect-video'}`}
+                                    >
+                                        {isAudioMedia(media) ? (
+                                            <audio
+                                                src={media.preview}
+                                                controls
+                                                preload="none"
+                                                className="w-full"
+                                            />
+                                        ) : isVideoMedia(media) ? (
                                             <video
                                                 src={media.preview}
                                                 className="w-full h-full object-cover"
@@ -980,23 +1211,31 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
 
                     {/* Visibility selector */}
                     <fieldset className="mt-3">
-                        <legend className="text-sm text-slate-400 mb-2">公開範囲</legend>
+                        <legend className="text-sm text-slate-400 mb-2">
+                            公開範囲
+                            {isEditMode && (
+                                <span className="ml-2 text-xs text-amber-400">
+                                    (編集中は変更できません)
+                                </span>
+                            )}
+                        </legend>
                         <div className="grid grid-cols-2 gap-2">
                             {VISIBILITY_OPTIONS.map((option) => (
                                 <label
                                     key={option.value}
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all ${
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
                                         visibility === option.value
                                             ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
                                             : 'bg-slate-800 text-slate-300 border border-slate-700 hover:border-slate-600'
-                                    }`}
+                                    } ${isEditMode ? 'cursor-default' : 'cursor-pointer'}`}
                                 >
                                     <input
                                         type="radio"
                                         name="visibility"
                                         value={option.value}
                                         checked={visibility === option.value}
-                                        onChange={() => setVisibility(option.value)}
+                                        onChange={() => !isEditMode && setVisibility(option.value)}
+                                        disabled={isEditMode}
                                         className="sr-only"
                                     />
                                     <span className="text-lg">{option.icon}</span>
@@ -1037,16 +1276,28 @@ export function ComposeModal({ isOpen, onClose, replyToStatus, accountId }: Comp
                         className="flex items-center gap-2 px-6 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors"
                         aria-label={
                             isSubmitting
-                                ? '投稿を送信中'
+                                ? isEditMode
+                                    ? '投稿を更新中'
+                                    : '投稿を送信中'
                                 : isUploading
                                   ? 'メディアをアップロード中'
-                                  : '投稿を送信'
+                                  : isEditMode
+                                    ? '投稿を更新'
+                                    : '投稿を送信'
                         }
                     >
-                        {(isSubmitting || isUploading) && (
+                        {(isSubmitting || isUploading || isLoadingEditSource) && (
                             <LuLoader className="w-4 h-4 animate-spin" aria-hidden="true" />
                         )}
-                        {isSubmitting ? '投稿中...' : isUploading ? 'アップロード中...' : '投稿'}
+                        {isSubmitting
+                            ? isEditMode
+                                ? '更新中...'
+                                : '投稿中...'
+                            : isUploading
+                              ? 'アップロード中...'
+                              : isEditMode
+                                ? '更新'
+                                : '投稿'}
                     </button>
                 </div>
             </div>

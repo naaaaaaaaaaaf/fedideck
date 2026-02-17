@@ -5,9 +5,14 @@ import {
     unfavouriteStatus,
     reblogStatus,
     unreblogStatus,
+    deleteStatus,
     getStatusContext,
     fetchAccount,
+    waitForMediaReady,
+    getStatusSource,
+    editStatus,
     type CreateStatusParams,
+    type EditStatusParams,
     type MastoClient,
 } from './mastoClient';
 
@@ -363,5 +368,412 @@ describe('fetchAccount', () => {
         } as unknown as MastoClient;
 
         await expect(fetchAccount(mockClient, '999')).rejects.toThrow('Account not found');
+    });
+});
+
+describe('waitForMediaReady', () => {
+    it('returns when media.url is populated within timeout', async () => {
+        const mockFetch = vi
+            .fn()
+            .mockResolvedValueOnce({ url: null }) // First poll: not ready
+            .mockResolvedValueOnce({ url: null }) // Second poll: not ready
+            .mockResolvedValueOnce({ url: 'https://example.com/media.mp3' }); // Third poll: ready
+        const mockClient = {
+            v1: {
+                media: {
+                    $select: vi.fn().mockReturnValue({
+                        fetch: mockFetch,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        // Use short poll interval (1ms) for fast testing
+        await waitForMediaReady(mockClient, 'media-123', 10000, 1);
+
+        expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('throws timeout error when media never becomes ready', async () => {
+        const mockFetch = vi.fn().mockResolvedValue({ url: null });
+        const mockClient = {
+            v1: {
+                media: {
+                    $select: vi.fn().mockReturnValue({
+                        fetch: mockFetch,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        // Use short timeout and poll interval for fast testing
+        await expect(waitForMediaReady(mockClient, 'media-456', 10, 1)).rejects.toThrow(
+            'メディア処理がタイムアウトしました (mediaId: media-456)'
+        );
+    });
+
+    it('checks media status one final time after deadline expires', async () => {
+        let callCount = 0;
+        const mockFetch = vi.fn().mockImplementation(async () => {
+            callCount++;
+            // Always return null to ensure timeout
+            return Promise.resolve({ url: null });
+        });
+        const mockClient = {
+            v1: {
+                media: {
+                    $select: vi.fn().mockReturnValue({
+                        fetch: mockFetch,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        // Use short timeout and poll interval for fast testing
+        await expect(waitForMediaReady(mockClient, 'media-final-check', 10, 1)).rejects.toThrow(
+            'メディア処理がタイムアウトしました (mediaId: media-final-check)'
+        );
+
+        // The function should have polled at least once before throwing
+        expect(callCount).toBeGreaterThanOrEqual(1);
+    });
+});
+
+describe('deleteStatus', () => {
+    it('calls remove endpoint with correct status ID', async () => {
+        const mockRemove = vi.fn().mockResolvedValue({
+            id: '123',
+            content: '<p>Deleted post</p>',
+        });
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        remove: mockRemove,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await deleteStatus(mockClient, '123');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('123');
+        expect(mockRemove).toHaveBeenCalled();
+        expect(result.id).toBe('123');
+    });
+
+    it('throws 404 error when status not found', async () => {
+        const error = new Error('Record not found');
+        (error as Error & { statusCode?: number }).statusCode = 404;
+        const mockRemove = vi.fn().mockRejectedValue(error);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        remove: mockRemove,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(deleteStatus(mockClient, 'nonexistent')).rejects.toThrow('Record not found');
+    });
+
+    it('throws 403 error when not authorized to delete', async () => {
+        const error = new Error('This action is not allowed');
+        (error as Error & { statusCode?: number }).statusCode = 403;
+        const mockRemove = vi.fn().mockRejectedValue(error);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        remove: mockRemove,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(deleteStatus(mockClient, '456')).rejects.toThrow('This action is not allowed');
+    });
+});
+
+describe('getStatusSource', () => {
+    it('fetches status source with raw text', async () => {
+        const mockSource = {
+            id: '123',
+            text: 'Raw text without HTML',
+            spoilerText: 'CW text',
+        };
+        const mockSourceFetch = vi.fn().mockResolvedValue(mockSource);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        source: {
+                            fetch: mockSourceFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await getStatusSource(mockClient, '123');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('123');
+        expect(mockSourceFetch).toHaveBeenCalled();
+        expect(result.id).toBe('123');
+        expect(result.text).toBe('Raw text without HTML');
+        expect(result.spoilerText).toBe('CW text');
+    });
+
+    it('returns empty text and spoilerText for empty status', async () => {
+        const mockSource = {
+            id: '456',
+            text: '',
+            spoilerText: '',
+        };
+        const mockSourceFetch = vi.fn().mockResolvedValue(mockSource);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        source: {
+                            fetch: mockSourceFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await getStatusSource(mockClient, '456');
+
+        expect(result.text).toBe('');
+        expect(result.spoilerText).toBe('');
+    });
+
+    it('throws error when status not found', async () => {
+        const mockSourceFetch = vi.fn().mockRejectedValue(new Error('Record not found'));
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        source: {
+                            fetch: mockSourceFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(getStatusSource(mockClient, 'nonexistent')).rejects.toThrow(
+            'Record not found'
+        );
+    });
+
+    it('throws error when not authorized to view source', async () => {
+        const error = new Error('This action is not allowed');
+        (error as Error & { statusCode?: number }).statusCode = 403;
+        const mockSourceFetch = vi.fn().mockRejectedValue(error);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        source: {
+                            fetch: mockSourceFetch,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(getStatusSource(mockClient, '789')).rejects.toThrow(
+            'This action is not allowed'
+        );
+    });
+});
+
+describe('editStatus', () => {
+    it('edits a status with minimal params', async () => {
+        const mockResponse = {
+            id: '123',
+            content: '<p>Edited content</p>',
+            text: 'Edited content',
+        };
+        const mockUpdate = vi.fn().mockResolvedValue(mockResponse);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        update: mockUpdate,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const params: EditStatusParams = {
+            status: 'Edited content',
+        };
+
+        const result = await editStatus(mockClient, '123', params);
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('123');
+        expect(mockUpdate).toHaveBeenCalledWith({
+            status: 'Edited content',
+        });
+        expect(result.id).toBe('123');
+    });
+
+    it('edits a status with all params', async () => {
+        const mockResponse = {
+            id: '123',
+            content: '<p>Full edit</p>',
+            spoilerText: 'Updated CW',
+            sensitive: true,
+        };
+        const mockUpdate = vi.fn().mockResolvedValue(mockResponse);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        update: mockUpdate,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const params: EditStatusParams = {
+            status: 'Full edit',
+            spoilerText: 'Updated CW',
+            sensitive: true,
+            language: 'en',
+            mediaIds: ['media1', 'media2'],
+            mediaAttributes: [
+                { id: 'media1', description: 'Alt text 1' },
+                { id: 'media2', description: 'Alt text 2' },
+            ],
+        };
+
+        const result = await editStatus(mockClient, '123', params);
+
+        expect(mockUpdate).toHaveBeenCalledWith({
+            status: 'Full edit',
+            spoilerText: 'Updated CW',
+            sensitive: true,
+            language: 'en',
+            mediaIds: ['media1', 'media2'],
+            mediaAttributes: [
+                { id: 'media1', description: 'Alt text 1' },
+                { id: 'media2', description: 'Alt text 2' },
+            ],
+        });
+        expect(result.sensitive).toBe(true);
+    });
+
+    it('edits spoiler text only', async () => {
+        const mockResponse = {
+            id: '123',
+            content: '<p>Original content</p>',
+            spoilerText: 'New CW',
+        };
+        const mockUpdate = vi.fn().mockResolvedValue(mockResponse);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        update: mockUpdate,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const params: EditStatusParams = {
+            status: 'Original content',
+            spoilerText: 'New CW',
+        };
+
+        await editStatus(mockClient, '123', params);
+
+        expect(mockUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                status: 'Original content',
+                spoilerText: 'New CW',
+            })
+        );
+    });
+
+    it('edits media descriptions', async () => {
+        const mockResponse = {
+            id: '123',
+            mediaAttachments: [{ id: 'media1', description: 'Updated description' }],
+        };
+        const mockUpdate = vi.fn().mockResolvedValue(mockResponse);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        update: mockUpdate,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const params: EditStatusParams = {
+            status: 'Post with media',
+            mediaIds: ['media1'],
+            mediaAttributes: [{ id: 'media1', description: 'Updated description' }],
+        };
+
+        await editStatus(mockClient, '123', params);
+
+        expect(mockUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                mediaIds: ['media1'],
+                mediaAttributes: [{ id: 'media1', description: 'Updated description' }],
+            })
+        );
+    });
+
+    it('throws error when not authorized to edit', async () => {
+        const error = new Error('This action is not allowed');
+        (error as Error & { statusCode?: number }).statusCode = 403;
+        const mockUpdate = vi.fn().mockRejectedValue(error);
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        update: mockUpdate,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const params: EditStatusParams = {
+            status: 'Unauthorized edit',
+        };
+
+        await expect(editStatus(mockClient, '456', params)).rejects.toThrow(
+            'This action is not allowed'
+        );
+    });
+
+    it('throws error when status not found', async () => {
+        const mockUpdate = vi.fn().mockRejectedValue(new Error('Record not found'));
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        update: mockUpdate,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const params: EditStatusParams = {
+            status: 'Edit nonexistent',
+        };
+
+        await expect(editStatus(mockClient, 'nonexistent', params)).rejects.toThrow(
+            'Record not found'
+        );
     });
 });

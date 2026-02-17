@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { StatusCard } from './StatusCard';
 import { formatDate } from '../utils/dateFormat';
 import type { mastodon } from 'masto';
+import type { AccountSession } from '../api/mastoClient';
 
 // Minimal mock status for testing
 const createMockStatus = (overrides: Partial<mastodon.v1.Status> = {}): mastodon.v1.Status => {
@@ -1614,6 +1615,191 @@ describe('StatusCard', () => {
             expect(videos).toHaveLength(2); // Only video and gifv, not image
             expect(videos[0].type).toBe('video');
             expect(videos[1].type).toBe('gifv');
+        });
+    });
+
+    describe('audio interaction', () => {
+        it('should not trigger onStatusClick when interacting with audio controls', () => {
+            const onStatusClick = vi.fn();
+            const status = createMockStatus({
+                content: 'Test status with audio',
+                mediaAttachments: [
+                    {
+                        id: '1',
+                        type: 'audio',
+                        url: 'https://example.com/audio.mp3',
+                        previewUrl: '',
+                        remoteUrl: null,
+                        meta: null,
+                        description: 'Test audio',
+                        blurhash: null,
+                    } as mastodon.v1.MediaAttachment,
+                ],
+            });
+
+            render(<StatusCard status={status} onStatusClick={onStatusClick} />);
+
+            const audioElement = document.querySelector('audio');
+            expect(audioElement).toBeInTheDocument();
+
+            // Click on audio controls should not trigger status click
+            if (audioElement) {
+                audioElement.click();
+            }
+            expect(onStatusClick).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('StatusMenu integration', () => {
+        const mockAccountSession = {
+            id: 'session-1',
+            instanceUrl: 'https://mastodon.social',
+            accessToken: 'test-token',
+            account: {
+                id: '1',
+                username: 'testuser',
+                acct: 'testuser',
+                displayName: 'Test User',
+            },
+        } as unknown as AccountSession;
+
+        it('should render StatusMenu with menu button', () => {
+            const status = createMockStatus();
+            render(<StatusCard status={status} />);
+
+            expect(screen.getByRole('button', { name: 'メニュー' })).toBeInTheDocument();
+        });
+
+        it('should not show delete option when no accountSession', async () => {
+            const user = userEvent.setup();
+            const onStatusDelete = vi.fn();
+            const status = createMockStatus();
+
+            render(<StatusCard status={status} onStatusDelete={onStatusDelete} />);
+
+            const menuButton = screen.getByRole('button', { name: 'メニュー' });
+            await user.click(menuButton);
+
+            // Delete option should not be shown (user is not logged in)
+            expect(screen.queryByText('削除')).not.toBeInTheDocument();
+        });
+
+        it('should not show delete option for other users posts', async () => {
+            const user = userEvent.setup();
+            const onStatusDelete = vi.fn();
+            // Status from a different user
+            const status = createMockStatus({
+                account: {
+                    id: 'other-user',
+                    username: 'otheruser',
+                    acct: 'otheruser',
+                    displayName: 'Other User',
+                } as unknown as mastodon.v1.Account,
+            });
+
+            render(
+                <StatusCard
+                    status={status}
+                    accountSession={mockAccountSession}
+                    onStatusDelete={onStatusDelete}
+                />
+            );
+
+            const menuButton = screen.getByRole('button', { name: 'メニュー' });
+            await user.click(menuButton);
+
+            // Delete option should not be shown (not own post)
+            expect(screen.queryByText('削除')).not.toBeInTheDocument();
+        });
+
+        it('should show delete option for own posts', async () => {
+            const user = userEvent.setup();
+            const onStatusDelete = vi.fn();
+            // Status from the same user as accountSession
+            const status = createMockStatus({
+                account: {
+                    id: '1', // matches mockAccountSession.account.id
+                    username: 'testuser',
+                    acct: 'testuser',
+                    displayName: 'Test User',
+                } as unknown as mastodon.v1.Account,
+            });
+
+            render(
+                <StatusCard
+                    status={status}
+                    accountSession={mockAccountSession}
+                    onStatusDelete={onStatusDelete}
+                />
+            );
+
+            const menuButton = screen.getByRole('button', { name: 'メニュー' });
+            await user.click(menuButton);
+
+            // Delete option should be shown (own post)
+            expect(screen.getByText('削除')).toBeInTheDocument();
+        });
+
+        it('should call onStatusDelete when delete is clicked', async () => {
+            const user = userEvent.setup();
+            const onStatusDelete = vi.fn();
+            const status = createMockStatus({
+                account: {
+                    id: '1',
+                    username: 'testuser',
+                    acct: 'testuser',
+                    displayName: 'Test User',
+                } as unknown as mastodon.v1.Account,
+            });
+
+            render(
+                <StatusCard
+                    status={status}
+                    accountSession={mockAccountSession}
+                    onStatusDelete={onStatusDelete}
+                />
+            );
+
+            const menuButton = screen.getByRole('button', { name: 'メニュー' });
+            await user.click(menuButton);
+
+            const deleteButton = screen.getByText('削除');
+            await user.click(deleteButton);
+
+            expect(onStatusDelete).toHaveBeenCalledWith(expect.objectContaining({ id: '12345' }));
+        });
+    });
+
+    describe('visibility icon', () => {
+        it.each([
+            ['public', '公開'],
+            ['unlisted', '未収載'],
+            ['private', 'フォロワーのみ'],
+            ['direct', 'ダイレクト'],
+        ] as const)('visibility=%s のラベルを表示', (visibility, label) => {
+            render(<StatusCard status={createMockStatus({ visibility })} />);
+            expect(screen.getByLabelText(new RegExp(`公開範囲: ${label}`))).toBeInTheDocument();
+        });
+
+        it('リブログ時は元投稿の公開範囲を使う', () => {
+            const original = createMockStatus({ visibility: 'direct' });
+            const reblog = createMockStatus({ visibility: 'public', reblog: original });
+            render(<StatusCard status={reblog} />);
+            expect(screen.getByLabelText(/公開範囲: ダイレクト/)).toBeInTheDocument();
+        });
+
+        it('visibility不正値でもフォールバック表示する', () => {
+            render(<StatusCard status={createMockStatus({ visibility: 'unknown' as never })} />);
+            expect(screen.getByLabelText(/公開範囲: 不明/)).toBeInTheDocument();
+        });
+
+        it('リンククリックでは onStatusClick が発火しない', async () => {
+            const user = userEvent.setup();
+            const onStatusClick = vi.fn();
+            render(<StatusCard status={createMockStatus()} onStatusClick={onStatusClick} />);
+            const link = screen.getByRole('link', { name: /公開範囲/ });
+            await user.click(link);
+            expect(onStatusClick).not.toHaveBeenCalled();
         });
     });
 });

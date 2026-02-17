@@ -6,6 +6,7 @@ import { useColumnsStore } from '../store/columns';
 import { useAccountsStore } from '../store/accounts';
 import type { ImageViewerImage } from '../components/ImageViewer';
 import type { VideoViewerVideo } from '../types/video';
+import type { AudioViewerTrack } from '../types/audio';
 
 interface ColumnContainerProps {
     onAddColumn?: () => void;
@@ -13,9 +14,12 @@ interface ColumnContainerProps {
     onStatusClick?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
+    onAudioClick?: (tracks: AudioViewerTrack[], index: number) => void;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     onNsfwReveal?: (statusId: string) => void;
     nsfwRevealedStatusIds?: Set<string>;
+    onStatusDelete?: (status: mastodon.v1.Status, accountId: string) => void;
+    onStatusEdit?: (status: mastodon.v1.Status, accountSessionId: string) => void;
 }
 
 export function ColumnContainer({
@@ -24,9 +28,12 @@ export function ColumnContainer({
     onStatusClick,
     onImageClick,
     onVideoClick,
+    onAudioClick,
     onAccountClick,
     onNsfwReveal,
     nsfwRevealedStatusIds,
+    onStatusDelete,
+    onStatusEdit,
 }: ColumnContainerProps) {
     const columns = useColumnsStore((state) => state.columns);
     const removeColumn = useColumnsStore((state) => state.removeColumn);
@@ -50,9 +57,12 @@ export function ColumnContainer({
                     onStatusClick={onStatusClick}
                     onImageClick={onImageClick}
                     onVideoClick={onVideoClick}
+                    onAudioClick={onAudioClick}
                     onAccountClick={onAccountClick}
                     onNsfwReveal={onNsfwReveal}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIds}
+                    onStatusDelete={onStatusDelete}
+                    onStatusEdit={onStatusEdit}
                 />
             ))}
 
@@ -61,10 +71,10 @@ export function ColumnContainer({
                 <div className="flex items-center justify-center w-20 shrink-0 bg-slate-900/30">
                     <button
                         onClick={onAddColumn}
-                        className="w-12 h-12 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600 text-slate-400 hover:text-slate-200 text-2xl transition-all duration-200 hover:scale-105"
+                        className="w-12 h-12 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all duration-200 hover:scale-105"
                         title="カラムを追加"
                     >
-                        <LuPlus />
+                        <LuPlus className="w-6 h-6" />
                     </button>
                 </div>
             )}

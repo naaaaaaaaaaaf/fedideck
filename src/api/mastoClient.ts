@@ -192,6 +192,47 @@ export async function uploadMedia(
 }
 
 /**
+ * Wait for media processing to complete before using it in a status.
+ * Audio/video files may require async processing on the server.
+ *
+ * @param client - Mastodon API client
+ * @param mediaId - ID of the uploaded media attachment
+ * @param timeoutMs - Maximum time to wait in milliseconds (default: 45000ms = 45s)
+ * @param pollIntervalMs - Interval between polling attempts in milliseconds (default: 1000ms)
+ * @throws Error if processing times out
+ *
+ * @remarks
+ * When uploading audio or video via POST /api/v2/media, the server may
+ * process the file asynchronously. We must poll GET /api/v1/media/:id
+ * until the `url` field is populated, indicating processing is complete.
+ */
+export async function waitForMediaReady(
+    client: MastoClient,
+    mediaId: string,
+    timeoutMs = 45000,
+    pollIntervalMs = 1000
+): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+
+    while (true) {
+        const media = await client.v1.media.$select(mediaId).fetch();
+
+        // If url is populated, processing is complete
+        if (media.url) {
+            return;
+        }
+
+        // Check timeout after checking media status to ensure final poll
+        if (Date.now() >= deadline) {
+            throw new Error(`メディア処理がタイムアウトしました (mediaId: ${mediaId})`);
+        }
+
+        // Wait before next poll
+        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+}
+
+/**
  * Update media attachment description (alt text)
  */
 export async function updateMediaDescription(
@@ -301,4 +342,81 @@ export async function fetchAccount(
 ): Promise<mastodon.v1.Account> {
     const account = await client.v1.accounts.$select(accountId).fetch();
     return account;
+}
+
+/**
+ * Delete a status (post)
+ * Only the author of a status can delete it.
+ */
+export async function deleteStatus(
+    client: MastoClient,
+    statusId: string
+): Promise<mastodon.v1.Status> {
+    const status = await client.v1.statuses.$select(statusId).remove();
+    return status;
+}
+
+/**
+ * Status source containing raw text for editing
+ * Mastodon 3.5.0+ API response from /api/v1/statuses/:id/source
+ */
+export interface StatusSource {
+    id: string;
+    text: string;
+    spoilerText: string;
+}
+
+/**
+ * Fetch the source of a status for editing
+ * Returns raw text and spoiler text without HTML formatting
+ * Mastodon 3.5.0+ only
+ */
+export async function getStatusSource(
+    client: MastoClient,
+    statusId: string
+): Promise<StatusSource> {
+    const source = await client.v1.statuses.$select(statusId).source.fetch();
+    return source;
+}
+
+/**
+ * Parameters for editing an existing status
+ * Note: visibility cannot be changed after posting (Mastodon API limitation)
+ */
+export interface EditStatusParams {
+    status: string;
+    spoilerText?: string;
+    sensitive?: boolean;
+    language?: string;
+    mediaIds?: string[];
+    mediaAttributes?: Array<{ id: string; description?: string }>;
+}
+
+/**
+ * Edit an existing status (Mastodon 3.5.0+)
+ * Only the author of a status can edit it.
+ * Note: visibility cannot be changed after posting
+ */
+export async function editStatus(
+    client: MastoClient,
+    statusId: string,
+    params: EditStatusParams
+): Promise<mastodon.v1.Status> {
+    // Build params conditionally to satisfy masto.js types
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const editParams: any = {
+        status: params.status,
+    };
+
+    if (params.spoilerText !== undefined) editParams.spoilerText = params.spoilerText;
+    if (params.sensitive !== undefined) editParams.sensitive = params.sensitive;
+    if (params.language !== undefined) editParams.language = params.language;
+    // Allow empty array to clear all media
+    if (params.mediaIds !== undefined) editParams.mediaIds = params.mediaIds;
+    if (params.mediaAttributes && params.mediaAttributes.length > 0) {
+        editParams.mediaAttributes = params.mediaAttributes;
+    }
+
+    const status = await client.v1.statuses.$select(statusId).update(editParams);
+    return status;
 }

@@ -143,4 +143,38 @@ describe('Sidebar', () => {
             expect(mockRemoveAccount).not.toHaveBeenCalled();
         });
     });
+
+    describe('layout', () => {
+        it('should have overflow-x-hidden on nav container', () => {
+            render(<Sidebar onAddAccount={vi.fn()} onCompose={vi.fn()} />);
+            const nav = screen.getByLabelText('アカウント一覧');
+            expect(nav.classList.contains('overflow-x-hidden')).toBe(true);
+        });
+
+        it('should have centering classes on add account button', () => {
+            render(<Sidebar onAddAccount={vi.fn()} onCompose={vi.fn()} />);
+            const addButton = screen.getByLabelText('アカウントを追加');
+            expect(addButton.classList.contains('flex')).toBe(true);
+            expect(addButton.classList.contains('items-center')).toBe(true);
+            expect(addButton.classList.contains('justify-center')).toBe(true);
+        });
+
+        it('should have flex centering classes on logout button', () => {
+            mockAccounts.push(createMockSession());
+            render(<Sidebar onAddAccount={vi.fn()} onCompose={vi.fn()} />);
+
+            const logoutButton = screen.getByLabelText('Test Userをログアウト');
+            expect(logoutButton.classList.contains('flex')).toBe(true);
+            expect(logoutButton.classList.contains('items-center')).toBe(true);
+            expect(logoutButton.classList.contains('justify-center')).toBe(true);
+        });
+
+        it('should have rounded-lg on avatar container for consistency with timeline', () => {
+            mockAccounts.push(createMockSession());
+            render(<Sidebar onAddAccount={vi.fn()} onCompose={vi.fn()} />);
+
+            const avatarContainer = screen.getByTitle('@testuser@mastodon.social');
+            expect(avatarContainer.classList.contains('rounded-lg')).toBe(true);
+        });
+    });
 });
