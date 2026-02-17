@@ -528,7 +528,8 @@ export function ComposeModal({
     const removeMedia = (localId: string) => {
         setMediaFiles((prev) => {
             const media = prev.find((m) => m.localId === localId);
-            if (media?.preview) {
+            // Only revoke URLs that were created locally (not existing media)
+            if (media?.preview && !media.isExisting) {
                 URL.revokeObjectURL(media.preview);
             }
             return prev.filter((m) => m.localId !== localId);
