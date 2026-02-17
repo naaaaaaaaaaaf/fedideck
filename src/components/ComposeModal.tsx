@@ -61,6 +61,7 @@ interface ComposeModalProps {
 }
 
 interface MediaFile {
+    localId: string; // Unique identifier for stable updates
     file?: File; // Optional for existing media from edit
     preview: string;
     uploading: boolean;
@@ -120,6 +121,9 @@ export function ComposeModal({
     const listboxRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const emojiButtonRef = useRef<HTMLButtonElement>(null);
+    // localId generator for stable media file identification
+    const nextMediaIdRef = useRef(0);
+    const createLocalId = () => `media-${nextMediaIdRef.current++}`;
     const accounts = useAccountsStore((state) => state.accounts);
     const activeAccountId = useAccountsStore((state) => state.activeAccountId);
 
@@ -227,6 +231,7 @@ export function ComposeModal({
                 // Always set mediaFiles to clear stale state from previous edits
                 if (status.mediaAttachments && status.mediaAttachments.length > 0) {
                     const existingMedia: MediaFile[] = status.mediaAttachments.map((media) => ({
+                        localId: createLocalId(),
                         preview: media.url ?? media.previewUrl ?? '',
                         uploading: false,
                         uploadedId: media.id,
@@ -371,14 +376,46 @@ export function ComposeModal({
     const isVideoMedia = (m: MediaFile) =>
         m.kind === 'video' || m.kind === 'gifv' || (m.file && isVideoFile(m.file));
 
-    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || !composingAccount) return;
+    /**
+     * Process files for upload (shared between file picker and clipboard paste)
+     */
+    const processFiles = async (rawFiles: File[], source: 'picker' | 'clipboard') => {
+        if (!composingAccount) return;
+
+        // Poll and media are mutually exclusive
+        if (showPoll) {
+            setError('投票とメディアは同時に添付できません');
+            return;
+        }
+
+        if (isUploading || isSubmitting || isLoadingEditSource) return;
+
+        // Get supported MIME types
+        const supported = new Set(
+            (instanceConfig?.supportedMimeTypes ?? getDefaultConfig().supportedMimeTypes).map((t) =>
+                t.toLowerCase()
+            )
+        );
+
+        // For clipboard, filter to images only
+        const candidates =
+            source === 'clipboard' ? rawFiles.filter((f) => f.type.startsWith('image/')) : rawFiles;
 
         const remainingSlots = (instanceConfig?.maxMediaAttachments ?? 4) - mediaFiles.length;
-        const filesToAdd = Array.from(files).slice(0, remainingSlots);
-
+        const filesToAdd = candidates.slice(0, remainingSlots);
         if (filesToAdd.length === 0) return;
+
+        // Validate MIME types (important for clipboard which bypasses accept attribute)
+        // Note: application/octet-stream is treated as "unknown" and falls back to extension check
+        const unsupported = filesToAdd.find((f) => {
+            // Skip validation for files without proper MIME type detection
+            if (!f.type || f.type === 'application/octet-stream') return false;
+            return !supported.has(f.type.toLowerCase());
+        });
+        if (unsupported) {
+            setError(`未対応のファイル形式です: ${unsupported.type}`);
+            return;
+        }
 
         // Check for video - video can only be alone
         const hasVideo = mediaFiles.some((m) => isVideoMedia(m));
@@ -418,34 +455,34 @@ export function ComposeModal({
 
         const client = getClient(composingAccount);
 
-        // Create preview and add to state
-        const newMediaFiles: MediaFile[] = filesToAdd.map((file) => ({
+        // Create pending media files with stable localId
+        const pending: MediaFile[] = filesToAdd.map((file) => ({
+            localId: createLocalId(),
             file,
             preview: URL.createObjectURL(file),
             uploading: true,
             altText: '',
         }));
 
-        setMediaFiles((prev) => [...prev, ...newMediaFiles]);
+        setMediaFiles((prev) => [...prev, ...pending]);
         setError(null);
 
-        // Upload each file
-        for (let i = 0; i < filesToAdd.length; i++) {
-            const file = filesToAdd[i];
-            const mediaIndex = mediaFiles.length + i;
-
+        // Upload each file and update by localId
+        for (const item of pending) {
             try {
-                const media = await uploadMedia(client, file);
+                const media = await uploadMedia(client, item.file!);
                 setMediaFiles((prev) =>
-                    prev.map((m, idx) =>
-                        idx === mediaIndex ? { ...m, uploading: false, uploadedId: media.id } : m
+                    prev.map((m) =>
+                        m.localId === item.localId
+                            ? { ...m, uploading: false, uploadedId: media.id }
+                            : m
                     )
                 );
             } catch (err) {
                 console.error('Failed to upload media:', err);
                 setMediaFiles((prev) =>
-                    prev.map((m, idx) =>
-                        idx === mediaIndex
+                    prev.map((m) =>
+                        m.localId === item.localId
                             ? {
                                   ...m,
                                   uploading: false,
@@ -459,25 +496,49 @@ export function ComposeModal({
                 );
             }
         }
-
-        // Reset file input
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
     };
 
-    const removeMedia = (index: number) => {
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files ? Array.from(e.target.files) : [];
+        void processFiles(files, 'picker');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    /**
+     * Handle clipboard paste for image uploads
+     */
+    const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+        // Extract files from clipboardData.items (modern API)
+        const fromItems = Array.from(e.clipboardData.items)
+            .filter((i) => i.kind === 'file')
+            .map((i) => i.getAsFile())
+            .filter((f): f is File => f !== null);
+
+        // Fallback to clipboardData.files (legacy)
+        const files = fromItems.length > 0 ? fromItems : Array.from(e.clipboardData.files);
+
+        // Filter to images only
+        const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+
+        // If no images, allow default text paste behavior
+        if (imageFiles.length === 0) return;
+
+        e.preventDefault();
+        void processFiles(imageFiles, 'clipboard');
+    };
+
+    const removeMedia = (localId: string) => {
         setMediaFiles((prev) => {
-            const media = prev[index];
-            if (media.preview) {
+            const media = prev.find((m) => m.localId === localId);
+            if (media?.preview) {
                 URL.revokeObjectURL(media.preview);
             }
-            return prev.filter((_, i) => i !== index);
+            return prev.filter((m) => m.localId !== localId);
         });
     };
 
-    const updateAltText = (index: number, altText: string) => {
-        setMediaFiles((prev) => prev.map((m, i) => (i === index ? { ...m, altText } : m)));
+    const updateAltText = (localId: string, altText: string) => {
+        setMediaFiles((prev) => prev.map((m) => (m.localId === localId ? { ...m, altText } : m)));
     };
 
     const handleSubmit = async () => {
@@ -685,6 +746,7 @@ export function ComposeModal({
             {/* Modal */}
             <div
                 ref={modalRef}
+                onPaste={handlePaste}
                 className="relative w-full max-w-lg mx-4 bg-slate-900 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden max-h-[90vh] flex flex-col"
             >
                 {/* Loading overlay for edit mode */}
@@ -1080,7 +1142,7 @@ export function ComposeModal({
                         <div className="mb-3 space-y-2">
                             {mediaFiles.map((media, index) => (
                                 <div
-                                    key={index}
+                                    key={media.localId}
                                     className="bg-slate-800 rounded-lg overflow-hidden"
                                 >
                                     <div
@@ -1135,7 +1197,7 @@ export function ComposeModal({
 
                                         {/* Remove button */}
                                         <button
-                                            onClick={() => removeMedia(index)}
+                                            onClick={() => removeMedia(media.localId)}
                                             disabled={media.uploading}
                                             className="absolute top-1 right-1 w-6 h-6 bg-black/70 hover:bg-black rounded-full flex items-center justify-center text-white transition-colors disabled:opacity-50"
                                             aria-label={`メディア ${index + 1} を削除`}
@@ -1146,14 +1208,19 @@ export function ComposeModal({
 
                                     {/* Alt text input */}
                                     <div className="p-2 border-t border-slate-700">
-                                        <label htmlFor={`alt-text-${index}`} className="sr-only">
+                                        <label
+                                            htmlFor={`alt-text-${media.localId}`}
+                                            className="sr-only"
+                                        >
                                             メディア {index + 1} の代替テキスト
                                         </label>
                                         <input
-                                            id={`alt-text-${index}`}
+                                            id={`alt-text-${media.localId}`}
                                             type="text"
                                             value={media.altText}
-                                            onChange={(e) => updateAltText(index, e.target.value)}
+                                            onChange={(e) =>
+                                                updateAltText(media.localId, e.target.value)
+                                            }
                                             placeholder="代替テキストを追加..."
                                             disabled={media.uploading}
                                             className="w-full px-2 py-1 text-sm bg-slate-900 border border-slate-700 rounded text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
