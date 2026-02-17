@@ -1,7 +1,7 @@
 {
     "name": "fedideck",
     "private": true,
-    "version": "0.2026.02.10",
+    "version": "0.2026.02.17",
     "type": "module",
     "scripts": {
         "dev": "vite",
