@@ -517,14 +517,12 @@ export function ComposeModal({
         // Fallback to clipboardData.files (legacy)
         const files = fromItems.length > 0 ? fromItems : Array.from(e.clipboardData.files);
 
-        // Filter to images only
-        const imageFiles = files.filter((f) => f.type.startsWith('image/'));
-
         // If no images, allow default text paste behavior
-        if (imageFiles.length === 0) return;
+        const hasImages = files.some((f) => f.type.startsWith('image/'));
+        if (!hasImages) return;
 
         e.preventDefault();
-        void processFiles(imageFiles, 'clipboard');
+        void processFiles(files, 'clipboard');
     };
 
     const removeMedia = (localId: string) => {
