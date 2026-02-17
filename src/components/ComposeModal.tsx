@@ -233,7 +233,7 @@ export function ComposeModal({
                 // Always set mediaFiles to clear stale state from previous edits
                 if (status.mediaAttachments && status.mediaAttachments.length > 0) {
                     const existingMedia: MediaFile[] = status.mediaAttachments.map((media) => ({
-                        localId: createLocalId(),
+                        localId: `media-${media.id}`, // Use uploadedId for deterministic stable ID
                         preview: media.url ?? media.previewUrl ?? '',
                         uploading: false,
                         uploadedId: media.id,
