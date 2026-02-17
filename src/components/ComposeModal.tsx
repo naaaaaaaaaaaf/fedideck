@@ -545,6 +545,10 @@ export function ComposeModal({
      * Handle clipboard paste for image uploads
      */
     const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+        // Only handle image paste when focus is on the main content textarea
+        // This allows normal text paste in other input fields (CW, alt text, etc.)
+        if (e.target !== textareaRef.current) return;
+
         // Extract files from clipboardData.items (modern API)
         const fromItems = Array.from(e.clipboardData.items)
             .filter((i) => i.kind === 'file')

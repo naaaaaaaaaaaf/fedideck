@@ -1101,21 +1101,17 @@ describe('ComposeModal', () => {
                 id: 'paste-media-id',
             } as unknown as mastodon.v1.MediaAttachment);
 
-            const { container } = render(<ComposeModal isOpen={true} onClose={() => {}} />);
+            render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
-            // Wait for modal to render
-            await screen.findByRole('button', { name: /投稿を送信/ });
+            // Wait for modal to render and get the textarea
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
 
             // Create a mock image file
             const imageFile = new File(['image-data'], 'paste.png', { type: 'image/png' });
 
-            // Get the modal container and fire paste event
-            const modalContent = container.querySelector('.relative.w-full.max-w-lg');
-            expect(modalContent).toBeInTheDocument();
-
-            // Simulate paste event using fireEvent
+            // Simulate paste event on textarea
             const clipboardData = makeClipboardData([imageFile], true);
-            fireEvent.paste(modalContent!, { clipboardData });
+            fireEvent.paste(textarea, { clipboardData });
 
             // Verify upload was called
             await waitFor(() => {
@@ -1130,18 +1126,15 @@ describe('ComposeModal', () => {
                 id: 'fallback-media-id',
             } as unknown as mastodon.v1.MediaAttachment);
 
-            const { container } = render(<ComposeModal isOpen={true} onClose={() => {}} />);
+            render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
-            await screen.findByRole('button', { name: /投稿を送信/ });
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
 
             const imageFile = new File(['image-data'], 'fallback.png', { type: 'image/png' });
 
-            const modalContent = container.querySelector('.relative.w-full.max-w-lg');
-            expect(modalContent).toBeInTheDocument();
-
             // Use items = false to test fallback path
             const clipboardData = makeClipboardData([imageFile], false);
-            fireEvent.paste(modalContent!, { clipboardData });
+            fireEvent.paste(textarea, { clipboardData });
 
             await waitFor(() => {
                 expect(mockUploadMedia).toHaveBeenCalledWith(expect.anything(), imageFile);
@@ -1153,19 +1146,18 @@ describe('ComposeModal', () => {
             const mockUploadMedia = vi.mocked(mastoClient.uploadMedia);
             mockUploadMedia.mockClear();
 
-            const { container } = render(<ComposeModal isOpen={true} onClose={() => {}} />);
+            render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
-            await screen.findByRole('button', { name: /投稿を送信/ });
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
 
             // Enable poll
             const pollButton = screen.getByRole('button', { name: /投票/i });
             await user.click(pollButton);
 
-            // Try to paste an image
+            // Try to paste an image on textarea
             const imageFile = new File(['image-data'], 'poll-test.png', { type: 'image/png' });
-            const modalContent = container.querySelector('.relative.w-full.max-w-lg');
             const clipboardData = makeClipboardData([imageFile], true);
-            fireEvent.paste(modalContent!, { clipboardData });
+            fireEvent.paste(textarea, { clipboardData });
 
             // Upload should NOT be called
             expect(mockUploadMedia).not.toHaveBeenCalled();
@@ -1207,16 +1199,15 @@ describe('ComposeModal', () => {
             const mockUploadMedia = vi.mocked(mastoClient.uploadMedia);
             mockUploadMedia.mockClear();
 
-            const { container } = render(<ComposeModal isOpen={true} onClose={() => {}} />);
+            render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
-            await screen.findByRole('button', { name: /投稿を送信/ });
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
 
             // Create a file with unsupported MIME type (e.g., image/bmp which is not in supportedMimeTypes)
             const unsupportedFile = new File(['image-data'], 'test.bmp', { type: 'image/bmp' });
 
-            const modalContent = container.querySelector('.relative.w-full.max-w-lg');
             const clipboardData = makeClipboardData([unsupportedFile], true);
-            fireEvent.paste(modalContent!, { clipboardData });
+            fireEvent.paste(textarea, { clipboardData });
 
             // Upload should NOT be called
             expect(mockUploadMedia).not.toHaveBeenCalled();
@@ -1231,16 +1222,15 @@ describe('ComposeModal', () => {
             const mockUploadMedia = vi.mocked(mastoClient.uploadMedia);
             mockUploadMedia.mockClear();
 
-            const { container } = render(<ComposeModal isOpen={true} onClose={() => {}} />);
+            render(<ComposeModal isOpen={true} onClose={() => {}} />);
 
-            await screen.findByRole('button', { name: /投稿を送信/ });
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
 
             // Create a non-image file (video)
             const videoFile = new File(['video-data'], 'video.mp4', { type: 'video/mp4' });
 
-            const modalContent = container.querySelector('.relative.w-full.max-w-lg');
             const clipboardData = makeClipboardData([videoFile], true);
-            fireEvent.paste(modalContent!, { clipboardData });
+            fireEvent.paste(textarea, { clipboardData });
 
             // Upload should NOT be called (video is filtered out from clipboard paste)
             expect(mockUploadMedia).not.toHaveBeenCalled();
