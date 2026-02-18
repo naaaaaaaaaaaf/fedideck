@@ -281,22 +281,31 @@ export function StatusDetailModal({
         setIsLoadingContext(false);
     }, [status?.id, isOpen]);
 
-    // Sync local state when status changes or modal opens
+    // Sync favourite/reblog state when status id changes or modal opens
+    // Separate from poll sync to avoid resetting selectedPollOptions on unrelated updates
     useEffect(() => {
         if (displayStatus && isOpen) {
             setLocalFavourited(displayStatus.favourited ?? false);
             setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
             setLocalReblogged(displayStatus.reblogged ?? false);
             setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
-            // Sync poll state
-            setLocalPoll(displayStatus.poll ?? null);
-            setSelectedPollOptions(new Set());
             // Only reset NSFW state if not controlled by parent
             if (!isControlled) {
                 setLocalNsfwRevealed(false);
             }
         }
-    }, [displayStatus, isOpen, isControlled]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [displayStatus?.id, isOpen, isControlled]);
+
+    // Sync localPoll when displayStatus.poll changes (separate effect to avoid reset issues)
+    useEffect(() => {
+        if (displayStatus && isOpen) {
+            setLocalPoll(displayStatus.poll ?? null);
+            // Reset selection only when poll actually changes
+            setSelectedPollOptions(new Set());
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [displayStatus?.id, displayStatus?.poll?.id, isOpen]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
@@ -803,7 +812,8 @@ export function StatusDetailModal({
                                 const canVote = !!accountSession && !localPoll.expired && !hasVoted;
 
                                 return (
-                                    <div className="mb-4 p-4 bg-slate-800/50 rounded-xl">
+                                    <fieldset className="mb-4 p-4 bg-slate-800/50 rounded-xl">
+                                        <legend className="sr-only">投票</legend>
                                         {canVote ? (
                                             // Voting UI
                                             <>
@@ -823,6 +833,7 @@ export function StatusDetailModal({
                                                             onChange={() =>
                                                                 handlePollOptionToggle(i)
                                                             }
+                                                            disabled={pollLoading}
                                                             className="w-4 h-4 accent-indigo-500"
                                                         />
                                                         <span className="text-slate-200">
@@ -837,6 +848,7 @@ export function StatusDetailModal({
                                                         selectedPollOptions.size === 0 ||
                                                         pollLoading
                                                     }
+                                                    aria-busy={pollLoading}
                                                     className={`mt-3 px-4 py-2 text-sm rounded-lg transition-colors ${
                                                         selectedPollOptions.size === 0 ||
                                                         pollLoading
@@ -901,7 +913,7 @@ export function StatusDetailModal({
                                                 </div>
                                             </>
                                         )}
-                                    </div>
+                                    </fieldset>
                                 );
                             })()}
 

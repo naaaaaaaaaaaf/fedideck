@@ -80,7 +80,9 @@ export const StatusCard = React.memo(function StatusCard({
     const [localReblogsCount, setLocalReblogsCount] = useState(displayStatus.reblogsCount ?? 0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
-    // Poll voting state
+    // Poll voting state - use localPoll to immediately reflect vote changes
+    // This prevents double-vote vulnerability when onStatusUpdate is delayed/undefined
+    const [localPoll, setLocalPoll] = useState<mastodon.v1.Poll | null>(null);
     const [pollLoading, setPollLoading] = useState(false);
     const [selectedPollOptions, setSelectedPollOptions] = useState<Set<number>>(new Set());
 
@@ -142,12 +144,20 @@ export const StatusCard = React.memo(function StatusCard({
         }
     }, [isLoading.favourite, isLoading.reblog]);
 
+    // Sync localPoll when displayStatus.poll changes (streaming updates, navigation)
+    // This prevents double-vote vulnerability by maintaining local poll state
+    useEffect(() => {
+        setLocalPoll(displayStatus.poll ?? null);
+        // Reset selection when poll changes (different poll or status)
+        setSelectedPollOptions(new Set());
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [displayStatus.id, displayStatus.poll?.id]);
+
     // Note: nsfwRevealed state is automatically reset when status changes
     // because StatusCard is rendered with key={status.id} in parent
 
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
-    const poll = displayStatus.poll;
 
     // Convert image attachments to ImageViewerImage format (memoized)
     // Use displayStatus.mediaAttachments as dependency for stable reference
@@ -285,7 +295,7 @@ export const StatusCard = React.memo(function StatusCard({
 
     // Poll voting handlers
     const handlePollOptionToggle = (index: number) => {
-        if (!poll?.multiple) {
+        if (!localPoll?.multiple) {
             // Single selection: replace
             setSelectedPollOptions(new Set([index]));
         } else {
@@ -303,15 +313,16 @@ export const StatusCard = React.memo(function StatusCard({
     };
 
     const handlePollVote = async () => {
-        if (!accountSession || !poll || pollLoading || selectedPollOptions.size === 0) return;
+        if (!accountSession || !localPoll || pollLoading || selectedPollOptions.size === 0) return;
 
         setPollLoading(true);
         try {
             const client: MastoClient = getClient(accountSession);
             const choices = Array.from(selectedPollOptions);
-            const updatedPoll = await votePoll(client, poll.id, choices);
+            const updatedPoll = await votePoll(client, localPoll.id, choices);
 
-            // Clear selection after voting
+            // Update localPoll immediately for UI display (prevents double-vote)
+            setLocalPoll(updatedPoll);
             setSelectedPollOptions(new Set());
 
             // Update parent with the new poll data
@@ -628,30 +639,36 @@ export const StatusCard = React.memo(function StatusCard({
                     )}
 
                     {/* Poll - safely check existence and options */}
-                    {poll &&
-                        poll.options &&
-                        poll.options.length > 0 &&
+                    {localPoll &&
+                        localPoll.options &&
+                        localPoll.options.length > 0 &&
                         (() => {
                             // Check if user can vote (poll.voted is optional)
                             const hasVoted =
-                                poll.voted === true || (poll.ownVotes?.length ?? 0) > 0;
-                            const canVote = !!accountSession && !poll.expired && !hasVoted;
+                                localPoll.voted === true || (localPoll.ownVotes?.length ?? 0) > 0;
+                            const canVote = !!accountSession && !localPoll.expired && !hasVoted;
 
                             return (
-                                <div className="mt-3 p-3 bg-slate-800/50 rounded-lg">
+                                <fieldset className="mt-3 p-3 bg-slate-800/50 rounded-lg">
+                                    <legend className="sr-only">投票</legend>
                                     {canVote ? (
                                         // Voting UI
                                         <>
-                                            {poll.options.map((option, i) => (
+                                            {localPoll.options.map((option, i) => (
                                                 <label
-                                                    key={`${poll.id}-${i}`}
+                                                    key={`${localPoll.id}-${i}`}
                                                     className="flex items-center gap-2 mb-2 last:mb-0 cursor-pointer hover:bg-slate-700/30 p-2 rounded"
                                                 >
                                                     <input
-                                                        type={poll.multiple ? 'checkbox' : 'radio'}
-                                                        name={`poll-${poll.id}`}
+                                                        type={
+                                                            localPoll.multiple
+                                                                ? 'checkbox'
+                                                                : 'radio'
+                                                        }
+                                                        name={`poll-${localPoll.id}`}
                                                         checked={selectedPollOptions.has(i)}
                                                         onChange={() => handlePollOptionToggle(i)}
+                                                        disabled={pollLoading}
                                                         className="w-4 h-4 accent-indigo-500"
                                                     />
                                                     <span className="text-sm">{option.title}</span>
@@ -663,6 +680,7 @@ export const StatusCard = React.memo(function StatusCard({
                                                 disabled={
                                                     selectedPollOptions.size === 0 || pollLoading
                                                 }
+                                                aria-busy={pollLoading}
                                                 className={`mt-2 px-4 py-1.5 text-sm rounded-lg transition-colors ${
                                                     selectedPollOptions.size === 0 || pollLoading
                                                         ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
@@ -675,8 +693,8 @@ export const StatusCard = React.memo(function StatusCard({
                                     ) : (
                                         // Results UI
                                         <>
-                                            {poll.options.map((option, i) => {
-                                                const votesCount = poll.votesCount ?? 0;
+                                            {localPoll.options.map((option, i) => {
+                                                const votesCount = localPoll.votesCount ?? 0;
                                                 const percentage =
                                                     votesCount > 0
                                                         ? Math.round(
@@ -686,10 +704,10 @@ export const StatusCard = React.memo(function StatusCard({
                                                           )
                                                         : 0;
                                                 const isOwnVote =
-                                                    poll.ownVotes?.includes(i) ?? false;
+                                                    localPoll.ownVotes?.includes(i) ?? false;
                                                 return (
                                                     <div
-                                                        key={`${poll.id}-${i}`}
+                                                        key={`${localPoll.id}-${i}`}
                                                         className="mb-2 last:mb-0"
                                                     >
                                                         <div className="flex justify-between text-sm mb-1">
@@ -719,11 +737,12 @@ export const StatusCard = React.memo(function StatusCard({
                                                 );
                                             })}
                                             <div className="text-xs text-slate-400 mt-2">
-                                                {poll.votesCount ?? 0}票{poll.expired && ' · 終了'}
+                                                {localPoll.votesCount ?? 0}票
+                                                {localPoll.expired && ' · 終了'}
                                             </div>
                                         </>
                                     )}
-                                </div>
+                                </fieldset>
                             );
                         })()}
 
