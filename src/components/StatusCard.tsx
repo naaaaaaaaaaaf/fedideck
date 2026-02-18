@@ -15,6 +15,7 @@ import {
     unfavouriteStatus,
     reblogStatus,
     unreblogStatus,
+    votePoll,
 } from '../api/mastoClient';
 import { formatDate } from '../utils/dateFormat';
 import { getVisibilityMeta } from '../utils/statusVisibility';
@@ -78,6 +79,10 @@ export const StatusCard = React.memo(function StatusCard({
     const [localReblogged, setLocalReblogged] = useState(displayStatus.reblogged ?? false);
     const [localReblogsCount, setLocalReblogsCount] = useState(displayStatus.reblogsCount ?? 0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
+
+    // Poll voting state
+    const [pollLoading, setPollLoading] = useState(false);
+    const [selectedPollOptions, setSelectedPollOptions] = useState<Set<number>>(new Set());
 
     // NSFW state:
     // - onNsfwReveal provided: controlled mode, uses isNsfwRevealed from parent
@@ -278,17 +283,60 @@ export const StatusCard = React.memo(function StatusCard({
     const canReblog =
         displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
 
+    // Poll voting handlers
+    const handlePollOptionToggle = useCallback(
+        (index: number) => {
+            if (!poll?.multiple) {
+                // Single selection: replace
+                setSelectedPollOptions(new Set([index]));
+            } else {
+                // Multiple selection: toggle
+                setSelectedPollOptions((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(index)) {
+                        next.delete(index);
+                    } else {
+                        next.add(index);
+                    }
+                    return next;
+                });
+            }
+        },
+        [poll?.multiple]
+    );
+
+    const handlePollVote = async () => {
+        if (!accountSession || !poll || pollLoading || selectedPollOptions.size === 0) return;
+
+        setPollLoading(true);
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const choices = Array.from(selectedPollOptions);
+            const updatedPoll = await votePoll(client, poll.id, choices);
+
+            // Clear selection after voting
+            setSelectedPollOptions(new Set());
+
+            // Update parent with the new poll data
+            const updatedStatus: mastodon.v1.Status = {
+                ...displayStatus,
+                poll: updatedPoll,
+            };
+            onStatusUpdate?.(updatedStatus);
+        } catch (error) {
+            console.error('Failed to vote on poll:', error);
+        } finally {
+            setPollLoading(false);
+        }
+    };
+
     // Handle card click to open detail modal
     const handleCardClick = (e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
         // Ignore clicks on interactive elements
-        if (
-            target.closest('a') ||
-            target.closest('button') ||
-            target.closest('video') ||
-            target.closest('audio') ||
-            target.closest('summary')
-        ) {
+        const interactiveSelector =
+            'a, button, input, label, select, textarea, video, audio, summary, [role="button"]';
+        if (target.closest(interactiveSelector)) {
             return;
         }
         openStatusDetail();
@@ -299,13 +347,9 @@ export const StatusCard = React.memo(function StatusCard({
         if (e.key === 'Enter' || e.key === ' ') {
             const target = e.target as HTMLElement;
             // Ignore keyboard events on interactive elements
-            if (
-                target.closest('a') ||
-                target.closest('button') ||
-                target.closest('video') ||
-                target.closest('audio') ||
-                target.closest('summary')
-            ) {
+            const interactiveSelector =
+                'a, button, input, label, select, textarea, video, audio, summary, [role="button"]';
+            if (target.closest(interactiveSelector)) {
                 return;
             }
             e.preventDefault();
@@ -587,34 +631,104 @@ export const StatusCard = React.memo(function StatusCard({
                     )}
 
                     {/* Poll - safely check existence and options */}
-                    {poll && poll.options && poll.options.length > 0 && (
-                        <div className="mt-3 p-3 bg-slate-800/50 rounded-lg">
-                            {poll.options.map((option, i) => {
-                                const votesCount = poll.votesCount ?? 0;
-                                const percentage =
-                                    votesCount > 0
-                                        ? Math.round(((option.votesCount ?? 0) / votesCount) * 100)
-                                        : 0;
-                                return (
-                                    <div key={`${poll.id}-${i}`} className="mb-2 last:mb-0">
-                                        <div className="flex justify-between text-sm mb-1">
-                                            <span>{option.title}</span>
-                                            <span className="text-slate-400">{percentage}%</span>
-                                        </div>
-                                        <div className="h-2 bg-slate-700 rounded overflow-hidden">
-                                            <div
-                                                className="h-full bg-indigo-500 transition-all"
-                                                style={{ width: `${percentage}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            <div className="text-xs text-slate-400 mt-2">
-                                {poll.votesCount ?? 0}票{poll.expired && ' · 終了'}
-                            </div>
-                        </div>
-                    )}
+                    {poll &&
+                        poll.options &&
+                        poll.options.length > 0 &&
+                        (() => {
+                            // Check if user can vote (poll.voted is optional)
+                            const hasVoted =
+                                poll.voted === true || (poll.ownVotes?.length ?? 0) > 0;
+                            const canVote = !!accountSession && !poll.expired && !hasVoted;
+
+                            return (
+                                <div className="mt-3 p-3 bg-slate-800/50 rounded-lg">
+                                    {canVote ? (
+                                        // Voting UI
+                                        <>
+                                            {poll.options.map((option, i) => (
+                                                <label
+                                                    key={`${poll.id}-${i}`}
+                                                    className="flex items-center gap-2 mb-2 last:mb-0 cursor-pointer hover:bg-slate-700/30 p-2 rounded"
+                                                >
+                                                    <input
+                                                        type={poll.multiple ? 'checkbox' : 'radio'}
+                                                        name={`poll-${poll.id}`}
+                                                        checked={selectedPollOptions.has(i)}
+                                                        onChange={() => handlePollOptionToggle(i)}
+                                                        className="w-4 h-4 accent-indigo-500"
+                                                    />
+                                                    <span className="text-sm">{option.title}</span>
+                                                </label>
+                                            ))}
+                                            <button
+                                                type="button"
+                                                onClick={handlePollVote}
+                                                disabled={
+                                                    selectedPollOptions.size === 0 || pollLoading
+                                                }
+                                                className={`mt-2 px-4 py-1.5 text-sm rounded-lg transition-colors ${
+                                                    selectedPollOptions.size === 0 || pollLoading
+                                                        ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                                        : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                                                }`}
+                                            >
+                                                {pollLoading ? '投票中...' : '投票'}
+                                            </button>
+                                        </>
+                                    ) : (
+                                        // Results UI
+                                        <>
+                                            {poll.options.map((option, i) => {
+                                                const votesCount = poll.votesCount ?? 0;
+                                                const percentage =
+                                                    votesCount > 0
+                                                        ? Math.round(
+                                                              ((option.votesCount ?? 0) /
+                                                                  votesCount) *
+                                                                  100
+                                                          )
+                                                        : 0;
+                                                const isOwnVote =
+                                                    poll.ownVotes?.includes(i) ?? false;
+                                                return (
+                                                    <div
+                                                        key={`${poll.id}-${i}`}
+                                                        className="mb-2 last:mb-0"
+                                                    >
+                                                        <div className="flex justify-between text-sm mb-1">
+                                                            <span>
+                                                                {isOwnVote && (
+                                                                    <span className="text-indigo-400 mr-1">
+                                                                        ✓
+                                                                    </span>
+                                                                )}
+                                                                {option.title}
+                                                            </span>
+                                                            <span className="text-slate-400">
+                                                                {percentage}%
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-2 bg-slate-700 rounded overflow-hidden">
+                                                            <div
+                                                                className={`h-full transition-all ${
+                                                                    isOwnVote
+                                                                        ? 'bg-indigo-400'
+                                                                        : 'bg-indigo-500'
+                                                                }`}
+                                                                style={{ width: `${percentage}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            <div className="text-xs text-slate-400 mt-2">
+                                                {poll.votesCount ?? 0}票{poll.expired && ' · 終了'}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        })()}
 
                     {/* Action bar */}
                     <div className="flex items-center gap-2 mt-1 text-slate-400">
