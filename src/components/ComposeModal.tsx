@@ -580,7 +580,33 @@ export function ComposeModal({
         setMediaFiles((prev) => prev.map((m) => (m.localId === localId ? { ...m, altText } : m)));
     };
 
-    const handleSubmit = async () => {
+    const resetFormAndClose = useCallback(() => {
+        // Clean up previews
+        mediaFiles.forEach((m) => {
+            // Only revoke URLs that were created locally (not existing media)
+            if (m.preview && !m.isExisting) {
+                URL.revokeObjectURL(m.preview);
+            }
+        });
+
+        // Reset all form state
+        setContent('');
+        setCwText('');
+        setShowCW(false);
+        setVisibility('public');
+        setMediaFiles([]);
+        setIsSensitive(false);
+        setShowPoll(false);
+        setPollOptions(['', '']);
+        setPollExpiresIn(86400);
+        setPollMultiple(false);
+        setShowEmojiPalette(false);
+        setError(null);
+        setIsLoadingEditSource(false);
+        onClose();
+    }, [mediaFiles, onClose]);
+
+    const handleSubmit = useCallback(async () => {
         if (!canSubmit || !composingAccount) return;
 
         setIsSubmitting(true);
@@ -721,33 +747,27 @@ export function ComposeModal({
         } finally {
             setIsSubmitting(false);
         }
-    };
-
-    const resetFormAndClose = () => {
-        // Clean up previews
-        mediaFiles.forEach((m) => {
-            // Only revoke URLs that were created locally (not existing media)
-            if (m.preview && !m.isExisting) {
-                URL.revokeObjectURL(m.preview);
-            }
-        });
-
-        // Reset all form state
-        setContent('');
-        setCwText('');
-        setShowCW(false);
-        setVisibility('public');
-        setMediaFiles([]);
-        setIsSensitive(false);
-        setShowPoll(false);
-        setPollOptions(['', '']);
-        setPollExpiresIn(86400);
-        setPollMultiple(false);
-        setShowEmojiPalette(false);
-        setError(null);
-        setIsLoadingEditSource(false);
-        onClose();
-    };
+    }, [
+        canSubmit,
+        composingAccount,
+        isEditMode,
+        editTarget,
+        showCW,
+        cwText,
+        isSensitive,
+        hasMedia,
+        allMediaUploaded,
+        mediaFiles,
+        onStatusEdited,
+        resetFormAndClose,
+        content,
+        visibility,
+        replyToStatus,
+        showPoll,
+        validPollOptions,
+        pollExpiresIn,
+        pollMultiple,
+    ]);
 
     const handleClose = () => {
         if (isSubmitting || isUploading || isLoadingEditSource) return;
