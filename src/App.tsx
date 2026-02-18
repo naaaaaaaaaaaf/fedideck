@@ -396,21 +396,21 @@ function App() {
                 accountSession={profileAccountSession}
             />
             <ImageViewer
-                key={imageViewerKey}
+                key={`image-viewer-${imageViewerKey}`}
                 isOpen={isImageViewerOpen}
                 onClose={handleImageViewerClose}
                 images={viewerImages}
                 initialIndex={viewerInitialIndex}
             />
             <VideoViewer
-                key={videoViewerKey}
+                key={`video-viewer-${videoViewerKey}`}
                 isOpen={isVideoViewerOpen}
                 onClose={handleVideoViewerClose}
                 videos={viewerVideos}
                 initialIndex={viewerInitialVideoIndex}
             />
             <AudioPlayer
-                key={audioPlayerKey}
+                key={`audio-player-${audioPlayerKey}`}
                 isOpen={isAudioPlayerOpen}
                 onClose={handleAudioPlayerClose}
                 tracks={audioTracks}
