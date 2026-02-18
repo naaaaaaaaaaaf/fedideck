@@ -1236,4 +1236,138 @@ describe('ComposeModal', () => {
             expect(mockUploadMedia).not.toHaveBeenCalled();
         });
     });
+
+    // Keyboard shortcut tests
+    describe('Ctrl+Enter submission', () => {
+        it('submits post when Ctrl+Enter is pressed', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+            mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.type(textarea, 'Test post');
+
+            // Press Ctrl+Enter
+            await user.keyboard('{Control>}{Enter}{/Control}');
+
+            await waitFor(() => {
+                expect(mockCreateStatus).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        it('does not submit when form is invalid (empty content)', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.click(textarea);
+
+            // Press Ctrl+Enter without content
+            await user.keyboard('{Control>}{Enter}{/Control}');
+
+            expect(mockCreateStatus).not.toHaveBeenCalled();
+        });
+
+        it('submits post when Meta+Enter is pressed (Mac)', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+            mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.type(textarea, 'Test post');
+
+            // Press Meta+Enter (Cmd on Mac)
+            await user.keyboard('{Meta>}{Enter}{/Meta}');
+
+            await waitFor(() => {
+                expect(mockCreateStatus).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        it('does not submit when Enter is pressed without Ctrl/Meta', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.type(textarea, 'Test post');
+
+            // Press Enter without modifier
+            await user.keyboard('{Enter}');
+
+            // Should not submit
+            expect(mockCreateStatus).not.toHaveBeenCalled();
+        });
+
+        it('does not submit during IME composition (compositionstart fired)', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.type(textarea, 'Test');
+
+            // Fire compositionstart to simulate IME input
+            fireEvent.compositionStart(textarea);
+
+            // Press Ctrl+Enter during composition
+            await user.keyboard('{Control>}{Enter}{/Control}');
+
+            // Should not submit because IME is active
+            expect(mockCreateStatus).not.toHaveBeenCalled();
+
+            // Fire compositionend to end IME
+            fireEvent.compositionEnd(textarea);
+        });
+
+        it('submits after IME composition ends (compositionend fired)', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+            mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+
+            // Type and simulate IME composition cycle
+            await user.type(textarea, 'てすと');
+            fireEvent.compositionStart(textarea);
+            fireEvent.compositionEnd(textarea);
+
+            // Now Ctrl+Enter should work
+            await user.keyboard('{Control>}{Enter}{/Control}');
+
+            await waitFor(() => {
+                expect(mockCreateStatus).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        it('has aria-keyshortcuts attribute on textarea', async () => {
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            expect(textarea).toHaveAttribute('aria-keyshortcuts', 'Control+Enter Meta+Enter');
+        });
+
+        it('preserves newline when Enter is pressed without Ctrl/Meta', async () => {
+            const user = userEvent.setup();
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = (await screen.findByPlaceholderText(
+                '今なにしてる？'
+            )) as HTMLTextAreaElement;
+            await user.type(textarea, 'Line 1{Enter}Line 2');
+
+            expect(textarea.value).toBe('Line 1\nLine 2');
+        });
+    });
 });
