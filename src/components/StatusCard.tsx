@@ -596,7 +596,7 @@ export const StatusCard = React.memo(function StatusCard({
                                         ? Math.round(((option.votesCount ?? 0) / votesCount) * 100)
                                         : 0;
                                 return (
-                                    <div key={i} className="mb-2 last:mb-0">
+                                    <div key={`${poll.id}-${i}`} className="mb-2 last:mb-0">
                                         <div className="flex justify-between text-sm mb-1">
                                             <span>{option.title}</span>
                                             <span className="text-slate-400">{percentage}%</span>

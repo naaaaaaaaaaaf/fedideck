@@ -77,6 +77,21 @@ const VISIBILITY_OPTIONS = getVisibilityOptions();
 const MAX_POLL_OPTIONS = 4;
 const MIN_POLL_OPTIONS = 2;
 
+interface PollOptionDraft {
+    id: string;
+    text: string;
+}
+
+const createPollOption = (): PollOptionDraft => ({
+    id:
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? `poll-opt-${crypto.randomUUID()}`
+            : `poll-opt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    text: '',
+});
+
+const createInitialPollOptions = (): PollOptionDraft[] => [createPollOption(), createPollOption()];
+
 const POLL_DURATION_OPTIONS = [
     { value: 300, label: '5分' },
     { value: 1800, label: '30分' },
@@ -106,7 +121,7 @@ export function ComposeModal({
 
     // Poll state
     const [showPoll, setShowPoll] = useState(false);
-    const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
+    const [pollOptions, setPollOptions] = useState<PollOptionDraft[]>(createInitialPollOptions);
     const [pollExpiresIn, setPollExpiresIn] = useState(86400); // 1 day default
     const [pollMultiple, setPollMultiple] = useState(false);
 
@@ -311,7 +326,9 @@ export function ComposeModal({
     const allMediaUploaded = mediaFiles.every((m) => m.uploadedId && !m.uploading);
 
     // Poll validation
-    const validPollOptions = pollOptions.filter((opt) => opt.trim().length > 0);
+    const validPollOptions = pollOptions
+        .filter((opt) => opt.text.trim().length > 0)
+        .map((opt) => opt.text);
     const isPollValid = !showPoll || validPollOptions.length >= MIN_POLL_OPTIONS;
 
     const canSubmit =
@@ -339,21 +356,21 @@ export function ComposeModal({
     };
 
     const addPollOption = () => {
-        if (pollOptions.length < MAX_POLL_OPTIONS) {
-            setPollOptions([...pollOptions, '']);
-        }
+        setPollOptions((prev) =>
+            prev.length < MAX_POLL_OPTIONS ? [...prev, createPollOption()] : prev
+        );
     };
 
-    const removePollOption = (index: number) => {
-        if (pollOptions.length > MIN_POLL_OPTIONS) {
-            setPollOptions(pollOptions.filter((_, i) => i !== index));
-        }
+    const removePollOption = (id: string) => {
+        setPollOptions((prev) =>
+            prev.length > MIN_POLL_OPTIONS ? prev.filter((opt) => opt.id !== id) : prev
+        );
     };
 
-    const updatePollOption = (index: number, value: string) => {
-        const newOptions = [...pollOptions];
-        newOptions[index] = value;
-        setPollOptions(newOptions);
+    const updatePollOption = (id: string, value: string) => {
+        setPollOptions((prev) =>
+            prev.map((opt) => (opt.id === id ? { ...opt, text: value } : opt))
+        );
     };
 
     // Robust file type detection with extension fallback.
@@ -597,7 +614,7 @@ export function ComposeModal({
         setMediaFiles([]);
         setIsSensitive(false);
         setShowPoll(false);
-        setPollOptions(['', '']);
+        setPollOptions(createInitialPollOptions());
         setPollExpiresIn(86400);
         setPollMultiple(false);
         setShowEmojiPalette(false);
@@ -1142,23 +1159,26 @@ export function ComposeModal({
                             <legend className="sr-only">投票設定</legend>
                             <div className="space-y-2 mb-3">
                                 {pollOptions.map((option, index) => (
-                                    <div key={index} className="flex gap-2">
-                                        <label htmlFor={`poll-option-${index}`} className="sr-only">
+                                    <div key={option.id} className="flex gap-2">
+                                        <label
+                                            htmlFor={`poll-option-${option.id}`}
+                                            className="sr-only"
+                                        >
                                             選択肢 {index + 1}
                                         </label>
                                         <input
-                                            id={`poll-option-${index}`}
+                                            id={`poll-option-${option.id}`}
                                             type="text"
-                                            value={option}
+                                            value={option.text}
                                             onChange={(e) =>
-                                                updatePollOption(index, e.target.value)
+                                                updatePollOption(option.id, e.target.value)
                                             }
                                             placeholder={`選択肢 ${index + 1}`}
                                             className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
                                         />
                                         {pollOptions.length > MIN_POLL_OPTIONS && (
                                             <button
-                                                onClick={() => removePollOption(index)}
+                                                onClick={() => removePollOption(option.id)}
                                                 className="p-2 bg-slate-700 hover:bg-red-600/50 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
                                                 aria-label={`選択肢 ${index + 1} を削除`}
                                             >

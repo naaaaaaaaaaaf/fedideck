@@ -1370,4 +1370,78 @@ describe('ComposeModal', () => {
             expect(textarea.value).toBe('Line 1\nLine 2');
         });
     });
+
+    // Poll option state preservation tests
+    describe('poll option state preservation', () => {
+        it('maintains correct values when removing middle poll option', async () => {
+            const user = userEvent.setup();
+            render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+            // Enable poll
+            const pollButton = await screen.findByRole('button', { name: /投票/i });
+            await user.click(pollButton);
+
+            // Add 3rd and 4th options
+            const addButton = screen.getByRole('button', { name: /選択肢を追加/i });
+            await user.click(addButton);
+            await user.click(addButton);
+
+            // Fill all options
+            await user.type(screen.getByPlaceholderText('選択肢 1'), 'First');
+            await user.type(screen.getByPlaceholderText('選択肢 2'), 'Second');
+            await user.type(screen.getByPlaceholderText('選択肢 3'), 'Third');
+            await user.type(screen.getByPlaceholderText('選択肢 4'), 'Fourth');
+
+            // Remove the 2nd option using accessible name
+            const removeButton = screen.getByRole('button', { name: '選択肢 2 を削除' });
+            await user.click(removeButton);
+
+            // Verify remaining options are correct (First, Third, Fourth)
+            expect(screen.getByPlaceholderText('選択肢 1')).toHaveValue('First');
+            expect(screen.getByPlaceholderText('選択肢 2')).toHaveValue('Third');
+            expect(screen.getByPlaceholderText('選択肢 3')).toHaveValue('Fourth');
+        });
+
+        it('sends correct poll options after removing middle option', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+            mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            // Enable poll
+            const pollButton = await screen.findByRole('button', { name: /投票/i });
+            await user.click(pollButton);
+
+            // Fill initial 2 options
+            await user.type(screen.getByPlaceholderText('選択肢 1'), 'A');
+            await user.type(screen.getByPlaceholderText('選択肢 2'), 'B');
+
+            // Add 3rd option and fill
+            const addButton = screen.getByRole('button', { name: /選択肢を追加/i });
+            await user.click(addButton);
+            await user.type(screen.getByPlaceholderText('選択肢 3'), 'C');
+
+            // Remove the middle option (B - 選択肢 2) using accessible name
+            const removeButton = screen.getByRole('button', { name: '選択肢 2 を削除' });
+            await user.click(removeButton);
+
+            // Enter content and submit
+            await user.type(screen.getByPlaceholderText('今なにしてる？'), 'Test poll');
+            const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
+            await user.click(submitButton);
+
+            // Verify payload contains ['A', 'C'] (not ['A', 'B'] or ['A'])
+            await waitFor(() => {
+                expect(mockCreateStatus).toHaveBeenCalledWith(
+                    expect.anything(),
+                    expect.objectContaining({
+                        poll: expect.objectContaining({
+                            options: ['A', 'C'],
+                        }),
+                    })
+                );
+            });
+        });
+    });
 });
