@@ -420,3 +420,18 @@ export async function editStatus(
     const status = await client.v1.statuses.$select(statusId).update(editParams);
     return status;
 }
+
+/**
+ * Vote on a poll
+ * @param client - Mastodon API client
+ * @param pollId - ID of the poll
+ * @param choices - Array of option indices to vote for (0-based)
+ * @returns Updated poll with vote results
+ */
+export async function votePoll(
+    client: MastoClient,
+    pollId: string,
+    choices: readonly number[]
+): Promise<mastodon.v1.Poll> {
+    return client.v1.polls.$select(pollId).votes.create({ choices });
+}
