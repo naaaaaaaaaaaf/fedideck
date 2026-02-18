@@ -121,6 +121,8 @@ export function ComposeModal({
     const listboxRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const emojiButtonRef = useRef<HTMLButtonElement>(null);
+    // Track IME composition state for cross-browser compatibility (Safari fix)
+    const isComposingRef = useRef(false);
     // Track media IDs that are currently uploading to prevent duplicate uploads
     const uploadingMediaIdsRef = useRef<Set<string>>(new Set());
     const accounts = useAccountsStore((state) => state.accounts);
@@ -770,7 +772,8 @@ export function ComposeModal({
             if (!isSubmitShortcut) return;
 
             // Don't submit during IME composition or key repeat
-            if (e.nativeEvent.isComposing || e.repeat) return;
+            // Use both native isComposing and ref tracking for Safari compatibility
+            if (e.nativeEvent.isComposing || isComposingRef.current || e.repeat) return;
 
             e.preventDefault();
             if (canSubmit) {
@@ -1309,6 +1312,12 @@ export function ComposeModal({
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             onKeyDown={handleSubmitShortcut}
+                            onCompositionStart={() => {
+                                isComposingRef.current = true;
+                            }}
+                            onCompositionEnd={() => {
+                                isComposingRef.current = false;
+                            }}
                             placeholder="今なにしてる？"
                             rows={6}
                             disabled={isSubmitting}
