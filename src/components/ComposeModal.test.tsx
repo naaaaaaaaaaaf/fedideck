@@ -1392,12 +1392,9 @@ describe('ComposeModal', () => {
             await user.type(screen.getByPlaceholderText('選択肢 3'), 'Third');
             await user.type(screen.getByPlaceholderText('選択肢 4'), 'Fourth');
 
-            // Remove the 2nd option (button is within the same div as the input)
-            const secondOptionInput = screen.getByPlaceholderText('選択肢 2');
-            const secondOptionDiv = secondOptionInput.parentElement;
-            const removeButton = secondOptionDiv?.querySelector('button');
-            expect(removeButton).toBeInTheDocument();
-            await user.click(removeButton!);
+            // Remove the 2nd option using accessible name
+            const removeButton = screen.getByRole('button', { name: '選択肢 2 を削除' });
+            await user.click(removeButton);
 
             // Verify remaining options are correct (First, Third, Fourth)
             expect(screen.getByPlaceholderText('選択肢 1')).toHaveValue('First');
@@ -1425,11 +1422,9 @@ describe('ComposeModal', () => {
             await user.click(addButton);
             await user.type(screen.getByPlaceholderText('選択肢 3'), 'C');
 
-            // Remove the middle option (B - 選択肢 2)
-            const secondOptionInput = screen.getByPlaceholderText('選択肢 2');
-            const secondOptionDiv = secondOptionInput.parentElement;
-            const removeButton = secondOptionDiv?.querySelector('button');
-            await user.click(removeButton!);
+            // Remove the middle option (B - 選択肢 2) using accessible name
+            const removeButton = screen.getByRole('button', { name: '選択肢 2 を削除' });
+            await user.click(removeButton);
 
             // Enter content and submit
             await user.type(screen.getByPlaceholderText('今なにしてる？'), 'Test poll');
