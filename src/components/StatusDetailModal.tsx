@@ -741,7 +741,7 @@ export function StatusDetailModal({
                         {/* Poll */}
                         {poll && poll.options && poll.options.length > 0 && (
                             <div className="mb-4 p-4 bg-slate-800/50 rounded-xl">
-                                {poll.options.map((option, i) => {
+                                {poll.options.map((option) => {
                                     const votesCount = poll.votesCount ?? 0;
                                     const percentage =
                                         votesCount > 0
@@ -750,7 +750,10 @@ export function StatusDetailModal({
                                               )
                                             : 0;
                                     return (
-                                        <div key={i} className="mb-3 last:mb-0">
+                                        <div
+                                            key={`${poll.id}-${option.title}`}
+                                            className="mb-3 last:mb-0"
+                                        >
                                             <div className="flex justify-between text-sm mb-1">
                                                 <span className="text-slate-200">
                                                     {option.title}

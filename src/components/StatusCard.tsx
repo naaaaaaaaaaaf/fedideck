@@ -589,14 +589,17 @@ export const StatusCard = React.memo(function StatusCard({
                     {/* Poll - safely check existence and options */}
                     {poll && poll.options && poll.options.length > 0 && (
                         <div className="mt-3 p-3 bg-slate-800/50 rounded-lg">
-                            {poll.options.map((option, i) => {
+                            {poll.options.map((option) => {
                                 const votesCount = poll.votesCount ?? 0;
                                 const percentage =
                                     votesCount > 0
                                         ? Math.round(((option.votesCount ?? 0) / votesCount) * 100)
                                         : 0;
                                 return (
-                                    <div key={i} className="mb-2 last:mb-0">
+                                    <div
+                                        key={`${poll.id}-${option.title}`}
+                                        className="mb-2 last:mb-0"
+                                    >
                                         <div className="flex justify-between text-sm mb-1">
                                             <span>{option.title}</span>
                                             <span className="text-slate-400">{percentage}%</span>
