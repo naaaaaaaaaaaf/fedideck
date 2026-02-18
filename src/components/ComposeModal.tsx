@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { mastodon } from 'masto';
 import {
     LuX,
@@ -159,7 +159,7 @@ export function ComposeModal({
     const isUploading = mediaFiles.some((m) => m.uploading);
     const canCloseModal = !isSubmitting && !isUploading && !isLoadingEditSource;
 
-    const { handleKeyDown } = useModalAccessibility({
+    const { handleKeyDown: handleModalKeyDown } = useModalAccessibility({
         isOpen,
         onClose,
         closeButtonRef,
@@ -763,12 +763,29 @@ export function ComposeModal({
         onClose();
     };
 
+    // Keyboard shortcut handler for Ctrl+Enter / Cmd+Enter submission
+    const handleSubmitShortcut = useCallback(
+        (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+            const isSubmitShortcut = e.key === 'Enter' && (e.ctrlKey || e.metaKey);
+            if (!isSubmitShortcut) return;
+
+            // Don't submit during IME composition or key repeat
+            if (e.nativeEvent.isComposing || e.repeat) return;
+
+            e.preventDefault();
+            if (canSubmit) {
+                void handleSubmit();
+            }
+        },
+        [canSubmit, handleSubmit]
+    );
+
     if (!isOpen) return null;
 
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center"
-            onKeyDown={handleKeyDown}
+            onKeyDown={handleModalKeyDown}
             role="dialog"
             aria-modal="true"
             aria-labelledby="compose-modal-title"
@@ -1291,9 +1308,11 @@ export function ComposeModal({
                             id="compose-content"
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
+                            onKeyDown={handleSubmitShortcut}
                             placeholder="今なにしてる？"
                             rows={6}
                             disabled={isSubmitting}
+                            aria-keyshortcuts="Control+Enter Meta+Enter"
                             className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 resize-none focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
                         />
                     </div>

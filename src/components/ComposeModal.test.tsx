@@ -1236,4 +1236,74 @@ describe('ComposeModal', () => {
             expect(mockUploadMedia).not.toHaveBeenCalled();
         });
     });
+
+    // Keyboard shortcut tests
+    describe('Ctrl+Enter submission', () => {
+        it('submits post when Ctrl+Enter is pressed', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+            mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.type(textarea, 'Test post');
+
+            // Press Ctrl+Enter
+            await user.keyboard('{Control>}{Enter}{/Control}');
+
+            await waitFor(() => {
+                expect(mockCreateStatus).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        it('does not submit when form is invalid (empty content)', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.click(textarea);
+
+            // Press Ctrl+Enter without content
+            await user.keyboard('{Control>}{Enter}{/Control}');
+
+            expect(mockCreateStatus).not.toHaveBeenCalled();
+        });
+
+        it('submits post when Meta+Enter is pressed (Mac)', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+            mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.type(textarea, 'Test post');
+
+            // Press Meta+Enter (Cmd on Mac)
+            await user.keyboard('{Meta>}{Enter}{/Meta}');
+
+            await waitFor(() => {
+                expect(mockCreateStatus).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        it('does not submit when Enter is pressed without Ctrl/Meta', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.type(textarea, 'Test post');
+
+            // Press Enter without modifier
+            await user.keyboard('{Enter}');
+
+            // Should not submit
+            expect(mockCreateStatus).not.toHaveBeenCalled();
+        });
+    });
 });
