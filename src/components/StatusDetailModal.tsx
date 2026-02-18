@@ -34,6 +34,7 @@ interface StatusDetailModalProps {
     accountSession?: AccountSession;
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusUpdate?: (status: mastodon.v1.Status) => void;
+    onPollUpdate?: (statusId: string, poll: mastodon.v1.Poll) => void;
     onStatusDelete?: (status: mastodon.v1.Status, accountId: string) => void;
     onStatusEdit?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
@@ -218,6 +219,7 @@ export function StatusDetailModal({
     accountSession,
     onReply,
     onStatusUpdate,
+    onPollUpdate,
     onStatusDelete,
     onStatusEdit,
     onImageClick,
@@ -559,12 +561,17 @@ export function StatusDetailModal({
             setLocalPoll(updatedPoll);
             setSelectedPollOptions(new Set());
 
-            // Update global store
-            const updatedStatus: mastodon.v1.Status = {
-                ...displayStatus,
-                poll: updatedPoll,
-            };
-            onStatusUpdate?.(updatedStatus);
+            // Use onPollUpdate for partial update (prevents overwriting concurrent updates)
+            // Fall back to onStatusUpdate for backwards compatibility
+            if (onPollUpdate && displayStatus) {
+                onPollUpdate(displayStatus.id, updatedPoll);
+            } else if (displayStatus) {
+                const updatedStatus: mastodon.v1.Status = {
+                    ...displayStatus,
+                    poll: updatedPoll,
+                };
+                onStatusUpdate?.(updatedStatus);
+            }
         } catch (error) {
             console.error('Failed to vote on poll:', error);
         } finally {

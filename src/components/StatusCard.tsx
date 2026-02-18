@@ -35,6 +35,7 @@ interface StatusCardProps {
     isReblog?: boolean;
     accountSession?: AccountSession; // Required for boost/favorite - uses column's account
     onStatusUpdate?: (updatedStatus: mastodon.v1.Status) => void;
+    onPollUpdate?: (statusId: string, poll: mastodon.v1.Poll) => void;
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
@@ -52,6 +53,7 @@ export const StatusCard = React.memo(function StatusCard({
     isReblog = false,
     accountSession,
     onStatusUpdate,
+    onPollUpdate,
     onReply,
     onStatusClick,
     onImageClick,
@@ -325,12 +327,17 @@ export const StatusCard = React.memo(function StatusCard({
             setLocalPoll(updatedPoll);
             setSelectedPollOptions(new Set());
 
-            // Update parent with the new poll data
-            const updatedStatus: mastodon.v1.Status = {
-                ...displayStatus,
-                poll: updatedPoll,
-            };
-            onStatusUpdate?.(updatedStatus);
+            // Use onPollUpdate for partial update (prevents overwriting concurrent updates)
+            // Fall back to onStatusUpdate for backwards compatibility
+            if (onPollUpdate) {
+                onPollUpdate(displayStatus.id, updatedPoll);
+            } else {
+                const updatedStatus: mastodon.v1.Status = {
+                    ...displayStatus,
+                    poll: updatedPoll,
+                };
+                onStatusUpdate?.(updatedStatus);
+            }
         } catch (error) {
             console.error('Failed to vote on poll:', error);
         } finally {

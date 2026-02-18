@@ -5,6 +5,16 @@ import { StatusCard } from './StatusCard';
 import { formatDate } from '../utils/dateFormat';
 import type { mastodon } from 'masto';
 import type { AccountSession } from '../api/mastoClient';
+import * as mastoClient from '../api/mastoClient';
+
+// Mock votePoll for API testing
+vi.mock('../api/mastoClient', async (importOriginal) => {
+    const actual = await importOriginal<typeof mastoClient>();
+    return {
+        ...actual,
+        votePoll: vi.fn(),
+    };
+});
 
 // Minimal mock status for testing
 const createMockStatus = (overrides: Partial<mastodon.v1.Status> = {}): mastodon.v1.Status => {
@@ -2125,6 +2135,265 @@ describe('StatusCard', () => {
             ) as NodeListOf<HTMLInputElement>;
             expect(radios2[0].checked).toBe(false);
             expect(radios2[1].checked).toBe(true);
+        });
+
+        it('should call onPollUpdate when voting successfully', async () => {
+            const user = userEvent.setup();
+            const onPollUpdate = vi.fn();
+            const status = createMockStatus({
+                poll: {
+                    id: 'poll-1',
+                    expiresAt: null,
+                    expired: false,
+                    multiple: false,
+                    votesCount: 0,
+                    votersCount: 0,
+                    voted: false,
+                    ownVotes: [],
+                    options: [
+                        { title: 'Option A', votesCount: 0, emojis: [] },
+                        { title: 'Option B', votesCount: 0, emojis: [] },
+                    ],
+                    emojis: [],
+                } as unknown as mastodon.v1.Poll,
+            });
+
+            const updatedPoll = {
+                id: 'poll-1',
+                expired: false,
+                multiple: false,
+                votesCount: 1,
+                votersCount: 1,
+                voted: true,
+                ownVotes: [0],
+                options: [
+                    { title: 'Option A', votesCount: 1, emojis: [] },
+                    { title: 'Option B', votesCount: 0, emojis: [] },
+                ],
+                emojis: [],
+            } as unknown as mastodon.v1.Poll;
+
+            vi.mocked(mastoClient.votePoll).mockResolvedValue(updatedPoll);
+
+            render(
+                <StatusCard
+                    status={status}
+                    accountSession={mockAccountSession}
+                    onPollUpdate={onPollUpdate}
+                />
+            );
+
+            // Select and vote
+            await user.click(screen.getByText('Option A'));
+            await user.click(screen.getByRole('button', { name: '投票' }));
+
+            // Wait for async vote
+            await screen.findByText('投票');
+
+            expect(onPollUpdate).toHaveBeenCalledWith('12345', updatedPoll);
+        });
+
+        it('should call onStatusUpdate when onPollUpdate is not provided', async () => {
+            const user = userEvent.setup();
+            const onStatusUpdate = vi.fn();
+            const status = createMockStatus({
+                poll: {
+                    id: 'poll-1',
+                    expiresAt: null,
+                    expired: false,
+                    multiple: false,
+                    votesCount: 0,
+                    votersCount: 0,
+                    voted: false,
+                    ownVotes: [],
+                    options: [
+                        { title: 'Option A', votesCount: 0, emojis: [] },
+                        { title: 'Option B', votesCount: 0, emojis: [] },
+                    ],
+                    emojis: [],
+                } as unknown as mastodon.v1.Poll,
+            });
+
+            const updatedPoll = {
+                id: 'poll-1',
+                expired: false,
+                multiple: false,
+                votesCount: 1,
+                votersCount: 1,
+                voted: true,
+                ownVotes: [0],
+                options: [
+                    { title: 'Option A', votesCount: 1, emojis: [] },
+                    { title: 'Option B', votesCount: 0, emojis: [] },
+                ],
+                emojis: [],
+            } as unknown as mastodon.v1.Poll;
+
+            vi.mocked(mastoClient.votePoll).mockResolvedValue(updatedPoll);
+
+            render(
+                <StatusCard
+                    status={status}
+                    accountSession={mockAccountSession}
+                    onStatusUpdate={onStatusUpdate}
+                />
+            );
+
+            // Select and vote
+            await user.click(screen.getByText('Option A'));
+            await user.click(screen.getByRole('button', { name: '投票' }));
+
+            // Wait for async vote
+            await screen.findByText('投票');
+
+            expect(onStatusUpdate).toHaveBeenCalled();
+            const calledStatus = onStatusUpdate.mock.calls[0][0];
+            expect(calledStatus.poll.voted).toBe(true);
+            expect(calledStatus.poll.ownVotes).toEqual([0]);
+        });
+
+        it('should show loading state during vote', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({
+                poll: {
+                    id: 'poll-1',
+                    expiresAt: null,
+                    expired: false,
+                    multiple: false,
+                    votesCount: 0,
+                    votersCount: 0,
+                    voted: false,
+                    ownVotes: [],
+                    options: [
+                        { title: 'Option A', votesCount: 0, emojis: [] },
+                        { title: 'Option B', votesCount: 0, emojis: [] },
+                    ],
+                    emojis: [],
+                } as unknown as mastodon.v1.Poll,
+            });
+
+            // Create a promise that we can resolve manually
+            let resolveVote: (value: mastodon.v1.Poll) => void;
+            const votePromise = new Promise<mastodon.v1.Poll>((resolve) => {
+                resolveVote = resolve;
+            });
+
+            vi.mocked(mastoClient.votePoll).mockImplementation(() => votePromise);
+
+            render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+            // Select and vote
+            await user.click(screen.getByText('Option A'));
+            await user.click(screen.getByRole('button', { name: '投票' }));
+
+            // Should show loading state
+            expect(screen.getByText('投票中...')).toBeInTheDocument();
+
+            // Resolve the vote
+            resolveVote!({
+                id: 'poll-1',
+                voted: true,
+                ownVotes: [0],
+                options: [
+                    { title: 'Option A', votesCount: 1 },
+                    { title: 'Option B', votesCount: 0 },
+                ],
+            } as mastodon.v1.Poll);
+
+            // Wait for loading to finish
+            await screen.findByText('投票');
+        });
+
+        it('should disable inputs during loading', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({
+                poll: {
+                    id: 'poll-1',
+                    expiresAt: null,
+                    expired: false,
+                    multiple: true,
+                    votesCount: 0,
+                    votersCount: 0,
+                    voted: false,
+                    ownVotes: [],
+                    options: [
+                        { title: 'Option A', votesCount: 0, emojis: [] },
+                        { title: 'Option B', votesCount: 0, emojis: [] },
+                    ],
+                    emojis: [],
+                } as unknown as mastodon.v1.Poll,
+            });
+
+            // Create a promise that we can resolve manually
+            let resolveVote: (value: mastodon.v1.Poll) => void;
+            const votePromise = new Promise<mastodon.v1.Poll>((resolve) => {
+                resolveVote = resolve;
+            });
+
+            vi.mocked(mastoClient.votePoll).mockImplementation(() => votePromise);
+
+            render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+            // Select and vote
+            await user.click(screen.getByText('Option A'));
+            await user.click(screen.getByRole('button', { name: '投票' }));
+
+            // Inputs should be disabled during loading
+            const checkboxes = document.querySelectorAll(
+                'input[type="checkbox"]'
+            ) as NodeListOf<HTMLInputElement>;
+            expect(checkboxes[0].disabled).toBe(true);
+
+            // Resolve the vote
+            resolveVote!({
+                id: 'poll-1',
+                voted: true,
+                ownVotes: [0],
+                options: [
+                    { title: 'Option A', votesCount: 1 },
+                    { title: 'Option B', votesCount: 0 },
+                ],
+            } as mastodon.v1.Poll);
+
+            await screen.findByText('投票');
+        });
+
+        it('should handle vote error gracefully', async () => {
+            const user = userEvent.setup();
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            const status = createMockStatus({
+                poll: {
+                    id: 'poll-1',
+                    expiresAt: null,
+                    expired: false,
+                    multiple: false,
+                    votesCount: 0,
+                    votersCount: 0,
+                    voted: false,
+                    ownVotes: [],
+                    options: [
+                        { title: 'Option A', votesCount: 0, emojis: [] },
+                        { title: 'Option B', votesCount: 0, emojis: [] },
+                    ],
+                    emojis: [],
+                } as unknown as mastodon.v1.Poll,
+            });
+
+            vi.mocked(mastoClient.votePoll).mockRejectedValue(new Error('Network error'));
+
+            render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+            // Select and vote
+            await user.click(screen.getByText('Option A'));
+            await user.click(screen.getByRole('button', { name: '投票' }));
+
+            // Wait a bit for async error handling
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            // Should log error
+            expect(consoleSpy).toHaveBeenCalledWith('Failed to vote on poll:', expect.any(Error));
+
+            consoleSpy.mockRestore();
         });
     });
 });
