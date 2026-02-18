@@ -10,6 +10,7 @@ import {
     reblogStatus,
     unreblogStatus,
     getStatusContext,
+    votePoll,
     type StatusContext,
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
@@ -250,6 +251,11 @@ export function StatusDetailModal({
     const [localReblogsCount, setLocalReblogsCount] = useState(0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
+    // Poll voting state - use localPoll to immediately reflect vote changes
+    const [localPoll, setLocalPoll] = useState<mastodon.v1.Poll | null>(null);
+    const [pollLoading, setPollLoading] = useState(false);
+    const [selectedPollOptions, setSelectedPollOptions] = useState<Set<number>>(new Set());
+
     // Thread context state
     const [context, setContext] = useState<StatusContext | null>(null);
     const [isLoadingContext, setIsLoadingContext] = useState(false);
@@ -282,6 +288,9 @@ export function StatusDetailModal({
             setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
             setLocalReblogged(displayStatus.reblogged ?? false);
             setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
+            // Sync poll state
+            setLocalPoll(displayStatus.poll ?? null);
+            setSelectedPollOptions(new Set());
             // Only reset NSFW state if not controlled by parent
             if (!isControlled) {
                 setLocalNsfwRevealed(false);
@@ -422,7 +431,6 @@ export function StatusDetailModal({
     if (!account) return null;
 
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
-    const poll = displayStatus.poll;
     const canReblog =
         displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
 
@@ -508,6 +516,51 @@ export function StatusDetailModal({
     const handleReply = () => {
         onReply?.(displayStatus);
         onClose();
+    };
+
+    // Poll voting handlers
+    const handlePollOptionToggle = (index: number) => {
+        if (!localPoll?.multiple) {
+            // Single selection: replace
+            setSelectedPollOptions(new Set([index]));
+        } else {
+            // Multiple selection: toggle
+            setSelectedPollOptions((prev) => {
+                const next = new Set(prev);
+                if (next.has(index)) {
+                    next.delete(index);
+                } else {
+                    next.add(index);
+                }
+                return next;
+            });
+        }
+    };
+
+    const handlePollVote = async () => {
+        if (!accountSession || !localPoll || pollLoading || selectedPollOptions.size === 0) return;
+
+        setPollLoading(true);
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const choices = Array.from(selectedPollOptions);
+            const updatedPoll = await votePoll(client, localPoll.id, choices);
+
+            // Update localPoll immediately for modal display
+            setLocalPoll(updatedPoll);
+            setSelectedPollOptions(new Set());
+
+            // Update global store
+            const updatedStatus: mastodon.v1.Status = {
+                ...displayStatus,
+                poll: updatedPoll,
+            };
+            onStatusUpdate?.(updatedStatus);
+        } catch (error) {
+            console.error('Failed to vote on poll:', error);
+        } finally {
+            setPollLoading(false);
+        }
     };
 
     return (
@@ -739,40 +792,118 @@ export function StatusDetailModal({
                         )}
 
                         {/* Poll */}
-                        {poll && poll.options && poll.options.length > 0 && (
-                            <div className="mb-4 p-4 bg-slate-800/50 rounded-xl">
-                                {poll.options.map((option, i) => {
-                                    const votesCount = poll.votesCount ?? 0;
-                                    const percentage =
-                                        votesCount > 0
-                                            ? Math.round(
-                                                  ((option.votesCount ?? 0) / votesCount) * 100
-                                              )
-                                            : 0;
-                                    return (
-                                        <div key={`${poll.id}-${i}`} className="mb-3 last:mb-0">
-                                            <div className="flex justify-between text-sm mb-1">
-                                                <span className="text-slate-200">
-                                                    {option.title}
-                                                </span>
-                                                <span className="text-slate-400">
-                                                    {percentage}%
-                                                </span>
-                                            </div>
-                                            <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-indigo-500 transition-all rounded-full"
-                                                    style={{ width: `${percentage}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                <div className="text-sm text-slate-400 mt-3 pt-3 border-t border-slate-700">
-                                    {poll.votesCount ?? 0}票{poll.expired && ' · 終了'}
-                                </div>
-                            </div>
-                        )}
+                        {localPoll &&
+                            localPoll.options &&
+                            localPoll.options.length > 0 &&
+                            (() => {
+                                // Check if user can vote (poll.voted is optional)
+                                const hasVoted =
+                                    localPoll.voted === true ||
+                                    (localPoll.ownVotes?.length ?? 0) > 0;
+                                const canVote = !!accountSession && !localPoll.expired && !hasVoted;
+
+                                return (
+                                    <div className="mb-4 p-4 bg-slate-800/50 rounded-xl">
+                                        {canVote ? (
+                                            // Voting UI
+                                            <>
+                                                {localPoll.options.map((option, i) => (
+                                                    <label
+                                                        key={`${localPoll.id}-${i}`}
+                                                        className="flex items-center gap-3 mb-3 last:mb-0 cursor-pointer hover:bg-slate-700/30 p-2 rounded-lg"
+                                                    >
+                                                        <input
+                                                            type={
+                                                                localPoll.multiple
+                                                                    ? 'checkbox'
+                                                                    : 'radio'
+                                                            }
+                                                            name={`poll-${localPoll.id}`}
+                                                            checked={selectedPollOptions.has(i)}
+                                                            onChange={() =>
+                                                                handlePollOptionToggle(i)
+                                                            }
+                                                            className="w-4 h-4 accent-indigo-500"
+                                                        />
+                                                        <span className="text-slate-200">
+                                                            {option.title}
+                                                        </span>
+                                                    </label>
+                                                ))}
+                                                <button
+                                                    type="button"
+                                                    onClick={handlePollVote}
+                                                    disabled={
+                                                        selectedPollOptions.size === 0 ||
+                                                        pollLoading
+                                                    }
+                                                    className={`mt-3 px-4 py-2 text-sm rounded-lg transition-colors ${
+                                                        selectedPollOptions.size === 0 ||
+                                                        pollLoading
+                                                            ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                                            : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                                                    }`}
+                                                >
+                                                    {pollLoading ? '投票中...' : '投票'}
+                                                </button>
+                                            </>
+                                        ) : (
+                                            // Results UI
+                                            <>
+                                                {localPoll.options.map((option, i) => {
+                                                    const votesCount = localPoll.votesCount ?? 0;
+                                                    const percentage =
+                                                        votesCount > 0
+                                                            ? Math.round(
+                                                                  ((option.votesCount ?? 0) /
+                                                                      votesCount) *
+                                                                      100
+                                                              )
+                                                            : 0;
+                                                    const isOwnVote =
+                                                        localPoll.ownVotes?.includes(i) ?? false;
+                                                    return (
+                                                        <div
+                                                            key={`${localPoll.id}-${i}`}
+                                                            className="mb-3 last:mb-0"
+                                                        >
+                                                            <div className="flex justify-between text-sm mb-1">
+                                                                <span className="text-slate-200">
+                                                                    {isOwnVote && (
+                                                                        <span className="text-indigo-400 mr-1">
+                                                                            ✓
+                                                                        </span>
+                                                                    )}
+                                                                    {option.title}
+                                                                </span>
+                                                                <span className="text-slate-400">
+                                                                    {percentage}%
+                                                                </span>
+                                                            </div>
+                                                            <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden">
+                                                                <div
+                                                                    className={`h-full transition-all rounded-full ${
+                                                                        isOwnVote
+                                                                            ? 'bg-indigo-400'
+                                                                            : 'bg-indigo-500'
+                                                                    }`}
+                                                                    style={{
+                                                                        width: `${percentage}%`,
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                                <div className="text-sm text-slate-400 mt-3 pt-3 border-t border-slate-700">
+                                                    {localPoll.votesCount ?? 0}票
+                                                    {localPoll.expired && ' · 終了'}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })()}
 
                         {/* Timestamp and visibility */}
                         <div className="text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">

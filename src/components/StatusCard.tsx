@@ -284,26 +284,23 @@ export const StatusCard = React.memo(function StatusCard({
         displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
 
     // Poll voting handlers
-    const handlePollOptionToggle = useCallback(
-        (index: number) => {
-            if (!poll?.multiple) {
-                // Single selection: replace
-                setSelectedPollOptions(new Set([index]));
-            } else {
-                // Multiple selection: toggle
-                setSelectedPollOptions((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(index)) {
-                        next.delete(index);
-                    } else {
-                        next.add(index);
-                    }
-                    return next;
-                });
-            }
-        },
-        [poll?.multiple]
-    );
+    const handlePollOptionToggle = (index: number) => {
+        if (!poll?.multiple) {
+            // Single selection: replace
+            setSelectedPollOptions(new Set([index]));
+        } else {
+            // Multiple selection: toggle
+            setSelectedPollOptions((prev) => {
+                const next = new Set(prev);
+                if (next.has(index)) {
+                    next.delete(index);
+                } else {
+                    next.add(index);
+                }
+                return next;
+            });
+        }
+    };
 
     const handlePollVote = async () => {
         if (!accountSession || !poll || pollLoading || selectedPollOptions.size === 0) return;
