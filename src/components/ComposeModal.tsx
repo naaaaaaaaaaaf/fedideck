@@ -61,6 +61,7 @@ interface ComposeModalProps {
 }
 
 interface MediaFile {
+    localId: string; // Unique identifier for stable updates
     file?: File; // Optional for existing media from edit
     preview: string;
     uploading: boolean;
@@ -120,6 +121,8 @@ export function ComposeModal({
     const listboxRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const emojiButtonRef = useRef<HTMLButtonElement>(null);
+    // Track media IDs that are currently uploading to prevent duplicate uploads
+    const uploadingMediaIdsRef = useRef<Set<string>>(new Set());
     const accounts = useAccountsStore((state) => state.accounts);
     const activeAccountId = useAccountsStore((state) => state.activeAccountId);
 
@@ -227,6 +230,7 @@ export function ComposeModal({
                 // Always set mediaFiles to clear stale state from previous edits
                 if (status.mediaAttachments && status.mediaAttachments.length > 0) {
                     const existingMedia: MediaFile[] = status.mediaAttachments.map((media) => ({
+                        localId: `media-${media.id}`, // Use uploadedId for deterministic stable ID
                         preview: media.url ?? media.previewUrl ?? '',
                         uploading: false,
                         uploadedId: media.id,
@@ -371,113 +375,207 @@ export function ComposeModal({
     const isVideoMedia = (m: MediaFile) =>
         m.kind === 'video' || m.kind === 'gifv' || (m.file && isVideoFile(m.file));
 
-    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || !composingAccount) return;
+    /**
+     * Process files for upload (shared between file picker and clipboard paste)
+     * Validates and adds files to state; actual upload is handled by useEffect
+     */
+    const processFiles = (rawFiles: File[], source: 'picker' | 'clipboard') => {
+        if (!composingAccount) return;
 
-        const remainingSlots = (instanceConfig?.maxMediaAttachments ?? 4) - mediaFiles.length;
-        const filesToAdd = Array.from(files).slice(0, remainingSlots);
-
-        if (filesToAdd.length === 0) return;
-
-        // Check for video - video can only be alone
-        const hasVideo = mediaFiles.some((m) => isVideoMedia(m));
-        const newHasVideo = filesToAdd.some((f) => isVideoFile(f));
-
-        // Check for audio - audio can only be alone (Mastodon specification)
-        const hasAudio = mediaFiles.some((m) => isAudioMedia(m));
-        const newHasAudio = filesToAdd.some((f) => isAudioFile(f));
-
-        // Video cannot be mixed with other media
-        if (hasVideo || (newHasVideo && mediaFiles.length > 0)) {
-            setError('動画は他のメディアと同時に添付できません');
+        // Poll and media are mutually exclusive
+        if (showPoll) {
+            setError('投票とメディアは同時に添付できません');
             return;
         }
 
-        if (newHasVideo && filesToAdd.length > 1) {
-            setError('動画は1つのみ添付できます');
-            return;
-        }
+        if (isUploading || isSubmitting || isLoadingEditSource) return;
 
-        // Audio cannot be mixed with other media (Mastodon spec)
-        if (hasAudio || (newHasAudio && mediaFiles.length > 0)) {
-            setError('音声は他のメディアと同時に添付できません');
-            return;
-        }
+        // Get supported MIME types
+        const supported = new Set(
+            (instanceConfig?.supportedMimeTypes ?? getDefaultConfig().supportedMimeTypes).map((t) =>
+                t.toLowerCase()
+            )
+        );
 
-        if (newHasAudio && filesToAdd.length > 1) {
-            setError('音声は1つのみ添付できます');
-            return;
-        }
+        // For clipboard, filter to images only
+        const candidates =
+            source === 'clipboard' ? rawFiles.filter((f) => f.type.startsWith('image/')) : rawFiles;
 
-        // Audio and video cannot be mixed even when both are new
-        if (newHasAudio && newHasVideo) {
-            setError('音声と動画を同時に添付できません');
-            return;
-        }
-
-        const client = getClient(composingAccount);
-
-        // Create preview and add to state
-        const newMediaFiles: MediaFile[] = filesToAdd.map((file) => ({
-            file,
-            preview: URL.createObjectURL(file),
-            uploading: true,
-            altText: '',
-        }));
-
-        setMediaFiles((prev) => [...prev, ...newMediaFiles]);
-        setError(null);
-
-        // Upload each file
-        for (let i = 0; i < filesToAdd.length; i++) {
-            const file = filesToAdd[i];
-            const mediaIndex = mediaFiles.length + i;
-
-            try {
-                const media = await uploadMedia(client, file);
-                setMediaFiles((prev) =>
-                    prev.map((m, idx) =>
-                        idx === mediaIndex ? { ...m, uploading: false, uploadedId: media.id } : m
-                    )
-                );
-            } catch (err) {
-                console.error('Failed to upload media:', err);
-                setMediaFiles((prev) =>
-                    prev.map((m, idx) =>
-                        idx === mediaIndex
-                            ? {
-                                  ...m,
-                                  uploading: false,
-                                  error:
-                                      err instanceof Error
-                                          ? err.message
-                                          : 'アップロードに失敗しました',
-                              }
-                            : m
-                    )
-                );
-            }
-        }
-
-        // Reset file input
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
-    };
-
-    const removeMedia = (index: number) => {
+        // Atomically validate and add files using prev to avoid race conditions
         setMediaFiles((prev) => {
-            const media = prev[index];
-            if (media.preview) {
-                URL.revokeObjectURL(media.preview);
+            // Calculate remaining slots based on current state
+            const remainingSlots = (instanceConfig?.maxMediaAttachments ?? 4) - prev.length;
+            const filesToAdd = candidates.slice(0, remainingSlots);
+            if (filesToAdd.length === 0) {
+                // Set error outside of setState callback
+                if (candidates.length > 0) {
+                    setTimeout(() => setError('これ以上添付できません'), 0);
+                }
+                return prev;
             }
-            return prev.filter((_, i) => i !== index);
+
+            // Validate MIME types (important for clipboard which bypasses accept attribute)
+            const unsupported = filesToAdd.find((f) => {
+                // Skip validation for files without proper MIME type detection
+                // (browser couldn't determine type, so allow it through)
+                if (!f.type || f.type === 'application/octet-stream') return false;
+                return !supported.has(f.type.toLowerCase());
+            });
+            if (unsupported) {
+                setTimeout(() => setError(`未対応のファイル形式です: ${unsupported.type}`), 0);
+                return prev;
+            }
+
+            // Check for video - video can only be alone
+            const hasVideo = prev.some((m) => isVideoMedia(m));
+            const newHasVideo = filesToAdd.some((f) => isVideoFile(f));
+
+            // Check for audio - audio can only be alone (Mastodon specification)
+            const hasAudio = prev.some((m) => isAudioMedia(m));
+            const newHasAudio = filesToAdd.some((f) => isAudioFile(f));
+
+            // Video cannot be mixed with other media
+            if (hasVideo || (newHasVideo && prev.length > 0)) {
+                setTimeout(() => setError('動画は他のメディアと同時に添付できません'), 0);
+                return prev;
+            }
+
+            if (newHasVideo && filesToAdd.length > 1) {
+                setTimeout(() => setError('動画は1つのみ添付できます'), 0);
+                return prev;
+            }
+
+            // Audio cannot be mixed with other media (Mastodon spec)
+            if (hasAudio || (newHasAudio && prev.length > 0)) {
+                setTimeout(() => setError('音声は他のメディアと同時に添付できません'), 0);
+                return prev;
+            }
+
+            if (newHasAudio && filesToAdd.length > 1) {
+                setTimeout(() => setError('音声は1つのみ添付できます'), 0);
+                return prev;
+            }
+
+            // Audio and video cannot be mixed even when both are new
+            if (newHasAudio && newHasVideo) {
+                setTimeout(() => setError('音声と動画を同時に添付できません'), 0);
+                return prev;
+            }
+
+            // Create pending media files with stable localId
+            const pending = filesToAdd.map((file) => ({
+                localId: crypto.randomUUID(),
+                file,
+                preview: URL.createObjectURL(file),
+                uploading: true,
+                altText: '',
+            }));
+
+            // Clear error on successful add
+            setTimeout(() => setError(null), 0);
+
+            return [...prev, ...pending];
         });
     };
 
-    const updateAltText = (index: number, altText: string) => {
-        setMediaFiles((prev) => prev.map((m, i) => (i === index ? { ...m, altText } : m)));
+    // Upload media files that are pending (uploading: true)
+    // This effect ensures uploads are triggered after React state updates are committed
+    useEffect(() => {
+        if (!composingAccount) return;
+
+        // Find items that need uploading
+        const itemsToUpload = mediaFiles.filter(
+            (m) => m.uploading && m.file && !uploadingMediaIdsRef.current.has(m.localId)
+        );
+
+        if (itemsToUpload.length === 0) return;
+
+        const client = getClient(composingAccount);
+
+        // Mark items as being uploaded to prevent duplicate uploads
+        itemsToUpload.forEach((item) => {
+            uploadingMediaIdsRef.current.add(item.localId);
+        });
+
+        // Upload each file
+        for (const item of itemsToUpload) {
+            uploadMedia(client, item.file!)
+                .then((media) => {
+                    setMediaFiles((prev) =>
+                        prev.map((m) =>
+                            m.localId === item.localId
+                                ? { ...m, uploading: false, uploadedId: media.id }
+                                : m
+                        )
+                    );
+                })
+                .catch((err) => {
+                    console.error('Failed to upload media:', err);
+                    setMediaFiles((prev) =>
+                        prev.map((m) =>
+                            m.localId === item.localId
+                                ? {
+                                      ...m,
+                                      uploading: false,
+                                      error:
+                                          err instanceof Error
+                                              ? err.message
+                                              : 'アップロードに失敗しました',
+                                  }
+                                : m
+                        )
+                    );
+                })
+                .finally(() => {
+                    uploadingMediaIdsRef.current.delete(item.localId);
+                });
+        }
+    }, [mediaFiles, composingAccount]);
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files ? Array.from(e.target.files) : [];
+        void processFiles(files, 'picker');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    /**
+     * Handle clipboard paste for image uploads
+     */
+    const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+        // Only handle image paste when focus is on the main content textarea
+        // This allows normal text paste in other input fields (CW, alt text, etc.)
+        if (e.target !== textareaRef.current) return;
+
+        // Extract files from clipboardData.items (modern API)
+        const fromItems = Array.from(e.clipboardData.items)
+            .filter((i) => i.kind === 'file')
+            .map((i) => i.getAsFile())
+            .filter((f): f is File => f !== null);
+
+        // Fallback to clipboardData.files (legacy)
+        const files = fromItems.length > 0 ? fromItems : Array.from(e.clipboardData.files);
+
+        // If no images, allow default text paste behavior
+        const hasImages = files.some((f) => f.type.startsWith('image/'));
+        if (!hasImages) return;
+
+        e.preventDefault();
+        void processFiles(files, 'clipboard');
+    };
+
+    const removeMedia = (localId: string) => {
+        setMediaFiles((prev) => {
+            const media = prev.find((m) => m.localId === localId);
+            // Only revoke URLs that were created locally (not existing media)
+            if (media?.preview && !media.isExisting) {
+                URL.revokeObjectURL(media.preview);
+            }
+            return prev.filter((m) => m.localId !== localId);
+        });
+    };
+
+    const updateAltText = (localId: string, altText: string) => {
+        setMediaFiles((prev) => prev.map((m) => (m.localId === localId ? { ...m, altText } : m)));
     };
 
     const handleSubmit = async () => {
@@ -685,6 +783,7 @@ export function ComposeModal({
             {/* Modal */}
             <div
                 ref={modalRef}
+                onPaste={handlePaste}
                 className="relative w-full max-w-lg mx-4 bg-slate-900 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden max-h-[90vh] flex flex-col"
             >
                 {/* Loading overlay for edit mode */}
@@ -1080,7 +1179,7 @@ export function ComposeModal({
                         <div className="mb-3 space-y-2">
                             {mediaFiles.map((media, index) => (
                                 <div
-                                    key={index}
+                                    key={media.localId}
                                     className="bg-slate-800 rounded-lg overflow-hidden"
                                 >
                                     <div
@@ -1135,7 +1234,7 @@ export function ComposeModal({
 
                                         {/* Remove button */}
                                         <button
-                                            onClick={() => removeMedia(index)}
+                                            onClick={() => removeMedia(media.localId)}
                                             disabled={media.uploading}
                                             className="absolute top-1 right-1 w-6 h-6 bg-black/70 hover:bg-black rounded-full flex items-center justify-center text-white transition-colors disabled:opacity-50"
                                             aria-label={`メディア ${index + 1} を削除`}
@@ -1146,14 +1245,19 @@ export function ComposeModal({
 
                                     {/* Alt text input */}
                                     <div className="p-2 border-t border-slate-700">
-                                        <label htmlFor={`alt-text-${index}`} className="sr-only">
+                                        <label
+                                            htmlFor={`alt-text-${media.localId}`}
+                                            className="sr-only"
+                                        >
                                             メディア {index + 1} の代替テキスト
                                         </label>
                                         <input
-                                            id={`alt-text-${index}`}
+                                            id={`alt-text-${media.localId}`}
                                             type="text"
                                             value={media.altText}
-                                            onChange={(e) => updateAltText(index, e.target.value)}
+                                            onChange={(e) =>
+                                                updateAltText(media.localId, e.target.value)
+                                            }
                                             placeholder="代替テキストを追加..."
                                             disabled={media.uploading}
                                             className="w-full px-2 py-1 text-sm bg-slate-900 border border-slate-700 rounded text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
