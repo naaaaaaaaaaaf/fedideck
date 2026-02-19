@@ -435,3 +435,13 @@ export async function votePoll(
 ): Promise<mastodon.v1.Poll> {
     return client.v1.polls.$select(pollId).votes.create({ choices });
 }
+
+/**
+ * Fetch a poll by ID
+ * @param client - Mastodon API client
+ * @param pollId - ID of the poll
+ * @returns Poll with current vote counts
+ */
+export async function fetchPoll(client: MastoClient, pollId: string): Promise<mastodon.v1.Poll> {
+    return client.v1.polls.$select(pollId).fetch();
+}

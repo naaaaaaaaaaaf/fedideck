@@ -3026,9 +3026,10 @@ describe('StatusDetailModal', () => {
             expect(voteButton).not.toBeDisabled();
         });
 
-        it('should call votePoll API when voting', async () => {
+        it('should call onPollUpdate when voting', async () => {
             const user = userEvent.setup();
-            const onStatusUpdate = vi.fn();
+            const onPollUpdate = vi.fn();
+
             const status = createMockStatus({
                 poll: {
                     id: 'poll-1',
@@ -3071,7 +3072,7 @@ describe('StatusDetailModal', () => {
                     onClose={vi.fn()}
                     status={status}
                     accountSession={mockAccountSession}
-                    onStatusUpdate={onStatusUpdate}
+                    onPollUpdate={onPollUpdate}
                 />
             );
 
@@ -3087,10 +3088,12 @@ describe('StatusDetailModal', () => {
                 expect(mastoClient.votePoll).toHaveBeenCalledWith(expect.anything(), 'poll-1', [0]);
             });
 
-            // Should call onStatusUpdate with updated status
-            expect(onStatusUpdate).toHaveBeenCalledWith(
+            // Should call onPollUpdate with updated poll
+            expect(onPollUpdate).toHaveBeenCalledWith(
+                expect.any(String),
                 expect.objectContaining({
-                    poll: updatedPoll,
+                    voted: true,
+                    ownVotes: [0],
                 })
             );
         });

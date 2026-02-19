@@ -334,6 +334,22 @@ function App() {
         }
     };
 
+    // Handle poll updates - update global store and modal state
+    const handlePollUpdate = useCallback(
+        (statusId: string, poll: mastodon.v1.Poll) => {
+            updatePollGlobal(statusId, poll);
+            // Also update detail modal state if the status is currently displayed
+            setDetailStatus((prev) => {
+                if (!prev) return prev;
+                if (prev.id === statusId) return { ...prev, poll };
+                if (prev.reblog?.id === statusId)
+                    return { ...prev, reblog: { ...prev.reblog, poll } };
+                return prev;
+            });
+        },
+        [updatePollGlobal]
+    );
+
     return (
         <div className="h-screen flex overflow-hidden">
             <Sidebar
@@ -382,7 +398,7 @@ function App() {
                 accountSession={detailAccountSession}
                 onReply={handleStatusDetailReply}
                 onStatusUpdate={updateStatusGlobal}
-                onPollUpdate={updatePollGlobal}
+                onPollUpdate={handlePollUpdate}
                 onStatusDelete={handleStatusDeleteRequest}
                 onStatusEdit={handleStatusEditRequest}
                 onImageClick={handleImageClick}

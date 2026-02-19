@@ -2193,9 +2193,10 @@ describe('StatusCard', () => {
             expect(onPollUpdate).toHaveBeenCalledWith('12345', updatedPoll);
         });
 
-        it('should call onStatusUpdate when onPollUpdate is not provided', async () => {
+        it('should call onPollUpdate when provided', async () => {
             const user = userEvent.setup();
-            const onStatusUpdate = vi.fn();
+            const onPollUpdate = vi.fn();
+
             const status = createMockStatus({
                 poll: {
                     id: 'poll-1',
@@ -2235,7 +2236,7 @@ describe('StatusCard', () => {
                 <StatusCard
                     status={status}
                     accountSession={mockAccountSession}
-                    onStatusUpdate={onStatusUpdate}
+                    onPollUpdate={onPollUpdate}
                 />
             );
 
@@ -2246,10 +2247,11 @@ describe('StatusCard', () => {
             // Wait for async vote
             await screen.findByText('投票');
 
-            expect(onStatusUpdate).toHaveBeenCalled();
-            const calledStatus = onStatusUpdate.mock.calls[0][0];
-            expect(calledStatus.poll.voted).toBe(true);
-            expect(calledStatus.poll.ownVotes).toEqual([0]);
+            expect(onPollUpdate).toHaveBeenCalled();
+            const [statusId, poll] = onPollUpdate.mock.calls[0];
+            expect(statusId).toBe('12345');
+            expect(poll.voted).toBe(true);
+            expect(poll.ownVotes).toEqual([0]);
         });
 
         it('should show loading state during vote', async () => {
