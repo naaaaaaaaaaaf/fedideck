@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { formatDate } from './dateFormat';
+import { formatDate, formatTimeRemaining } from './dateFormat';
 
 describe('formatDate', () => {
     let mockNow: Date;
@@ -187,6 +187,124 @@ describe('formatDate', () => {
                 mockNow.getTime() - 1 * 24 * 60 * 60 * 1000 - 23 * 60 * 60 * 1000
             ).toISOString();
             expect(formatDate(date)).toBe('1日'); // Should be 1, not 2
+        });
+    });
+});
+
+describe('formatTimeRemaining', () => {
+    const nowMs = 1705318800000; // 2024-01-15T13:00:00.000Z
+
+    describe('null and invalid cases', () => {
+        it('should return null for null expiresAt (poll never expires)', () => {
+            expect(formatTimeRemaining(null, nowMs)).toBeNull();
+        });
+
+        it('should return null for already expired poll', () => {
+            // 1 minute in the past
+            const expiresAt = new Date(nowMs - 60000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBeNull();
+        });
+
+        it('should return null for exactly now (0ms remaining)', () => {
+            const expiresAt = new Date(nowMs).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBeNull();
+        });
+
+        it('should return null for invalid date string', () => {
+            expect(formatTimeRemaining('invalid-date', nowMs)).toBeNull();
+        });
+    });
+
+    describe('less than 1 minute', () => {
+        it('should return "残り1分未満" for 1 second remaining', () => {
+            const expiresAt = new Date(nowMs + 1000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り1分未満');
+        });
+
+        it('should return "残り1分未満" for 59 seconds remaining', () => {
+            const expiresAt = new Date(nowMs + 59000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り1分未満');
+        });
+    });
+
+    describe('minutes', () => {
+        it('should return "残り1分" for 1 minute remaining', () => {
+            const expiresAt = new Date(nowMs + 60000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り1分');
+        });
+
+        it('should return "残り30分" for 30 minutes remaining', () => {
+            const expiresAt = new Date(nowMs + 30 * 60000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り30分');
+        });
+
+        it('should return "残り59分" for 59 minutes 59 seconds remaining', () => {
+            const expiresAt = new Date(nowMs + 59 * 60000 + 59000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り59分');
+        });
+    });
+
+    describe('hours', () => {
+        it('should return "残り1時間" for 1 hour remaining', () => {
+            const expiresAt = new Date(nowMs + 60 * 60000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り1時間');
+        });
+
+        it('should return "残り12時間" for 12 hours remaining', () => {
+            const expiresAt = new Date(nowMs + 12 * 60 * 60000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り12時間');
+        });
+
+        it('should return "残り23時間" for 23 hours 59 minutes remaining', () => {
+            const expiresAt = new Date(nowMs + 23 * 60 * 60000 + 59 * 60000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り23時間');
+        });
+    });
+
+    describe('days', () => {
+        it('should return "残り1日" for 24 hours remaining', () => {
+            const expiresAt = new Date(nowMs + 24 * 60 * 60000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り1日');
+        });
+
+        it('should return "残り3日" for 3 days remaining', () => {
+            const expiresAt = new Date(nowMs + 3 * 24 * 60 * 60000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り3日');
+        });
+
+        it('should return "残り7日" for 7 days remaining', () => {
+            const expiresAt = new Date(nowMs + 7 * 24 * 60 * 60000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り7日');
+        });
+    });
+
+    describe('default nowMs parameter', () => {
+        it('should use Date.now() when nowMs is not provided', () => {
+            // Test with a future date (polls typically have max 7 days)
+            // Use 30 minutes to ensure it's within the minute range
+            const futureDate = new Date(Date.now() + 30 * 60000).toISOString();
+            const result = formatTimeRemaining(futureDate);
+            expect(result).toBe('残り30分');
+        });
+    });
+
+    describe('flooring behavior', () => {
+        it('should floor minutes (not round up)', () => {
+            // 1 minute 59 seconds remaining
+            const expiresAt = new Date(nowMs + 60000 + 59000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り1分');
+        });
+
+        it('should floor hours (not round up)', () => {
+            // 1 hour 59 minutes remaining
+            const expiresAt = new Date(nowMs + 60 * 60000 + 59 * 60000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り1時間');
+        });
+
+        it('should floor days (not round up)', () => {
+            // 1 day 23 hours remaining
+            const expiresAt = new Date(nowMs + 24 * 60 * 60000 + 23 * 60 * 60000).toISOString();
+            expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り1日');
         });
     });
 });

@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { mastodon } from 'masto';
-import { LuX, LuRepeat2, LuMessageCircle, LuStar, LuTriangleAlert, LuLoader } from 'react-icons/lu';
+import {
+    LuX,
+    LuRepeat2,
+    LuMessageCircle,
+    LuStar,
+    LuTriangleAlert,
+    LuLoader,
+    LuRefreshCw,
+} from 'react-icons/lu';
 import {
     type AccountSession,
     type MastoClient,
@@ -10,10 +18,11 @@ import {
     reblogStatus,
     unreblogStatus,
     getStatusContext,
-    votePoll,
     type StatusContext,
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
+import { usePollState } from '../hooks/usePollState';
+import { usePollCountdown } from '../hooks/usePollCountdown';
 import { formatDate } from '../utils/dateFormat';
 import { getVisibilityMeta } from '../utils/statusVisibility';
 import { replaceEmojisWithImages } from '../utils/emoji';
@@ -253,10 +262,27 @@ export function StatusDetailModal({
     const [localReblogsCount, setLocalReblogsCount] = useState(0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
-    // Poll voting state - use localPoll to immediately reflect vote changes
-    const [localPoll, setLocalPoll] = useState<mastodon.v1.Poll | null>(null);
-    const [pollLoading, setPollLoading] = useState(false);
-    const [selectedPollOptions, setSelectedPollOptions] = useState<Set<number>>(new Set());
+    // Poll state using usePollState hook (with auto-refresh on expiry for modal)
+    const {
+        localPoll,
+        selectedOptions: selectedPollOptions,
+        pollLoading,
+        pollRefreshing,
+        canVote,
+        canRefresh,
+        handleOptionToggle: handlePollOptionToggle,
+        handleVote: handlePollVote,
+        handleRefresh: handlePollRefresh,
+    } = usePollState({
+        poll: displayStatus?.poll ?? null,
+        statusId: displayStatus?.id ?? '',
+        accountSession: accountSession ?? null,
+        onPollUpdate,
+        autoRefreshOnExpiry: true,
+    });
+
+    // Poll countdown display
+    const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
 
     // Thread context state
     const [context, setContext] = useState<StatusContext | null>(null);
@@ -283,31 +309,33 @@ export function StatusDetailModal({
         setIsLoadingContext(false);
     }, [status?.id, isOpen]);
 
-    // Sync favourite/reblog state when status id changes or modal opens
-    // Separate from poll sync to avoid resetting selectedPollOptions on unrelated updates
+    // Sync favourite/reblog state when status changes or modal opens
+    // Include specific fields in dependencies to catch external updates
+    // Skip sync during loading to avoid overwriting optimistic updates
     useEffect(() => {
-        if (displayStatus && isOpen) {
-            setLocalFavourited(displayStatus.favourited ?? false);
-            setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
-            setLocalReblogged(displayStatus.reblogged ?? false);
-            setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
-            // Only reset NSFW state if not controlled by parent
-            if (!isControlled) {
-                setLocalNsfwRevealed(false);
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [displayStatus?.id, isOpen, isControlled]);
+        if (!displayStatus || !isOpen) return;
+        // Skip sync during loading operations
+        if (isLoading.favourite || isLoading.reblog) return;
 
-    // Sync localPoll when displayStatus.poll changes (separate effect to avoid reset issues)
-    useEffect(() => {
-        if (displayStatus && isOpen) {
-            setLocalPoll(displayStatus.poll ?? null);
-            // Reset selection only when poll actually changes
-            setSelectedPollOptions(new Set());
+        setLocalFavourited(displayStatus.favourited ?? false);
+        setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
+        setLocalReblogged(displayStatus.reblogged ?? false);
+        setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
+        // Only reset NSFW state if not controlled by parent and status changed
+        if (!isControlled) {
+            setLocalNsfwRevealed(false);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [displayStatus?.id, displayStatus?.poll?.id, isOpen]);
+    }, [
+        displayStatus?.id,
+        displayStatus?.favourited,
+        displayStatus?.favouritesCount,
+        displayStatus?.reblogged,
+        displayStatus?.reblogsCount,
+        isOpen,
+        isControlled,
+        isLoading.favourite,
+        isLoading.reblog,
+    ]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
@@ -527,56 +555,6 @@ export function StatusDetailModal({
     const handleReply = () => {
         onReply?.(displayStatus);
         onClose();
-    };
-
-    // Poll voting handlers
-    const handlePollOptionToggle = (index: number) => {
-        if (!localPoll?.multiple) {
-            // Single selection: replace
-            setSelectedPollOptions(new Set([index]));
-        } else {
-            // Multiple selection: toggle
-            setSelectedPollOptions((prev) => {
-                const next = new Set(prev);
-                if (next.has(index)) {
-                    next.delete(index);
-                } else {
-                    next.add(index);
-                }
-                return next;
-            });
-        }
-    };
-
-    const handlePollVote = async () => {
-        if (!accountSession || !localPoll || pollLoading || selectedPollOptions.size === 0) return;
-
-        setPollLoading(true);
-        try {
-            const client: MastoClient = getClient(accountSession);
-            const choices = Array.from(selectedPollOptions);
-            const updatedPoll = await votePoll(client, localPoll.id, choices);
-
-            // Update localPoll immediately for modal display
-            setLocalPoll(updatedPoll);
-            setSelectedPollOptions(new Set());
-
-            // Use onPollUpdate for partial update (prevents overwriting concurrent updates)
-            // Fall back to onStatusUpdate for backwards compatibility
-            if (onPollUpdate && displayStatus) {
-                onPollUpdate(displayStatus.id, updatedPoll);
-            } else if (displayStatus) {
-                const updatedStatus: mastodon.v1.Status = {
-                    ...displayStatus,
-                    poll: updatedPoll,
-                };
-                onStatusUpdate?.(updatedStatus);
-            }
-        } catch (error) {
-            console.error('Failed to vote on poll:', error);
-        } finally {
-            setPollLoading(false);
-        }
     };
 
     return (
@@ -812,12 +790,6 @@ export function StatusDetailModal({
                             localPoll.options &&
                             localPoll.options.length > 0 &&
                             (() => {
-                                // Check if user can vote (poll.voted is optional)
-                                const hasVoted =
-                                    localPoll.voted === true ||
-                                    (localPoll.ownVotes?.length ?? 0) > 0;
-                                const canVote = !!accountSession && !localPoll.expired && !hasVoted;
-
                                 return (
                                     <fieldset className="mb-4 p-4 bg-slate-800/50 rounded-xl">
                                         <legend className="sr-only">投票</legend>
@@ -914,9 +886,30 @@ export function StatusDetailModal({
                                                         </div>
                                                     );
                                                 })}
-                                                <div className="text-sm text-slate-400 mt-3 pt-3 border-t border-slate-700">
-                                                    {localPoll.votesCount ?? 0}票
-                                                    {localPoll.expired && ' · 終了'}
+                                                <div className="text-sm text-slate-400 mt-3 pt-3 border-t border-slate-700 flex items-center justify-between">
+                                                    <span>
+                                                        {localPoll.votesCount ?? 0}票
+                                                        {localPoll.expired
+                                                            ? ' · 終了'
+                                                            : pollCountdown && (
+                                                                  <span> · {pollCountdown}</span>
+                                                              )}
+                                                    </span>
+                                                    {!localPoll.expired && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={handlePollRefresh}
+                                                            disabled={!canRefresh || pollRefreshing}
+                                                            className="text-indigo-400 hover:text-indigo-300 disabled:opacity-50 inline-flex items-center gap-1"
+                                                            aria-label="投票結果を更新"
+                                                        >
+                                                            <LuRefreshCw
+                                                                className={`w-3.5 h-3.5 ${pollRefreshing ? 'animate-spin' : ''}`}
+                                                                aria-hidden="true"
+                                                            />
+                                                            {pollRefreshing ? '更新中...' : '更新'}
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </>
                                         )}
