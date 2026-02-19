@@ -11,6 +11,7 @@ import {
     waitForMediaReady,
     getStatusSource,
     editStatus,
+    votePoll,
     type CreateStatusParams,
     type EditStatusParams,
     type MastoClient,
@@ -774,6 +775,129 @@ describe('editStatus', () => {
 
         await expect(editStatus(mockClient, 'nonexistent', params)).rejects.toThrow(
             'Record not found'
+        );
+    });
+});
+
+describe('votePoll', () => {
+    it('votes with single choice', async () => {
+        const mockPoll = {
+            id: 'poll-123',
+            expired: false,
+            multiple: false,
+            votesCount: 5,
+            options: [
+                { title: 'Option 1', votesCount: 3 },
+                { title: 'Option 2', votesCount: 2 },
+            ],
+            voted: true,
+            ownVotes: [0],
+        };
+        const mockCreate = vi.fn().mockResolvedValue(mockPoll);
+        const mockClient = {
+            v1: {
+                polls: {
+                    $select: vi.fn().mockReturnValue({
+                        votes: {
+                            create: mockCreate,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await votePoll(mockClient, 'poll-123', [0]);
+
+        expect(mockClient.v1.polls.$select).toHaveBeenCalledWith('poll-123');
+        expect(mockCreate).toHaveBeenCalledWith({ choices: [0] });
+        expect(result.voted).toBe(true);
+        expect(result.ownVotes).toEqual([0]);
+    });
+
+    it('votes with multiple choices', async () => {
+        const mockPoll = {
+            id: 'poll-456',
+            expired: false,
+            multiple: true,
+            votesCount: 10,
+            options: [
+                { title: 'Option A', votesCount: 4 },
+                { title: 'Option B', votesCount: 3 },
+                { title: 'Option C', votesCount: 3 },
+            ],
+            voted: true,
+            ownVotes: [0, 2],
+        };
+        const mockCreate = vi.fn().mockResolvedValue(mockPoll);
+        const mockClient = {
+            v1: {
+                polls: {
+                    $select: vi.fn().mockReturnValue({
+                        votes: {
+                            create: mockCreate,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await votePoll(mockClient, 'poll-456', [0, 2]);
+
+        expect(mockClient.v1.polls.$select).toHaveBeenCalledWith('poll-456');
+        expect(mockCreate).toHaveBeenCalledWith({ choices: [0, 2] });
+        expect(result.ownVotes).toEqual([0, 2]);
+    });
+
+    it('throws error when poll not found', async () => {
+        const mockCreate = vi.fn().mockRejectedValue(new Error('Record not found'));
+        const mockClient = {
+            v1: {
+                polls: {
+                    $select: vi.fn().mockReturnValue({
+                        votes: {
+                            create: mockCreate,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(votePoll(mockClient, 'nonexistent', [0])).rejects.toThrow('Record not found');
+    });
+
+    it('throws error when poll is expired', async () => {
+        const mockCreate = vi.fn().mockRejectedValue(new Error('Poll is expired'));
+        const mockClient = {
+            v1: {
+                polls: {
+                    $select: vi.fn().mockReturnValue({
+                        votes: {
+                            create: mockCreate,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(votePoll(mockClient, 'expired-poll', [0])).rejects.toThrow('Poll is expired');
+    });
+
+    it('throws error when already voted', async () => {
+        const mockCreate = vi.fn().mockRejectedValue(new Error('You have already voted'));
+        const mockClient = {
+            v1: {
+                polls: {
+                    $select: vi.fn().mockReturnValue({
+                        votes: {
+                            create: mockCreate,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        await expect(votePoll(mockClient, 'voted-poll', [1])).rejects.toThrow(
+            'You have already voted'
         );
     });
 });

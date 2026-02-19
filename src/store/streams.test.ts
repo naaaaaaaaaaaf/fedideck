@@ -198,6 +198,94 @@ describe('useStreamsStore', () => {
         });
     });
 
+    describe('updatePollGlobal', () => {
+        const makePoll = (id: string, voted: boolean = false) =>
+            ({
+                id,
+                voted,
+                options: [{ title: 'Option 1', votesCount: 1 }],
+            }) as mastodon.v1.Poll;
+
+        it('updates only poll field across multiple streams', () => {
+            const originalStatus = {
+                id: '1',
+                poll: makePoll('poll-1', false),
+                favourited: false,
+            } as mastodon.v1.Status;
+            const updatedPoll = makePoll('poll-1', true);
+
+            useStreamsStore.getState().setStatuses('account:home', [originalStatus]);
+            useStreamsStore.getState().setStatuses('account:public', [originalStatus]);
+
+            useStreamsStore.getState().updatePollGlobal('1', updatedPoll);
+
+            const homeStream = useStreamsStore.getState().data['account:home'];
+            const publicStream = useStreamsStore.getState().data['account:public'];
+
+            expect(homeStream.statuses[0].poll?.voted).toBe(true);
+            expect(publicStream.statuses[0].poll?.voted).toBe(true);
+            // Other fields should remain unchanged
+            expect(homeStream.statuses[0].favourited).toBe(false);
+        });
+
+        it('updates poll inside reblog', () => {
+            const innerStatus = {
+                id: 'inner-1',
+                poll: makePoll('poll-1', false),
+            } as mastodon.v1.Status;
+            const reblogStatus = {
+                id: 'reblog-1',
+                reblog: innerStatus,
+            } as mastodon.v1.Status;
+            const updatedPoll = makePoll('poll-1', true);
+
+            useStreamsStore.getState().setStatuses('account:home', [reblogStatus]);
+
+            useStreamsStore.getState().updatePollGlobal('inner-1', updatedPoll);
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            expect(stream.statuses[0].reblog?.poll?.voted).toBe(true);
+        });
+
+        it('does not modify streams without matching status', () => {
+            const status1 = makeStatus('1');
+            const updatedPoll = makePoll('poll-1', true);
+
+            useStreamsStore.getState().setStatuses('account:home', [status1]);
+
+            const originalState = useStreamsStore.getState();
+            useStreamsStore.getState().updatePollGlobal('999', updatedPoll);
+            const newState = useStreamsStore.getState();
+
+            // State reference should be unchanged when no matches
+            expect(newState.data).toBe(originalState.data);
+        });
+
+        it('preserves other status fields during poll update', () => {
+            const originalStatus = {
+                id: '1',
+                poll: makePoll('poll-1', false),
+                favourited: true,
+                reblogged: true,
+                favouritesCount: 42,
+                reblogsCount: 10,
+            } as mastodon.v1.Status;
+            const updatedPoll = makePoll('poll-1', true);
+
+            useStreamsStore.getState().setStatuses('account:home', [originalStatus]);
+
+            useStreamsStore.getState().updatePollGlobal('1', updatedPoll);
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            const status = stream.statuses[0];
+            expect(status.poll?.voted).toBe(true);
+            expect(status.favourited).toBe(true);
+            expect(status.reblogged).toBe(true);
+            expect(status.favouritesCount).toBe(42);
+            expect(status.reblogsCount).toBe(10);
+        });
+    });
+
     describe('removeStatusForAccountStreams', () => {
         it('removes status from all streams of an account', () => {
             const status1 = makeStatus('1');

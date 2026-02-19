@@ -15,6 +15,7 @@ import {
     unfavouriteStatus,
     reblogStatus,
     unreblogStatus,
+    votePoll,
 } from '../api/mastoClient';
 import { formatDate } from '../utils/dateFormat';
 import { getVisibilityMeta } from '../utils/statusVisibility';
@@ -34,6 +35,7 @@ interface StatusCardProps {
     isReblog?: boolean;
     accountSession?: AccountSession; // Required for boost/favorite - uses column's account
     onStatusUpdate?: (updatedStatus: mastodon.v1.Status) => void;
+    onPollUpdate?: (statusId: string, poll: mastodon.v1.Poll) => void;
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
@@ -51,6 +53,7 @@ export const StatusCard = React.memo(function StatusCard({
     isReblog = false,
     accountSession,
     onStatusUpdate,
+    onPollUpdate,
     onReply,
     onStatusClick,
     onImageClick,
@@ -78,6 +81,12 @@ export const StatusCard = React.memo(function StatusCard({
     const [localReblogged, setLocalReblogged] = useState(displayStatus.reblogged ?? false);
     const [localReblogsCount, setLocalReblogsCount] = useState(displayStatus.reblogsCount ?? 0);
     const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
+
+    // Poll voting state - use localPoll to immediately reflect vote changes
+    // This prevents double-vote vulnerability when onStatusUpdate is delayed/undefined
+    const [localPoll, setLocalPoll] = useState<mastodon.v1.Poll | null>(null);
+    const [pollLoading, setPollLoading] = useState(false);
+    const [selectedPollOptions, setSelectedPollOptions] = useState<Set<number>>(new Set());
 
     // NSFW state:
     // - onNsfwReveal provided: controlled mode, uses isNsfwRevealed from parent
@@ -137,12 +146,20 @@ export const StatusCard = React.memo(function StatusCard({
         }
     }, [isLoading.favourite, isLoading.reblog]);
 
+    // Sync localPoll when displayStatus.poll changes (streaming updates, navigation)
+    // This prevents double-vote vulnerability by maintaining local poll state
+    useEffect(() => {
+        setLocalPoll(displayStatus.poll ?? null);
+        // Reset selection when poll changes (different poll or status)
+        setSelectedPollOptions(new Set());
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [displayStatus.id, displayStatus.poll?.id]);
+
     // Note: nsfwRevealed state is automatically reset when status changes
     // because StatusCard is rendered with key={status.id} in parent
 
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
-    const poll = displayStatus.poll;
 
     // Convert image attachments to ImageViewerImage format (memoized)
     // Use displayStatus.mediaAttachments as dependency for stable reference
@@ -278,17 +295,63 @@ export const StatusCard = React.memo(function StatusCard({
     const canReblog =
         displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
 
+    // Poll voting handlers
+    const handlePollOptionToggle = (index: number) => {
+        if (!localPoll?.multiple) {
+            // Single selection: replace
+            setSelectedPollOptions(new Set([index]));
+        } else {
+            // Multiple selection: toggle
+            setSelectedPollOptions((prev) => {
+                const next = new Set(prev);
+                if (next.has(index)) {
+                    next.delete(index);
+                } else {
+                    next.add(index);
+                }
+                return next;
+            });
+        }
+    };
+
+    const handlePollVote = async () => {
+        if (!accountSession || !localPoll || pollLoading || selectedPollOptions.size === 0) return;
+
+        setPollLoading(true);
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const choices = Array.from(selectedPollOptions);
+            const updatedPoll = await votePoll(client, localPoll.id, choices);
+
+            // Update localPoll immediately for UI display (prevents double-vote)
+            setLocalPoll(updatedPoll);
+            setSelectedPollOptions(new Set());
+
+            // Use onPollUpdate for partial update (prevents overwriting concurrent updates)
+            // Fall back to onStatusUpdate for backwards compatibility
+            if (onPollUpdate) {
+                onPollUpdate(displayStatus.id, updatedPoll);
+            } else {
+                const updatedStatus: mastodon.v1.Status = {
+                    ...displayStatus,
+                    poll: updatedPoll,
+                };
+                onStatusUpdate?.(updatedStatus);
+            }
+        } catch (error) {
+            console.error('Failed to vote on poll:', error);
+        } finally {
+            setPollLoading(false);
+        }
+    };
+
     // Handle card click to open detail modal
     const handleCardClick = (e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
         // Ignore clicks on interactive elements
-        if (
-            target.closest('a') ||
-            target.closest('button') ||
-            target.closest('video') ||
-            target.closest('audio') ||
-            target.closest('summary')
-        ) {
+        const interactiveSelector =
+            'a, button, input, label, select, textarea, video, audio, summary, [role="button"]';
+        if (target.closest(interactiveSelector)) {
             return;
         }
         openStatusDetail();
@@ -299,13 +362,9 @@ export const StatusCard = React.memo(function StatusCard({
         if (e.key === 'Enter' || e.key === ' ') {
             const target = e.target as HTMLElement;
             // Ignore keyboard events on interactive elements
-            if (
-                target.closest('a') ||
-                target.closest('button') ||
-                target.closest('video') ||
-                target.closest('audio') ||
-                target.closest('summary')
-            ) {
+            const interactiveSelector =
+                'a, button, input, label, select, textarea, video, audio, summary, [role="button"]';
+            if (target.closest(interactiveSelector)) {
                 return;
             }
             e.preventDefault();
@@ -587,34 +646,112 @@ export const StatusCard = React.memo(function StatusCard({
                     )}
 
                     {/* Poll - safely check existence and options */}
-                    {poll && poll.options && poll.options.length > 0 && (
-                        <div className="mt-3 p-3 bg-slate-800/50 rounded-lg">
-                            {poll.options.map((option, i) => {
-                                const votesCount = poll.votesCount ?? 0;
-                                const percentage =
-                                    votesCount > 0
-                                        ? Math.round(((option.votesCount ?? 0) / votesCount) * 100)
-                                        : 0;
-                                return (
-                                    <div key={`${poll.id}-${i}`} className="mb-2 last:mb-0">
-                                        <div className="flex justify-between text-sm mb-1">
-                                            <span>{option.title}</span>
-                                            <span className="text-slate-400">{percentage}%</span>
-                                        </div>
-                                        <div className="h-2 bg-slate-700 rounded overflow-hidden">
-                                            <div
-                                                className="h-full bg-indigo-500 transition-all"
-                                                style={{ width: `${percentage}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            <div className="text-xs text-slate-400 mt-2">
-                                {poll.votesCount ?? 0}票{poll.expired && ' · 終了'}
-                            </div>
-                        </div>
-                    )}
+                    {localPoll &&
+                        localPoll.options &&
+                        localPoll.options.length > 0 &&
+                        (() => {
+                            // Check if user can vote (poll.voted is optional)
+                            const hasVoted =
+                                localPoll.voted === true || (localPoll.ownVotes?.length ?? 0) > 0;
+                            const canVote = !!accountSession && !localPoll.expired && !hasVoted;
+
+                            return (
+                                <fieldset className="mt-3 p-3 bg-slate-800/50 rounded-lg">
+                                    <legend className="sr-only">投票</legend>
+                                    {canVote ? (
+                                        // Voting UI
+                                        <>
+                                            {localPoll.options.map((option, i) => (
+                                                <label
+                                                    key={`${localPoll.id}-${i}`}
+                                                    className="flex items-center gap-2 mb-2 last:mb-0 cursor-pointer hover:bg-slate-700/30 p-2 rounded"
+                                                >
+                                                    <input
+                                                        type={
+                                                            localPoll.multiple
+                                                                ? 'checkbox'
+                                                                : 'radio'
+                                                        }
+                                                        name={`poll-${localPoll.id}`}
+                                                        checked={selectedPollOptions.has(i)}
+                                                        onChange={() => handlePollOptionToggle(i)}
+                                                        disabled={pollLoading}
+                                                        className="w-4 h-4 accent-indigo-500"
+                                                    />
+                                                    <span className="text-sm">{option.title}</span>
+                                                </label>
+                                            ))}
+                                            <button
+                                                type="button"
+                                                onClick={handlePollVote}
+                                                disabled={
+                                                    selectedPollOptions.size === 0 || pollLoading
+                                                }
+                                                aria-busy={pollLoading}
+                                                className={`mt-2 px-4 py-1.5 text-sm rounded-lg transition-colors ${
+                                                    selectedPollOptions.size === 0 || pollLoading
+                                                        ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                                        : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                                                }`}
+                                            >
+                                                {pollLoading ? '投票中...' : '投票'}
+                                            </button>
+                                        </>
+                                    ) : (
+                                        // Results UI
+                                        <>
+                                            {localPoll.options.map((option, i) => {
+                                                const votesCount = localPoll.votesCount ?? 0;
+                                                const percentage =
+                                                    votesCount > 0
+                                                        ? Math.round(
+                                                              ((option.votesCount ?? 0) /
+                                                                  votesCount) *
+                                                                  100
+                                                          )
+                                                        : 0;
+                                                const isOwnVote =
+                                                    localPoll.ownVotes?.includes(i) ?? false;
+                                                return (
+                                                    <div
+                                                        key={`${localPoll.id}-${i}`}
+                                                        className="mb-2 last:mb-0"
+                                                    >
+                                                        <div className="flex justify-between text-sm mb-1">
+                                                            <span>
+                                                                {isOwnVote && (
+                                                                    <span className="text-indigo-400 mr-1">
+                                                                        ✓
+                                                                    </span>
+                                                                )}
+                                                                {option.title}
+                                                            </span>
+                                                            <span className="text-slate-400">
+                                                                {percentage}%
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-2 bg-slate-700 rounded overflow-hidden">
+                                                            <div
+                                                                className={`h-full transition-all ${
+                                                                    isOwnVote
+                                                                        ? 'bg-indigo-400'
+                                                                        : 'bg-indigo-500'
+                                                                }`}
+                                                                style={{ width: `${percentage}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            <div className="text-xs text-slate-400 mt-2">
+                                                {localPoll.votesCount ?? 0}票
+                                                {localPoll.expired && ' · 終了'}
+                                            </div>
+                                        </>
+                                    )}
+                                </fieldset>
+                            );
+                        })()}
 
                     {/* Action bar */}
                     <div className="flex items-center gap-2 mt-1 text-slate-400">

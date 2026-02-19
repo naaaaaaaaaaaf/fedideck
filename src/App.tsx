@@ -102,6 +102,7 @@ function App() {
     const removeStatusForAccountStreams = useStreamsStore((s) => s.removeStatusForAccountStreams);
     const updateStatus = useStreamsStore((s) => s.updateStatus);
     const updateStatusGlobal = useStreamsStore((s) => s.updateStatusGlobal);
+    const updatePollGlobal = useStreamsStore((s) => s.updatePollGlobal);
     const prependNotification = useStreamsStore((s) => s.prependNotification);
 
     // Ref to track if default columns have been added
@@ -381,6 +382,7 @@ function App() {
                 accountSession={detailAccountSession}
                 onReply={handleStatusDetailReply}
                 onStatusUpdate={updateStatusGlobal}
+                onPollUpdate={updatePollGlobal}
                 onStatusDelete={handleStatusDeleteRequest}
                 onStatusEdit={handleStatusEditRequest}
                 onImageClick={handleImageClick}
