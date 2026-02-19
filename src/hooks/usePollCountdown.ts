@@ -9,24 +9,17 @@ export function usePollCountdown(expiresAt: string | null): string | null {
     const [remaining, setRemaining] = useState(() => formatTimeRemaining(expiresAt));
 
     useEffect(() => {
-        if (!expiresAt) {
-            // Clear remaining time when expiresAt becomes null
-            // This is a valid pattern for responding to prop changes
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setRemaining(null);
-            return;
-        }
-
         const updateRemaining = () => {
             setRemaining(formatTimeRemaining(expiresAt));
         };
 
-        // Update immediately
+        // Update immediately (formatTimeRemaining returns null for null input)
         updateRemaining();
 
-        // Update every 30 seconds
-        const intervalId = setInterval(updateRemaining, 30000);
+        // Only set interval if expiresAt is valid
+        if (!expiresAt) return;
 
+        const intervalId = setInterval(updateRemaining, 30000);
         return () => clearInterval(intervalId);
     }, [expiresAt]);
 
