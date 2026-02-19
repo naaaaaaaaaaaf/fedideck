@@ -619,4 +619,203 @@ describe('usePollState', () => {
             expect(mastoClient.fetchPoll).not.toHaveBeenCalled();
         });
     });
+
+    describe('race condition control', () => {
+        it('should ignore stale refresh response when poll changes', async () => {
+            const poll1 = createMockPoll({ id: 'poll-1', votesCount: 10 });
+            const poll2 = createMockPoll({ id: 'poll-2', votesCount: 20 });
+
+            // Create a deferred promise for the first poll's refresh
+            let resolveFirstRefresh: (value: mastodon.v1.Poll) => void;
+            const firstRefreshPromise = new Promise<mastodon.v1.Poll>((resolve) => {
+                resolveFirstRefresh = resolve;
+            });
+
+            vi.mocked(mastoClient.fetchPoll)
+                .mockReturnValueOnce(firstRefreshPromise)
+                .mockResolvedValueOnce(createMockPoll({ id: 'poll-2', votesCount: 25 }));
+            vi.mocked(mastoClient.getClient).mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
+
+            const { result, rerender } = renderHook(
+                ({ poll }) =>
+                    usePollState({
+                        poll,
+                        statusId: 'status-1',
+                        accountSession: mockAccountSession,
+                        onPollUpdate: mockOnPollUpdate,
+                    }),
+                { initialProps: { poll: poll1 } }
+            );
+
+            // Start refresh on poll1
+            act(() => {
+                result.current.handleRefresh();
+            });
+
+            expect(result.current.pollRefreshing).toBe(true);
+
+            // Change to poll2 while refresh is in progress
+            rerender({ poll: poll2 });
+
+            // localPoll should be poll2 now, but pollRefreshing stays true (old request still pending)
+            expect(result.current.localPoll?.id).toBe('poll-2');
+            // Note: pollRefreshing remains true until the old request completes or is resolved
+
+            // Now resolve the stale refresh (poll1's response)
+            const staleResponse = createMockPoll({ id: 'poll-1', votesCount: 999 });
+            await act(async () => {
+                resolveFirstRefresh!(staleResponse);
+                await Promise.resolve();
+            });
+
+            // The stale response should be ignored - localPoll should still be poll2
+            expect(result.current.localPoll?.id).toBe('poll-2');
+            expect(result.current.localPoll?.votesCount).toBe(20);
+            expect(mockOnPollUpdate).not.toHaveBeenCalled();
+        });
+
+        it('should ignore stale vote response when poll changes', async () => {
+            const poll1 = createMockPoll({ id: 'poll-1', multiple: false });
+            const poll2 = createMockPoll({ id: 'poll-2', multiple: false });
+
+            // Create a deferred promise for the first poll's vote
+            let resolveFirstVote: (value: mastodon.v1.Poll) => void;
+            const firstVotePromise = new Promise<mastodon.v1.Poll>((resolve) => {
+                resolveFirstVote = resolve;
+            });
+
+            vi.mocked(mastoClient.votePoll).mockReturnValueOnce(firstVotePromise);
+            vi.mocked(mastoClient.getClient).mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
+
+            const { result, rerender } = renderHook(
+                ({ poll }) =>
+                    usePollState({
+                        poll,
+                        statusId: 'status-1',
+                        accountSession: mockAccountSession,
+                        onPollUpdate: mockOnPollUpdate,
+                    }),
+                { initialProps: { poll: poll1 } }
+            );
+
+            // Select option and start vote on poll1
+            act(() => {
+                result.current.handleOptionToggle(0);
+            });
+            act(() => {
+                result.current.handleVote();
+            });
+
+            expect(result.current.pollLoading).toBe(true);
+
+            // Change to poll2 while vote is in progress
+            rerender({ poll: poll2 });
+
+            // localPoll should be poll2 now, but pollLoading stays true (old request still pending)
+            expect(result.current.localPoll?.id).toBe('poll-2');
+            // Note: pollLoading remains true until the old request completes or is resolved
+
+            // Now resolve the stale vote (poll1's response)
+            const staleResponse = createMockPoll({ id: 'poll-1', voted: true, ownVotes: [0] });
+            await act(async () => {
+                resolveFirstVote!(staleResponse);
+                await Promise.resolve();
+            });
+
+            // The stale response should be ignored - localPoll should still be poll2
+            expect(result.current.localPoll?.id).toBe('poll-2');
+            expect(result.current.localPoll?.voted).toBe(false);
+            expect(mockOnPollUpdate).not.toHaveBeenCalled();
+        });
+
+        it('should ignore response when statusId changes', async () => {
+            const poll = createMockPoll({ id: 'poll-1', votesCount: 10 });
+
+            let resolveRefresh: (value: mastodon.v1.Poll) => void;
+            const refreshPromise = new Promise<mastodon.v1.Poll>((resolve) => {
+                resolveRefresh = resolve;
+            });
+
+            vi.mocked(mastoClient.fetchPoll).mockReturnValueOnce(refreshPromise);
+            vi.mocked(mastoClient.getClient).mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
+
+            const { result, rerender } = renderHook(
+                ({ statusId }) =>
+                    usePollState({
+                        poll,
+                        statusId,
+                        accountSession: mockAccountSession,
+                        onPollUpdate: mockOnPollUpdate,
+                    }),
+                { initialProps: { statusId: 'status-1' } }
+            );
+
+            // Start refresh
+            act(() => {
+                result.current.handleRefresh();
+            });
+
+            // Change statusId while refresh is in progress
+            rerender({ statusId: 'status-2' });
+
+            // Resolve the stale refresh
+            const refreshedPoll = createMockPoll({ id: 'poll-1', votesCount: 999 });
+            await act(async () => {
+                resolveRefresh!(refreshedPoll);
+                await Promise.resolve();
+            });
+
+            // The stale response should be ignored
+            expect(mockOnPollUpdate).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('canRefresh', () => {
+        it('should return canRefresh=true when accountSession and poll exist', () => {
+            const poll = createMockPoll();
+            const { result } = renderHook(() =>
+                usePollState({
+                    poll,
+                    statusId: 'status-1',
+                    accountSession: mockAccountSession,
+                    onPollUpdate: mockOnPollUpdate,
+                })
+            );
+
+            expect(result.current.canRefresh).toBe(true);
+        });
+
+        it('should return canRefresh=false when no accountSession', () => {
+            const poll = createMockPoll();
+            const { result } = renderHook(() =>
+                usePollState({
+                    poll,
+                    statusId: 'status-1',
+                    accountSession: null,
+                    onPollUpdate: mockOnPollUpdate,
+                })
+            );
+
+            expect(result.current.canRefresh).toBe(false);
+        });
+
+        it('should return canRefresh=false when no poll', () => {
+            const { result } = renderHook(() =>
+                usePollState({
+                    poll: null,
+                    statusId: 'status-1',
+                    accountSession: mockAccountSession,
+                    onPollUpdate: mockOnPollUpdate,
+                })
+            );
+
+            expect(result.current.canRefresh).toBe(false);
+        });
+    });
 });

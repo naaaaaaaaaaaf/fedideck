@@ -269,6 +269,7 @@ export function StatusDetailModal({
         pollLoading,
         pollRefreshing,
         canVote,
+        canRefresh,
         handleOptionToggle: handlePollOptionToggle,
         handleVote: handlePollVote,
         handleRefresh: handlePollRefresh,
@@ -308,21 +309,33 @@ export function StatusDetailModal({
         setIsLoadingContext(false);
     }, [status?.id, isOpen]);
 
-    // Sync favourite/reblog state when status id changes or modal opens
-    // Separate from poll sync to avoid resetting selectedPollOptions on unrelated updates
+    // Sync favourite/reblog state when status changes or modal opens
+    // Include specific fields in dependencies to catch external updates
+    // Skip sync during loading to avoid overwriting optimistic updates
     useEffect(() => {
-        if (displayStatus && isOpen) {
-            setLocalFavourited(displayStatus.favourited ?? false);
-            setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
-            setLocalReblogged(displayStatus.reblogged ?? false);
-            setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
-            // Only reset NSFW state if not controlled by parent
-            if (!isControlled) {
-                setLocalNsfwRevealed(false);
-            }
+        if (!displayStatus || !isOpen) return;
+        // Skip sync during loading operations
+        if (isLoading.favourite || isLoading.reblog) return;
+
+        setLocalFavourited(displayStatus.favourited ?? false);
+        setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
+        setLocalReblogged(displayStatus.reblogged ?? false);
+        setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
+        // Only reset NSFW state if not controlled by parent and status changed
+        if (!isControlled) {
+            setLocalNsfwRevealed(false);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [displayStatus?.id, isOpen, isControlled]);
+    }, [
+        displayStatus?.id,
+        displayStatus?.favourited,
+        displayStatus?.favouritesCount,
+        displayStatus?.reblogged,
+        displayStatus?.reblogsCount,
+        isOpen,
+        isControlled,
+        isLoading.favourite,
+        isLoading.reblog,
+    ]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
@@ -886,7 +899,7 @@ export function StatusDetailModal({
                                                         <button
                                                             type="button"
                                                             onClick={handlePollRefresh}
-                                                            disabled={pollRefreshing}
+                                                            disabled={!canRefresh || pollRefreshing}
                                                             className="text-indigo-400 hover:text-indigo-300 disabled:opacity-50 inline-flex items-center gap-1"
                                                             aria-label="投票結果を更新"
                                                         >

@@ -91,6 +91,7 @@ export const StatusCard = React.memo(function StatusCard({
         pollLoading,
         pollRefreshing,
         canVote,
+        canRefresh,
         handleOptionToggle: handlePollOptionToggle,
         handleVote: handlePollVote,
         handleRefresh: handlePollRefresh,
@@ -708,7 +709,7 @@ export const StatusCard = React.memo(function StatusCard({
                                                     <button
                                                         type="button"
                                                         onClick={handlePollRefresh}
-                                                        disabled={pollRefreshing}
+                                                        disabled={!canRefresh || pollRefreshing}
                                                         className="text-indigo-400 hover:text-indigo-300 disabled:opacity-50 inline-flex items-center gap-1"
                                                         aria-label="投票結果を更新"
                                                     >

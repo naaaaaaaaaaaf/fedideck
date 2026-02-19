@@ -2397,5 +2397,60 @@ describe('StatusCard', () => {
 
             consoleSpy.mockRestore();
         });
+
+        it('should disable refresh button when no accountSession', () => {
+            const now = Date.now();
+            const status = createMockStatus({
+                poll: {
+                    id: 'poll-1',
+                    expiresAt: new Date(now + 60000).toISOString(),
+                    expired: false,
+                    multiple: false,
+                    votesCount: 10,
+                    votersCount: 10,
+                    voted: true,
+                    ownVotes: [0],
+                    options: [
+                        { title: 'Option A', votesCount: 5, emojis: [] },
+                        { title: 'Option B', votesCount: 5, emojis: [] },
+                    ],
+                    emojis: [],
+                } as unknown as mastodon.v1.Poll,
+            });
+
+            // Render without accountSession
+            render(<StatusCard status={status} accountSession={undefined} />);
+
+            // Refresh button should be disabled
+            const refreshButton = screen.getByRole('button', { name: '投票結果を更新' });
+            expect(refreshButton).toBeDisabled();
+        });
+
+        it('should enable refresh button when accountSession exists', () => {
+            const now = Date.now();
+            const status = createMockStatus({
+                poll: {
+                    id: 'poll-1',
+                    expiresAt: new Date(now + 60000).toISOString(),
+                    expired: false,
+                    multiple: false,
+                    votesCount: 10,
+                    votersCount: 10,
+                    voted: true,
+                    ownVotes: [0],
+                    options: [
+                        { title: 'Option A', votesCount: 5, emojis: [] },
+                        { title: 'Option B', votesCount: 5, emojis: [] },
+                    ],
+                    emojis: [],
+                } as unknown as mastodon.v1.Poll,
+            });
+
+            render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+            // Refresh button should be enabled
+            const refreshButton = screen.getByRole('button', { name: '投票結果を更新' });
+            expect(refreshButton).not.toBeDisabled();
+        });
     });
 });

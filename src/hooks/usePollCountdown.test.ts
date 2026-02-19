@@ -76,6 +76,23 @@ describe('usePollCountdown', () => {
         expect(result.current).toBe('残り30分');
     });
 
+    it('should clear remaining time when expiresAt changes to null', () => {
+        const now = Date.now();
+        vi.setSystemTime(now);
+
+        const expiresAt = new Date(now + 10 * 60000).toISOString();
+        const { result, rerender } = renderHook(({ expiresAt }) => usePollCountdown(expiresAt), {
+            initialProps: { expiresAt } as { expiresAt: string | null },
+        });
+
+        expect(result.current).toBe('残り10分');
+
+        // Change to null (poll that never expires)
+        rerender({ expiresAt: null } as { expiresAt: string | null });
+
+        expect(result.current).toBeNull();
+    });
+
     it('should clear interval on unmount', () => {
         const now = Date.now();
         vi.setSystemTime(now);

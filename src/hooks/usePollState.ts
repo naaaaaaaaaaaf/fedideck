@@ -12,10 +12,11 @@ interface UsePollStateOptions {
 
 interface UsePollStateReturn {
     localPoll: mastodon.v1.Poll | null;
-    selectedOptions: Set<number>;
+    selectedOptions: ReadonlySet<number>;
     pollLoading: boolean;
     pollRefreshing: boolean;
     canVote: boolean;
+    canRefresh: boolean;
     hasVoted: boolean;
     handleOptionToggle: (index: number) => void;
     handleVote: () => Promise<void>;
@@ -36,6 +37,13 @@ export function usePollState({
 
     const prevPollRef = useRef<mastodon.v1.Poll | null>(null);
 
+    // Race condition control: track current context and request sequence
+    const requestSeqRef = useRef(0);
+    const activeContextRef = useRef<{ statusId: string; pollId: string | null }>({
+        statusId,
+        pollId: poll?.id ?? null,
+    });
+
     // Sync with props - use full poll object as dependency (not just id)
     useEffect(() => {
         const nextPoll = poll ?? null;
@@ -51,11 +59,18 @@ export function usePollState({
             setSelectedOptions(new Set());
         }
 
+        // Update active context and invalidate in-flight requests on poll/status change
+        if (pollChanged || activeContextRef.current.statusId !== statusId) {
+            activeContextRef.current = { statusId, pollId: nextPoll?.id ?? null };
+            requestSeqRef.current += 1;
+        }
+
         prevPollRef.current = nextPoll;
-    }, [poll]); // Use full poll object, not just poll?.id
+    }, [poll, statusId]); // Use full poll object, not just poll?.id
 
     const hasVoted = localPoll?.voted === true || (localPoll?.ownVotes?.length ?? 0) > 0;
     const canVote = !!accountSession && !localPoll?.expired && !hasVoted;
+    const canRefresh = !!accountSession && !!localPoll;
 
     const handleOptionToggle = useCallback(
         (index: number) => {
@@ -81,32 +96,68 @@ export function usePollState({
     const handleVote = useCallback(async () => {
         if (!accountSession || !localPoll || selectedOptions.size === 0 || pollLoading) return;
 
+        const requestSeq = ++requestSeqRef.current;
+        const requestedPollId = localPoll.id;
+        const requestedStatusId = statusId;
+
         setPollLoading(true);
         try {
             const client = getClient(accountSession);
-            const updatedPoll = await votePoll(client, localPoll.id, Array.from(selectedOptions));
+            const updatedPoll = await votePoll(
+                client,
+                requestedPollId,
+                Array.from(selectedOptions)
+            );
+
+            // Race condition guard: only apply if context hasn't changed
+            if (
+                requestSeq !== requestSeqRef.current ||
+                activeContextRef.current.pollId !== requestedPollId ||
+                activeContextRef.current.statusId !== requestedStatusId
+            ) {
+                return;
+            }
+
             setLocalPoll(updatedPoll);
-            onPollUpdate?.(statusId, updatedPoll);
+            onPollUpdate?.(requestedStatusId, updatedPoll);
         } catch (error) {
             console.error('Failed to vote on poll:', error);
         } finally {
-            setPollLoading(false);
+            if (requestSeq === requestSeqRef.current) {
+                setPollLoading(false);
+            }
         }
     }, [accountSession, localPoll, selectedOptions, pollLoading, statusId, onPollUpdate]);
 
     const handleRefresh = useCallback(async () => {
         if (!accountSession || !localPoll || pollRefreshing) return;
 
+        const requestSeq = ++requestSeqRef.current;
+        const requestedPollId = localPoll.id;
+        const requestedStatusId = statusId;
+
         setPollRefreshing(true);
         try {
             const client = getClient(accountSession);
-            const updatedPoll = await fetchPoll(client, localPoll.id);
+            const updatedPoll = await fetchPoll(client, requestedPollId);
+
+            // Race condition guard: only apply if context hasn't changed
+            if (
+                requestSeq !== requestSeqRef.current ||
+                activeContextRef.current.pollId !== requestedPollId ||
+                activeContextRef.current.statusId !== requestedStatusId
+            ) {
+                return;
+            }
+
             setLocalPoll(updatedPoll);
-            onPollUpdate?.(statusId, updatedPoll);
+            onPollUpdate?.(requestedStatusId, updatedPoll);
         } catch (error) {
             console.error('Failed to refresh poll:', error);
         } finally {
-            setPollRefreshing(false);
+            if (requestSeq === requestSeqRef.current) {
+                setPollRefreshing(false);
+            }
         }
     }, [accountSession, localPoll, pollRefreshing, statusId, onPollUpdate]);
 
@@ -133,10 +184,11 @@ export function usePollState({
 
     return {
         localPoll,
-        selectedOptions,
+        selectedOptions: selectedOptions as ReadonlySet<number>,
         pollLoading,
         pollRefreshing,
         canVote,
+        canRefresh,
         hasVoted,
         handleOptionToggle,
         handleVote,
