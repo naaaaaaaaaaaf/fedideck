@@ -21,6 +21,7 @@ import { formatDate } from '../utils/dateFormat';
 import { getVisibilityMeta } from '../utils/statusVisibility';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
+import { getPollVotesDenominator } from '../utils/poll';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
 import { usePollState } from '../hooks/usePollState';
@@ -654,7 +655,8 @@ export const StatusCard = React.memo(function StatusCard({
                                         // Results UI
                                         <>
                                             {localPoll.options.map((option, i) => {
-                                                const votesCount = localPoll.votesCount ?? 0;
+                                                const votesCount =
+                                                    getPollVotesDenominator(localPoll);
                                                 const percentage =
                                                     votesCount > 0
                                                         ? Math.round(
@@ -698,7 +700,7 @@ export const StatusCard = React.memo(function StatusCard({
                                             })}
                                             <div className="text-xs text-slate-400 mt-2 flex items-center justify-between">
                                                 <span>
-                                                    {localPoll.votesCount ?? 0}票
+                                                    {getPollVotesDenominator(localPoll)}票
                                                     {localPoll.expired
                                                         ? ' · 終了'
                                                         : pollCountdown && (

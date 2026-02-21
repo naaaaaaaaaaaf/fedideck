@@ -3151,7 +3151,15 @@ describe('StatusDetailModal', () => {
             await user.click(screen.getByRole('button', { name: '投票' }));
 
             await waitFor(() => {
-                expect(onPollUpdate).toHaveBeenCalledWith('12345', updatedPoll);
+                expect(onPollUpdate).toHaveBeenCalledWith(
+                    '12345',
+                    expect.objectContaining({
+                        id: 'poll-1',
+                        voted: true,
+                        votesCount: 1,
+                        ownVotes: [0],
+                    })
+                );
             });
         });
 
