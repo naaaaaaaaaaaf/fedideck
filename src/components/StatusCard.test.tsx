@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StatusCard } from './StatusCard';
 import { formatDate } from '../utils/dateFormat';
@@ -2451,6 +2451,256 @@ describe('StatusCard', () => {
             // Refresh button should be enabled
             const refreshButton = screen.getByRole('button', { name: '投票結果を更新' });
             expect(refreshButton).not.toBeDisabled();
+        });
+    });
+
+    describe('favourite and reblog interactions', () => {
+        const mockAccountSession = {
+            id: 'session-1',
+            instanceUrl: 'https://mastodon.social',
+            accessToken: 'test-token',
+            account: {
+                id: '1',
+                username: 'testuser',
+                acct: 'testuser',
+                displayName: 'Test User',
+            },
+        } as unknown as AccountSession;
+
+        beforeEach(() => {
+            vi.clearAllMocks();
+        });
+
+        describe('favourite button', () => {
+            it('should optimistically update UI before API call completes', async () => {
+                const user = userEvent.setup();
+                const status = createMockStatus({
+                    favourited: false,
+                    favouritesCount: 5,
+                });
+
+                let resolvePromise: (value: mastodon.v1.Status) => void;
+                const favouritePromise = new Promise<mastodon.v1.Status>((resolve) => {
+                    resolvePromise = resolve;
+                });
+
+                vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                    {} as ReturnType<typeof mastoClient.getClient>
+                );
+                vi.spyOn(mastoClient, 'favouriteStatus').mockReturnValue(favouritePromise);
+
+                render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+                // Initial count should be 5
+                expect(screen.getByText('5')).toBeInTheDocument();
+
+                const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
+                await user.click(favouriteButton);
+
+                // Count should optimistically update to 6 before API completes
+                await waitFor(() => {
+                    expect(screen.getByText('6')).toBeInTheDocument();
+                });
+
+                // Resolve the API call
+                await act(async () => {
+                    resolvePromise!(createMockStatus({ favourited: true, favouritesCount: 6 }));
+                });
+            });
+
+            it('should prevent duplicate clicks while loading', async () => {
+                const user = userEvent.setup();
+                const status = createMockStatus({
+                    favourited: false,
+                    favouritesCount: 5,
+                });
+
+                let resolvePromise: (value: mastodon.v1.Status) => void;
+                const favouritePromise = new Promise<mastodon.v1.Status>((resolve) => {
+                    resolvePromise = resolve;
+                });
+
+                const getClientSpy = vi
+                    .spyOn(mastoClient, 'getClient')
+                    .mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
+                const favouriteSpy = vi
+                    .spyOn(mastoClient, 'favouriteStatus')
+                    .mockReturnValue(favouritePromise);
+
+                render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+                const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
+                await user.click(favouriteButton);
+
+                // Try clicking again while loading
+                await user.click(favouriteButton);
+
+                // API should only be called once
+                expect(favouriteSpy).toHaveBeenCalledTimes(1);
+
+                // Resolve the API call
+                await act(async () => {
+                    resolvePromise!(createMockStatus({ favourited: true, favouritesCount: 6 }));
+                });
+            });
+
+            it('should revert optimistic update on API failure', async () => {
+                const user = userEvent.setup();
+                const status = createMockStatus({
+                    favourited: false,
+                    favouritesCount: 5,
+                });
+                const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+                vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                    {} as ReturnType<typeof mastoClient.getClient>
+                );
+                vi.spyOn(mastoClient, 'favouriteStatus').mockRejectedValue(new Error('API Error'));
+
+                render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+                const favouriteButton = screen.getByRole('button', { name: /お気に入り/ });
+                await user.click(favouriteButton);
+
+                // Wait for error and revert
+                await waitFor(() => {
+                    expect(consoleErrorSpy).toHaveBeenCalledWith(
+                        'Failed to toggle favourite:',
+                        expect.any(Error)
+                    );
+                });
+
+                // Count should be back to 5
+                expect(screen.getByText('5')).toBeInTheDocument();
+
+                consoleErrorSpy.mockRestore();
+            });
+        });
+
+        describe('reblog button', () => {
+            it('should optimistically update UI before API call completes', async () => {
+                const user = userEvent.setup();
+                const status = createMockStatus({
+                    reblogged: false,
+                    reblogsCount: 3,
+                });
+
+                let resolvePromise: (value: mastodon.v1.Status) => void;
+                const reblogPromise = new Promise<mastodon.v1.Status>((resolve) => {
+                    resolvePromise = resolve;
+                });
+
+                vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                    {} as ReturnType<typeof mastoClient.getClient>
+                );
+                vi.spyOn(mastoClient, 'reblogStatus').mockReturnValue(reblogPromise);
+
+                render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+                // Initial count should be 3
+                expect(screen.getByText('3')).toBeInTheDocument();
+
+                const reblogButton = screen.getByRole('button', { name: /ブースト/ });
+                await user.click(reblogButton);
+
+                // Count should optimistically update to 4 before API completes
+                await waitFor(() => {
+                    expect(screen.getByText('4')).toBeInTheDocument();
+                });
+
+                // Resolve the API call
+                await act(async () => {
+                    resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 4 }));
+                });
+            });
+
+            it('should prevent duplicate clicks while loading', async () => {
+                const user = userEvent.setup();
+                const status = createMockStatus({
+                    reblogged: false,
+                    reblogsCount: 3,
+                });
+
+                let resolvePromise: (value: mastodon.v1.Status) => void;
+                const reblogPromise = new Promise<mastodon.v1.Status>((resolve) => {
+                    resolvePromise = resolve;
+                });
+
+                vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                    {} as ReturnType<typeof mastoClient.getClient>
+                );
+                const reblogSpy = vi
+                    .spyOn(mastoClient, 'reblogStatus')
+                    .mockReturnValue(reblogPromise);
+
+                render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+                const reblogButton = screen.getByRole('button', { name: /ブースト/ });
+                await user.click(reblogButton);
+
+                // Try clicking again while loading
+                await user.click(reblogButton);
+
+                // API should only be called once
+                expect(reblogSpy).toHaveBeenCalledTimes(1);
+
+                // Resolve the API call
+                await act(async () => {
+                    resolvePromise!(createMockStatus({ reblogged: true, reblogsCount: 4 }));
+                });
+            });
+
+            it('should revert optimistic update on API failure', async () => {
+                const user = userEvent.setup();
+                const status = createMockStatus({
+                    reblogged: false,
+                    reblogsCount: 3,
+                });
+                const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+                vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                    {} as ReturnType<typeof mastoClient.getClient>
+                );
+                vi.spyOn(mastoClient, 'reblogStatus').mockRejectedValue(new Error('API Error'));
+
+                render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+                const reblogButton = screen.getByRole('button', { name: /ブースト/ });
+                await user.click(reblogButton);
+
+                // Wait for error and revert
+                await waitFor(() => {
+                    expect(consoleErrorSpy).toHaveBeenCalledWith(
+                        'Failed to toggle reblog:',
+                        expect.any(Error)
+                    );
+                });
+
+                // Count should be back to 3
+                expect(screen.getByText('3')).toBeInTheDocument();
+
+                consoleErrorSpy.mockRestore();
+            });
+
+            it('should not allow reblogging private posts', async () => {
+                const user = userEvent.setup();
+                const status = createMockStatus({
+                    visibility: 'private',
+                    reblogged: false,
+                    reblogsCount: 0,
+                });
+
+                const reblogSpy = vi.spyOn(mastoClient, 'reblogStatus');
+
+                render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+                const reblogButton = screen.getByRole('button', { name: /ブースト/ });
+                expect(reblogButton).toBeDisabled();
+
+                // Click should not trigger API call
+                await user.click(reblogButton);
+                expect(reblogSpy).not.toHaveBeenCalled();
+            });
         });
     });
 });
