@@ -37,6 +37,7 @@ import type { AudioViewerTrack } from '../types/audio';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
 import { StatusMenu } from './StatusMenu';
+import { PollUI } from './PollUI';
 
 interface StatusDetailModalProps {
     isOpen: boolean;
@@ -763,136 +764,21 @@ export function StatusDetailModal({
                         )}
 
                         {/* Poll */}
-                        {localPoll &&
-                            localPoll.options &&
-                            localPoll.options.length > 0 &&
-                            (() => {
-                                return (
-                                    <fieldset className="mb-4 p-4 bg-slate-800/50 rounded-xl">
-                                        <legend className="sr-only">投票</legend>
-                                        {canVote ? (
-                                            // Voting UI
-                                            <>
-                                                {localPoll.options.map((option, i) => (
-                                                    <label
-                                                        key={`${localPoll.id}-${i}`}
-                                                        className="flex items-center gap-3 mb-3 last:mb-0 cursor-pointer hover:bg-slate-700/30 p-2 rounded-lg"
-                                                    >
-                                                        <input
-                                                            type={
-                                                                localPoll.multiple
-                                                                    ? 'checkbox'
-                                                                    : 'radio'
-                                                            }
-                                                            name={`poll-${localPoll.id}`}
-                                                            checked={selectedPollOptions.has(i)}
-                                                            onChange={() =>
-                                                                handlePollOptionToggle(i)
-                                                            }
-                                                            disabled={pollLoading}
-                                                            className="w-4 h-4 accent-indigo-500"
-                                                        />
-                                                        <span className="text-slate-200">
-                                                            {option.title}
-                                                        </span>
-                                                    </label>
-                                                ))}
-                                                <button
-                                                    type="button"
-                                                    onClick={handlePollVote}
-                                                    disabled={
-                                                        selectedPollOptions.size === 0 ||
-                                                        pollLoading
-                                                    }
-                                                    aria-busy={pollLoading}
-                                                    className={`mt-3 px-4 py-2 text-sm rounded-lg transition-colors ${
-                                                        selectedPollOptions.size === 0 ||
-                                                        pollLoading
-                                                            ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                                                            : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                                                    }`}
-                                                >
-                                                    {pollLoading ? '投票中...' : '投票'}
-                                                </button>
-                                            </>
-                                        ) : (
-                                            // Results UI
-                                            <>
-                                                {localPoll.options.map((option, i) => {
-                                                    const votesCount = localPoll.votesCount ?? 0;
-                                                    const percentage =
-                                                        votesCount > 0
-                                                            ? Math.round(
-                                                                  ((option.votesCount ?? 0) /
-                                                                      votesCount) *
-                                                                      100
-                                                              )
-                                                            : 0;
-                                                    const isOwnVote =
-                                                        localPoll.ownVotes?.includes(i) ?? false;
-                                                    return (
-                                                        <div
-                                                            key={`${localPoll.id}-${i}`}
-                                                            className="mb-3 last:mb-0"
-                                                        >
-                                                            <div className="flex justify-between text-sm mb-1">
-                                                                <span className="text-slate-200">
-                                                                    {isOwnVote && (
-                                                                        <span className="text-indigo-400 mr-1">
-                                                                            ✓
-                                                                        </span>
-                                                                    )}
-                                                                    {option.title}
-                                                                </span>
-                                                                <span className="text-slate-400">
-                                                                    {percentage}%
-                                                                </span>
-                                                            </div>
-                                                            <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden">
-                                                                <div
-                                                                    className={`h-full transition-all rounded-full ${
-                                                                        isOwnVote
-                                                                            ? 'bg-indigo-400'
-                                                                            : 'bg-indigo-500'
-                                                                    }`}
-                                                                    style={{
-                                                                        width: `${percentage}%`,
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                                <div className="text-sm text-slate-400 mt-3 pt-3 border-t border-slate-700 flex items-center justify-between">
-                                                    <span>
-                                                        {localPoll.votesCount ?? 0}票
-                                                        {localPoll.expired
-                                                            ? ' · 終了'
-                                                            : pollCountdown && (
-                                                                  <span> · {pollCountdown}</span>
-                                                              )}
-                                                    </span>
-                                                    {!localPoll.expired && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={handlePollRefresh}
-                                                            disabled={!canRefresh || pollRefreshing}
-                                                            className="text-indigo-400 hover:text-indigo-300 disabled:opacity-50 inline-flex items-center gap-1"
-                                                            aria-label="投票結果を更新"
-                                                        >
-                                                            <LuRefreshCw
-                                                                className={`w-3.5 h-3.5 ${pollRefreshing ? 'animate-spin' : ''}`}
-                                                                aria-hidden="true"
-                                                            />
-                                                            {pollRefreshing ? '更新中...' : '更新'}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </>
-                                        )}
-                                    </fieldset>
-                                );
-                            })()}
+                        {localPoll && localPoll.options && localPoll.options.length > 0 && (
+                            <PollUI
+                                poll={localPoll}
+                                selectedOptions={selectedPollOptions}
+                                pollLoading={pollLoading}
+                                pollRefreshing={pollRefreshing}
+                                canVote={canVote}
+                                canRefresh={canRefresh}
+                                pollCountdown={pollCountdown}
+                                onOptionToggle={handlePollOptionToggle}
+                                onVote={handlePollVote}
+                                onRefresh={handlePollRefresh}
+                                variant="detail"
+                            />
+                        )}
 
                         {/* Timestamp and visibility */}
                         <div className="text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">
