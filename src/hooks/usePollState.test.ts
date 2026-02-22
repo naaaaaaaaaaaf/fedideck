@@ -448,6 +448,48 @@ describe('usePollState', () => {
             expect(result.current.localPoll).toEqual(refreshedPoll);
         });
 
+        it('should preserve vote counts when refresh omits totals', async () => {
+            const poll = createMockPoll({
+                votesCount: 10,
+                options: [
+                    { title: 'Option 1', votesCount: 6, emojis: [] },
+                    { title: 'Option 2', votesCount: 4, emojis: [] },
+                ],
+            });
+            const partialRefresh = createMockPoll({
+                votesCount: 0,
+                options: [
+                    { title: 'Option 1', emojis: [] },
+                    { title: 'Option 2', emojis: [] },
+                ],
+            });
+            vi.mocked(mastoClient.fetchPoll).mockResolvedValueOnce(partialRefresh);
+            vi.mocked(mastoClient.getClient).mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
+
+            const { result } = renderHook(() =>
+                usePollState({
+                    poll,
+                    statusId: 'status-1',
+                    accountSession: mockAccountSession,
+                    onPollUpdate: mockOnPollUpdate,
+                })
+            );
+
+            await act(async () => {
+                await result.current.handleRefresh();
+            });
+
+            expect(result.current.localPoll?.votesCount).toBe(10);
+            expect(result.current.localPoll?.options[0].votesCount).toBe(6);
+            expect(result.current.localPoll?.options[1].votesCount).toBe(4);
+            expect(mockOnPollUpdate).toHaveBeenCalledWith(
+                'status-1',
+                expect.objectContaining({ votesCount: 10 })
+            );
+        });
+
         it('should not refresh when already refreshing', async () => {
             const poll = createMockPoll();
             vi.mocked(mastoClient.fetchPoll).mockImplementation(

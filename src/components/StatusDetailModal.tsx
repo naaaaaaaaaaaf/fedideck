@@ -27,6 +27,7 @@ import { formatDate } from '../utils/dateFormat';
 import { getVisibilityMeta } from '../utils/statusVisibility';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
+import { getPollVotesDenominator } from '../utils/poll';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
 import type { ImageViewerImage } from './ImageViewer';
@@ -842,7 +843,8 @@ export function StatusDetailModal({
                                             // Results UI
                                             <>
                                                 {localPoll.options.map((option, i) => {
-                                                    const votesCount = localPoll.votesCount ?? 0;
+                                                    const votesCount =
+                                                        getPollVotesDenominator(localPoll);
                                                     const percentage =
                                                         votesCount > 0
                                                             ? Math.round(
@@ -888,7 +890,7 @@ export function StatusDetailModal({
                                                 })}
                                                 <div className="text-sm text-slate-400 mt-3 pt-3 border-t border-slate-700 flex items-center justify-between">
                                                     <span>
-                                                        {localPoll.votesCount ?? 0}票
+                                                        {getPollVotesDenominator(localPoll)}票
                                                         {localPoll.expired
                                                             ? ' · 終了'
                                                             : pollCountdown && (

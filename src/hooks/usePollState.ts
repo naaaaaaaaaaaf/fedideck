@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { mastodon } from 'masto';
 import { getClient, fetchPoll, votePoll, type AccountSession } from '../api/mastoClient';
+import { mergePollWithFallback } from '../utils/poll';
 
 interface UsePollStateOptions {
     poll: mastodon.v1.Poll | null;
@@ -47,7 +48,7 @@ export function usePollState({
     // Sync with props - use full poll object as dependency (not just id)
     useEffect(() => {
         const nextPoll = poll ?? null;
-        setLocalPoll(nextPoll);
+        setLocalPoll((prevPoll) => (nextPoll ? mergePollWithFallback(prevPoll, nextPoll) : null));
 
         const prev = prevPollRef.current;
         const pollChanged = prev?.id !== nextPoll?.id;
@@ -118,8 +119,9 @@ export function usePollState({
                 return;
             }
 
-            setLocalPoll(updatedPoll);
-            onPollUpdate?.(requestedStatusId, updatedPoll);
+            const mergedPoll = mergePollWithFallback(localPoll, updatedPoll);
+            setLocalPoll(mergedPoll);
+            onPollUpdate?.(requestedStatusId, mergedPoll);
         } catch (error) {
             console.error('Failed to vote on poll:', error);
         } finally {
@@ -150,8 +152,9 @@ export function usePollState({
                 return;
             }
 
-            setLocalPoll(updatedPoll);
-            onPollUpdate?.(requestedStatusId, updatedPoll);
+            const mergedPoll = mergePollWithFallback(localPoll, updatedPoll);
+            setLocalPoll(mergedPoll);
+            onPollUpdate?.(requestedStatusId, mergedPoll);
         } catch (error) {
             console.error('Failed to refresh poll:', error);
         } finally {

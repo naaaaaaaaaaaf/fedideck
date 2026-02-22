@@ -284,6 +284,40 @@ describe('useStreamsStore', () => {
             expect(status.favouritesCount).toBe(42);
             expect(status.reblogsCount).toBe(10);
         });
+
+        it('preserves existing vote counts when incoming poll omits totals', () => {
+            const originalStatus = {
+                id: '1',
+                poll: {
+                    id: 'poll-1',
+                    expired: false,
+                    multiple: false,
+                    votesCount: 10,
+                    options: [
+                        { title: 'Option 1', votesCount: 6, emojis: [] },
+                        { title: 'Option 2', votesCount: 4, emojis: [] },
+                    ],
+                },
+            } as unknown as mastodon.v1.Status;
+            const partialPoll = {
+                id: 'poll-1',
+                expired: false,
+                multiple: false,
+                votesCount: 0,
+                options: [
+                    { title: 'Option 1', emojis: [] },
+                    { title: 'Option 2', emojis: [] },
+                ],
+            } as mastodon.v1.Poll;
+
+            useStreamsStore.getState().setStatuses('account:home', [originalStatus]);
+            useStreamsStore.getState().updatePollGlobal('1', partialPoll);
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            expect(stream.statuses[0].poll?.votesCount).toBe(10);
+            expect(stream.statuses[0].poll?.options[0].votesCount).toBe(6);
+            expect(stream.statuses[0].poll?.options[1].votesCount).toBe(4);
+        });
     });
 
     describe('removeStatusForAccountStreams', () => {

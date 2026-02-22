@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { mastodon } from 'masto';
+import { mergePollWithFallback } from '../utils/poll';
 
 /** Maximum number of statuses to keep per stream (prevents memory bloat) */
 export const MAX_STATUSES_PER_STREAM = 200;
@@ -235,12 +236,21 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                     // Direct match - merge poll only
                     if (s.id === statusId) {
                         streamHasChanges = true;
-                        return { ...s, poll };
+                        return {
+                            ...s,
+                            poll: mergePollWithFallback(s.poll ?? null, poll),
+                        };
                     }
                     // Check if this is a reblog containing the status
                     if (s.reblog && s.reblog.id === statusId) {
                         streamHasChanges = true;
-                        return { ...s, reblog: { ...s.reblog, poll } };
+                        return {
+                            ...s,
+                            reblog: {
+                                ...s.reblog,
+                                poll: mergePollWithFallback(s.reblog.poll ?? null, poll),
+                            },
+                        };
                     }
                     return s;
                 });

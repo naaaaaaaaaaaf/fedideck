@@ -179,6 +179,32 @@ describe('StatusCard', () => {
             expect(screen.getByText('30%')).toBeInTheDocument();
         });
 
+        it('should calculate percentages from option totals when poll votesCount is zero', () => {
+            const status = createMockStatus({
+                poll: {
+                    id: '1',
+                    expiresAt: null,
+                    expired: false,
+                    multiple: false,
+                    votesCount: 0,
+                    votersCount: 10,
+                    voted: true,
+                    ownVotes: [0],
+                    options: [
+                        { title: 'Option A', votesCount: 7, emojis: [] },
+                        { title: 'Option B', votesCount: 3, emojis: [] },
+                    ],
+                    emojis: [],
+                } as unknown as mastodon.v1.Poll,
+            });
+
+            render(<StatusCard status={status} />);
+
+            expect(screen.getByText('70%')).toBeInTheDocument();
+            expect(screen.getByText('30%')).toBeInTheDocument();
+            expect(screen.getByText('10票')).toBeInTheDocument();
+        });
+
         it('should handle content warning (spoilerText)', () => {
             const status = createMockStatus({
                 spoilerText: 'Spoiler warning!',
@@ -2190,7 +2216,15 @@ describe('StatusCard', () => {
             // Wait for async vote
             await screen.findByText('投票');
 
-            expect(onPollUpdate).toHaveBeenCalledWith('12345', updatedPoll);
+            expect(onPollUpdate).toHaveBeenCalledWith(
+                '12345',
+                expect.objectContaining({
+                    id: 'poll-1',
+                    voted: true,
+                    votesCount: 1,
+                    ownVotes: [0],
+                })
+            );
         });
 
         it('should call onPollUpdate when provided', async () => {
