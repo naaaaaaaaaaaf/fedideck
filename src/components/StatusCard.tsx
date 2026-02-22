@@ -6,7 +6,6 @@ import {
     LuStar,
     LuTriangleAlert,
     LuCornerUpLeft,
-    LuRefreshCw,
 } from 'react-icons/lu';
 import {
     type AccountSession,

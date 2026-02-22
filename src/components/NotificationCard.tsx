@@ -1,5 +1,5 @@
 import type { mastodon } from 'masto';
-import React, { useState, useMemo, type ReactNode } from 'react';
+import React, { useMemo, type ReactNode } from 'react';
 import {
     LuMessageCircle,
     LuRepeat2,

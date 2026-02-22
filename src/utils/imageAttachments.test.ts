@@ -105,7 +105,7 @@ describe('toImageViewerImages', () => {
                 createMockMediaAttachment({
                     id: '1',
                     url: '',
-                    previewUrl: null,
+                    previewUrl: undefined,
                 }),
                 createMockMediaAttachment({
                     id: '2',
@@ -154,7 +154,7 @@ describe('toImageViewerImages', () => {
         it('should set previewUrl to undefined when null', () => {
             const attachments = [
                 createMockMediaAttachment({
-                    previewUrl: null,
+                    previewUrl: undefined,
                 }),
             ];
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StatusCard } from './StatusCard';
@@ -2520,9 +2520,9 @@ describe('StatusCard', () => {
                     resolvePromise = resolve;
                 });
 
-                const getClientSpy = vi
-                    .spyOn(mastoClient, 'getClient')
-                    .mockReturnValue({} as ReturnType<typeof mastoClient.getClient>);
+                vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                    {} as ReturnType<typeof mastoClient.getClient>
+                );
                 const favouriteSpy = vi
                     .spyOn(mastoClient, 'favouriteStatus')
                     .mockReturnValue(favouritePromise);

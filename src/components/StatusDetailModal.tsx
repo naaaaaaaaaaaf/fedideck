@@ -1,14 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { mastodon } from 'masto';
-import {
-    LuX,
-    LuRepeat2,
-    LuMessageCircle,
-    LuStar,
-    LuTriangleAlert,
-    LuLoader,
-    LuRefreshCw,
-} from 'react-icons/lu';
+import { LuX, LuRepeat2, LuMessageCircle, LuStar, LuTriangleAlert, LuLoader } from 'react-icons/lu';
 import {
     type AccountSession,
     type MastoClient,

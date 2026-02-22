@@ -4,22 +4,22 @@ import userEvent from '@testing-library/user-event';
 import { PollUI } from './PollUI';
 import type { mastodon } from 'masto';
 
-const createMockPoll = (overrides: Partial<mastodon.v1.Poll> = {}): mastodon.v1.Poll => ({
-    id: 'poll-1',
-    expiresAt: new Date(Date.now() + 86400000).toISOString(),
-    expired: false,
-    multiple: false,
-    votesCount: 100,
-    votersCount: 80,
-    voted: false,
-    ownVotes: [],
-    options: [
-        { title: 'Option A', votesCount: 60, emojis: [] },
-        { title: 'Option B', votesCount: 40, emojis: [] },
-    ],
-    emojis: [],
-    ...overrides,
-});
+const createMockPoll = (overrides: Partial<mastodon.v1.Poll> = {}): mastodon.v1.Poll =>
+    ({
+        id: 'poll-1',
+        expiresAt: new Date(Date.now() + 86400000).toISOString(),
+        expired: false,
+        multiple: false,
+        votesCount: 100,
+        votersCount: 80,
+        voted: false,
+        ownVotes: [],
+        options: [
+            { title: 'Option A', votesCount: 60 },
+            { title: 'Option B', votesCount: 40 },
+        ],
+        ...overrides,
+    }) as mastodon.v1.Poll;
 
 describe('PollUI', () => {
     const defaultProps = {
