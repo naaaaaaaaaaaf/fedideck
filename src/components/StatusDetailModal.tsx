@@ -13,6 +13,7 @@ import {
     type StatusContext,
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
+import { useNsfwState } from '../hooks/useNsfwState';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
 import { formatDate, formatFullDate } from '../utils/dateFormat';
@@ -21,7 +22,7 @@ import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
-import { toImageViewerImages } from '../utils/imageAttachments';
+import { toImageViewerImages, MAX_IMAGE_ATTACHMENTS } from '../utils/imageAttachments';
 import { shouldIgnoreClick, shouldIgnoreKeyEvent } from '../utils/interaction';
 import type { ImageViewerImage } from '../types/imageViewer';
 import type { VideoViewerVideo } from '../types/video';
@@ -221,18 +222,17 @@ export function StatusDetailModal({
     // Get the display status (navigated > original reblog > original)
     const displayStatus = navigatedStatus ?? status?.reblog ?? status;
 
-    // NSFW state: controlled from parent or local
-    // If parent provides state (nsfwRevealedStatusIds), always use it
-    // When onNsfwReveal is missing, operates in read-only mode
-    const isControlled = nsfwRevealedStatusIds !== undefined;
-    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-
-    // Check if current status is revealed (controlled) or use local state
-    const nsfwRevealed = isControlled
-        ? displayStatus
-            ? nsfwRevealedStatusIds.has(displayStatus.id)
-            : false
-        : localNsfwRevealed;
+    // NSFW state management using useNsfwState hook
+    // If parent provides nsfwRevealedStatusIds, operate in controlled mode
+    // When onNsfwReveal is missing, operates in read-only mode (controlled but no callback)
+    const { nsfwRevealed, toggleNsfw: handleNsfwToggle } = useNsfwState({
+        statusId: displayStatus?.id,
+        controlledRevealed: displayStatus
+            ? (nsfwRevealedStatusIds?.has(displayStatus.id) ?? false)
+            : false,
+        onReveal: onNsfwReveal,
+        isControlled: nsfwRevealedStatusIds !== undefined,
+    });
 
     const [localFavourited, setLocalFavourited] = useState(false);
     const [localFavouritesCount, setLocalFavouritesCount] = useState(0);
@@ -290,8 +290,9 @@ export function StatusDetailModal({
     // Sync favourite/reblog state when status changes or modal opens
     // Include specific fields in dependencies to catch external updates
     // Skip sync during loading to avoid overwriting optimistic updates
+    // Note: displayStatus null check is handled by displayStatus?.id dependency
     useEffect(() => {
-        if (!displayStatus || !isOpen) return;
+        if (!displayStatus?.id || !isOpen) return;
         // Skip sync during loading operations
         if (isLoading.favourite || isLoading.reblog) return;
 
@@ -299,10 +300,7 @@ export function StatusDetailModal({
         setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
         setLocalReblogged(displayStatus.reblogged ?? false);
         setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
-        // Only reset NSFW state if not controlled by parent and status changed
-        if (!isControlled) {
-            setLocalNsfwRevealed(false);
-        }
+        // NSFW state is now managed by useNsfwState hook
     }, [
         displayStatus?.id,
         displayStatus?.favourited,
@@ -310,7 +308,6 @@ export function StatusDetailModal({
         displayStatus?.reblogged,
         displayStatus?.reblogsCount,
         isOpen,
-        isControlled,
         isLoading.favourite,
         isLoading.reblog,
     ]);
@@ -503,25 +500,6 @@ export function StatusDetailModal({
         }
     };
 
-    const handleNsfwToggle = () => {
-        const newValue = !nsfwRevealed;
-
-        // Controlled mode: use parent state
-        if (isControlled) {
-            // If callback provided, notify parent (read-only mode if no callback)
-            if (newValue && onNsfwReveal && displayStatus) {
-                onNsfwReveal(displayStatus.id);
-            }
-            return;
-        }
-
-        // Uncontrolled mode: notify parent if callback provided, then toggle local state
-        if (newValue && onNsfwReveal && displayStatus) {
-            onNsfwReveal(displayStatus.id);
-        }
-        setLocalNsfwRevealed(newValue);
-    };
-
     const handleReply = () => {
         onReply?.(displayStatus);
         onClose();
@@ -679,7 +657,7 @@ export function StatusDetailModal({
                             <div
                                 className={`mb-4 grid gap-2 ${mediaAttachments.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}
                             >
-                                {mediaAttachments.slice(0, 4).map((media) => {
+                                {mediaAttachments.slice(0, MAX_IMAGE_ATTACHMENTS).map((media) => {
                                     const isSensitive = displayStatus.sensitive ?? false;
                                     const imageIndex =
                                         media.type === 'image'

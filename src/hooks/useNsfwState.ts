@@ -15,6 +15,12 @@ interface UseNsfwStateOptions {
      * Callback when NSFW content is revealed in controlled mode.
      */
     onReveal?: (statusId: string) => void;
+    /**
+     * Override controlled mode detection.
+     * By default, controlled mode is determined by presence of onReveal callback.
+     * Set to true to force controlled mode even without onReveal (e.g., read-only mode).
+     */
+    isControlled?: boolean;
 }
 
 interface UseNsfwStateReturn {
@@ -37,13 +43,27 @@ interface UseNsfwStateReturn {
  * @returns NSFW state and toggle function
  */
 export function useNsfwState(options: UseNsfwStateOptions): UseNsfwStateReturn {
-    const { statusId, controlledRevealed = false, onReveal } = options;
+    const {
+        statusId,
+        controlledRevealed = false,
+        onReveal,
+        isControlled: isControlledOverride,
+    } = options;
 
     // Local state for uncontrolled mode
     const [localRevealed, setLocalRevealed] = useState(false);
 
-    // Determine if we're in controlled mode
-    const isControlled = onReveal !== undefined;
+    // Determine if we're in controlled mode (use override if provided, otherwise detect from onReveal)
+    const isControlled = isControlledOverride ?? onReveal !== undefined;
+
+    // Reset local state when statusId changes (in uncontrolled mode)
+    // This is a valid use case for setState in useEffect - we need to reset
+    // the local revealed state when viewing a different status
+    useEffect(() => {
+        if (!isControlled) {
+            setLocalRevealed(false); // eslint-disable-line react-hooks/set-state-in-effect
+        }
+    }, [statusId, isControlled]);
 
     // Use controlled state if provided, otherwise use local state
     const nsfwRevealed = isControlled ? controlledRevealed : localRevealed;
@@ -56,13 +76,12 @@ export function useNsfwState(options: UseNsfwStateOptions): UseNsfwStateReturn {
 
     // Toggle handler
     const toggleNsfw = useCallback(() => {
-        // Controlled mode: notify parent
+        // Notify parent if callback provided and not yet revealed
         if (onReveal && statusId && !nsfwRevealedRef.current) {
             onReveal(statusId);
-            return;
         }
 
-        // Uncontrolled mode: toggle local state
+        // Toggle local state in uncontrolled mode
         if (!isControlled) {
             setLocalRevealed((prev) => !prev);
         }

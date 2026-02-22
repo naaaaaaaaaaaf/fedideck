@@ -10,8 +10,8 @@ interface PollUIProps {
     canRefresh: boolean;
     pollCountdown: string | null;
     onOptionToggle: (index: number) => void;
-    onVote: () => Promise<void>;
-    onRefresh: () => Promise<void>;
+    onVote: () => void | Promise<void>;
+    onRefresh: () => void | Promise<void>;
     /** Visual variant - 'card' for timeline cards, 'detail' for modal view */
     variant: 'card' | 'detail';
 }

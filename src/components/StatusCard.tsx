@@ -22,7 +22,7 @@ import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
-import { toImageViewerImages } from '../utils/imageAttachments';
+import { toImageViewerImages, MAX_IMAGE_ATTACHMENTS } from '../utils/imageAttachments';
 import { shouldIgnoreClick, shouldIgnoreKeyEvent } from '../utils/interaction';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
@@ -500,7 +500,7 @@ export const StatusCard = React.memo(function StatusCard({
                                       : 'grid-cols-2'
                             }`}
                         >
-                            {mediaAttachments.slice(0, 4).map((media) => {
+                            {mediaAttachments.slice(0, MAX_IMAGE_ATTACHMENTS).map((media) => {
                                 const isSensitive = displayStatus.sensitive ?? false;
                                 const imageIndex =
                                     media.type === 'image'

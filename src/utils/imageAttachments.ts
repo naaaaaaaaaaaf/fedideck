@@ -5,7 +5,7 @@ import type { ImageViewerImage } from '../types/imageViewer';
 /**
  * Maximum number of images to display in a status card
  */
-const MAX_IMAGES = 4;
+export const MAX_IMAGE_ATTACHMENTS = 4;
 
 /**
  * Convert media attachments to ImageViewerImage format.
@@ -20,7 +20,7 @@ export function toImageViewerImages(
     const attachments = mediaAttachments ?? [];
     return attachments
         .filter((media) => media.type === 'image')
-        .slice(0, MAX_IMAGES)
+        .slice(0, MAX_IMAGE_ATTACHMENTS)
         .map((media) => ({
             url: firstNonEmpty(media.url, media.previewUrl),
             previewUrl: media.previewUrl ?? undefined,
