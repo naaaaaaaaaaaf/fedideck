@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { mastodon } from 'masto';
 import {
     LuRepeat2,
@@ -27,6 +27,7 @@ import { toImageViewerImages } from '../utils/imageAttachments';
 import { shouldIgnoreClick, shouldIgnoreKeyEvent } from '../utils/interaction';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
+import { useNsfwState } from '../hooks/useNsfwState';
 import type { ImageViewerImage } from '../types/imageViewer';
 import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
@@ -107,11 +108,12 @@ export const StatusCard = React.memo(function StatusCard({
     // Poll countdown display
     const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
 
-    // NSFW state:
-    // - onNsfwReveal provided: controlled mode, uses isNsfwRevealed from parent
-    // - onNsfwReveal missing: uncontrolled mode, toggles local state
-    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-    const nsfwRevealed = onNsfwReveal !== undefined ? isNsfwRevealed : localNsfwRevealed;
+    // NSFW state management
+    const { nsfwRevealed, toggleNsfw: handleNsfwToggle } = useNsfwState({
+        statusId: displayStatus.id,
+        controlledRevealed: isNsfwRevealed,
+        onReveal: onNsfwReveal,
+    });
 
     // Track pending props updates that arrived during loading
     const pendingPropsRef = useRef<{
@@ -199,26 +201,6 @@ export const StatusCard = React.memo(function StatusCard({
 
     // Safely access account
     const account = displayStatus.account;
-
-    // Use ref to track nsfwRevealed state without causing callback recreation
-    const nsfwRevealedRef = useRef(nsfwRevealed);
-    useEffect(() => {
-        nsfwRevealedRef.current = nsfwRevealed;
-    }, [nsfwRevealed]);
-
-    // NSFW toggle handler - must be defined before early return to follow hooks rules
-    const handleNsfwToggle = useCallback(() => {
-        // Controlled mode: parent provides the state via isNsfwRevealed
-        if (onNsfwReveal) {
-            if (!nsfwRevealedRef.current) {
-                onNsfwReveal(displayStatus.id);
-            }
-            return;
-        }
-
-        // Uncontrolled mode: toggle local state
-        setLocalNsfwRevealed((prev) => !prev);
-    }, [onNsfwReveal, displayStatus.id]);
 
     if (!account) {
         return null; // Cannot render without account
