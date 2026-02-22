@@ -29,8 +29,9 @@ import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
+import { toImageViewerImages } from '../utils/imageAttachments';
 import { shouldIgnoreClick, shouldIgnoreKeyEvent } from '../utils/interaction';
-import type { ImageViewerImage } from './ImageViewer';
+import type { ImageViewerImage } from '../types/imageViewer';
 import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
 import { DisplayName } from './DisplayName';
@@ -398,19 +399,11 @@ export function StatusDetailModal({
 
     // Convert image attachments to ImageViewerImage format (memoized)
     // Must be before early return to maintain hooks order
-    // Filter out images without valid URLs to prevent broken image rendering
-    const imageViewerImages = useMemo(() => {
-        const mediaAttachments = displayStatus?.mediaAttachments ?? [];
-        return mediaAttachments
-            .filter((media) => media.type === 'image')
-            .slice(0, 4)
-            .map((media) => ({
-                url: firstNonEmpty(media.url, media.previewUrl),
-                previewUrl: media.previewUrl ?? undefined,
-                description: media.description ?? undefined,
-            }))
-            .filter((image) => image.url !== '');
-    }, [displayStatus?.mediaAttachments]);
+    // Convert image attachments to ImageViewerImage format (memoized)
+    const imageViewerImages = useMemo(
+        () => toImageViewerImages(displayStatus?.mediaAttachments),
+        [displayStatus?.mediaAttachments]
+    );
 
     // Convert video/gifv attachments to VideoViewerVideo format (memoized)
     const videoViewerVideos = useMemo(

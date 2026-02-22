@@ -1,12 +1,10 @@
 import { useState, useRef, useCallback } from 'react';
 import { LuX, LuChevronLeft, LuChevronRight } from 'react-icons/lu';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
+import type { ImageViewerImage } from '../types/imageViewer';
 
-export interface ImageViewerImage {
-    url: string;
-    previewUrl?: string;
-    description?: string;
-}
+// Re-export for convenience (backward compatibility)
+export type { ImageViewerImage } from '../types/imageViewer';
 
 export interface ImageViewerProps {
     isOpen: boolean;
