@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { formatDate, formatTimeRemaining } from './dateFormat';
+import { formatDate, formatFullDate, formatTimeRemaining } from './dateFormat';
 
 describe('formatDate', () => {
     let mockNow: Date;
@@ -306,5 +306,65 @@ describe('formatTimeRemaining', () => {
             const expiresAt = new Date(nowMs + 24 * 60 * 60000 + 23 * 60 * 60000).toISOString();
             expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り1日');
         });
+    });
+});
+
+describe('formatFullDate', () => {
+    it('should format a date in full Japanese format', () => {
+        const dateStr = '2024-01-15T12:30:00.000Z';
+        const result = formatFullDate(dateStr);
+
+        // The result depends on the locale, but should contain Japanese year/month/day/hour/minute
+        expect(result).toMatch(/2024/);
+        expect(result).toMatch(/1月/);
+        expect(result).toMatch(/15日/);
+    });
+
+    it('should include time with 2-digit hour and minute', () => {
+        const dateStr = '2024-06-20T09:05:00.000Z';
+        const result = formatFullDate(dateStr);
+
+        // Should contain time in some format (e.g., "18:05" or "18時05分")
+        expect(result).toMatch(/\d{1,2}[:時]/);
+    });
+
+    it('should handle date strings without milliseconds', () => {
+        const dateStr = '2024-03-10T14:45:00Z';
+        const result = formatFullDate(dateStr);
+
+        expect(result).toMatch(/2024/);
+        expect(result).toMatch(/3月/);
+        expect(result).toMatch(/10日/);
+    });
+
+    it('should handle dates with timezone offset', () => {
+        const dateStr = '2024-12-25T00:00:00+09:00';
+        const result = formatFullDate(dateStr);
+
+        expect(result).toMatch(/2024/);
+        expect(result).toMatch(/12月/);
+    });
+
+    it('should format consistently for the same input', () => {
+        const dateStr = '2024-07-04T18:20:30.000Z';
+
+        const result1 = formatFullDate(dateStr);
+        const result2 = formatFullDate(dateStr);
+
+        expect(result1).toBe(result2);
+    });
+
+    it('should use toLocaleString with ja-JP locale options', () => {
+        const dateStr = '2024-02-29T23:59:00.000Z'; // Leap year
+        const date = new Date(dateStr);
+        const expected = date.toLocaleString('ja-JP', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+
+        expect(formatFullDate(dateStr)).toBe(expected);
     });
 });

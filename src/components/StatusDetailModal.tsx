@@ -23,7 +23,7 @@ import {
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
-import { formatDate } from '../utils/dateFormat';
+import { formatDate, formatFullDate } from '../utils/dateFormat';
 import { getVisibilityMeta } from '../utils/statusVisibility';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
@@ -53,17 +53,6 @@ interface StatusDetailModalProps {
     // NSFW blur state from parent (optional - for syncing with StatusCard)
     nsfwRevealedStatusIds?: Set<string>;
     onNsfwReveal?: (statusId: string) => void;
-}
-
-function formatFullDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    return date.toLocaleString('ja-JP', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
 }
 
 // Compact status display for thread ancestors/descendants

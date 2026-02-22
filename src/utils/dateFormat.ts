@@ -17,6 +17,21 @@ export function formatDate(dateStr: string): string {
 }
 
 /**
+ * Format a date string to full Japanese date/time format
+ * Used for accessibility labels and detailed timestamps
+ */
+export function formatFullDate(dateStr: string): string {
+    const date = new Date(dateStr);
+    return date.toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+/**
  * Format time remaining until a future date
  * Returns null if date is null (poll never expires) or already past
  * @param expiresAt - ISO date string or null
