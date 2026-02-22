@@ -16,8 +16,13 @@ import {
 } from 'react-icons/lu';
 import { formatDate } from '../utils/dateFormat';
 import { replaceEmojisWithImages } from '../utils/emoji';
+import { shouldIgnoreClick, shouldIgnoreKeyEvent } from '../utils/interaction';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
+
+// NotificationCard uses a reduced selector (no input, label, select, textarea)
+// because it doesn't have as many interactive form elements as StatusCard
+const NOTIFICATION_INTERACTIVE_SELECTOR = 'a, button, video, audio, summary';
 
 interface NotificationCardProps {
     notification: mastodon.v1.Notification;
@@ -127,76 +132,31 @@ export const NotificationCard = React.memo(function NotificationCard({
     // Handle click on card (for notifications without status)
     const handleCardClick = (e: React.MouseEvent) => {
         if (!isCardClickable) return;
-
-        const target = e.target as HTMLElement;
-        // Ignore clicks on interactive elements
-        if (
-            target.closest('a') ||
-            target.closest('button') ||
-            target.closest('summary') ||
-            target.closest('audio')
-        ) {
-            return;
-        }
+        if (shouldIgnoreClick(e, NOTIFICATION_INTERACTIVE_SELECTOR)) return;
         onAccountClick?.(account);
     };
 
     // Handle keyboard navigation for card
     const handleCardKeyDown = (e: React.KeyboardEvent) => {
         if (!isCardClickable) return;
-
-        if (e.key === 'Enter' || e.key === ' ') {
-            const target = e.target as HTMLElement;
-            if (
-                target.closest('a') ||
-                target.closest('button') ||
-                target.closest('video') ||
-                target.closest('audio') ||
-                target.closest('summary')
-            ) {
-                return;
-            }
-            e.preventDefault();
-            onAccountClick?.(account);
-        }
+        if (shouldIgnoreKeyEvent(e, NOTIFICATION_INTERACTIVE_SELECTOR)) return;
+        e.preventDefault();
+        onAccountClick?.(account);
     };
 
     // Handle click on status area
     const handleStatusClick = (e: React.MouseEvent) => {
         if (!status || !onStatusClick) return;
-
-        const target = e.target as HTMLElement;
-        // Ignore clicks on interactive elements
-        if (
-            target.closest('a') ||
-            target.closest('button') ||
-            target.closest('summary') ||
-            target.closest('audio')
-        ) {
-            return;
-        }
+        if (shouldIgnoreClick(e, NOTIFICATION_INTERACTIVE_SELECTOR)) return;
         onStatusClick(status);
     };
 
     // Handle keyboard navigation for status area
     const handleStatusKeyDown = (e: React.KeyboardEvent) => {
         if (!status || !onStatusClick) return;
-
-        if (e.key === 'Enter' || e.key === ' ') {
-            // Ignore keyboard events on interactive elements
-            const target = e.target as HTMLElement;
-            if (
-                target.closest('a') ||
-                target.closest('button') ||
-                target.closest('video') ||
-                target.closest('audio') ||
-                target.closest('summary')
-            ) {
-                return;
-            }
-            e.preventDefault();
-            onStatusClick(status);
-        }
+        if (shouldIgnoreKeyEvent(e, NOTIFICATION_INTERACTIVE_SELECTOR)) return;
+        e.preventDefault();
+        onStatusClick(status);
     };
 
     return (

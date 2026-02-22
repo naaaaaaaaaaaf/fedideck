@@ -23,6 +23,7 @@ import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
+import { shouldIgnoreClick, shouldIgnoreKeyEvent } from '../utils/interaction';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
 import type { ImageViewerImage } from './ImageViewer';
@@ -305,29 +306,15 @@ export const StatusCard = React.memo(function StatusCard({
 
     // Handle card click to open detail modal
     const handleCardClick = (e: React.MouseEvent) => {
-        const target = e.target as HTMLElement;
-        // Ignore clicks on interactive elements
-        const interactiveSelector =
-            'a, button, input, label, select, textarea, video, audio, summary, [role="button"]';
-        if (target.closest(interactiveSelector)) {
-            return;
-        }
+        if (shouldIgnoreClick(e)) return;
         openStatusDetail();
     };
 
     // Handle keyboard navigation for card
     const handleCardKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            const target = e.target as HTMLElement;
-            // Ignore keyboard events on interactive elements
-            const interactiveSelector =
-                'a, button, input, label, select, textarea, video, audio, summary, [role="button"]';
-            if (target.closest(interactiveSelector)) {
-                return;
-            }
-            e.preventDefault();
-            openStatusDetail();
-        }
+        if (shouldIgnoreKeyEvent(e)) return;
+        e.preventDefault();
+        openStatusDetail();
     };
 
     // Open status detail modal

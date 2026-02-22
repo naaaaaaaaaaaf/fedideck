@@ -29,6 +29,7 @@ import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
+import { shouldIgnoreClick, shouldIgnoreKeyEvent } from '../utils/interaction';
 import type { ImageViewerImage } from './ImageViewer';
 import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
@@ -73,6 +74,9 @@ interface ThreadItemProps {
     onClick?: (status: mastodon.v1.Status) => void;
 }
 
+// ThreadItem uses a reduced selector (no input, label, select, textarea, [role="button"])
+const THREAD_ITEM_INTERACTIVE_SELECTOR = 'a, button, video, audio, summary';
+
 function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
     const account = status.account;
     if (!account) return null;
@@ -82,24 +86,15 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
 
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!onClick) return;
-        // Guard against e.target not being an Element
-        if (!(e.target instanceof Element)) return;
-        // Don't trigger if clicking on interactive elements
-        if (e.target.closest('a, button, video, audio, summary')) return;
+        if (shouldIgnoreClick(e, THREAD_ITEM_INTERACTIVE_SELECTOR)) return;
         onClick(status);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
         if (!onClick) return;
-        if (e.key === 'Enter' || e.key === ' ') {
-            // Guard against e.target not being an Element
-            if (!(e.target instanceof Element)) return;
-            // Don't trigger if focus is on interactive elements (same as handleClick)
-            if (e.target.closest('a, button, video, audio, summary')) return;
-
-            e.preventDefault();
-            onClick(status);
-        }
+        if (shouldIgnoreKeyEvent(e, THREAD_ITEM_INTERACTIVE_SELECTOR)) return;
+        e.preventDefault();
+        onClick(status);
     };
 
     // Shared content JSX to avoid duplication
