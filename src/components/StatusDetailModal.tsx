@@ -11,16 +11,14 @@ import {
 } from 'react-icons/lu';
 import {
     type AccountSession,
-    type MastoClient,
     getClient,
-    favouriteStatus,
-    unfavouriteStatus,
-    reblogStatus,
-    unreblogStatus,
     getStatusContext,
     type StatusContext,
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
+import { useStatusActions } from '../hooks/useStatusActions';
+import { useCardInteraction } from '../hooks/useCardInteraction';
+import { useNsfwState } from '../hooks/useNsfwState';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
 import { formatDate, formatFullDate } from '../utils/dateFormat';
@@ -66,32 +64,22 @@ interface ThreadItemProps {
 
 function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
     const account = status.account;
-    if (!account) return null;
 
     const maxDepth = 3; // Maximum indentation level
     const indentLevel = Math.min(depth, maxDepth);
 
-    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!onClick) return;
-        // Guard against e.target not being an Element
-        if (!(e.target instanceof Element)) return;
-        // Don't trigger if clicking on interactive elements
-        if (e.target.closest('a, button, video, audio, summary')) return;
-        onClick(status);
-    };
+    // Custom selector for ThreadItem (excludes [role="button"] to allow thread item to be clickable)
+    const threadInteractiveSelector =
+        'a, button, input, label, select, textarea, video, audio, summary';
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-        if (!onClick) return;
-        if (e.key === 'Enter' || e.key === ' ') {
-            // Guard against e.target not being an Element
-            if (!(e.target instanceof Element)) return;
-            // Don't trigger if focus is on interactive elements (same as handleClick)
-            if (e.target.closest('a, button, video, audio, summary')) return;
+    // Card interaction handlers - must be called before early return
+    const { handleClick, handleKeyDown } = useCardInteraction({
+        onClick: onClick ? () => onClick(status) : undefined,
+        isEnabled: !!onClick,
+        interactiveSelector: threadInteractiveSelector,
+    });
 
-            e.preventDefault();
-            onClick(status);
-        }
-    };
+    if (!account) return null;
 
     // Shared content JSX to avoid duplication
     const sharedContent = (
@@ -234,24 +222,29 @@ export function StatusDetailModal({
     // Get the display status (navigated > original reblog > original)
     const displayStatus = navigatedStatus ?? status?.reblog ?? status;
 
-    // NSFW state: controlled from parent or local
-    // If parent provides state (nsfwRevealedStatusIds), always use it
-    // When onNsfwReveal is missing, operates in read-only mode
-    const isControlled = nsfwRevealedStatusIds !== undefined;
-    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
+    // Status actions (favourite/reblog) with optimistic UI
+    const {
+        favourited,
+        favouritesCount,
+        reblogged,
+        reblogsCount,
+        isLoading,
+        canReblog,
+        handleFavourite,
+        handleReblog,
+    } = useStatusActions({
+        status: displayStatus,
+        accountSession,
+        onStatusUpdate,
+    });
 
-    // Check if current status is revealed (controlled) or use local state
-    const nsfwRevealed = isControlled
-        ? displayStatus
-            ? nsfwRevealedStatusIds.has(displayStatus.id)
-            : false
-        : localNsfwRevealed;
-
-    const [localFavourited, setLocalFavourited] = useState(false);
-    const [localFavouritesCount, setLocalFavouritesCount] = useState(0);
-    const [localReblogged, setLocalReblogged] = useState(false);
-    const [localReblogsCount, setLocalReblogsCount] = useState(0);
-    const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
+    // NSFW state with controlled/uncontrolled mode
+    // For controlled mode, check if current status id is in the revealed set
+    const { nsfwRevealed, handleNsfwToggle } = useNsfwState({
+        isRevealed: nsfwRevealedStatusIds?.has(displayStatus?.id ?? ''),
+        onReveal: onNsfwReveal,
+        statusId: displayStatus?.id ?? '',
+    });
 
     // Poll state using usePollState hook (with auto-refresh on expiry for modal)
     const {
@@ -299,34 +292,6 @@ export function StatusDetailModal({
         setContextError(null);
         setIsLoadingContext(false);
     }, [status?.id, isOpen]);
-
-    // Sync favourite/reblog state when status changes or modal opens
-    // Include specific fields in dependencies to catch external updates
-    // Skip sync during loading to avoid overwriting optimistic updates
-    useEffect(() => {
-        if (!displayStatus || !isOpen) return;
-        // Skip sync during loading operations
-        if (isLoading.favourite || isLoading.reblog) return;
-
-        setLocalFavourited(displayStatus.favourited ?? false);
-        setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
-        setLocalReblogged(displayStatus.reblogged ?? false);
-        setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
-        // Only reset NSFW state if not controlled by parent and status changed
-        if (!isControlled) {
-            setLocalNsfwRevealed(false);
-        }
-    }, [
-        displayStatus?.id,
-        displayStatus?.favourited,
-        displayStatus?.favouritesCount,
-        displayStatus?.reblogged,
-        displayStatus?.reblogsCount,
-        isOpen,
-        isControlled,
-        isLoading.favourite,
-        isLoading.reblog,
-    ]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
@@ -453,86 +418,12 @@ export function StatusDetailModal({
     if (!account) return null;
 
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
-    const canReblog =
-        displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
 
     const handleThreadNavigate = (clickedStatus: mastodon.v1.Status) => {
         setContext(null);
         setContextError(null);
         setIsLoadingContext(true);
         setNavigatedStatus(clickedStatus);
-    };
-
-    const handleFavourite = async () => {
-        if (!accountSession || isLoading.favourite) return;
-
-        setIsLoading((prev) => ({ ...prev, favourite: true }));
-        const wasLocalFavourited = localFavourited;
-        setLocalFavourited(!wasLocalFavourited);
-        setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev - 1 : prev + 1));
-
-        try {
-            const client: MastoClient = getClient(accountSession);
-            const updatedStatus = wasLocalFavourited
-                ? await unfavouriteStatus(client, displayStatus.id)
-                : await favouriteStatus(client, displayStatus.id);
-
-            setLocalFavourited(updatedStatus.favourited ?? false);
-            setLocalFavouritesCount(updatedStatus.favouritesCount ?? 0);
-            onStatusUpdate?.(updatedStatus);
-        } catch (error) {
-            setLocalFavourited(wasLocalFavourited);
-            setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev + 1 : prev - 1));
-            console.error('Failed to toggle favourite:', error);
-        } finally {
-            setIsLoading((prev) => ({ ...prev, favourite: false }));
-        }
-    };
-
-    const handleReblog = async () => {
-        if (!accountSession || isLoading.reblog || !canReblog) return;
-
-        setIsLoading((prev) => ({ ...prev, reblog: true }));
-        const wasLocalReblogged = localReblogged;
-        setLocalReblogged(!wasLocalReblogged);
-        setLocalReblogsCount((prev) => (wasLocalReblogged ? prev - 1 : prev + 1));
-
-        try {
-            const client: MastoClient = getClient(accountSession);
-            const updatedStatus = wasLocalReblogged
-                ? await unreblogStatus(client, displayStatus.id)
-                : await reblogStatus(client, displayStatus.id);
-
-            const actualStatus = updatedStatus.reblog ?? updatedStatus;
-            setLocalReblogged(actualStatus.reblogged ?? false);
-            setLocalReblogsCount(actualStatus.reblogsCount ?? 0);
-            onStatusUpdate?.(actualStatus);
-        } catch (error) {
-            setLocalReblogged(wasLocalReblogged);
-            setLocalReblogsCount((prev) => (wasLocalReblogged ? prev + 1 : prev - 1));
-            console.error('Failed to toggle reblog:', error);
-        } finally {
-            setIsLoading((prev) => ({ ...prev, reblog: false }));
-        }
-    };
-
-    const handleNsfwToggle = () => {
-        const newValue = !nsfwRevealed;
-
-        // Controlled mode: use parent state
-        if (isControlled) {
-            // If callback provided, notify parent (read-only mode if no callback)
-            if (newValue && onNsfwReveal && displayStatus) {
-                onNsfwReveal(displayStatus.id);
-            }
-            return;
-        }
-
-        // Uncontrolled mode: notify parent if callback provided, then toggle local state
-        if (newValue && onNsfwReveal && displayStatus) {
-            onNsfwReveal(displayStatus.id);
-        }
-        setLocalNsfwRevealed(newValue);
     };
 
     const handleReply = () => {
@@ -926,11 +817,10 @@ export function StatusDetailModal({
                         {/* Stats */}
                         <div className="flex items-center gap-6 text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">
                             <span>
-                                <strong className="text-slate-200">{localReblogsCount}</strong>{' '}
-                                ブースト
+                                <strong className="text-slate-200">{reblogsCount}</strong> ブースト
                             </span>
                             <span>
-                                <strong className="text-slate-200">{localFavouritesCount}</strong>{' '}
+                                <strong className="text-slate-200">{favouritesCount}</strong>{' '}
                                 お気に入り
                             </span>
                             {displayStatus.repliesCount > 0 && (
@@ -968,7 +858,7 @@ export function StatusDetailModal({
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                             !canReblog
                                 ? 'opacity-50 cursor-not-allowed'
-                                : localReblogged
+                                : reblogged
                                   ? 'text-green-400 hover:bg-green-400/10'
                                   : 'hover:text-green-400 hover:bg-green-400/10'
                         } ${isLoading.reblog ? 'opacity-50' : ''}`}
@@ -981,13 +871,13 @@ export function StatusDetailModal({
                         onClick={handleFavourite}
                         disabled={!accountSession || isLoading.favourite}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                            localFavourited
+                            favourited
                                 ? 'text-amber-400 hover:bg-amber-400/10'
                                 : 'hover:text-amber-400 hover:bg-amber-400/10'
                         } ${isLoading.favourite ? 'opacity-50' : ''}`}
                     >
                         <LuStar
-                            className={`w-5 h-5 ${localFavourited ? 'fill-current' : ''}`}
+                            className={`w-5 h-5 ${favourited ? 'fill-current' : ''}`}
                             aria-hidden="true"
                         />
                         <span>お気に入り</span>

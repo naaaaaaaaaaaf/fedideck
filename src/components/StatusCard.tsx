@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import type { mastodon } from 'masto';
 import {
     LuRepeat2,
@@ -8,15 +8,7 @@ import {
     LuCornerUpLeft,
     LuRefreshCw,
 } from 'react-icons/lu';
-import {
-    type AccountSession,
-    type MastoClient,
-    getClient,
-    favouriteStatus,
-    unfavouriteStatus,
-    reblogStatus,
-    unreblogStatus,
-} from '../api/mastoClient';
+import { type AccountSession } from '../api/mastoClient';
 import { formatDate } from '../utils/dateFormat';
 import { getVisibilityMeta } from '../utils/statusVisibility';
 import { getDisplayStatus, getReblogger } from '../utils/statusView';
@@ -26,6 +18,9 @@ import { getPollVotesDenominator } from '../utils/poll';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
 import { toImageViewerImages } from '../utils/imageAttachments';
+import { useStatusActions } from '../hooks/useStatusActions';
+import { useCardInteraction } from '../hooks/useCardInteraction';
+import { useNsfwState } from '../hooks/useNsfwState';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
 import type { ImageViewerImage } from './ImageViewer';
@@ -66,7 +61,7 @@ export const StatusCard = React.memo(function StatusCard({
     onAudioClick,
     onAccountClick,
     onNsfwReveal,
-    isNsfwRevealed = false,
+    isNsfwRevealed,
     onStatusDelete,
     onStatusEdit,
 }: StatusCardProps) {
@@ -78,14 +73,22 @@ export const StatusCard = React.memo(function StatusCard({
     const displayStatus = getDisplayStatus(status);
     const reblogger = getReblogger(status);
 
-    // Local state for optimistic UI updates
-    const [localFavourited, setLocalFavourited] = useState(displayStatus.favourited ?? false);
-    const [localFavouritesCount, setLocalFavouritesCount] = useState(
-        displayStatus.favouritesCount ?? 0
-    );
-    const [localReblogged, setLocalReblogged] = useState(displayStatus.reblogged ?? false);
-    const [localReblogsCount, setLocalReblogsCount] = useState(displayStatus.reblogsCount ?? 0);
-    const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
+    // Status actions (favourite/reblog) with optimistic UI
+    const {
+        favourited,
+        favouritesCount,
+        reblogged,
+        reblogsCount,
+        isLoading,
+        canReblog,
+        handleFavourite,
+        handleReblog,
+        statusWithLocalState,
+    } = useStatusActions({
+        status: displayStatus,
+        accountSession,
+        onStatusUpdate,
+    });
 
     // Poll state using usePollState hook
     const {
@@ -108,63 +111,12 @@ export const StatusCard = React.memo(function StatusCard({
     // Poll countdown display
     const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
 
-    // NSFW state:
-    // - onNsfwReveal provided: controlled mode, uses isNsfwRevealed from parent
-    // - onNsfwReveal missing: uncontrolled mode, toggles local state
-    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-    const nsfwRevealed = onNsfwReveal !== undefined ? isNsfwRevealed : localNsfwRevealed;
-
-    // Track pending props updates that arrived during loading
-    const pendingPropsRef = useRef<{
-        favourited: boolean;
-        favouritesCount: number;
-        reblogged: boolean;
-        reblogsCount: number;
-    } | null>(null);
-
-    // Sync local state with props when displayStatus changes externally
-    // (e.g., from streaming updates or parent re-renders with new data)
-    useEffect(() => {
-        const newProps = {
-            favourited: displayStatus.favourited ?? false,
-            favouritesCount: displayStatus.favouritesCount ?? 0,
-            reblogged: displayStatus.reblogged ?? false,
-            reblogsCount: displayStatus.reblogsCount ?? 0,
-        };
-
-        // If currently loading, store the update to apply after completion
-        if (isLoading.favourite || isLoading.reblog) {
-            pendingPropsRef.current = newProps;
-        } else {
-            // Apply immediately when not loading
-            setLocalFavourited(newProps.favourited);
-            setLocalFavouritesCount(newProps.favouritesCount);
-            setLocalReblogged(newProps.reblogged);
-            setLocalReblogsCount(newProps.reblogsCount);
-            pendingPropsRef.current = null;
-        }
-        // Note: isLoading is intentionally excluded from deps to avoid re-running on loading changes
-        // The second useEffect handles applying pending props when loading completes
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [
-        displayStatus.id,
-        displayStatus.favourited,
-        displayStatus.favouritesCount,
-        displayStatus.reblogged,
-        displayStatus.reblogsCount,
-    ]);
-
-    // Apply pending props when loading completes
-    useEffect(() => {
-        if (!isLoading.favourite && !isLoading.reblog && pendingPropsRef.current) {
-            const pending = pendingPropsRef.current;
-            setLocalFavourited(pending.favourited);
-            setLocalFavouritesCount(pending.favouritesCount);
-            setLocalReblogged(pending.reblogged);
-            setLocalReblogsCount(pending.reblogsCount);
-            pendingPropsRef.current = null;
-        }
-    }, [isLoading.favourite, isLoading.reblog]);
+    // NSFW state with controlled/uncontrolled mode
+    const { nsfwRevealed, handleNsfwToggle } = useNsfwState({
+        isRevealed: isNsfwRevealed,
+        onReveal: onNsfwReveal,
+        statusId: displayStatus.id,
+    });
 
     // Note: nsfwRevealed state is automatically reset when status changes
     // because StatusCard is rendered with key={status.id} in parent
@@ -201,143 +153,17 @@ export const StatusCard = React.memo(function StatusCard({
     // Safely access account
     const account = displayStatus.account;
 
-    // Use ref to track nsfwRevealed state without causing callback recreation
-    const nsfwRevealedRef = useRef(nsfwRevealed);
-    useEffect(() => {
-        nsfwRevealedRef.current = nsfwRevealed;
-    }, [nsfwRevealed]);
-
-    // NSFW toggle handler - must be defined before early return to follow hooks rules
-    const handleNsfwToggle = useCallback(() => {
-        // Controlled mode: parent provides the state via isNsfwRevealed
-        if (onNsfwReveal) {
-            if (!nsfwRevealedRef.current) {
-                onNsfwReveal(displayStatus.id);
-            }
-            return;
-        }
-
-        // Uncontrolled mode: toggle local state
-        setLocalNsfwRevealed((prev) => !prev);
-    }, [onNsfwReveal, displayStatus.id]);
+    // Card interaction handlers - must be called before early return
+    const { handleClick: handleCardClick, handleKeyDown: handleCardKeyDown } = useCardInteraction({
+        onClick: onStatusClick
+            ? () => statusWithLocalState && onStatusClick(statusWithLocalState)
+            : undefined,
+        isEnabled: !!onStatusClick,
+    });
 
     if (!account) {
         return null; // Cannot render without account
     }
-
-    const handleFavourite = async () => {
-        if (!accountSession || isLoading.favourite) return;
-
-        setIsLoading((prev) => ({ ...prev, favourite: true }));
-
-        // Optimistic update
-        const wasLocalFavourited = localFavourited;
-        setLocalFavourited(!wasLocalFavourited);
-        setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev - 1 : prev + 1));
-
-        try {
-            const client: MastoClient = getClient(accountSession);
-            const updatedStatus = wasLocalFavourited
-                ? await unfavouriteStatus(client, displayStatus.id)
-                : await favouriteStatus(client, displayStatus.id);
-
-            // Update with server response - this is authoritative, clear any pending stale updates
-            setLocalFavourited(updatedStatus.favourited ?? false);
-            setLocalFavouritesCount(updatedStatus.favouritesCount ?? 0);
-            pendingPropsRef.current = null;
-            onStatusUpdate?.(updatedStatus);
-        } catch (error) {
-            // Revert on error
-            setLocalFavourited(wasLocalFavourited);
-            setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev + 1 : prev - 1));
-            console.error('Failed to toggle favourite:', error);
-        } finally {
-            setIsLoading((prev) => ({ ...prev, favourite: false }));
-        }
-    };
-
-    const handleReblog = async () => {
-        if (!accountSession || isLoading.reblog) return;
-
-        // Don't allow reblogging private or direct messages
-        if (displayStatus.visibility === 'private' || displayStatus.visibility === 'direct') {
-            return;
-        }
-
-        setIsLoading((prev) => ({ ...prev, reblog: true }));
-
-        // Optimistic update
-        const wasLocalReblogged = localReblogged;
-        setLocalReblogged(!wasLocalReblogged);
-        setLocalReblogsCount((prev) => (wasLocalReblogged ? prev - 1 : prev + 1));
-
-        try {
-            const client: MastoClient = getClient(accountSession);
-            const updatedStatus = wasLocalReblogged
-                ? await unreblogStatus(client, displayStatus.id)
-                : await reblogStatus(client, displayStatus.id);
-
-            // For reblog, the API returns the reblog wrapper status
-            // We need to extract the actual status
-            const actualStatus = updatedStatus.reblog ?? updatedStatus;
-            setLocalReblogged(actualStatus.reblogged ?? false);
-            setLocalReblogsCount(actualStatus.reblogsCount ?? 0);
-            pendingPropsRef.current = null;
-            onStatusUpdate?.(actualStatus);
-        } catch (error) {
-            // Revert on error
-            setLocalReblogged(wasLocalReblogged);
-            setLocalReblogsCount((prev) => (wasLocalReblogged ? prev + 1 : prev - 1));
-            console.error('Failed to toggle reblog:', error);
-        } finally {
-            setIsLoading((prev) => ({ ...prev, reblog: false }));
-        }
-    };
-
-    // Check if reblog is allowed (not for private/direct messages)
-    const canReblog =
-        displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
-
-    // Handle card click to open detail modal
-    const handleCardClick = (e: React.MouseEvent) => {
-        const target = e.target as HTMLElement;
-        // Ignore clicks on interactive elements
-        const interactiveSelector =
-            'a, button, input, label, select, textarea, video, audio, summary, [role="button"]';
-        if (target.closest(interactiveSelector)) {
-            return;
-        }
-        openStatusDetail();
-    };
-
-    // Handle keyboard navigation for card
-    const handleCardKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            const target = e.target as HTMLElement;
-            // Ignore keyboard events on interactive elements
-            const interactiveSelector =
-                'a, button, input, label, select, textarea, video, audio, summary, [role="button"]';
-            if (target.closest(interactiveSelector)) {
-                return;
-            }
-            e.preventDefault();
-            openStatusDetail();
-        }
-    };
-
-    // Open status detail modal
-    const openStatusDetail = () => {
-        // Always pass displayStatus (the actual content being shown) with local state
-        // This ensures consistent handling regardless of reblog status
-        const statusWithLocalState: mastodon.v1.Status = {
-            ...displayStatus,
-            favourited: localFavourited,
-            favouritesCount: localFavouritesCount,
-            reblogged: localReblogged,
-            reblogsCount: localReblogsCount,
-        };
-        onStatusClick?.(statusWithLocalState);
-    };
 
     return (
         <article
@@ -370,7 +196,9 @@ export const StatusCard = React.memo(function StatusCard({
                         ? {
                               onClick: (e) => {
                                   e.stopPropagation();
-                                  openStatusDetail();
+                                  if (statusWithLocalState) {
+                                      onStatusClick(statusWithLocalState);
+                                  }
                               },
                               role: 'button',
                               tabIndex: 0,
@@ -378,7 +206,9 @@ export const StatusCard = React.memo(function StatusCard({
                                   if (e.key === 'Enter' || e.key === ' ') {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      openStatusDetail();
+                                      if (statusWithLocalState) {
+                                          onStatusClick(statusWithLocalState);
+                                      }
                                   }
                               },
                               'aria-label': 'スレッドを表示',
@@ -749,17 +579,17 @@ export const StatusCard = React.memo(function StatusCard({
                             className={`${actionButtonBase} ${
                                 !canReblog
                                     ? 'opacity-50 cursor-not-allowed'
-                                    : localReblogged
+                                    : reblogged
                                       ? 'text-green-400 hover:text-green-300 hover:bg-green-400/10'
                                       : 'hover:text-green-400 hover:bg-green-400/10'
                             } ${isLoading.reblog ? 'opacity-50' : ''}`}
                             title={!canReblog ? 'この投稿はブーストできません' : undefined}
-                            aria-label={localReblogged ? 'ブースト解除' : 'ブースト'}
+                            aria-label={reblogged ? 'ブースト解除' : 'ブースト'}
                             aria-disabled={!canReblog}
                         >
                             <LuRepeat2 className="w-4 h-4" aria-hidden="true" />
-                            {(localReblogsCount ?? 0) > 0 && (
-                                <span className="text-sm">{localReblogsCount}</span>
+                            {(reblogsCount ?? 0) > 0 && (
+                                <span className="text-sm">{reblogsCount}</span>
                             )}
                         </button>
                         <button
@@ -767,18 +597,18 @@ export const StatusCard = React.memo(function StatusCard({
                             onClick={handleFavourite}
                             disabled={!accountSession || isLoading.favourite}
                             className={`${actionButtonBase} ${
-                                localFavourited
+                                favourited
                                     ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-400/10'
                                     : 'hover:text-amber-400 hover:bg-amber-400/10'
                             } ${isLoading.favourite ? 'opacity-50' : ''}`}
-                            aria-label={localFavourited ? 'お気に入り解除' : 'お気に入り'}
+                            aria-label={favourited ? 'お気に入り解除' : 'お気に入り'}
                         >
                             <LuStar
-                                className={`w-4 h-4 ${localFavourited ? 'fill-current' : ''}`}
+                                className={`w-4 h-4 ${favourited ? 'fill-current' : ''}`}
                                 aria-hidden="true"
                             />
-                            {(localFavouritesCount ?? 0) > 0 && (
-                                <span className="text-sm">{localFavouritesCount}</span>
+                            {(favouritesCount ?? 0) > 0 && (
+                                <span className="text-sm">{favouritesCount}</span>
                             )}
                         </button>
                         <StatusMenu

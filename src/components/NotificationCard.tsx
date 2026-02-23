@@ -1,5 +1,5 @@
 import type { mastodon } from 'masto';
-import React, { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from 'react';
+import React, { useMemo, type ReactNode } from 'react';
 import {
     LuMessageCircle,
     LuRepeat2,
@@ -17,6 +17,8 @@ import {
 import { formatDate } from '../utils/dateFormat';
 import { getDisplayStatusOrNull } from '../utils/statusView';
 import { replaceEmojisWithImages } from '../utils/emoji';
+import { useCardInteraction } from '../hooks/useCardInteraction';
+import { useNsfwState } from '../hooks/useNsfwState';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
 
@@ -33,7 +35,7 @@ export const NotificationCard = React.memo(function NotificationCard({
     onStatusClick,
     onAccountClick,
     onNsfwReveal,
-    isNsfwRevealed = false,
+    isNsfwRevealed,
 }: NotificationCardProps) {
     const getNotificationInfo = (): { icon: ReactNode; label: string; color: string } => {
         switch (notification.type) {
@@ -73,33 +75,12 @@ export const NotificationCard = React.memo(function NotificationCard({
     const actionText =
         notification.type === 'poll' ? `${info.label}しました` : `さんが${info.label}しました`;
 
-    // NSFW state:
-    // - onNsfwReveal provided: controlled mode, uses isNsfwRevealed from parent
-    // - onNsfwReveal missing: uncontrolled mode, toggles local state
-    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-    const nsfwRevealed = onNsfwReveal !== undefined ? isNsfwRevealed : localNsfwRevealed;
-
-    // Use ref to track nsfwRevealed state without causing callback recreation
-    const nsfwRevealedRef = useRef(nsfwRevealed);
-    useEffect(() => {
-        nsfwRevealedRef.current = nsfwRevealed;
-    }, [nsfwRevealed]);
-
-    // Extract displayStatus.id for stable callback dependency
-    const displayStatusId = displayStatus?.id;
-
-    const handleNsfwToggle = useCallback(() => {
-        // Controlled mode: parent provides the state via isNsfwRevealed
-        if (onNsfwReveal) {
-            if (!nsfwRevealedRef.current && displayStatusId) {
-                onNsfwReveal(displayStatusId);
-            }
-            return;
-        }
-
-        // Uncontrolled mode: toggle local state
-        setLocalNsfwRevealed((prev) => !prev);
-    }, [onNsfwReveal, displayStatusId]);
+    // NSFW state with controlled/uncontrolled mode
+    const { nsfwRevealed, handleNsfwToggle } = useNsfwState({
+        isRevealed: isNsfwRevealed,
+        onReveal: onNsfwReveal,
+        statusId: displayStatus?.id ?? notification.id,
+    });
 
     // Note: nsfwRevealed state is automatically reset when notification changes
     // because NotificationCard is rendered with key={notification.id} in parent
@@ -125,80 +106,24 @@ export const NotificationCard = React.memo(function NotificationCard({
     // Note: follow_request has action buttons, so card should not be clickable
     const isCardClickable = Boolean(!status && onAccountClick && notification.type === 'follow');
 
-    // Handle click on card (for notifications without status)
-    const handleCardClick = (e: React.MouseEvent) => {
-        if (!isCardClickable) return;
+    // Custom selector for NotificationCard (excludes [role="button"] to allow card itself to be clickable)
+    const notificationInteractiveSelector =
+        'a, button, input, label, select, textarea, video, audio, summary';
 
-        const target = e.target as HTMLElement;
-        // Ignore clicks on interactive elements
-        if (
-            target.closest('a') ||
-            target.closest('button') ||
-            target.closest('summary') ||
-            target.closest('audio')
-        ) {
-            return;
-        }
-        onAccountClick?.(account);
-    };
+    // Card interaction handlers for follow notifications
+    const { handleClick: handleCardClick, handleKeyDown: handleCardKeyDown } = useCardInteraction({
+        onClick: () => onAccountClick?.(account),
+        isEnabled: isCardClickable,
+        interactiveSelector: notificationInteractiveSelector,
+    });
 
-    // Handle keyboard navigation for card
-    const handleCardKeyDown = (e: React.KeyboardEvent) => {
-        if (!isCardClickable) return;
-
-        if (e.key === 'Enter' || e.key === ' ') {
-            const target = e.target as HTMLElement;
-            if (
-                target.closest('a') ||
-                target.closest('button') ||
-                target.closest('video') ||
-                target.closest('audio') ||
-                target.closest('summary')
-            ) {
-                return;
-            }
-            e.preventDefault();
-            onAccountClick?.(account);
-        }
-    };
-
-    // Handle click on status area
-    const handleStatusClick = (e: React.MouseEvent) => {
-        if (!status || !onStatusClick) return;
-
-        const target = e.target as HTMLElement;
-        // Ignore clicks on interactive elements
-        if (
-            target.closest('a') ||
-            target.closest('button') ||
-            target.closest('summary') ||
-            target.closest('audio')
-        ) {
-            return;
-        }
-        onStatusClick(status);
-    };
-
-    // Handle keyboard navigation for status area
-    const handleStatusKeyDown = (e: React.KeyboardEvent) => {
-        if (!status || !onStatusClick) return;
-
-        if (e.key === 'Enter' || e.key === ' ') {
-            // Ignore keyboard events on interactive elements
-            const target = e.target as HTMLElement;
-            if (
-                target.closest('a') ||
-                target.closest('button') ||
-                target.closest('video') ||
-                target.closest('audio') ||
-                target.closest('summary')
-            ) {
-                return;
-            }
-            e.preventDefault();
-            onStatusClick(status);
-        }
-    };
+    // Status area interaction handlers
+    const { handleClick: handleStatusClick, handleKeyDown: handleStatusKeyDown } =
+        useCardInteraction({
+            onClick: () => status && onStatusClick?.(status),
+            isEnabled: Boolean(status && onStatusClick),
+            interactiveSelector: notificationInteractiveSelector,
+        });
 
     return (
         <article
