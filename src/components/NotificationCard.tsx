@@ -79,7 +79,7 @@ export const NotificationCard = React.memo(function NotificationCard({
     const { nsfwRevealed, handleNsfwToggle } = useNsfwState({
         isRevealed: isNsfwRevealed,
         onReveal: onNsfwReveal,
-        statusId: displayStatus?.id ?? '',
+        statusId: displayStatus?.id ?? notification.id,
     });
 
     // Note: nsfwRevealed state is automatically reset when notification changes
