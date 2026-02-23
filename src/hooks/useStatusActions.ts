@@ -53,6 +53,9 @@ export function useStatusActions({
     const activeStatusIdRef = useRef(status?.id);
     activeStatusIdRef.current = status?.id;
 
+    // Track previous status id to detect navigation
+    const prevStatusIdRef = useRef(status?.id);
+
     // Sync local state with props when status changes externally
     // (e.g., from streaming updates or parent re-renders with new data)
     useEffect(() => {
@@ -64,6 +67,20 @@ export function useStatusActions({
             reblogged: status.reblogged ?? false,
             reblogsCount: status.reblogsCount ?? 0,
         };
+
+        // On navigation (status.id changed), always apply immediately and clear pending
+        // This prevents stale optimistic state from appearing on new status
+        if (prevStatusIdRef.current !== status.id) {
+            prevStatusIdRef.current = status.id;
+            setLocalFavourited(newProps.favourited);
+            setLocalFavouritesCount(newProps.favouritesCount);
+            setLocalReblogged(newProps.reblogged);
+            setLocalReblogsCount(newProps.reblogsCount);
+            pendingPropsRef.current = null;
+            // Clear loading state to prevent UI from being stuck
+            setIsLoading({ favourite: false, reblog: false });
+            return;
+        }
 
         // If currently loading, store the update to apply after completion
         if (isLoading.favourite || isLoading.reblog) {
