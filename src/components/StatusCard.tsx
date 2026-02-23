@@ -85,7 +85,7 @@ export const StatusCard = React.memo(function StatusCard({
         handleReblog,
         statusWithLocalState,
     } = useStatusActions({
-        status: displayStatus as mastodon.v1.Status,
+        status: displayStatus,
         accountSession,
         onStatusUpdate,
     });
