@@ -56,6 +56,11 @@ export function useStatusActions({
     // Track previous status id to detect navigation
     const prevStatusIdRef = useRef(status?.id);
 
+    // Synchronous in-flight guards (prevent double-clicks within same tick)
+    // isLoading state is async, so useRef is needed for synchronous blocking
+    const isFavouriteInFlightRef = useRef(false);
+    const isReblogInFlightRef = useRef(false);
+
     // Sync local state with props when status changes externally
     // (e.g., from streaming updates or parent re-renders with new data)
     useEffect(() => {
@@ -117,8 +122,12 @@ export function useStatusActions({
     }, [isLoading.favourite, isLoading.reblog]);
 
     const handleFavourite = useCallback(async () => {
-        if (!status || !accountSession || isLoading.favourite) return;
+        // Use ref for synchronous guard against double-clicks within same tick
+        if (!status || !accountSession || isLoading.favourite || isFavouriteInFlightRef.current) {
+            return;
+        }
 
+        isFavouriteInFlightRef.current = true;
         const currentStatusId = status.id;
         setIsLoading((prev) => ({ ...prev, favourite: true }));
 
@@ -154,20 +163,25 @@ export function useStatusActions({
             setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev + 1 : prev - 1));
             console.error('Failed to toggle favourite:', error);
         } finally {
-            // Always clear loading state, even if status has changed
+            // Always clear loading state and in-flight flag, even if status has changed
             // This prevents UI from being stuck in loading state after navigation
+            isFavouriteInFlightRef.current = false;
             setIsLoading((prev) => ({ ...prev, favourite: false }));
         }
     }, [status, accountSession, isLoading.favourite, localFavourited, onStatusUpdate]);
 
     const handleReblog = useCallback(async () => {
-        if (!status || !accountSession || isLoading.reblog) return;
+        // Use ref for synchronous guard against double-clicks within same tick
+        if (!status || !accountSession || isLoading.reblog || isReblogInFlightRef.current) {
+            return;
+        }
 
         // Don't allow reblogging private or direct messages
         if (status.visibility === 'private' || status.visibility === 'direct') {
             return;
         }
 
+        isReblogInFlightRef.current = true;
         const currentStatusId = status.id;
         setIsLoading((prev) => ({ ...prev, reblog: true }));
 
@@ -205,8 +219,9 @@ export function useStatusActions({
             setLocalReblogsCount((prev) => (wasLocalReblogged ? prev + 1 : prev - 1));
             console.error('Failed to toggle reblog:', error);
         } finally {
-            // Always clear loading state, even if status has changed
+            // Always clear loading state and in-flight flag, even if status has changed
             // This prevents UI from being stuck in loading state after navigation
+            isReblogInFlightRef.current = false;
             setIsLoading((prev) => ({ ...prev, reblog: false }));
         }
     }, [status, accountSession, isLoading.reblog, localReblogged, onStatusUpdate]);
