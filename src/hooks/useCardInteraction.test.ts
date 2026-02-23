@@ -368,4 +368,86 @@ describe('useCardInteraction', () => {
             expect(onClick).toHaveBeenCalledTimes(1);
         });
     });
+
+    describe('callback stability', () => {
+        it('should have stable handleClick and handleKeyDown when dependencies do not change', () => {
+            const onClick = vi.fn();
+            const { result, rerender } = renderHook(() =>
+                useCardInteraction({ onClick, isEnabled: true })
+            );
+
+            const firstHandleClick = result.current.handleClick;
+            const firstHandleKeyDown = result.current.handleKeyDown;
+
+            rerender();
+
+            const secondHandleClick = result.current.handleClick;
+            const secondHandleKeyDown = result.current.handleKeyDown;
+
+            // Callbacks should be stable across rerenders with same deps
+            expect(firstHandleClick).toBe(secondHandleClick);
+            expect(firstHandleKeyDown).toBe(secondHandleKeyDown);
+        });
+
+        it('should recreate callbacks when onClick changes', () => {
+            const onClick1 = vi.fn();
+            const onClick2 = vi.fn();
+            const { result, rerender } = renderHook(
+                ({ onClick }) => useCardInteraction({ onClick }),
+                { initialProps: { onClick: onClick1 } }
+            );
+
+            const firstHandleClick = result.current.handleClick;
+            const firstHandleKeyDown = result.current.handleKeyDown;
+
+            rerender({ onClick: onClick2 });
+
+            const secondHandleClick = result.current.handleClick;
+            const secondHandleKeyDown = result.current.handleKeyDown;
+
+            // Callbacks should be recreated when onClick changes
+            expect(firstHandleClick).not.toBe(secondHandleClick);
+            expect(firstHandleKeyDown).not.toBe(secondHandleKeyDown);
+        });
+
+        it('should recreate callbacks when isEnabled changes', () => {
+            const onClick = vi.fn();
+            const { result, rerender } = renderHook(
+                ({ isEnabled }) => useCardInteraction({ onClick, isEnabled }),
+                { initialProps: { isEnabled: true } }
+            );
+
+            const firstHandleClick = result.current.handleClick;
+            const firstHandleKeyDown = result.current.handleKeyDown;
+
+            rerender({ isEnabled: false });
+
+            const secondHandleClick = result.current.handleClick;
+            const secondHandleKeyDown = result.current.handleKeyDown;
+
+            // Callbacks should be recreated when isEnabled changes
+            expect(firstHandleClick).not.toBe(secondHandleClick);
+            expect(firstHandleKeyDown).not.toBe(secondHandleKeyDown);
+        });
+
+        it('should recreate callbacks when interactiveSelector changes', () => {
+            const onClick = vi.fn();
+            const { result, rerender } = renderHook(
+                ({ interactiveSelector }) => useCardInteraction({ onClick, interactiveSelector }),
+                { initialProps: { interactiveSelector: 'button' } }
+            );
+
+            const firstHandleClick = result.current.handleClick;
+            const firstHandleKeyDown = result.current.handleKeyDown;
+
+            rerender({ interactiveSelector: 'button, a' });
+
+            const secondHandleClick = result.current.handleClick;
+            const secondHandleKeyDown = result.current.handleKeyDown;
+
+            // Callbacks should be recreated when interactiveSelector changes
+            expect(firstHandleClick).not.toBe(secondHandleClick);
+            expect(firstHandleKeyDown).not.toBe(secondHandleKeyDown);
+        });
+    });
 });

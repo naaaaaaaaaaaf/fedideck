@@ -155,7 +155,9 @@ export const StatusCard = React.memo(function StatusCard({
 
     // Card interaction handlers - must be called before early return
     const { handleClick: handleCardClick, handleKeyDown: handleCardKeyDown } = useCardInteraction({
-        onClick: onStatusClick ? () => onStatusClick(statusWithLocalState) : undefined,
+        onClick: onStatusClick
+            ? () => statusWithLocalState && onStatusClick(statusWithLocalState)
+            : undefined,
         isEnabled: !!onStatusClick,
     });
 
@@ -194,7 +196,9 @@ export const StatusCard = React.memo(function StatusCard({
                         ? {
                               onClick: (e) => {
                                   e.stopPropagation();
-                                  onStatusClick(statusWithLocalState);
+                                  if (statusWithLocalState) {
+                                      onStatusClick(statusWithLocalState);
+                                  }
                               },
                               role: 'button',
                               tabIndex: 0,
@@ -202,7 +206,9 @@ export const StatusCard = React.memo(function StatusCard({
                                   if (e.key === 'Enter' || e.key === ' ') {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      onStatusClick(statusWithLocalState);
+                                      if (statusWithLocalState) {
+                                          onStatusClick(statusWithLocalState);
+                                      }
                                   }
                               },
                               'aria-label': 'スレッドを表示',
