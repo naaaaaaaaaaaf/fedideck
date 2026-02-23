@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { usePostSubmit, type PostSubmitState, type Visibility } from './usePostSubmit';
 import type { MediaFile } from './useMediaUpload';
 import * as mastoClient from '../api/mastoClient';
@@ -82,7 +82,7 @@ describe('usePostSubmit', () => {
         vi.mocked(mastoClient.createStatus).mockResolvedValue({} as any);
         vi.mocked(mastoClient.editStatus).mockResolvedValue({ id: 'edited' } as any);
         vi.mocked(mastoClient.waitForMediaReady).mockResolvedValue(undefined);
-        vi.mocked(mastoClient.updateMediaDescription).mockResolvedValue(undefined);
+        vi.mocked(mastoClient.updateMediaDescription).mockResolvedValue({} as any);
     });
 
     describe('initial state', () => {

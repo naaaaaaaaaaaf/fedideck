@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ComposeVisibilitySelector } from './ComposeVisibilitySelector';
-import type { Visibility } from '../../hooks/usePostSubmit';
 
 // Mock the visibility options
 vi.mock('../../utils/statusVisibility', () => ({

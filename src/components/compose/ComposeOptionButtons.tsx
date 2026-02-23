@@ -1,9 +1,5 @@
-import { type RefObject } from 'react';
+import { type RefObject, type ChangeEvent } from 'react';
 import { LuTriangleAlert, LuImage, LuListOrdered, LuSmile } from 'react-icons/lu';
-import type { InstanceConfig } from '../../api/instanceConfig';
-import { getDefaultConfig } from '../../api/instanceConfig';
-import { EmojiPalette } from '../EmojiPalette';
-import type { AccountSession } from '../../api/mastoClient';
 
 interface ComposeOptionButtonsProps {
     showCW: boolean;
@@ -11,18 +7,17 @@ interface ComposeOptionButtonsProps {
     showEmojiPalette: boolean;
     onToggleEmojiPalette: () => void;
     emojiButtonRef: RefObject<HTMLButtonElement | null>;
-    textareaRef: RefObject<HTMLTextAreaElement | null>;
-    composingAccount: AccountSession | null | undefined;
-    insertAtCursor: (text: string) => void;
     hasMedia: boolean;
     mediaCount: number;
-    instanceConfig: InstanceConfig | null;
+    maxMedia: number;
+    acceptedMimeTypes: string;
     isUploading: boolean;
     showPoll: boolean;
     isEditMode: boolean;
     onOpenFilePicker: () => void;
     onTogglePoll: () => void;
     fileInputRef: RefObject<HTMLInputElement | null>;
+    onFileSelect: (e: ChangeEvent<HTMLInputElement>) => void;
 }
 
 /**
@@ -35,23 +30,18 @@ export function ComposeOptionButtons({
     showEmojiPalette,
     onToggleEmojiPalette,
     emojiButtonRef,
-    textareaRef,
-    composingAccount,
-    insertAtCursor,
     hasMedia,
     mediaCount,
-    instanceConfig,
+    maxMedia,
+    acceptedMimeTypes,
     isUploading,
     showPoll,
     isEditMode,
     onOpenFilePicker,
     onTogglePoll,
     fileInputRef,
+    onFileSelect,
 }: ComposeOptionButtonsProps) {
-    const maxMedia = instanceConfig?.maxMediaAttachments ?? getDefaultConfig().maxMediaAttachments;
-    const supportedMimeTypes =
-        instanceConfig?.supportedMimeTypes ?? getDefaultConfig().supportedMimeTypes;
-
     return (
         <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="投稿オプション">
             <button
@@ -82,16 +72,6 @@ export function ComposeOptionButtons({
                     <LuSmile className="w-4 h-4" aria-hidden="true" />
                     絵文字
                 </button>
-
-                {/* Emoji palette */}
-                <EmojiPalette
-                    isOpen={showEmojiPalette}
-                    onClose={() => onToggleEmojiPalette()}
-                    onSelect={insertAtCursor}
-                    session={composingAccount ?? null}
-                    triggerRef={emojiButtonRef}
-                    textareaRef={textareaRef}
-                />
             </div>
 
             <button
@@ -131,9 +111,9 @@ export function ComposeOptionButtons({
             <input
                 ref={fileInputRef}
                 type="file"
-                accept={supportedMimeTypes.join(',')}
+                accept={acceptedMimeTypes}
                 multiple
-                onChange={() => {}}
+                onChange={onFileSelect}
                 className="hidden"
                 aria-hidden="true"
             />

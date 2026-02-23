@@ -2,17 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ComposeOptionButtons } from './ComposeOptionButtons';
 
-// Mock EmojiPalette
-vi.mock('../EmojiPalette', () => ({
-    EmojiPalette: () => null,
-}));
-
 describe('ComposeOptionButtons', () => {
     const mockOnToggleCW = vi.fn();
     const mockOnToggleEmojiPalette = vi.fn();
     const mockOnOpenFilePicker = vi.fn();
     const mockOnTogglePoll = vi.fn();
-    const mockInsertAtCursor = vi.fn();
+    const mockOnFileSelect = vi.fn();
 
     const defaultProps = {
         showCW: false,
@@ -20,22 +15,17 @@ describe('ComposeOptionButtons', () => {
         showEmojiPalette: false,
         onToggleEmojiPalette: mockOnToggleEmojiPalette,
         emojiButtonRef: { current: null },
-        textareaRef: { current: null },
-        composingAccount: null,
-        insertAtCursor: mockInsertAtCursor,
         hasMedia: false,
         mediaCount: 0,
-        instanceConfig: {
-            maxCharacters: 500,
-            maxMediaAttachments: 4,
-            supportedMimeTypes: ['image/jpeg', 'image/png'],
-        },
+        maxMedia: 4,
+        acceptedMimeTypes: 'image/jpeg,image/png',
         isUploading: false,
         showPoll: false,
         isEditMode: false,
         onOpenFilePicker: mockOnOpenFilePicker,
         onTogglePoll: mockOnTogglePoll,
         fileInputRef: { current: null },
+        onFileSelect: mockOnFileSelect,
     };
 
     beforeEach(() => {
@@ -136,5 +126,14 @@ describe('ComposeOptionButtons', () => {
 
         const pollButton = screen.getByRole('button', { name: /投票/ });
         expect(pollButton).toHaveClass('bg-purple-500/20');
+    });
+
+    it('should call onFileSelect when file input changes', () => {
+        render(<ComposeOptionButtons {...defaultProps} />);
+
+        const fileInput = document.querySelector('input[type="file"]');
+        fireEvent.change(fileInput!);
+
+        expect(mockOnFileSelect).toHaveBeenCalled();
     });
 });

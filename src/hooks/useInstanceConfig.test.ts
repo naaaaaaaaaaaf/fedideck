@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { useInstanceConfig } from './useInstanceConfig';
-import * as mastoClient from '../api/mastoClient';
 import * as instanceConfigApi from '../api/instanceConfig';
 
 // Mock dependencies
@@ -26,7 +25,7 @@ describe('useInstanceConfig', () => {
             url: 'https://example.com/@testuser',
             avatar: 'https://example.com/avatar.png',
         },
-    };
+    } as any;
 
     const mockInstanceConfig = {
         maxCharacters: 500,

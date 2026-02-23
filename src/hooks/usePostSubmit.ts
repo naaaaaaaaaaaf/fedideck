@@ -89,7 +89,6 @@ const isVideoFile = (file: File | undefined): boolean =>
  */
 export function usePostSubmit({
     accountSession,
-    isOpen,
     isEditMode,
     editTarget,
     replyToStatus,

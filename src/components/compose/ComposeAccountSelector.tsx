@@ -49,10 +49,12 @@ export function ComposeAccountSelector({
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'ArrowDown') {
             e.preventDefault();
-            onSetFocusedIndex((prev) => (prev + 1) % accounts.length);
+            const newIndex = (focusedIndex + 1) % accounts.length;
+            onSetFocusedIndex(newIndex);
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
-            onSetFocusedIndex((prev) => (prev - 1 + accounts.length) % accounts.length);
+            const newIndex = (focusedIndex - 1 + accounts.length) % accounts.length;
+            onSetFocusedIndex(newIndex);
         } else if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             e.stopPropagation();

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { useEditPrefill, type EditPrefillData } from './useEditPrefill';
+import { useEditPrefill } from './useEditPrefill';
 import * as mastoClient from '../api/mastoClient';
 
 // Mock dependencies
@@ -42,6 +42,7 @@ describe('useEditPrefill', () => {
     };
 
     const mockStatusSource = {
+        id: 'status-123',
         text: 'Original post content',
         spoilerText: '',
     };
@@ -138,6 +139,7 @@ describe('useEditPrefill', () => {
                     {
                         localId: 'media-media-1',
                         preview: 'https://example.com/media1.png',
+                        uploading: false,
                         uploadedId: 'media-1',
                         altText: 'Alt text for media',
                         isExisting: true,
@@ -170,6 +172,7 @@ describe('useEditPrefill', () => {
 
         it('should handle status with CW', async () => {
             vi.mocked(mastoClient.getStatusSource).mockResolvedValue({
+                id: 'status-123',
                 text: 'Content behind CW',
                 spoilerText: 'CW text here',
             });
@@ -241,7 +244,11 @@ describe('useEditPrefill', () => {
 
             vi.mocked(mastoClient.getStatusSource)
                 .mockReturnValueOnce(firstPromise)
-                .mockResolvedValueOnce({ text: 'Second status', spoilerText: '' });
+                .mockResolvedValueOnce({
+                    id: 'status-456',
+                    text: 'Second status',
+                    spoilerText: '',
+                });
 
             const { result, rerender } = renderHook(
                 ({ editTarget }) =>

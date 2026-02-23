@@ -13,10 +13,10 @@ interface ComposeMediaPreviewProps {
  * Helper functions for media type detection
  */
 const isAudioMedia = (m: MediaFile): boolean =>
-    m.kind === 'audio' || (m.file && m.file.type.startsWith('audio/'));
+    m.kind === 'audio' || !!(m.file && m.file.type.startsWith('audio/'));
 
 const isVideoMedia = (m: MediaFile): boolean =>
-    m.kind === 'video' || m.kind === 'gifv' || (m.file && m.file.type.startsWith('video/'));
+    m.kind === 'video' || m.kind === 'gifv' || !!(m.file && m.file.type.startsWith('video/'));
 
 /**
  * Media preview component for compose modal

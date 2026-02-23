@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import type { mastodon } from 'masto';
 import { getClient, getStatusSource, type AccountSession } from '../api/mastoClient';
 import type { EditTarget } from '../components/ComposeModal';
 
@@ -9,6 +8,7 @@ import type { EditTarget } from '../components/ComposeModal';
 export interface PrefilledMediaFile {
     localId: string;
     preview: string;
+    uploading: boolean;
     uploadedId: string;
     altText: string;
     isExisting: true;
@@ -71,10 +71,6 @@ export function useEditPrefill({
         const accountId = accountSession.id;
 
         // Update active context
-        const contextChanged =
-            activeContextRef.current.statusId !== statusId ||
-            activeContextRef.current.accountId !== accountId;
-
         activeContextRef.current = { statusId, accountId };
 
         // Increment request generation for race condition prevention
@@ -104,6 +100,7 @@ export function useEditPrefill({
                         ? status.mediaAttachments.map((media) => ({
                               localId: `media-${media.id}`,
                               preview: media.url ?? media.previewUrl ?? '',
+                              uploading: false,
                               uploadedId: media.id,
                               altText: media.description ?? '',
                               isExisting: true as const,

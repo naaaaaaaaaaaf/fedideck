@@ -1,4 +1,4 @@
-import { type RefObject } from 'react';
+import { type RefObject, type MutableRefObject } from 'react';
 
 interface ComposeTextareaProps {
     value: string;
@@ -8,9 +8,7 @@ interface ComposeTextareaProps {
     maxCharacters: number;
     textareaRef: RefObject<HTMLTextAreaElement | null>;
     onSubmit: () => void;
-    onPaste?: (e: React.ClipboardEvent) => void;
-    onCompositionStart?: () => void;
-    onCompositionEnd?: () => void;
+    isComposingRef?: MutableRefObject<boolean>;
 }
 
 /**
@@ -22,16 +20,10 @@ export function ComposeTextarea({
     onChange,
     placeholder,
     disabled,
-    maxCharacters,
     textareaRef,
     onSubmit,
-    onPaste,
-    onCompositionStart,
-    onCompositionEnd,
+    isComposingRef,
 }: ComposeTextareaProps) {
-    const remainingChars = maxCharacters - value.length;
-    const isOverLimit = remainingChars < 0;
-
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         onChange(e.target.value);
     };
@@ -41,49 +33,44 @@ export function ComposeTextarea({
         if (!isSubmitShortcut) return;
 
         // Don't submit during IME composition or key repeat
-        if (e.nativeEvent.isComposing || e.repeat) return;
+        // Use both native isComposing and ref tracking for Safari compatibility
+        if (e.nativeEvent.isComposing || (isComposingRef?.current ?? false) || e.repeat) return;
 
         e.preventDefault();
         onSubmit();
     };
 
-    return (
-        <>
-            <div>
-                <label htmlFor="compose-content" className="sr-only">
-                    投稿内容
-                </label>
-                <textarea
-                    ref={textareaRef}
-                    id="compose-content"
-                    value={value}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDown}
-                    onPaste={onPaste}
-                    onCompositionStart={onCompositionStart}
-                    onCompositionEnd={onCompositionEnd}
-                    placeholder={placeholder}
-                    rows={6}
-                    disabled={disabled}
-                    aria-keyshortcuts="Control+Enter Meta+Enter"
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 resize-none focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
-                />
-            </div>
+    const handleCompositionStart = () => {
+        if (isComposingRef) {
+            isComposingRef.current = true;
+        }
+    };
 
-            {/* Character count */}
-            <div
-                className={`text-sm text-right mt-1 ${
-                    isOverLimit
-                        ? 'text-red-400'
-                        : remainingChars <= 50
-                          ? 'text-amber-400'
-                          : 'text-slate-400'
-                }`}
-                aria-live="polite"
-                aria-atomic="true"
-            >
-                {remainingChars}
-            </div>
-        </>
+    const handleCompositionEnd = () => {
+        if (isComposingRef) {
+            isComposingRef.current = false;
+        }
+    };
+
+    return (
+        <div>
+            <label htmlFor="compose-content" className="sr-only">
+                投稿内容
+            </label>
+            <textarea
+                ref={textareaRef}
+                id="compose-content"
+                value={value}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
+                placeholder={placeholder}
+                rows={6}
+                disabled={disabled}
+                aria-keyshortcuts="Control+Enter Meta+Enter"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 resize-none focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
+            />
+        </div>
     );
 }

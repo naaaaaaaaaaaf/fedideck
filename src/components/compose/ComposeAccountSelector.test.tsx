@@ -1,14 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ComposeAccountSelector } from './ComposeAccountSelector';
-import type { AccountSession } from '../../api/mastoClient';
 
 describe('ComposeAccountSelector', () => {
     const mockOnSelectAccount = vi.fn();
     const mockOnToggleSelector = vi.fn();
     const mockOnSetFocusedIndex = vi.fn();
 
-    const mockAccount1: AccountSession = {
+    const mockAccount1 = {
         id: 'account-1',
         instanceUrl: 'https://example.com',
         accessToken: 'token1',
@@ -20,9 +19,9 @@ describe('ComposeAccountSelector', () => {
             avatar: 'https://example.com/avatar1.png',
             acct: 'user1@example.com',
         },
-    };
+    } as any;
 
-    const mockAccount2: AccountSession = {
+    const mockAccount2 = {
         id: 'account-2',
         instanceUrl: 'https://other.com',
         accessToken: 'token2',
@@ -34,7 +33,7 @@ describe('ComposeAccountSelector', () => {
             avatar: 'https://other.com/avatar2.png',
             acct: 'user2@other.com',
         },
-    };
+    } as any;
 
     const defaultProps = {
         accounts: [mockAccount1, mockAccount2],

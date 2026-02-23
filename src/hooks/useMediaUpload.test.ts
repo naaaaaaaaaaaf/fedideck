@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { useMediaUpload, type MediaFile } from './useMediaUpload';
 import * as mastoClient from '../api/mastoClient';
-import * as instanceConfigApi from '../api/instanceConfig';
 
 // Mock dependencies
 vi.mock('../api/mastoClient', () => ({
@@ -159,7 +158,9 @@ describe('useMediaUpload', () => {
             const fileList = {
                 length: 5,
                 item: (i: number) => files[i],
-                ...files,
+                [Symbol.iterator]: function* () {
+                    for (const file of files) yield file;
+                },
             } as unknown as FileList;
 
             const { result } = renderHook(() => useMediaUpload(defaultProps));

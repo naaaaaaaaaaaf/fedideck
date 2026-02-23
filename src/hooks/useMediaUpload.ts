@@ -62,10 +62,10 @@ const isVideoFile = (file: File | undefined): boolean =>
  * MediaFile helpers that consider both kind (from existing attachments) and file type
  */
 const isAudioMedia = (m: MediaFile): boolean =>
-    m.kind === 'audio' || (m.file && isAudioFile(m.file));
+    m.kind === 'audio' || !!(m.file && isAudioFile(m.file));
 
 const isVideoMedia = (m: MediaFile): boolean =>
-    m.kind === 'video' || m.kind === 'gifv' || (m.file && isVideoFile(m.file));
+    m.kind === 'video' || m.kind === 'gifv' || !!(m.file && isVideoFile(m.file));
 
 /**
  * Hook for managing media uploads in compose modal
@@ -328,7 +328,8 @@ export function useMediaUpload({
             revokePreviewUrls(mediaFiles);
             setMediaFiles([]);
         }
-    }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+    }, [isOpen]);
 
     return {
         mediaFiles,
