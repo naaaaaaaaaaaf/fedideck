@@ -46,6 +46,26 @@ describe('useNsfwState', () => {
             expect(onReveal).toHaveBeenCalledWith('status-1');
             expect(onReveal).toHaveBeenCalledTimes(1);
         });
+
+        it('uncontrolled with callback: should NOT call onReveal when hiding (toggling from revealed to hidden)', () => {
+            const onReveal = vi.fn();
+            const { result } = renderHook(() => useNsfwState({ statusId: 'status-1', onReveal }));
+
+            // First toggle: reveal (should call onReveal)
+            act(() => {
+                result.current.handleNsfwToggle();
+            });
+            expect(result.current.nsfwRevealed).toBe(true);
+            expect(onReveal).toHaveBeenCalledTimes(1);
+            onReveal.mockClear();
+
+            // Second toggle: hide (should NOT call onReveal)
+            act(() => {
+                result.current.handleNsfwToggle();
+            });
+            expect(result.current.nsfwRevealed).toBe(false);
+            expect(onReveal).not.toHaveBeenCalled();
+        });
     });
 
     describe('controlled mode', () => {
