@@ -17,6 +17,7 @@ import {
 import { formatDate } from '../utils/dateFormat';
 import { getDisplayStatusOrNull } from '../utils/statusView';
 import { replaceEmojisWithImages } from '../utils/emoji';
+import { useCardInteraction } from '../hooks/useCardInteraction';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
 
@@ -125,80 +126,24 @@ export const NotificationCard = React.memo(function NotificationCard({
     // Note: follow_request has action buttons, so card should not be clickable
     const isCardClickable = Boolean(!status && onAccountClick && notification.type === 'follow');
 
-    // Handle click on card (for notifications without status)
-    const handleCardClick = (e: React.MouseEvent) => {
-        if (!isCardClickable) return;
+    // Custom selector for NotificationCard (excludes [role="button"] to allow card itself to be clickable)
+    const notificationInteractiveSelector =
+        'a, button, input, label, select, textarea, video, audio, summary';
 
-        const target = e.target as HTMLElement;
-        // Ignore clicks on interactive elements
-        if (
-            target.closest('a') ||
-            target.closest('button') ||
-            target.closest('summary') ||
-            target.closest('audio')
-        ) {
-            return;
-        }
-        onAccountClick?.(account);
-    };
+    // Card interaction handlers for follow notifications
+    const { handleClick: handleCardClick, handleKeyDown: handleCardKeyDown } = useCardInteraction({
+        onClick: () => onAccountClick?.(account),
+        isEnabled: isCardClickable,
+        interactiveSelector: notificationInteractiveSelector,
+    });
 
-    // Handle keyboard navigation for card
-    const handleCardKeyDown = (e: React.KeyboardEvent) => {
-        if (!isCardClickable) return;
-
-        if (e.key === 'Enter' || e.key === ' ') {
-            const target = e.target as HTMLElement;
-            if (
-                target.closest('a') ||
-                target.closest('button') ||
-                target.closest('video') ||
-                target.closest('audio') ||
-                target.closest('summary')
-            ) {
-                return;
-            }
-            e.preventDefault();
-            onAccountClick?.(account);
-        }
-    };
-
-    // Handle click on status area
-    const handleStatusClick = (e: React.MouseEvent) => {
-        if (!status || !onStatusClick) return;
-
-        const target = e.target as HTMLElement;
-        // Ignore clicks on interactive elements
-        if (
-            target.closest('a') ||
-            target.closest('button') ||
-            target.closest('summary') ||
-            target.closest('audio')
-        ) {
-            return;
-        }
-        onStatusClick(status);
-    };
-
-    // Handle keyboard navigation for status area
-    const handleStatusKeyDown = (e: React.KeyboardEvent) => {
-        if (!status || !onStatusClick) return;
-
-        if (e.key === 'Enter' || e.key === ' ') {
-            // Ignore keyboard events on interactive elements
-            const target = e.target as HTMLElement;
-            if (
-                target.closest('a') ||
-                target.closest('button') ||
-                target.closest('video') ||
-                target.closest('audio') ||
-                target.closest('summary')
-            ) {
-                return;
-            }
-            e.preventDefault();
-            onStatusClick(status);
-        }
-    };
+    // Status area interaction handlers
+    const { handleClick: handleStatusClick, handleKeyDown: handleStatusKeyDown } =
+        useCardInteraction({
+            onClick: () => status && onStatusClick?.(status),
+            isEnabled: Boolean(status && onStatusClick),
+            interactiveSelector: notificationInteractiveSelector,
+        });
 
     return (
         <article

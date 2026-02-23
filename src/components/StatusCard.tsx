@@ -19,6 +19,7 @@ import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
 import { toImageViewerImages } from '../utils/imageAttachments';
 import { useStatusActions } from '../hooks/useStatusActions';
+import { useCardInteraction } from '../hooks/useCardInteraction';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
 import type { ImageViewerImage } from './ImageViewer';
@@ -174,33 +175,6 @@ export const StatusCard = React.memo(function StatusCard({
         return null; // Cannot render without account
     }
 
-    // Handle card click to open detail modal
-    const handleCardClick = (e: React.MouseEvent) => {
-        const target = e.target as HTMLElement;
-        // Ignore clicks on interactive elements
-        const interactiveSelector =
-            'a, button, input, label, select, textarea, video, audio, summary, [role="button"]';
-        if (target.closest(interactiveSelector)) {
-            return;
-        }
-        openStatusDetail();
-    };
-
-    // Handle keyboard navigation for card
-    const handleCardKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            const target = e.target as HTMLElement;
-            // Ignore keyboard events on interactive elements
-            const interactiveSelector =
-                'a, button, input, label, select, textarea, video, audio, summary, [role="button"]';
-            if (target.closest(interactiveSelector)) {
-                return;
-            }
-            e.preventDefault();
-            openStatusDetail();
-        }
-    };
-
     // Open status detail modal
     const openStatusDetail = () => {
         // statusWithLocalState is never null in StatusCard since displayStatus always exists
@@ -208,6 +182,12 @@ export const StatusCard = React.memo(function StatusCard({
             onStatusClick?.(statusWithLocalState);
         }
     };
+
+    // Card interaction handlers
+    const { handleClick: handleCardClick, handleKeyDown: handleCardKeyDown } = useCardInteraction({
+        onClick: openStatusDetail,
+        isEnabled: !!onStatusClick,
+    });
 
     return (
         <article

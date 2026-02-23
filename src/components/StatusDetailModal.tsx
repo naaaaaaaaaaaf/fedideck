@@ -17,6 +17,7 @@ import {
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { useStatusActions } from '../hooks/useStatusActions';
+import { useCardInteraction } from '../hooks/useCardInteraction';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
 import { formatDate, formatFullDate } from '../utils/dateFormat';
@@ -67,27 +68,16 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
     const maxDepth = 3; // Maximum indentation level
     const indentLevel = Math.min(depth, maxDepth);
 
-    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!onClick) return;
-        // Guard against e.target not being an Element
-        if (!(e.target instanceof Element)) return;
-        // Don't trigger if clicking on interactive elements
-        if (e.target.closest('a, button, video, audio, summary')) return;
-        onClick(status);
-    };
+    // Custom selector for ThreadItem (excludes [role="button"] to allow thread item to be clickable)
+    const threadInteractiveSelector =
+        'a, button, input, label, select, textarea, video, audio, summary';
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-        if (!onClick) return;
-        if (e.key === 'Enter' || e.key === ' ') {
-            // Guard against e.target not being an Element
-            if (!(e.target instanceof Element)) return;
-            // Don't trigger if focus is on interactive elements (same as handleClick)
-            if (e.target.closest('a, button, video, audio, summary')) return;
-
-            e.preventDefault();
-            onClick(status);
-        }
-    };
+    // Card interaction handlers
+    const { handleClick, handleKeyDown } = useCardInteraction({
+        onClick: () => onClick?.(status),
+        isEnabled: !!onClick,
+        interactiveSelector: threadInteractiveSelector,
+    });
 
     // Shared content JSX to avoid duplication
     const sharedContent = (
