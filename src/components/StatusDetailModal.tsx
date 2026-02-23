@@ -64,7 +64,6 @@ interface ThreadItemProps {
 
 function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
     const account = status.account;
-    if (!account) return null;
 
     const maxDepth = 3; // Maximum indentation level
     const indentLevel = Math.min(depth, maxDepth);
@@ -73,12 +72,14 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
     const threadInteractiveSelector =
         'a, button, input, label, select, textarea, video, audio, summary';
 
-    // Card interaction handlers
+    // Card interaction handlers - must be called before early return
     const { handleClick, handleKeyDown } = useCardInteraction({
-        onClick: () => onClick?.(status),
+        onClick: useCallback(() => onClick?.(status), [onClick, status]),
         isEnabled: !!onClick,
         interactiveSelector: threadInteractiveSelector,
     });
+
+    if (!account) return null;
 
     // Shared content JSX to avoid duplication
     const sharedContent = (

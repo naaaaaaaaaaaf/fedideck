@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import type { mastodon } from 'masto';
 import {
     LuRepeat2,
@@ -153,23 +153,23 @@ export const StatusCard = React.memo(function StatusCard({
     // Safely access account
     const account = displayStatus.account;
 
-    if (!account) {
-        return null; // Cannot render without account
-    }
-
     // Open status detail modal
-    const openStatusDetail = () => {
+    const openStatusDetail = useCallback(() => {
         // statusWithLocalState is never null in StatusCard since displayStatus always exists
         if (statusWithLocalState) {
             onStatusClick?.(statusWithLocalState);
         }
-    };
+    }, [statusWithLocalState, onStatusClick]);
 
-    // Card interaction handlers
+    // Card interaction handlers - must be called before early return
     const { handleClick: handleCardClick, handleKeyDown: handleCardKeyDown } = useCardInteraction({
         onClick: openStatusDetail,
         isEnabled: !!onStatusClick,
     });
+
+    if (!account) {
+        return null; // Cannot render without account
+    }
 
     return (
         <article

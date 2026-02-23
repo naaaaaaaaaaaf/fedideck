@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 interface UseNsfwStateOptions {
     isRevealed?: boolean;
@@ -17,43 +17,33 @@ export function useNsfwState({
     statusId,
 }: UseNsfwStateOptions): UseNsfwStateReturn {
     // Local state for uncontrolled mode
-    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-
-    // Track previous statusId to reset local state when status changes
-    const prevStatusIdRef = useRef(statusId);
-    useEffect(() => {
-        if (prevStatusIdRef.current !== statusId) {
-            prevStatusIdRef.current = statusId;
-            // Reset local state when statusId changes (uncontrolled mode)
-            if (onReveal === undefined) {
-                setLocalNsfwRevealed(false);
-            }
-        }
-    }, [statusId, onReveal]);
+    // Keyed by statusId to reset when status changes
+    const [localNsfwRevealedByKey, setLocalNsfwRevealedByKey] = useState<Record<string, boolean>>(
+        {}
+    );
 
     // Controlled mode: use isRevealed prop from parent
-    // Uncontrolled mode: use local state
+    // Uncontrolled mode: use local state keyed by statusId
     const isControlled = onReveal !== undefined;
-    const nsfwRevealed = isControlled ? (isRevealed ?? false) : localNsfwRevealed;
-
-    // Use ref to track nsfwRevealed state without causing callback recreation
-    const nsfwRevealedRef = useRef(nsfwRevealed);
-    useEffect(() => {
-        nsfwRevealedRef.current = nsfwRevealed;
-    }, [nsfwRevealed]);
+    const nsfwRevealed = isControlled
+        ? (isRevealed ?? false)
+        : (localNsfwRevealedByKey[statusId] ?? false);
 
     const handleNsfwToggle = useCallback(() => {
         // Controlled mode: parent provides the state via isRevealed
         if (isControlled) {
-            if (!nsfwRevealedRef.current) {
+            if (!isRevealed) {
                 onReveal(statusId);
             }
             return;
         }
 
-        // Uncontrolled mode: toggle local state
-        setLocalNsfwRevealed((prev) => !prev);
-    }, [isControlled, onReveal, statusId]);
+        // Uncontrolled mode: toggle local state for this statusId
+        setLocalNsfwRevealedByKey((prev) => ({
+            ...prev,
+            [statusId]: !(prev[statusId] ?? false),
+        }));
+    }, [isControlled, isRevealed, onReveal, statusId]);
 
     return {
         nsfwRevealed,
