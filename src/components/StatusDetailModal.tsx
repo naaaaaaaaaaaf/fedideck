@@ -23,13 +23,14 @@ import {
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
-import { formatDate } from '../utils/dateFormat';
+import { formatDate, formatFullDate } from '../utils/dateFormat';
 import { getVisibilityMeta } from '../utils/statusVisibility';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { getPollVotesDenominator } from '../utils/poll';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
+import { toImageViewerImages } from '../utils/imageAttachments';
 import type { ImageViewerImage } from './ImageViewer';
 import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
@@ -53,17 +54,6 @@ interface StatusDetailModalProps {
     // NSFW blur state from parent (optional - for syncing with StatusCard)
     nsfwRevealedStatusIds?: Set<string>;
     onNsfwReveal?: (statusId: string) => void;
-}
-
-function formatFullDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    return date.toLocaleString('ja-JP', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
 }
 
 // Compact status display for thread ancestors/descendants
@@ -416,18 +406,10 @@ export function StatusDetailModal({
     // Convert image attachments to ImageViewerImage format (memoized)
     // Must be before early return to maintain hooks order
     // Filter out images without valid URLs to prevent broken image rendering
-    const imageViewerImages = useMemo(() => {
-        const mediaAttachments = displayStatus?.mediaAttachments ?? [];
-        return mediaAttachments
-            .filter((media) => media.type === 'image')
-            .slice(0, 4)
-            .map((media) => ({
-                url: firstNonEmpty(media.url, media.previewUrl),
-                previewUrl: media.previewUrl ?? undefined,
-                description: media.description ?? undefined,
-            }))
-            .filter((image) => image.url !== '');
-    }, [displayStatus?.mediaAttachments]);
+    const imageViewerImages = useMemo(
+        () => toImageViewerImages(displayStatus?.mediaAttachments),
+        [displayStatus?.mediaAttachments]
+    );
 
     // Convert video/gifv attachments to VideoViewerVideo format (memoized)
     const videoViewerVideos = useMemo(

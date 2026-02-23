@@ -8,6 +8,7 @@ import { useStreamsStore, getStreamKey } from '../store/streams';
 import { useAccountsStore } from '../store/accounts';
 import { getClient } from '../api/mastoClient';
 import { formatAccountHandle } from '../utils/accountHandle';
+import { getDisplayStatus } from '../utils/statusView';
 import {
     fetchHomeTimeline,
     fetchPublicTimeline,
@@ -358,7 +359,7 @@ export function Column({
                 {!isNotificationColumn &&
                     data?.statuses.map((status) => {
                         // Get the display status ID for NSFW check (handle reblog case)
-                        const displayStatus = status.reblog ?? status;
+                        const displayStatus = getDisplayStatus(status);
 
                         return (
                             <StatusCard

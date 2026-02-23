@@ -15,6 +15,7 @@ import {
     LuTriangleAlert,
 } from 'react-icons/lu';
 import { formatDate } from '../utils/dateFormat';
+import { getDisplayStatusOrNull } from '../utils/statusView';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
@@ -68,7 +69,7 @@ export const NotificationCard = React.memo(function NotificationCard({
     const info = getNotificationInfo();
     const account = notification.account;
     const status = notification.status;
-    const displayStatus = status?.reblog ?? status;
+    const displayStatus = getDisplayStatusOrNull(status);
     const actionText =
         notification.type === 'poll' ? `${info.label}しました` : `さんが${info.label}しました`;
 
