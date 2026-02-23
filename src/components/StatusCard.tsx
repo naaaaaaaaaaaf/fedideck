@@ -19,11 +19,13 @@ import {
 } from '../api/mastoClient';
 import { formatDate } from '../utils/dateFormat';
 import { getVisibilityMeta } from '../utils/statusVisibility';
+import { getDisplayStatus, getReblogger } from '../utils/statusView';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
 import { getPollVotesDenominator } from '../utils/poll';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
+import { toImageViewerImages } from '../utils/imageAttachments';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
 import type { ImageViewerImage } from './ImageViewer';
@@ -73,8 +75,8 @@ export const StatusCard = React.memo(function StatusCard({
         'inline-flex min-h-[36px] items-center justify-center gap-2 rounded-lg px-2.5 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 disabled:opacity-50 disabled:cursor-not-allowed';
 
     // If it's a reblog, show the original status with reblog indicator
-    const displayStatus = status.reblog ?? status;
-    const reblogger = status.reblog ? status.account : null;
+    const displayStatus = getDisplayStatus(status);
+    const reblogger = getReblogger(status);
 
     // Local state for optimistic UI updates
     const [localFavourited, setLocalFavourited] = useState(displayStatus.favourited ?? false);
@@ -173,18 +175,10 @@ export const StatusCard = React.memo(function StatusCard({
     // Convert image attachments to ImageViewerImage format (memoized)
     // Use displayStatus.mediaAttachments as dependency for stable reference
     // Filter out images without valid URLs to prevent broken image rendering
-    const imageViewerImages = useMemo(() => {
-        const attachments = displayStatus.mediaAttachments ?? [];
-        return attachments
-            .filter((media) => media.type === 'image')
-            .slice(0, 4)
-            .map((media) => ({
-                url: firstNonEmpty(media.url, media.previewUrl),
-                previewUrl: media.previewUrl ?? undefined,
-                description: media.description ?? undefined,
-            }))
-            .filter((image) => image.url !== '');
-    }, [displayStatus.mediaAttachments]);
+    const imageViewerImages = useMemo(
+        () => toImageViewerImages(displayStatus.mediaAttachments),
+        [displayStatus.mediaAttachments]
+    );
 
     // Convert video/gifv attachments to VideoViewerVideo format (memoized)
     const videoViewerVideos = useMemo(

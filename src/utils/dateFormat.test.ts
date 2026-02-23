@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { formatDate, formatTimeRemaining } from './dateFormat';
+import { formatDate, formatTimeRemaining, formatFullDate } from './dateFormat';
 
 describe('formatDate', () => {
     let mockNow: Date;
@@ -306,5 +306,34 @@ describe('formatTimeRemaining', () => {
             const expiresAt = new Date(nowMs + 24 * 60 * 60000 + 23 * 60 * 60000).toISOString();
             expect(formatTimeRemaining(expiresAt, nowMs)).toBe('残り1日');
         });
+    });
+});
+
+describe('formatFullDate', () => {
+    it('should format a date with full Japanese format', () => {
+        const dateStr = '2024-01-15T12:30:00.000Z';
+        const result = formatFullDate(dateStr);
+        // Check that it contains year, month, day, hour, minute
+        expect(result).toMatch(/2024/);
+        expect(result).toMatch(/1月/);
+        expect(result).toMatch(/15/);
+        expect(result).toMatch(/日/);
+    });
+
+    it('should format ISO date string correctly', () => {
+        const dateStr = '2024-06-20T09:05:00.000Z';
+        const result = formatFullDate(dateStr);
+        expect(result).toMatch(/2024/);
+        expect(result).toMatch(/6月/);
+        expect(result).toMatch(/20/);
+    });
+
+    it('should handle date string without milliseconds', () => {
+        const dateStr = '2024-12-25T23:59:00Z';
+        const result = formatFullDate(dateStr);
+        // Result depends on local timezone, just verify format structure
+        expect(result).toMatch(/2024/);
+        expect(result).toMatch(/\d+月/);
+        expect(result).toMatch(/\d+日/);
     });
 });
