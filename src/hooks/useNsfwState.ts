@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 interface UseNsfwStateOptions {
     isRevealed?: boolean;
@@ -22,6 +22,10 @@ export function useNsfwState({
         {}
     );
 
+    // Keep ref in sync for stable callback access
+    const localNsfwRevealedByKeyRef = useRef(localNsfwRevealedByKey);
+    localNsfwRevealedByKeyRef.current = localNsfwRevealedByKey;
+
     // Controlled mode: isRevealed prop is provided (read-only if no onReveal)
     // Uncontrolled mode: use local state keyed by statusId
     const isControlled = isRevealed !== undefined;
@@ -38,7 +42,7 @@ export function useNsfwState({
         }
 
         // Uncontrolled mode: toggle local state for this statusId
-        const newRevealedState = !(localNsfwRevealedByKey[statusId] ?? false);
+        const newRevealedState = !(localNsfwRevealedByKeyRef.current[statusId] ?? false);
         setLocalNsfwRevealedByKey((prev) => ({
             ...prev,
             [statusId]: newRevealedState,
@@ -48,7 +52,7 @@ export function useNsfwState({
         if (newRevealedState) {
             onReveal?.(statusId);
         }
-    }, [isControlled, isRevealed, onReveal, statusId, localNsfwRevealedByKey]);
+    }, [isControlled, isRevealed, onReveal, statusId]);
 
     return {
         nsfwRevealed,
