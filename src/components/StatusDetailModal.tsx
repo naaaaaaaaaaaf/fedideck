@@ -18,6 +18,7 @@ import {
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { useStatusActions } from '../hooks/useStatusActions';
 import { useCardInteraction } from '../hooks/useCardInteraction';
+import { useNsfwState } from '../hooks/useNsfwState';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
 import { formatDate, formatFullDate } from '../utils/dateFormat';
@@ -236,18 +237,13 @@ export function StatusDetailModal({
         onStatusUpdate,
     });
 
-    // NSFW state: controlled from parent or local
-    // If parent provides state (nsfwRevealedStatusIds), always use it
-    // When onNsfwReveal is missing, operates in read-only mode
-    const isControlled = nsfwRevealedStatusIds !== undefined;
-    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-
-    // Check if current status is revealed (controlled) or use local state
-    const nsfwRevealed = isControlled
-        ? displayStatus
-            ? nsfwRevealedStatusIds.has(displayStatus.id)
-            : false
-        : localNsfwRevealed;
+    // NSFW state with controlled/uncontrolled mode
+    // For controlled mode, check if current status id is in the revealed set
+    const { nsfwRevealed, handleNsfwToggle } = useNsfwState({
+        isRevealed: nsfwRevealedStatusIds?.has(displayStatus?.id ?? ''),
+        onReveal: onNsfwReveal,
+        statusId: displayStatus?.id ?? '',
+    });
 
     // Poll state using usePollState hook (with auto-refresh on expiry for modal)
     const {
@@ -295,13 +291,6 @@ export function StatusDetailModal({
         setContextError(null);
         setIsLoadingContext(false);
     }, [status?.id, isOpen]);
-
-    // Reset NSFW state when displayStatus changes (uncontrolled mode only)
-    useEffect(() => {
-        if (!isControlled) {
-            setLocalNsfwRevealed(false);
-        }
-    }, [displayStatus?.id, isControlled]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
@@ -434,25 +423,6 @@ export function StatusDetailModal({
         setContextError(null);
         setIsLoadingContext(true);
         setNavigatedStatus(clickedStatus);
-    };
-
-    const handleNsfwToggle = () => {
-        const newValue = !nsfwRevealed;
-
-        // Controlled mode: use parent state
-        if (isControlled) {
-            // If callback provided, notify parent (read-only mode if no callback)
-            if (newValue && onNsfwReveal && displayStatus) {
-                onNsfwReveal(displayStatus.id);
-            }
-            return;
-        }
-
-        // Uncontrolled mode: notify parent if callback provided, then toggle local state
-        if (newValue && onNsfwReveal && displayStatus) {
-            onNsfwReveal(displayStatus.id);
-        }
-        setLocalNsfwRevealed(newValue);
     };
 
     const handleReply = () => {

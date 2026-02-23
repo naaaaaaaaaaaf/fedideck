@@ -1,5 +1,5 @@
 import type { mastodon } from 'masto';
-import React, { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from 'react';
+import React, { useMemo, type ReactNode } from 'react';
 import {
     LuMessageCircle,
     LuRepeat2,
@@ -18,6 +18,7 @@ import { formatDate } from '../utils/dateFormat';
 import { getDisplayStatusOrNull } from '../utils/statusView';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { useCardInteraction } from '../hooks/useCardInteraction';
+import { useNsfwState } from '../hooks/useNsfwState';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
 
@@ -74,33 +75,12 @@ export const NotificationCard = React.memo(function NotificationCard({
     const actionText =
         notification.type === 'poll' ? `${info.label}しました` : `さんが${info.label}しました`;
 
-    // NSFW state:
-    // - onNsfwReveal provided: controlled mode, uses isNsfwRevealed from parent
-    // - onNsfwReveal missing: uncontrolled mode, toggles local state
-    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
-    const nsfwRevealed = onNsfwReveal !== undefined ? isNsfwRevealed : localNsfwRevealed;
-
-    // Use ref to track nsfwRevealed state without causing callback recreation
-    const nsfwRevealedRef = useRef(nsfwRevealed);
-    useEffect(() => {
-        nsfwRevealedRef.current = nsfwRevealed;
-    }, [nsfwRevealed]);
-
-    // Extract displayStatus.id for stable callback dependency
-    const displayStatusId = displayStatus?.id;
-
-    const handleNsfwToggle = useCallback(() => {
-        // Controlled mode: parent provides the state via isNsfwRevealed
-        if (onNsfwReveal) {
-            if (!nsfwRevealedRef.current && displayStatusId) {
-                onNsfwReveal(displayStatusId);
-            }
-            return;
-        }
-
-        // Uncontrolled mode: toggle local state
-        setLocalNsfwRevealed((prev) => !prev);
-    }, [onNsfwReveal, displayStatusId]);
+    // NSFW state with controlled/uncontrolled mode
+    const { nsfwRevealed, handleNsfwToggle } = useNsfwState({
+        isRevealed: isNsfwRevealed,
+        onReveal: onNsfwReveal,
+        statusId: displayStatus?.id ?? '',
+    });
 
     // Note: nsfwRevealed state is automatically reset when notification changes
     // because NotificationCard is rendered with key={notification.id} in parent
