@@ -49,7 +49,9 @@ export function useStatusActions({
     } | null>(null);
 
     // Race condition control: track current status id
+    // Updated synchronously during render to ensure guard is effective immediately
     const activeStatusIdRef = useRef(status?.id);
+    activeStatusIdRef.current = status?.id;
 
     // Sync local state with props when status changes externally
     // (e.g., from streaming updates or parent re-renders with new data)
@@ -62,9 +64,6 @@ export function useStatusActions({
             reblogged: status.reblogged ?? false,
             reblogsCount: status.reblogsCount ?? 0,
         };
-
-        // Update active status id
-        activeStatusIdRef.current = status.id;
 
         // If currently loading, store the update to apply after completion
         if (isLoading.favourite || isLoading.reblog) {
