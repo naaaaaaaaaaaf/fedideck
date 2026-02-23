@@ -138,9 +138,9 @@ export function useStatusActions({
             setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev + 1 : prev - 1));
             console.error('Failed to toggle favourite:', error);
         } finally {
-            if (activeStatusIdRef.current === currentStatusId) {
-                setIsLoading((prev) => ({ ...prev, favourite: false }));
-            }
+            // Always clear loading state, even if status has changed
+            // This prevents UI from being stuck in loading state after navigation
+            setIsLoading((prev) => ({ ...prev, favourite: false }));
         }
     }, [status, accountSession, isLoading.favourite, localFavourited, onStatusUpdate]);
 
@@ -189,9 +189,9 @@ export function useStatusActions({
             setLocalReblogsCount((prev) => (wasLocalReblogged ? prev + 1 : prev - 1));
             console.error('Failed to toggle reblog:', error);
         } finally {
-            if (activeStatusIdRef.current === currentStatusId) {
-                setIsLoading((prev) => ({ ...prev, reblog: false }));
-            }
+            // Always clear loading state, even if status has changed
+            // This prevents UI from being stuck in loading state after navigation
+            setIsLoading((prev) => ({ ...prev, reblog: false }));
         }
     }, [status, accountSession, isLoading.reblog, localReblogged, onStatusUpdate]);
 

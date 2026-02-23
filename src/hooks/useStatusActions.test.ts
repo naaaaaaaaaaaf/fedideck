@@ -594,6 +594,101 @@ describe('useStatusActions', () => {
         });
     });
 
+    describe('isLoading reset on status change', () => {
+        it('should always clear isLoading.favourite even when status changes during request', async () => {
+            const status1 = createMockStatus({ id: 'status-1', favourited: false });
+            const status2 = createMockStatus({ id: 'status-2', favourited: false });
+
+            const mockClient = {} as mastoClient.MastoClient;
+            vi.mocked(mastoClient.getClient).mockReturnValue(mockClient);
+
+            // Create a delayed promise that we can control
+            let resolveFavourite: (value: mastodon.v1.Status) => void;
+            const favouritePromise = new Promise<mastodon.v1.Status>((resolve) => {
+                resolveFavourite = resolve;
+            });
+            vi.mocked(mastoClient.favouriteStatus).mockReturnValue(favouritePromise);
+
+            const { result, rerender } = renderHook(
+                ({ status }) => useStatusActions({ status, accountSession: mockAccountSession }),
+                { initialProps: { status: status1 } }
+            );
+
+            // Start favourite operation (don't await yet)
+            let operationComplete = false;
+            const operationPromise = result.current.handleFavourite().finally(() => {
+                operationComplete = true;
+            });
+
+            // Wait for the loading state to be set
+            await act(async () => {
+                // Give React a chance to process the setIsLoading call
+                await new Promise((resolve) => setTimeout(resolve, 0));
+            });
+
+            // While loading, change status (simulates thread navigation)
+            rerender({ status: status2 });
+
+            // Complete the API call for the old status
+            resolveFavourite!(createMockStatus({ id: 'status-1', favourited: true }));
+
+            // Wait for the operation to complete
+            await act(async () => {
+                await operationPromise;
+            });
+
+            // isLoading.favourite should be cleared even though status changed
+            expect(result.current.isLoading.favourite).toBe(false);
+            expect(operationComplete).toBe(true);
+        });
+
+        it('should always clear isLoading.reblog even when status changes during request', async () => {
+            const status1 = createMockStatus({ id: 'status-1', reblogged: false });
+            const status2 = createMockStatus({ id: 'status-2', reblogged: false });
+
+            const mockClient = {} as mastoClient.MastoClient;
+            vi.mocked(mastoClient.getClient).mockReturnValue(mockClient);
+
+            // Create a delayed promise that we can control
+            let resolveReblog: (value: mastodon.v1.Status) => void;
+            const reblogPromise = new Promise<mastodon.v1.Status>((resolve) => {
+                resolveReblog = resolve;
+            });
+            vi.mocked(mastoClient.reblogStatus).mockReturnValue(reblogPromise);
+
+            const { result, rerender } = renderHook(
+                ({ status }) => useStatusActions({ status, accountSession: mockAccountSession }),
+                { initialProps: { status: status1 } }
+            );
+
+            // Start reblog operation (don't await yet)
+            let operationComplete = false;
+            const operationPromise = result.current.handleReblog().finally(() => {
+                operationComplete = true;
+            });
+
+            // Wait for the loading state to be set
+            await act(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 0));
+            });
+
+            // While loading, change status (simulates thread navigation)
+            rerender({ status: status2 });
+
+            // Complete the API call for the old status
+            resolveReblog!(createMockStatus({ id: 'status-1', reblogged: true }));
+
+            // Wait for the operation to complete
+            await act(async () => {
+                await operationPromise;
+            });
+
+            // isLoading.reblog should be cleared even though status changed
+            expect(result.current.isLoading.reblog).toBe(false);
+            expect(operationComplete).toBe(true);
+        });
+    });
+
     describe('Pending props handling', () => {
         it('should sync state when props change', async () => {
             const status1 = createMockStatus({
