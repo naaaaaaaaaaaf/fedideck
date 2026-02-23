@@ -28,20 +28,76 @@ describe('useNsfwState', () => {
             expect(result.current.nsfwRevealed).toBe(false);
         });
 
-        it('should NOT call onReveal in uncontrolled mode', () => {
+        it('uncontrolled with callback: should toggle local state and call onReveal when only onReveal is provided', () => {
+            // When isRevealed is undefined, the hook is uncontrolled
+            // but still calls onReveal callback if provided
             const onReveal = vi.fn();
             const { result } = renderHook(() => useNsfwState({ statusId: 'status-1', onReveal }));
+
+            expect(result.current.nsfwRevealed).toBe(false);
 
             act(() => {
                 result.current.handleNsfwToggle();
             });
 
-            // onReveal is provided, so it switches to controlled mode
+            // Should toggle local state (uncontrolled mode)
+            expect(result.current.nsfwRevealed).toBe(true);
+            // onReveal should be called when revealing
             expect(onReveal).toHaveBeenCalledWith('status-1');
+            expect(onReveal).toHaveBeenCalledTimes(1);
         });
     });
 
     describe('controlled mode', () => {
+        describe('read-only mode (isRevealed only)', () => {
+            it('should use isRevealed prop when only isRevealed is provided', () => {
+                const { result } = renderHook(() =>
+                    useNsfwState({
+                        statusId: 'status-1',
+                        isRevealed: true,
+                    })
+                );
+
+                expect(result.current.nsfwRevealed).toBe(true);
+            });
+
+            it('should NOT toggle local state when only isRevealed is provided', () => {
+                const { result } = renderHook(() =>
+                    useNsfwState({
+                        statusId: 'status-1',
+                        isRevealed: false,
+                    })
+                );
+
+                expect(result.current.nsfwRevealed).toBe(false);
+
+                // Toggle should be ignored (read-only controlled)
+                act(() => {
+                    result.current.handleNsfwToggle();
+                });
+
+                // Should still be false because isRevealed prop controls the state
+                expect(result.current.nsfwRevealed).toBe(false);
+            });
+
+            it('should update nsfwRevealed when isRevealed prop changes (read-only)', () => {
+                const { result, rerender } = renderHook(
+                    ({ isRevealed }) =>
+                        useNsfwState({
+                            statusId: 'status-1',
+                            isRevealed,
+                        }),
+                    { initialProps: { isRevealed: false } }
+                );
+
+                expect(result.current.nsfwRevealed).toBe(false);
+
+                rerender({ isRevealed: true });
+
+                expect(result.current.nsfwRevealed).toBe(true);
+            });
+        });
+
         it('should use isRevealed prop when onReveal is provided', () => {
             const onReveal = vi.fn();
             const { result } = renderHook(() =>

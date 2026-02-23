@@ -22,28 +22,33 @@ export function useNsfwState({
         {}
     );
 
-    // Controlled mode: use isRevealed prop from parent
+    // Controlled mode: isRevealed prop is provided (read-only if no onReveal)
     // Uncontrolled mode: use local state keyed by statusId
-    const isControlled = onReveal !== undefined;
-    const nsfwRevealed = isControlled
-        ? (isRevealed ?? false)
-        : (localNsfwRevealedByKey[statusId] ?? false);
+    const isControlled = isRevealed !== undefined;
+    const nsfwRevealed = isControlled ? isRevealed : (localNsfwRevealedByKey[statusId] ?? false);
 
     const handleNsfwToggle = useCallback(() => {
         // Controlled mode: parent provides the state via isRevealed
         if (isControlled) {
+            // Only call onReveal if provided (supports read-only controlled mode)
             if (!isRevealed) {
-                onReveal(statusId);
+                onReveal?.(statusId);
             }
             return;
         }
 
         // Uncontrolled mode: toggle local state for this statusId
+        const newRevealedState = !(localNsfwRevealedByKey[statusId] ?? false);
         setLocalNsfwRevealedByKey((prev) => ({
             ...prev,
-            [statusId]: !(prev[statusId] ?? false),
+            [statusId]: newRevealedState,
         }));
-    }, [isControlled, isRevealed, onReveal, statusId]);
+
+        // Also call onReveal if provided (allows parent to track reveals)
+        if (newRevealedState) {
+            onReveal?.(statusId);
+        }
+    }, [isControlled, isRevealed, onReveal, statusId, localNsfwRevealedByKey]);
 
     return {
         nsfwRevealed,

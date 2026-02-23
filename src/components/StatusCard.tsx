@@ -61,7 +61,7 @@ export const StatusCard = React.memo(function StatusCard({
     onAudioClick,
     onAccountClick,
     onNsfwReveal,
-    isNsfwRevealed = false,
+    isNsfwRevealed,
     onStatusDelete,
     onStatusEdit,
 }: StatusCardProps) {

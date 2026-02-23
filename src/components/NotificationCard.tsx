@@ -35,7 +35,7 @@ export const NotificationCard = React.memo(function NotificationCard({
     onStatusClick,
     onAccountClick,
     onNsfwReveal,
-    isNsfwRevealed = false,
+    isNsfwRevealed,
 }: NotificationCardProps) {
     const getNotificationInfo = (): { icon: ReactNode; label: string; color: string } => {
         switch (notification.type) {
