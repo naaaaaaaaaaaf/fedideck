@@ -134,7 +134,7 @@ export function useStatusActions({
         // Optimistic update
         const wasLocalFavourited = localFavourited;
         setLocalFavourited(!wasLocalFavourited);
-        setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev - 1 : prev + 1));
+        setLocalFavouritesCount((prev) => (wasLocalFavourited ? Math.max(0, prev - 1) : prev + 1));
 
         try {
             const client: MastoClient = getClient(accountSession);
@@ -160,7 +160,9 @@ export function useStatusActions({
 
             // Revert on error
             setLocalFavourited(wasLocalFavourited);
-            setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev + 1 : prev - 1));
+            setLocalFavouritesCount((prev) =>
+                wasLocalFavourited ? prev + 1 : Math.max(0, prev - 1)
+            );
             console.error('Failed to toggle favourite:', error);
         } finally {
             // Always clear loading state and in-flight flag, even if status has changed
@@ -188,7 +190,7 @@ export function useStatusActions({
         // Optimistic update
         const wasLocalReblogged = localReblogged;
         setLocalReblogged(!wasLocalReblogged);
-        setLocalReblogsCount((prev) => (wasLocalReblogged ? prev - 1 : prev + 1));
+        setLocalReblogsCount((prev) => (wasLocalReblogged ? Math.max(0, prev - 1) : prev + 1));
 
         try {
             const client: MastoClient = getClient(accountSession);
@@ -216,7 +218,7 @@ export function useStatusActions({
 
             // Revert on error
             setLocalReblogged(wasLocalReblogged);
-            setLocalReblogsCount((prev) => (wasLocalReblogged ? prev + 1 : prev - 1));
+            setLocalReblogsCount((prev) => (wasLocalReblogged ? prev + 1 : Math.max(0, prev - 1)));
             console.error('Failed to toggle reblog:', error);
         } finally {
             // Always clear loading state and in-flight flag, even if status has changed
