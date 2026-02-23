@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import type { mastodon } from 'masto';
 import {
     LuRepeat2,
@@ -153,17 +153,9 @@ export const StatusCard = React.memo(function StatusCard({
     // Safely access account
     const account = displayStatus.account;
 
-    // Open status detail modal
-    const openStatusDetail = useCallback(() => {
-        // statusWithLocalState is never null in StatusCard since displayStatus always exists
-        if (statusWithLocalState) {
-            onStatusClick?.(statusWithLocalState);
-        }
-    }, [statusWithLocalState, onStatusClick]);
-
     // Card interaction handlers - must be called before early return
     const { handleClick: handleCardClick, handleKeyDown: handleCardKeyDown } = useCardInteraction({
-        onClick: openStatusDetail,
+        onClick: onStatusClick ? () => onStatusClick(statusWithLocalState) : undefined,
         isEnabled: !!onStatusClick,
     });
 
@@ -202,7 +194,7 @@ export const StatusCard = React.memo(function StatusCard({
                         ? {
                               onClick: (e) => {
                                   e.stopPropagation();
-                                  openStatusDetail();
+                                  onStatusClick(statusWithLocalState);
                               },
                               role: 'button',
                               tabIndex: 0,
@@ -210,7 +202,7 @@ export const StatusCard = React.memo(function StatusCard({
                                   if (e.key === 'Enter' || e.key === ' ') {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      openStatusDetail();
+                                      onStatusClick(statusWithLocalState);
                                   }
                               },
                               'aria-label': 'スレッドを表示',
