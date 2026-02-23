@@ -28,6 +28,17 @@ import { getInstanceConfig, getDefaultConfig, type InstanceConfig } from '../api
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { type Visibility, getVisibilityOptions } from '../utils/statusVisibility';
 import { useTextareaCursor } from '../hooks/useTextareaCursor';
+import { useInstanceConfig } from '../hooks/useInstanceConfig';
+import { useEditPrefill } from '../hooks/useEditPrefill';
+import { useMediaUpload, type MediaFile } from '../hooks/useMediaUpload';
+import { usePostSubmit } from '../hooks/usePostSubmit';
+import { ComposeTextarea } from './compose/ComposeTextarea';
+import { ComposeMediaPreview } from './compose/ComposeMediaPreview';
+import { ComposePollForm, type PollOptionDraft } from './compose/ComposePollForm';
+import { ComposeAccountSelector } from './compose/ComposeAccountSelector';
+import { ComposeVisibilitySelector } from './compose/ComposeVisibilitySelector';
+import { ComposeReplyIndicator } from './compose/ComposeReplyIndicator';
+import { ComposeOptionButtons } from './compose/ComposeOptionButtons';
 import { DisplayName } from './DisplayName';
 import { EmojiPalette } from './EmojiPalette';
 
@@ -76,11 +87,6 @@ const VISIBILITY_OPTIONS = getVisibilityOptions();
 
 const MAX_POLL_OPTIONS = 4;
 const MIN_POLL_OPTIONS = 2;
-
-interface PollOptionDraft {
-    id: string;
-    text: string;
-}
 
 const createPollOption = (): PollOptionDraft => ({
     id:
