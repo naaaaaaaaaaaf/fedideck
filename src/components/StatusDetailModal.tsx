@@ -11,16 +11,12 @@ import {
 } from 'react-icons/lu';
 import {
     type AccountSession,
-    type MastoClient,
     getClient,
-    favouriteStatus,
-    unfavouriteStatus,
-    reblogStatus,
-    unreblogStatus,
     getStatusContext,
     type StatusContext,
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
+import { useStatusActions } from '../hooks/useStatusActions';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
 import { formatDate, formatFullDate } from '../utils/dateFormat';
@@ -234,6 +230,22 @@ export function StatusDetailModal({
     // Get the display status (navigated > original reblog > original)
     const displayStatus = navigatedStatus ?? status?.reblog ?? status;
 
+    // Status actions (favourite/reblog) with optimistic UI
+    const {
+        favourited,
+        favouritesCount,
+        reblogged,
+        reblogsCount,
+        isLoading,
+        canReblog,
+        handleFavourite,
+        handleReblog,
+    } = useStatusActions({
+        status: displayStatus,
+        accountSession,
+        onStatusUpdate,
+    });
+
     // NSFW state: controlled from parent or local
     // If parent provides state (nsfwRevealedStatusIds), always use it
     // When onNsfwReveal is missing, operates in read-only mode
@@ -246,12 +258,6 @@ export function StatusDetailModal({
             ? nsfwRevealedStatusIds.has(displayStatus.id)
             : false
         : localNsfwRevealed;
-
-    const [localFavourited, setLocalFavourited] = useState(false);
-    const [localFavouritesCount, setLocalFavouritesCount] = useState(0);
-    const [localReblogged, setLocalReblogged] = useState(false);
-    const [localReblogsCount, setLocalReblogsCount] = useState(0);
-    const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
 
     // Poll state using usePollState hook (with auto-refresh on expiry for modal)
     const {
@@ -300,33 +306,12 @@ export function StatusDetailModal({
         setIsLoadingContext(false);
     }, [status?.id, isOpen]);
 
-    // Sync favourite/reblog state when status changes or modal opens
-    // Include specific fields in dependencies to catch external updates
-    // Skip sync during loading to avoid overwriting optimistic updates
+    // Reset NSFW state when displayStatus changes (uncontrolled mode only)
     useEffect(() => {
-        if (!displayStatus || !isOpen) return;
-        // Skip sync during loading operations
-        if (isLoading.favourite || isLoading.reblog) return;
-
-        setLocalFavourited(displayStatus.favourited ?? false);
-        setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
-        setLocalReblogged(displayStatus.reblogged ?? false);
-        setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
-        // Only reset NSFW state if not controlled by parent and status changed
         if (!isControlled) {
             setLocalNsfwRevealed(false);
         }
-    }, [
-        displayStatus?.id,
-        displayStatus?.favourited,
-        displayStatus?.favouritesCount,
-        displayStatus?.reblogged,
-        displayStatus?.reblogsCount,
-        isOpen,
-        isControlled,
-        isLoading.favourite,
-        isLoading.reblog,
-    ]);
+    }, [displayStatus?.id, isControlled]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
@@ -453,67 +438,12 @@ export function StatusDetailModal({
     if (!account) return null;
 
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
-    const canReblog =
-        displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
 
     const handleThreadNavigate = (clickedStatus: mastodon.v1.Status) => {
         setContext(null);
         setContextError(null);
         setIsLoadingContext(true);
         setNavigatedStatus(clickedStatus);
-    };
-
-    const handleFavourite = async () => {
-        if (!accountSession || isLoading.favourite) return;
-
-        setIsLoading((prev) => ({ ...prev, favourite: true }));
-        const wasLocalFavourited = localFavourited;
-        setLocalFavourited(!wasLocalFavourited);
-        setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev - 1 : prev + 1));
-
-        try {
-            const client: MastoClient = getClient(accountSession);
-            const updatedStatus = wasLocalFavourited
-                ? await unfavouriteStatus(client, displayStatus.id)
-                : await favouriteStatus(client, displayStatus.id);
-
-            setLocalFavourited(updatedStatus.favourited ?? false);
-            setLocalFavouritesCount(updatedStatus.favouritesCount ?? 0);
-            onStatusUpdate?.(updatedStatus);
-        } catch (error) {
-            setLocalFavourited(wasLocalFavourited);
-            setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev + 1 : prev - 1));
-            console.error('Failed to toggle favourite:', error);
-        } finally {
-            setIsLoading((prev) => ({ ...prev, favourite: false }));
-        }
-    };
-
-    const handleReblog = async () => {
-        if (!accountSession || isLoading.reblog || !canReblog) return;
-
-        setIsLoading((prev) => ({ ...prev, reblog: true }));
-        const wasLocalReblogged = localReblogged;
-        setLocalReblogged(!wasLocalReblogged);
-        setLocalReblogsCount((prev) => (wasLocalReblogged ? prev - 1 : prev + 1));
-
-        try {
-            const client: MastoClient = getClient(accountSession);
-            const updatedStatus = wasLocalReblogged
-                ? await unreblogStatus(client, displayStatus.id)
-                : await reblogStatus(client, displayStatus.id);
-
-            const actualStatus = updatedStatus.reblog ?? updatedStatus;
-            setLocalReblogged(actualStatus.reblogged ?? false);
-            setLocalReblogsCount(actualStatus.reblogsCount ?? 0);
-            onStatusUpdate?.(actualStatus);
-        } catch (error) {
-            setLocalReblogged(wasLocalReblogged);
-            setLocalReblogsCount((prev) => (wasLocalReblogged ? prev + 1 : prev - 1));
-            console.error('Failed to toggle reblog:', error);
-        } finally {
-            setIsLoading((prev) => ({ ...prev, reblog: false }));
-        }
     };
 
     const handleNsfwToggle = () => {
@@ -926,11 +856,10 @@ export function StatusDetailModal({
                         {/* Stats */}
                         <div className="flex items-center gap-6 text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">
                             <span>
-                                <strong className="text-slate-200">{localReblogsCount}</strong>{' '}
-                                ブースト
+                                <strong className="text-slate-200">{reblogsCount}</strong> ブースト
                             </span>
                             <span>
-                                <strong className="text-slate-200">{localFavouritesCount}</strong>{' '}
+                                <strong className="text-slate-200">{favouritesCount}</strong>{' '}
                                 お気に入り
                             </span>
                             {displayStatus.repliesCount > 0 && (
@@ -968,7 +897,7 @@ export function StatusDetailModal({
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                             !canReblog
                                 ? 'opacity-50 cursor-not-allowed'
-                                : localReblogged
+                                : reblogged
                                   ? 'text-green-400 hover:bg-green-400/10'
                                   : 'hover:text-green-400 hover:bg-green-400/10'
                         } ${isLoading.reblog ? 'opacity-50' : ''}`}
@@ -981,13 +910,13 @@ export function StatusDetailModal({
                         onClick={handleFavourite}
                         disabled={!accountSession || isLoading.favourite}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                            localFavourited
+                            favourited
                                 ? 'text-amber-400 hover:bg-amber-400/10'
                                 : 'hover:text-amber-400 hover:bg-amber-400/10'
                         } ${isLoading.favourite ? 'opacity-50' : ''}`}
                     >
                         <LuStar
-                            className={`w-5 h-5 ${localFavourited ? 'fill-current' : ''}`}
+                            className={`w-5 h-5 ${favourited ? 'fill-current' : ''}`}
                             aria-hidden="true"
                         />
                         <span>お気に入り</span>
