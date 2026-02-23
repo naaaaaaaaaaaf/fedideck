@@ -23,9 +23,9 @@ export function useCardInteraction({
         (e: React.MouseEvent) => {
             if (!isEnabled || !onClick) return;
 
-            const target = e.target as HTMLElement;
-            // Ignore clicks on interactive elements
-            if (target.closest(interactiveSelector)) {
+            // Guard: e.target may be a Text node, not an Element
+            const target = e.target;
+            if (target instanceof Element && target.closest(interactiveSelector)) {
                 return;
             }
             onClick();
@@ -38,9 +38,9 @@ export function useCardInteraction({
             if (!isEnabled || !onClick) return;
 
             if (e.key === 'Enter' || e.key === ' ') {
-                const target = e.target as HTMLElement;
-                // Ignore keyboard events on interactive elements
-                if (target.closest(interactiveSelector)) {
+                // Guard: e.target may be a Text node, not an Element
+                const target = e.target;
+                if (target instanceof Element && target.closest(interactiveSelector)) {
                     return;
                 }
                 e.preventDefault();

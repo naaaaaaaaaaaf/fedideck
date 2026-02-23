@@ -19,6 +19,21 @@ describe('useCardInteraction', () => {
     });
 
     describe('handleClick', () => {
+        it('should handle Text node as target without throwing', () => {
+            const onClick = vi.fn();
+            const { result } = renderHook(() => useCardInteraction({ onClick }));
+
+            // Simulate click on a Text node (not an Element)
+            const textNode = document.createTextNode('some text');
+            const event = {
+                target: textNode,
+            } as unknown as React.MouseEvent;
+
+            // Should not throw and should call onClick
+            expect(() => result.current.handleClick(event)).not.toThrow();
+            expect(onClick).toHaveBeenCalledTimes(1);
+        });
+
         it('should call onClick when clicking on non-interactive element', () => {
             const onClick = vi.fn();
             const { result } = renderHook(() => useCardInteraction({ onClick }));
@@ -217,6 +232,24 @@ describe('useCardInteraction', () => {
     });
 
     describe('handleKeyDown', () => {
+        it('should handle Text node as target without throwing', () => {
+            const onClick = vi.fn();
+            const { result } = renderHook(() => useCardInteraction({ onClick }));
+
+            // Simulate keyboard event on a Text node (not an Element)
+            const textNode = document.createTextNode('some text');
+            const event = {
+                key: 'Enter',
+                target: textNode,
+                preventDefault: vi.fn(),
+            } as unknown as React.KeyboardEvent;
+
+            // Should not throw and should call onClick
+            expect(() => result.current.handleKeyDown(event)).not.toThrow();
+            expect(onClick).toHaveBeenCalledTimes(1);
+            expect(event.preventDefault).toHaveBeenCalled();
+        });
+
         it('should call onClick when pressing Enter on non-interactive element', () => {
             const onClick = vi.fn();
             const { result } = renderHook(() => useCardInteraction({ onClick }));
