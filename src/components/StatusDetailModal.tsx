@@ -74,7 +74,7 @@ function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
 
     // Card interaction handlers - must be called before early return
     const { handleClick, handleKeyDown } = useCardInteraction({
-        onClick: useCallback(() => onClick?.(status), [onClick, status]),
+        onClick: onClick ? () => onClick(status) : undefined,
         isEnabled: !!onClick,
         interactiveSelector: threadInteractiveSelector,
     });
