@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, type RefObject } from 'react';
 import { getClient, uploadMedia, type AccountSession } from '../api/mastoClient';
 import { getDefaultConfig, type InstanceConfig } from '../api/instanceConfig';
 
@@ -22,8 +22,8 @@ interface UseMediaUploadOptions {
     instanceConfig: InstanceConfig | null;
     isOpen: boolean;
     showPoll: boolean;
-    isSubmitting: boolean;
-    isLoadingEditSource: boolean;
+    isSubmittingRef: RefObject<boolean>;
+    isLoadingEditSourceRef: RefObject<boolean>;
     onError: (error: string) => void;
 }
 
@@ -76,8 +76,8 @@ export function useMediaUpload({
     instanceConfig,
     isOpen,
     showPoll,
-    isSubmitting,
-    isLoadingEditSource,
+    isSubmittingRef,
+    isLoadingEditSourceRef,
     onError,
 }: UseMediaUploadOptions): UseMediaUploadReturn {
     const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
@@ -113,7 +113,7 @@ export function useMediaUpload({
                 return;
             }
 
-            if (isUploading || isSubmitting || isLoadingEditSource) return;
+            if (isUploading || isSubmittingRef.current || isLoadingEditSourceRef.current) return;
 
             // Get supported MIME types
             const supported = new Set(
@@ -205,8 +205,8 @@ export function useMediaUpload({
             accountSession,
             showPoll,
             isUploading,
-            isSubmitting,
-            isLoadingEditSource,
+            isSubmittingRef,
+            isLoadingEditSourceRef,
             instanceConfig,
             onError,
         ]

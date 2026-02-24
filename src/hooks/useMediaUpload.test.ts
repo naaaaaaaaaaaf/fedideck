@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
+import { useRef } from 'react';
 import { useMediaUpload, type MediaFile } from './useMediaUpload';
 import * as mastoClient from '../api/mastoClient';
 
@@ -40,15 +41,22 @@ describe('useMediaUpload', () => {
 
     const mockOnError = vi.fn();
 
-    const defaultProps = {
-        accountSession: mockAccountSession as any,
-        instanceConfig: mockInstanceConfig,
-        isOpen: true,
-        showPoll: false,
-        isSubmitting: false,
-        isLoadingEditSource: false,
-        onError: mockOnError,
+    const createDefaultProps = (overrides = {}) => {
+        const isSubmittingRef = { current: false };
+        const isLoadingEditSourceRef = { current: false };
+        return {
+            accountSession: mockAccountSession as any,
+            instanceConfig: mockInstanceConfig,
+            isOpen: true,
+            showPoll: false,
+            isSubmittingRef,
+            isLoadingEditSourceRef,
+            onError: mockOnError,
+            ...overrides,
+        };
     };
+
+    const defaultProps = createDefaultProps();
 
     const createMockFile = (name: string, type: string, content = 'test content'): File => {
         return new File([content], name, { type });

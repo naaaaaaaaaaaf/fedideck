@@ -103,6 +103,12 @@ export function ComposeModal({
     const emojiButtonRef = useRef<HTMLButtonElement>(null);
     // Track IME composition state for cross-browser compatibility (Safari fix)
     const isComposingRef = useRef(false);
+
+    // Refs for blocking media upload during submit or edit source loading
+    // These are updated via useEffect to allow useMediaUpload to check current values
+    const isSubmittingRef = useRef(false);
+    const isLoadingEditSourceRef = useRef(false);
+
     const accounts = useAccountsStore((state) => state.accounts);
     const activeAccountId = useAccountsStore((state) => state.activeAccountId);
 
@@ -154,8 +160,8 @@ export function ComposeModal({
         instanceConfig,
         isOpen,
         showPoll,
-        isSubmitting: false, // Will be updated below
-        isLoadingEditSource: false, // Will be updated below
+        isSubmittingRef,
+        isLoadingEditSourceRef,
         onError: setError,
     });
 
@@ -213,6 +219,15 @@ export function ComposeModal({
         onStatusEdited,
         onError: setError,
     });
+
+    // Keep refs in sync for useMediaUpload to check during processFiles
+    useEffect(() => {
+        isSubmittingRef.current = isSubmitting;
+    }, [isSubmitting]);
+
+    useEffect(() => {
+        isLoadingEditSourceRef.current = isLoadingEditSource;
+    }, [isLoadingEditSource]);
 
     const canCloseModal = !isSubmitting && !isUploading && !isLoadingEditSource;
 
