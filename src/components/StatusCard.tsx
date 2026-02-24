@@ -181,6 +181,7 @@ export const StatusCard = React.memo(function StatusCard({
                         account={account}
                         createdAt={displayStatus.createdAt}
                         visibility={displayStatus.visibility}
+                        statusUrl={displayStatus.url ?? displayStatus.uri}
                         variant="card"
                         onAccountClick={onAccountClick}
                         accountSessionId={accountSession?.id}

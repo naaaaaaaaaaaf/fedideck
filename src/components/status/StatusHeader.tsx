@@ -11,6 +11,8 @@ interface StatusHeaderProps {
     createdAt: string;
     /** Visibility level of the status */
     visibility: mastodon.v1.Status['visibility'];
+    /** URL of the status (for timestamp link) */
+    statusUrl?: string;
     /** Size variant for styling */
     variant?: 'card' | 'detail' | 'thread';
     /** Callback when account is clicked (enables button mode) */
@@ -29,6 +31,7 @@ export const StatusHeader = React.memo(function StatusHeader({
     account,
     createdAt,
     visibility,
+    statusUrl,
     variant = 'card',
     onAccountClick,
     accountSessionId,
@@ -111,7 +114,7 @@ export const StatusHeader = React.memo(function StatusHeader({
                         )}
                     </div>
                     <a
-                        href={account.url}
+                        href={statusUrl ?? account.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-300 shrink-0"
