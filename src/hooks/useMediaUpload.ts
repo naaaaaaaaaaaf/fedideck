@@ -24,7 +24,7 @@ interface UseMediaUploadOptions {
     showPoll: boolean;
     isSubmittingRef: RefObject<boolean>;
     isLoadingEditSourceRef: RefObject<boolean>;
-    onError: (error: string) => void;
+    onError: (error: string | null) => void;
 }
 
 interface UseMediaUploadReturn {

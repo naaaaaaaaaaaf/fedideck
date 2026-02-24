@@ -12,11 +12,9 @@ import {
 } from '../api/mastoClient';
 import type { MediaFile } from './useMediaUpload';
 import type { EditTarget, ReplyToStatus } from '../components/ComposeModal';
+import { type Visibility } from '../utils/statusVisibility';
 
-/**
- * Visibility type for posts
- */
-export type Visibility = 'public' | 'unlisted' | 'private' | 'direct';
+export type { Visibility };
 
 /**
  * Poll option draft
@@ -54,7 +52,7 @@ interface UsePostSubmitOptions {
     isLoadingEditSource: boolean;
     onSuccess: () => void;
     onStatusEdited?: (status: mastodon.v1.Status) => void;
-    onError: (error: string) => void;
+    onError: (error: string | null) => void;
 }
 
 interface UsePostSubmitReturn {
@@ -200,6 +198,7 @@ export function usePostSubmit({
                 const updatedStatus = await editStatus(client, editTarget.status.id, editParams);
                 onStatusEdited?.(updatedStatus);
 
+                onError(null); // Clear any previous error on success
                 onSuccess();
                 return;
             }
@@ -265,6 +264,7 @@ export function usePostSubmit({
 
             await createStatus(client, params);
 
+            onError(null); // Clear any previous error on success
             onSuccess();
         } catch (err) {
             console.error('Failed to post status:', err);

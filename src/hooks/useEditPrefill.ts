@@ -31,7 +31,7 @@ interface UseEditPrefillOptions {
     accountSession: AccountSession | null | undefined;
     isOpen: boolean;
     onPrefill: (data: EditPrefillData) => void;
-    onError: (error: string) => void;
+    onError: (error: string | null) => void;
 }
 
 interface UseEditPrefillReturn {

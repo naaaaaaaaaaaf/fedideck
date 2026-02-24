@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import type { mastodon } from 'masto';
 import { LuX, LuLoader } from 'react-icons/lu';
 import { useAccountsStore } from '../store/accounts';
 import { getDefaultConfig } from '../api/instanceConfig';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import type { Visibility } from '../utils/statusVisibility';
+import { toVisibility } from '../utils/statusVisibility';
 import { useTextareaCursor } from '../hooks/useTextareaCursor';
 import { useInstanceConfig } from '../hooks/useInstanceConfig';
 import { useEditPrefill, type EditPrefillData } from '../hooks/useEditPrefill';
@@ -104,11 +105,6 @@ export function ComposeModal({
     // Track IME composition state for cross-browser compatibility (Safari fix)
     const isComposingRef = useRef(false);
 
-    // Refs for blocking media upload during submit or edit source loading
-    // These are updated via useEffect to allow useMediaUpload to check current values
-    const isSubmittingRef = useRef(false);
-    const isLoadingEditSourceRef = useRef(false);
-
     const accounts = useAccountsStore((state) => state.accounts);
     const activeAccountId = useAccountsStore((state) => state.activeAccountId);
 
@@ -144,7 +140,34 @@ export function ComposeModal({
         isOpen,
     });
 
-    // 2. Media upload hook
+    // Refs for blocking media upload during submit or edit source loading
+    // Updated synchronously during render to avoid race conditions
+    const isSubmittingRef = useRef(false);
+    const isLoadingEditSourceRef = useRef(false);
+
+    // Ref to defer setMediaFiles call until after useMediaUpload is called
+    const pendingMediaFilesRef = useRef<EditPrefillData['mediaFiles'] | null>(null);
+
+    // 2. Edit prefill hook - callback defers setMediaFiles until after hook initialization
+    const handleEditPrefill = useCallback((data: EditPrefillData) => {
+        setContent(data.text);
+        setCwText(data.spoilerText);
+        setShowCW(!!data.spoilerText);
+        setVisibility(toVisibility(data.visibility));
+        setIsSensitive(data.sensitive);
+        // Defer setMediaFiles until after useMediaUpload initializes
+        pendingMediaFilesRef.current = data.mediaFiles;
+    }, []);
+
+    const { isLoading: isLoadingEditSource } = useEditPrefill({
+        editTarget,
+        accountSession: composingAccount,
+        isOpen,
+        onPrefill: handleEditPrefill,
+        onError: setError,
+    });
+
+    // 3. Media upload hook
     const {
         mediaFiles,
         isUploading,
@@ -165,25 +188,14 @@ export function ComposeModal({
         onError: setError,
     });
 
-    // 3. Edit prefill hook - need to create callback for prefill
-    const handleEditPrefill = useCallback(
-        (data: EditPrefillData) => {
-            setContent(data.text);
-            setCwText(data.spoilerText);
-            setShowCW(!!data.spoilerText);
-            setVisibility(data.visibility as Visibility);
-            setIsSensitive(data.sensitive);
-            setMediaFiles(data.mediaFiles);
-        },
-        [setMediaFiles]
-    );
-
-    const { isLoading: isLoadingEditSource } = useEditPrefill({
-        editTarget,
-        accountSession: composingAccount,
-        isOpen,
-        onPrefill: handleEditPrefill,
-        onError: setError,
+    // Process pending media files from edit prefill
+    // Using useLayoutEffect to ensure media is set synchronously before paint
+    // Note: We intentionally check the ref on every render, so empty deps is correct
+    useLayoutEffect(() => {
+        if (pendingMediaFilesRef.current !== null) {
+            setMediaFiles(pendingMediaFilesRef.current);
+            pendingMediaFilesRef.current = null;
+        }
     });
 
     // 4. Post submit hook
@@ -219,11 +231,12 @@ export function ComposeModal({
     });
 
     // Keep refs in sync for useMediaUpload to check during processFiles
-    useEffect(() => {
+    // Using useLayoutEffect to update synchronously before paint, avoiding race conditions
+    useLayoutEffect(() => {
         isSubmittingRef.current = isSubmitting;
     }, [isSubmitting]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         isLoadingEditSourceRef.current = isLoadingEditSource;
     }, [isLoadingEditSource]);
 

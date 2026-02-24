@@ -576,4 +576,111 @@ describe('useMediaUpload', () => {
             expect(result.current.mediaFiles).toEqual([newMedia]);
         });
     });
+
+    describe('submit blocking', () => {
+        it('should block file selection when isSubmitting is true', () => {
+            const file = createMockFile('test.jpg', 'image/jpeg');
+            const fileList = {
+                length: 1,
+                item: () => file,
+                0: file,
+            } as unknown as FileList;
+
+            const isSubmittingRef = { current: true };
+
+            const { result } = renderHook(() =>
+                useMediaUpload({
+                    ...defaultProps,
+                    isSubmittingRef,
+                })
+            );
+
+            act(() => {
+                result.current.handleFileSelect({
+                    target: { files: fileList },
+                } as any);
+            });
+
+            expect(result.current.hasMedia).toBe(false);
+            expect(mockOnError).not.toHaveBeenCalled();
+        });
+
+        it('should block file selection when isLoadingEditSource is true', () => {
+            const file = createMockFile('test.jpg', 'image/jpeg');
+            const fileList = {
+                length: 1,
+                item: () => file,
+                0: file,
+            } as unknown as FileList;
+
+            const isLoadingEditSourceRef = { current: true };
+
+            const { result } = renderHook(() =>
+                useMediaUpload({
+                    ...defaultProps,
+                    isLoadingEditSourceRef,
+                })
+            );
+
+            act(() => {
+                result.current.handleFileSelect({
+                    target: { files: fileList },
+                } as any);
+            });
+
+            expect(result.current.hasMedia).toBe(false);
+            expect(mockOnError).not.toHaveBeenCalled();
+        });
+
+        it('should block clipboard paste when isSubmitting is true', () => {
+            const file = createMockFile('clipboard.png', 'image/png');
+            const clipboardEvent = {
+                clipboardData: {
+                    items: [
+                        {
+                            kind: 'file',
+                            type: 'image/png',
+                            getAsFile: () => file,
+                        },
+                    ],
+                    files: [] as File[],
+                },
+            } as any;
+
+            const isSubmittingRef = { current: true };
+
+            const { result } = renderHook(() =>
+                useMediaUpload({
+                    ...defaultProps,
+                    isSubmittingRef,
+                })
+            );
+
+            act(() => {
+                result.current.handlePaste(clipboardEvent);
+            });
+
+            // handlePaste returns true for images, but processFiles blocks the upload
+            expect(result.current.hasMedia).toBe(false);
+        });
+
+        it('should allow file selection when isSubmitting and isLoadingEditSource are false', async () => {
+            const file = createMockFile('test.jpg', 'image/jpeg');
+            const fileList = {
+                length: 1,
+                item: () => file,
+                0: file,
+            } as unknown as FileList;
+
+            const { result } = renderHook(() => useMediaUpload(defaultProps));
+
+            act(() => {
+                result.current.handleFileSelect({
+                    target: { files: fileList },
+                } as any);
+            });
+
+            expect(result.current.hasMedia).toBe(true);
+        });
+    });
 });

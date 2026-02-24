@@ -575,4 +575,48 @@ describe('usePostSubmit', () => {
             expect(result.current.remainingChars).toBe(500 - 'Test post content'.length);
         });
     });
+
+    describe('error clearing on success', () => {
+        it('should clear error on successful create', async () => {
+            const { result } = renderHook(() => usePostSubmit(defaultProps));
+
+            await act(async () => {
+                await result.current.handleSubmit();
+            });
+
+            expect(mockOnError).toHaveBeenCalledWith(null);
+            expect(mockOnSuccess).toHaveBeenCalled();
+        });
+
+        it('should clear error on successful edit', async () => {
+            const { result } = renderHook(() =>
+                usePostSubmit({
+                    ...defaultProps,
+                    isEditMode: true,
+                    editTarget: mockEditTarget as any,
+                })
+            );
+
+            await act(async () => {
+                await result.current.handleSubmit();
+            });
+
+            expect(mockOnError).toHaveBeenCalledWith(null);
+            expect(mockOnSuccess).toHaveBeenCalled();
+        });
+
+        it('should not clear error when submission fails', async () => {
+            vi.mocked(mastoClient.createStatus).mockRejectedValue(new Error('Network error'));
+
+            const { result } = renderHook(() => usePostSubmit(defaultProps));
+
+            await act(async () => {
+                await result.current.handleSubmit();
+            });
+
+            expect(mockOnError).toHaveBeenCalledWith('Network error');
+            expect(mockOnError).not.toHaveBeenCalledWith(null);
+            expect(mockOnSuccess).not.toHaveBeenCalled();
+        });
+    });
 });
