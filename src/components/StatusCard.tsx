@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { mastodon } from 'masto';
 import {
     LuRepeat2,
@@ -124,18 +124,32 @@ export const StatusCard = React.memo(function StatusCard({
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
 
+    /* eslint-disable react-hooks/preserve-manual-memoization */
     // Convert image attachments to ImageViewerImage format
     // Filter out images without valid URLs to prevent broken image rendering
-    const imageViewerImages = toImageViewerImages(displayStatus.mediaAttachments);
+    const imageViewerImages = useMemo(
+        () => toImageViewerImages(displayStatus.mediaAttachments),
+        [displayStatus]
+    );
 
     // Convert video/gifv attachments to VideoViewerVideo format
-    const videoViewerVideos = toVideoViewerVideos(displayStatus.mediaAttachments);
+    const videoViewerVideos = useMemo(
+        () => toVideoViewerVideos(displayStatus.mediaAttachments),
+        [displayStatus]
+    );
 
     // Convert audio attachments to AudioViewerTrack format
-    const audioViewerTracks = toAudioViewerTracks(displayStatus.mediaAttachments);
+    const audioViewerTracks = useMemo(
+        () => toAudioViewerTracks(displayStatus.mediaAttachments),
+        [displayStatus]
+    );
 
     // Emoji processing for content
-    const contentWithEmojis = replaceEmojisWithImages(displayStatus.content, displayStatus.emojis);
+    const contentWithEmojis = useMemo(
+        () => replaceEmojisWithImages(displayStatus.content, displayStatus.emojis),
+        [displayStatus]
+    );
+    /* eslint-enable react-hooks/preserve-manual-memoization */
 
     // Safely access account
     const account = displayStatus.account;
