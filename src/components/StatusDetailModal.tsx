@@ -1,14 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { mastodon } from 'masto';
-import {
-    LuX,
-    LuRepeat2,
-    LuMessageCircle,
-    LuStar,
-    LuTriangleAlert,
-    LuLoader,
-    LuRefreshCw,
-} from 'react-icons/lu';
+import { LuX, LuTriangleAlert, LuLoader, LuRefreshCw } from 'react-icons/lu';
 import {
     type AccountSession,
     getClient,
@@ -34,7 +26,7 @@ import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
-import { StatusMenu } from './StatusMenu';
+import { StatusReblogIndicator, StatusActions } from './status';
 
 interface StatusDetailModalProps {
     isOpen: boolean;
@@ -507,13 +499,7 @@ export function StatusDetailModal({
                     >
                         {/* Reblog indicator */}
                         {reblogger && (
-                            <div className="flex items-center gap-2 text-sm text-slate-400 mb-3">
-                                <LuRepeat2 className="text-green-400" aria-hidden="true" />
-                                <img src={reblogger.avatar} alt="" className="w-5 h-5 rounded" />
-                                <span>
-                                    <DisplayName account={reblogger} /> がブースト
-                                </span>
-                            </div>
+                            <StatusReblogIndicator reblogger={reblogger} variant="detail" />
                         )}
 
                         {/* Author info */}
@@ -844,54 +830,26 @@ export function StatusDetailModal({
                 </div>
 
                 {/* Action bar - outside scroll container to allow menu overflow */}
-                <div className="flex items-center justify-around text-slate-400 border-t border-slate-700/50 px-4 py-2 shrink-0">
-                    <button
-                        onClick={handleReply}
-                        className="flex items-center gap-2 px-4 py-2 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
-                    >
-                        <LuMessageCircle className="w-5 h-5" aria-hidden="true" />
-                        <span>返信</span>
-                    </button>
-                    <button
-                        onClick={handleReblog}
-                        disabled={!accountSession || isLoading.reblog || !canReblog}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                            !canReblog
-                                ? 'opacity-50 cursor-not-allowed'
-                                : reblogged
-                                  ? 'text-green-400 hover:bg-green-400/10'
-                                  : 'hover:text-green-400 hover:bg-green-400/10'
-                        } ${isLoading.reblog ? 'opacity-50' : ''}`}
-                        title={!canReblog ? 'この投稿はブーストできません' : undefined}
-                    >
-                        <LuRepeat2 className="w-5 h-5" aria-hidden="true" />
-                        <span>ブースト</span>
-                    </button>
-                    <button
-                        onClick={handleFavourite}
-                        disabled={!accountSession || isLoading.favourite}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                            favourited
-                                ? 'text-amber-400 hover:bg-amber-400/10'
-                                : 'hover:text-amber-400 hover:bg-amber-400/10'
-                        } ${isLoading.favourite ? 'opacity-50' : ''}`}
-                    >
-                        <LuStar
-                            className={`w-5 h-5 ${favourited ? 'fill-current' : ''}`}
-                            aria-hidden="true"
-                        />
-                        <span>お気に入り</span>
-                    </button>
-                    {displayStatus && (
-                        <StatusMenu
-                            statusUrl={displayStatus.url ?? displayStatus.uri}
-                            canDelete={canDelete ?? false}
-                            canEdit={canEdit ?? false}
-                            onDelete={handleStatusDelete}
-                            onEdit={handleStatusEdit}
-                        />
-                    )}
-                </div>
+                {displayStatus && (
+                    <StatusActions
+                        repliesCount={displayStatus.repliesCount ?? 0}
+                        reblogsCount={reblogsCount ?? 0}
+                        favouritesCount={favouritesCount ?? 0}
+                        favourited={favourited}
+                        reblogged={reblogged}
+                        canReblog={canReblog}
+                        isLoading={isLoading}
+                        onReply={handleReply}
+                        onReblog={handleReblog}
+                        onFavourite={handleFavourite}
+                        variant="detail"
+                        statusUrl={displayStatus.url ?? displayStatus.uri}
+                        canDelete={canDelete ?? false}
+                        canEdit={canEdit ?? false}
+                        onDelete={handleStatusDelete}
+                        onEdit={handleStatusEdit}
+                    />
+                )}
             </div>
         </div>
     );
