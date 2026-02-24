@@ -323,13 +323,14 @@ export function useMediaUpload({
     }, [revokePreviewUrls]);
 
     // Cleanup on unmount or when modal closes
+    /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
     useEffect(() => {
         if (!isOpen) {
             revokePreviewUrls(mediaFiles);
             setMediaFiles([]);
         }
-        // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
     }, [isOpen]);
+    /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
     return {
         mediaFiles,

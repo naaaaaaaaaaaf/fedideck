@@ -26,12 +26,14 @@ export function useNsfwState({
     // Reset local state when statusId changes (e.g., navigating to different status in modal)
     // This avoids the memory leak potential of a statusId-keyed dictionary while
     // still ensuring state resets on status changes for components that don't use key={}
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (prevStatusIdRef.current !== statusId) {
             prevStatusIdRef.current = statusId;
             setLocalNsfwRevealed(false);
         }
     }, [statusId]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     // Controlled mode: isRevealed prop is provided (read-only if no onReveal)
     // Uncontrolled mode: use local state

@@ -103,6 +103,8 @@ export function useInstanceConfig({
 
         // Cleanup: invalidate pending requests on unmount or dependency change
         return () => {
+            // Intentionally increment ref to invalidate stale requests
+            // eslint-disable-next-line react-hooks/exhaustive-deps
             requestSeqRef.current++;
         };
     }, [accountSession, isOpen]);

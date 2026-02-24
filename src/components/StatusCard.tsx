@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import type { mastodon } from 'masto';
 import {
     LuRepeat2,
@@ -124,31 +124,18 @@ export const StatusCard = React.memo(function StatusCard({
     // Safely access arrays with fallbacks
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
 
-    // Convert image attachments to ImageViewerImage format (memoized)
-    // Use displayStatus.mediaAttachments as dependency for stable reference
+    // Convert image attachments to ImageViewerImage format
     // Filter out images without valid URLs to prevent broken image rendering
-    const imageViewerImages = useMemo(
-        () => toImageViewerImages(displayStatus.mediaAttachments),
-        [displayStatus.mediaAttachments]
-    );
+    const imageViewerImages = toImageViewerImages(displayStatus.mediaAttachments);
 
-    // Convert video/gifv attachments to VideoViewerVideo format (memoized)
-    const videoViewerVideos = useMemo(
-        () => toVideoViewerVideos(displayStatus.mediaAttachments),
-        [displayStatus.mediaAttachments]
-    );
+    // Convert video/gifv attachments to VideoViewerVideo format
+    const videoViewerVideos = toVideoViewerVideos(displayStatus.mediaAttachments);
 
-    // Convert audio attachments to AudioViewerTrack format (memoized)
-    const audioViewerTracks = useMemo(
-        () => toAudioViewerTracks(displayStatus.mediaAttachments),
-        [displayStatus.mediaAttachments]
-    );
+    // Convert audio attachments to AudioViewerTrack format
+    const audioViewerTracks = toAudioViewerTracks(displayStatus.mediaAttachments);
 
-    // Memoize emoji processing for content to avoid redundant work on re-renders
-    const contentWithEmojis = useMemo(
-        () => replaceEmojisWithImages(displayStatus.content, displayStatus.emojis),
-        [displayStatus.content, displayStatus.emojis]
-    );
+    // Emoji processing for content
+    const contentWithEmojis = replaceEmojisWithImages(displayStatus.content, displayStatus.emojis);
 
     // Safely access account
     const account = displayStatus.account;

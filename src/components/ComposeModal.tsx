@@ -232,6 +232,7 @@ export function ComposeModal({
     }, [showAccountSelector]);
 
     // Reset selected account when modal opens
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (isOpen) {
             // For replies, use accountId; for edit mode, use editTarget's session; for new posts, use active account
@@ -242,17 +243,18 @@ export function ComposeModal({
             setShowAccountSelector(false);
             setShowEmojiPalette(false);
         }
-        // eslint-disable-next-line react-hooks/set-state-in-effect
     }, [isOpen, activeAccountId, accountId, isEditMode, editTarget]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     // Prefill content with mention when replying
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (replyToStatus && isOpen) {
             const mention = `@${replyToStatus.acct} `;
             setContent(mention);
         }
-        // eslint-disable-next-line react-hooks/set-state-in-effect
     }, [replyToStatus, isOpen]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const isOverLimit = remainingChars < 0;
 

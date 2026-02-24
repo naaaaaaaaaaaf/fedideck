@@ -143,6 +143,8 @@ export function useEditPrefill({
 
         // Cleanup: invalidate pending requests
         return () => {
+            // Intentionally increment ref to invalidate stale requests
+            // eslint-disable-next-line react-hooks/exhaustive-deps
             requestSeqRef.current++;
         };
     }, [editTarget, isOpen, accountSession, onPrefill, onError]);
