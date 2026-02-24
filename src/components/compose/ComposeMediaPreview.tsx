@@ -1,22 +1,13 @@
 import { LuX, LuLoader } from 'react-icons/lu';
-import type { MediaFile } from '../../hooks/useMediaUpload';
+import { isAudioMedia, isVideoMedia } from '../../hooks/useMediaUpload';
 
 interface ComposeMediaPreviewProps {
-    mediaFiles: MediaFile[];
+    mediaFiles: import('../../hooks/useMediaUpload').MediaFile[];
     onRemove: (localId: string) => void;
     onUpdateAltText: (localId: string, altText: string) => void;
     isSensitive: boolean;
     onToggleSensitive: (sensitive: boolean) => void;
 }
-
-/**
- * Helper functions for media type detection
- */
-const isAudioMedia = (m: MediaFile): boolean =>
-    m.kind === 'audio' || !!(m.file && m.file.type.startsWith('audio/'));
-
-const isVideoMedia = (m: MediaFile): boolean =>
-    m.kind === 'video' || m.kind === 'gifv' || !!(m.file && m.file.type.startsWith('video/'));
 
 /**
  * Media preview component for compose modal

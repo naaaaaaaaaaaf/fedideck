@@ -61,10 +61,10 @@ const isVideoFile = (file: File | undefined): boolean =>
 /**
  * MediaFile helpers that consider both kind (from existing attachments) and file type
  */
-const isAudioMedia = (m: MediaFile): boolean =>
+export const isAudioMedia = (m: MediaFile): boolean =>
     m.kind === 'audio' || !!(m.file && isAudioFile(m.file));
 
-const isVideoMedia = (m: MediaFile): boolean =>
+export const isVideoMedia = (m: MediaFile): boolean =>
     m.kind === 'video' || m.kind === 'gifv' || !!(m.file && isVideoFile(m.file));
 
 /**

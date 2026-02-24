@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { useRef } from 'react';
 import { useMediaUpload, type MediaFile } from './useMediaUpload';
 import * as mastoClient from '../api/mastoClient';
 
