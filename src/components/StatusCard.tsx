@@ -122,34 +122,36 @@ export const StatusCard = React.memo(function StatusCard({
     // because StatusCard is rendered with key={status.id} in parent
 
     // Safely access arrays with fallbacks
+    // Note: The ?? [] fallback only creates a new array when mediaAttachments is null/undefined,
+    // which is rare in practice. The useMemo hooks below depend on this value.
+    /* eslint-disable react-hooks/exhaustive-deps */
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
 
-    /* eslint-disable react-hooks/preserve-manual-memoization */
     // Convert image attachments to ImageViewerImage format
     // Filter out images without valid URLs to prevent broken image rendering
     const imageViewerImages = useMemo(
-        () => toImageViewerImages(displayStatus.mediaAttachments),
-        [displayStatus]
+        () => toImageViewerImages(mediaAttachments),
+        [mediaAttachments]
     );
 
     // Convert video/gifv attachments to VideoViewerVideo format
     const videoViewerVideos = useMemo(
-        () => toVideoViewerVideos(displayStatus.mediaAttachments),
-        [displayStatus]
+        () => toVideoViewerVideos(mediaAttachments),
+        [mediaAttachments]
     );
 
     // Convert audio attachments to AudioViewerTrack format
     const audioViewerTracks = useMemo(
-        () => toAudioViewerTracks(displayStatus.mediaAttachments),
-        [displayStatus]
+        () => toAudioViewerTracks(mediaAttachments),
+        [mediaAttachments]
     );
+    /* eslint-enable react-hooks/exhaustive-deps */
 
     // Emoji processing for content
     const contentWithEmojis = useMemo(
         () => replaceEmojisWithImages(displayStatus.content, displayStatus.emojis),
-        [displayStatus]
+        [displayStatus.content, displayStatus.emojis]
     );
-    /* eslint-enable react-hooks/preserve-manual-memoization */
 
     // Safely access account
     const account = displayStatus.account;
