@@ -173,9 +173,7 @@ export function ComposeModal({
             setShowCW(!!data.spoilerText);
             setVisibility(data.visibility as Visibility);
             setIsSensitive(data.sensitive);
-            if (data.mediaFiles.length > 0) {
-                setMediaFiles(data.mediaFiles);
-            }
+            setMediaFiles(data.mediaFiles);
         },
         [setMediaFiles]
     );
