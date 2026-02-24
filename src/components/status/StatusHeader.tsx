@@ -51,7 +51,10 @@ export const StatusHeader = React.memo(function StatusHeader({
             {canClickAccount ? (
                 <button
                     type="button"
-                    onClick={() => onAccountClick(account, accountSessionId)}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onAccountClick(account, accountSessionId);
+                    }}
                     className="shrink-0"
                     aria-label={`${account.displayName || account.username}のプロフィールを表示`}
                 >
@@ -83,7 +86,10 @@ export const StatusHeader = React.memo(function StatusHeader({
                     <div className="min-w-0 flex-1">
                         {canClickAccount ? (
                             <button
-                                onClick={() => onAccountClick(account, accountSessionId)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onAccountClick(account, accountSessionId);
+                                }}
                                 className="hover:underline text-left min-w-0 max-w-full"
                                 aria-label={`${account.displayName || account.username}のプロフィールを表示`}
                                 type="button"
