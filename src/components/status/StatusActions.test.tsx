@@ -158,4 +158,52 @@ describe('StatusActions', () => {
         expect(reblogButton.querySelector('span')).toBeNull();
         expect(favouriteButton.querySelector('span')).toBeNull();
     });
+
+    describe('isAuthenticated', () => {
+        it('disables reblog and favourite buttons when not authenticated in card variant', () => {
+            render(<StatusActions {...defaultProps} isAuthenticated={false} />);
+
+            const reblogButton = screen.getByLabelText('ブースト');
+            const favouriteButton = screen.getByLabelText('お気に入り');
+
+            expect(reblogButton).toBeDisabled();
+            expect(favouriteButton).toBeDisabled();
+        });
+
+        it('disables reblog and favourite buttons when not authenticated in detail variant', () => {
+            render(<StatusActions {...defaultProps} variant="detail" isAuthenticated={false} />);
+
+            const reblogButton = screen.getByText('ブースト').closest('button');
+            const favouriteButton = screen.getByText('お気に入り').closest('button');
+
+            expect(reblogButton).toBeDisabled();
+            expect(favouriteButton).toBeDisabled();
+        });
+
+        it('shows authentication required tooltip for reblog button when not authenticated', () => {
+            render(<StatusActions {...defaultProps} isAuthenticated={false} />);
+
+            // Both reblog and favourite buttons have the same title
+            const tooltipElements = screen.getAllByTitle('アカウント接続が必要です');
+            expect(tooltipElements.length).toBeGreaterThanOrEqual(1);
+        });
+
+        it('shows authentication required tooltip for favourite button when not authenticated', () => {
+            render(<StatusActions {...defaultProps} isAuthenticated={false} />);
+
+            // Both buttons have the same title, so we check for existence
+            const tooltipElements = screen.getAllByTitle('アカウント接続が必要です');
+            expect(tooltipElements.length).toBe(2);
+        });
+
+        it('enables buttons when authenticated', () => {
+            render(<StatusActions {...defaultProps} isAuthenticated={true} />);
+
+            const reblogButton = screen.getByLabelText('ブースト');
+            const favouriteButton = screen.getByLabelText('お気に入り');
+
+            expect(reblogButton).not.toBeDisabled();
+            expect(favouriteButton).not.toBeDisabled();
+        });
+    });
 });
