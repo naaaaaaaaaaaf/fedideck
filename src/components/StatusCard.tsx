@@ -235,6 +235,7 @@ export const StatusCard = React.memo(function StatusCard({
                         favourited={favourited}
                         reblogged={reblogged}
                         canReblog={canReblog}
+                        isAuthenticated={Boolean(accountSession)}
                         isLoading={isLoading}
                         onReply={onReply ? () => onReply(displayStatus) : undefined}
                         onReblog={handleReblog}

@@ -838,6 +838,7 @@ export function StatusDetailModal({
                         favourited={favourited}
                         reblogged={reblogged}
                         canReblog={canReblog}
+                        isAuthenticated={Boolean(accountSession)}
                         isLoading={isLoading}
                         onReply={handleReply}
                         onReblog={handleReblog}

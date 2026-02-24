@@ -15,6 +15,8 @@ interface StatusActionsProps {
     reblogged: boolean;
     /** Whether the status can be reblogged */
     canReblog: boolean;
+    /** Whether the user is authenticated (has account session) */
+    isAuthenticated?: boolean;
     /** Loading states for actions */
     isLoading: { favourite: boolean; reblog: boolean };
     /** Callback for reply action */
@@ -52,6 +54,7 @@ export const StatusActions = React.memo(function StatusActions({
     favourited,
     reblogged,
     canReblog,
+    isAuthenticated = true,
     isLoading,
     onReply,
     onReblog,
@@ -91,15 +94,21 @@ export const StatusActions = React.memo(function StatusActions({
                 <button
                     type="button"
                     onClick={onReblog}
-                    disabled={isLoading.reblog || !canReblog}
+                    disabled={!isAuthenticated || isLoading.reblog || !canReblog}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                        !canReblog
+                        !isAuthenticated || !canReblog
                             ? 'opacity-50 cursor-not-allowed'
                             : reblogged
                               ? 'text-green-400 hover:bg-green-400/10'
                               : 'hover:text-green-400 hover:bg-green-400/10'
                     } ${isLoading.reblog ? 'opacity-50' : ''}`}
-                    title={!canReblog ? 'この投稿はブーストできません' : undefined}
+                    title={
+                        !isAuthenticated
+                            ? 'アカウント接続が必要です'
+                            : !canReblog
+                              ? 'この投稿はブーストできません'
+                              : undefined
+                    }
                 >
                     <LuRepeat2 className={iconSize} aria-hidden="true" />
                     <span>ブースト</span>
@@ -107,12 +116,15 @@ export const StatusActions = React.memo(function StatusActions({
                 <button
                     type="button"
                     onClick={onFavourite}
-                    disabled={isLoading.favourite}
+                    disabled={!isAuthenticated || isLoading.favourite}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                        favourited
-                            ? 'text-amber-400 hover:bg-amber-400/10'
-                            : 'hover:text-amber-400 hover:bg-amber-400/10'
+                        !isAuthenticated
+                            ? 'opacity-50 cursor-not-allowed'
+                            : favourited
+                              ? 'text-amber-400 hover:bg-amber-400/10'
+                              : 'hover:text-amber-400 hover:bg-amber-400/10'
                     } ${isLoading.favourite ? 'opacity-50' : ''}`}
+                    title={!isAuthenticated ? 'アカウント接続が必要です' : undefined}
                 >
                     <LuStar
                         className={`${iconSize} ${favourited ? 'fill-current' : ''}`}
@@ -151,18 +163,24 @@ export const StatusActions = React.memo(function StatusActions({
             <button
                 type="button"
                 onClick={onReblog}
-                disabled={isLoading.reblog || !canReblog}
-                tabIndex={!canReblog ? -1 : undefined}
+                disabled={!isAuthenticated || isLoading.reblog || !canReblog}
+                tabIndex={!isAuthenticated || !canReblog ? -1 : undefined}
                 className={`${actionButtonBase} ${
-                    !canReblog
+                    !isAuthenticated || !canReblog
                         ? 'opacity-50 cursor-not-allowed'
                         : reblogged
                           ? 'text-green-400 hover:text-green-300 hover:bg-green-400/10'
                           : 'hover:text-green-400 hover:bg-green-400/10'
                 } ${isLoading.reblog ? 'opacity-50' : ''}`}
-                title={!canReblog ? 'この投稿はブーストできません' : undefined}
+                title={
+                    !isAuthenticated
+                        ? 'アカウント接続が必要です'
+                        : !canReblog
+                          ? 'この投稿はブーストできません'
+                          : undefined
+                }
                 aria-label={reblogged ? 'ブースト解除' : 'ブースト'}
-                aria-disabled={!canReblog}
+                aria-disabled={!isAuthenticated || !canReblog}
             >
                 <LuRepeat2 className={iconSize} aria-hidden="true" />
                 {reblogsCount > 0 && <span className="text-sm">{reblogsCount}</span>}
@@ -170,13 +188,16 @@ export const StatusActions = React.memo(function StatusActions({
             <button
                 type="button"
                 onClick={onFavourite}
-                disabled={isLoading.favourite}
+                disabled={!isAuthenticated || isLoading.favourite}
                 className={`${actionButtonBase} ${
-                    favourited
-                        ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-400/10'
-                        : 'hover:text-amber-400 hover:bg-amber-400/10'
+                    !isAuthenticated
+                        ? 'opacity-50 cursor-not-allowed'
+                        : favourited
+                          ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-400/10'
+                          : 'hover:text-amber-400 hover:bg-amber-400/10'
                 } ${isLoading.favourite ? 'opacity-50' : ''}`}
                 aria-label={favourited ? 'お気に入り解除' : 'お気に入り'}
+                title={!isAuthenticated ? 'アカウント接続が必要です' : undefined}
             >
                 <LuStar
                     className={`${iconSize} ${favourited ? 'fill-current' : ''}`}
