@@ -188,4 +188,35 @@ describe('StatusHeader', () => {
 
         expect(screen.getByText('testuser')).toBeInTheDocument();
     });
+
+    describe('statusUrl', () => {
+        it('uses statusUrl for timestamp link when provided', () => {
+            const statusUrl = 'https://example.com/@testuser/123456';
+            render(<StatusHeader {...defaultProps} statusUrl={statusUrl} />);
+
+            // The timestamp/visibility link should point to the status URL
+            const timestampLink = screen.getByRole('link', { name: /公開範囲/ });
+            expect(timestampLink).toHaveAttribute('href', statusUrl);
+        });
+
+        it('falls back to account URL for timestamp link when statusUrl is not provided', () => {
+            render(<StatusHeader {...defaultProps} />);
+
+            // The timestamp/visibility link should fall back to account URL
+            const timestampLink = screen.getByRole('link', { name: /公開範囲/ });
+            expect(timestampLink).toHaveAttribute('href', 'https://example.com/@testuser');
+        });
+
+        it('prefers statusUrl over account URL for timestamp link', () => {
+            const statusUrl = 'https://other.instance/@user/789';
+            const account = createMockAccount({
+                url: 'https://example.com/@testuser',
+            });
+            render(<StatusHeader {...defaultProps} account={account} statusUrl={statusUrl} />);
+
+            const timestampLink = screen.getByRole('link', { name: /公開範囲/ });
+            expect(timestampLink).toHaveAttribute('href', statusUrl);
+            expect(timestampLink).not.toHaveAttribute('href', 'https://example.com/@testuser');
+        });
+    });
 });
