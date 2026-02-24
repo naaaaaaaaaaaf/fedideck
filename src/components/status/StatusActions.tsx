@@ -86,7 +86,12 @@ export const StatusActions = React.memo(function StatusActions({
                 <button
                     type="button"
                     onClick={onReply}
-                    className="flex items-center gap-2 px-4 py-2 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
+                    disabled={replyDisabled}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                        replyDisabled
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'hover:text-blue-400 hover:bg-blue-400/10'
+                    }`}
                 >
                     <LuMessageCircle className={iconSize} aria-hidden="true" />
                     <span>返信</span>
