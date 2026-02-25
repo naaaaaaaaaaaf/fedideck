@@ -5,6 +5,8 @@ import {
     unfavouriteStatus,
     reblogStatus,
     unreblogStatus,
+    bookmarkStatus,
+    unbookmarkStatus,
     deleteStatus,
     getStatusContext,
     fetchAccount,
@@ -246,6 +248,54 @@ describe('unreblogStatus', () => {
         expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('456');
         expect(mockUnreblog).toHaveBeenCalled();
         expect(result.reblogged).toBe(false);
+    });
+});
+
+describe('bookmarkStatus', () => {
+    it('calls bookmark endpoint with correct status ID', async () => {
+        const mockBookmark = vi.fn().mockResolvedValue({
+            id: '123',
+            bookmarked: true,
+        });
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        bookmark: mockBookmark,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await bookmarkStatus(mockClient, '123');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('123');
+        expect(mockBookmark).toHaveBeenCalled();
+        expect(result.bookmarked).toBe(true);
+    });
+});
+
+describe('unbookmarkStatus', () => {
+    it('calls unbookmark endpoint with correct status ID', async () => {
+        const mockUnbookmark = vi.fn().mockResolvedValue({
+            id: '123',
+            bookmarked: false,
+        });
+        const mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        unbookmark: mockUnbookmark,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        const result = await unbookmarkStatus(mockClient, '123');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('123');
+        expect(mockUnbookmark).toHaveBeenCalled();
+        expect(result.bookmarked).toBe(false);
     });
 });
 
