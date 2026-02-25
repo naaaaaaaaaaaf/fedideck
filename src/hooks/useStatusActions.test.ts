@@ -480,9 +480,13 @@ describe('useStatusActions', () => {
             const status = createMockStatus();
             const mockClient = {} as mastoClient.MastoClient;
             vi.mocked(mastoClient.getClient).mockReturnValue(mockClient);
-            vi.mocked(mastoClient.bookmarkStatus).mockResolvedValue(
-                createMockStatus({ bookmarked: true })
-            );
+
+            // Create a controllable promise to verify loading state during operation
+            let resolveBookmark: (value: mastodon.v1.Status) => void;
+            const bookmarkPromise = new Promise<mastodon.v1.Status>((resolve) => {
+                resolveBookmark = resolve;
+            });
+            vi.mocked(mastoClient.bookmarkStatus).mockReturnValue(bookmarkPromise);
 
             const { result } = renderHook(() =>
                 useStatusActions({ status, accountSession: mockAccountSession })
@@ -490,10 +494,24 @@ describe('useStatusActions', () => {
 
             expect(result.current.isLoading.bookmark).toBe(false);
 
+            // Start bookmark operation (don't await yet)
+            let operationPromise: Promise<void>;
             await act(async () => {
-                await result.current.handleBookmark();
+                operationPromise = result.current.handleBookmark();
             });
 
+            // Verify loading state is true during operation
+            expect(result.current.isLoading.bookmark).toBe(true);
+
+            // Resolve the API call
+            resolveBookmark!(createMockStatus({ bookmarked: true }));
+
+            // Wait for operation to complete
+            await act(async () => {
+                await operationPromise!;
+            });
+
+            // Verify loading state is false after completion
             expect(result.current.isLoading.bookmark).toBe(false);
         });
     });
