@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { mastodon } from 'masto';
 import { LuChartBar } from 'react-icons/lu';
 import { formatDate } from '../../utils/dateFormat';
@@ -12,6 +12,7 @@ import type { VideoViewerVideo } from '../../types/video';
 import type { AudioViewerTrack } from '../../types/audio';
 import { hasQuote, getQuotedStatus, isFullQuote } from '../../utils/statusView';
 import { StatusQuotePlaceholder } from './StatusQuotePlaceholder';
+import { type AccountSession, fetchStatus, getClient } from '../../api/mastoClient';
 
 interface StatusQuoteCardProps {
     /** The quoted status to display */
@@ -28,6 +29,8 @@ interface StatusQuoteCardProps {
     onAudioClick?: (tracks: AudioViewerTrack[], index: number) => void;
     /** Nesting depth for recursive quote display (default: 0, max: 2) */
     depth?: number;
+    /** Account session for resolving shallow quote chains */
+    accountSession?: AccountSession;
 }
 
 /** Maximum nesting depth for quote cards to prevent infinite recursion */
@@ -45,9 +48,52 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
     onVideoClick,
     onAudioClick,
     depth = 0,
+    accountSession,
 }: StatusQuoteCardProps) {
     const account = status.account;
     const isDetail = variant === 'detail';
+    const [resolvedNestedQuoteStatus, setResolvedNestedQuoteStatus] =
+        useState<mastodon.v1.Status | null>(null);
+
+    const shallowNestedQuoteId = useMemo(() => {
+        const quote = status.quote;
+        if (!quote) return null;
+        if (quote.state !== 'accepted') return null;
+        if (isFullQuote(quote)) return null;
+        return quote.quotedStatusId ?? null;
+    }, [status.quote]);
+
+    // Resolve accepted ShallowQuote so nested root quote can be opened
+    useEffect(() => {
+        if (!accountSession || !shallowNestedQuoteId) return;
+
+        let cancelled = false;
+
+        const resolveNestedQuote = async () => {
+            try {
+                const client = getClient(accountSession);
+                const quotedStatus = await fetchStatus(client, shallowNestedQuoteId);
+                if (!cancelled) {
+                    setResolvedNestedQuoteStatus(quotedStatus);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error('Failed to fetch nested quoted status:', error);
+                }
+            }
+        };
+
+        resolveNestedQuote();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [accountSession, shallowNestedQuoteId]);
+
+    const resolvedNestedQuoteForCurrentStatus =
+        shallowNestedQuoteId && resolvedNestedQuoteStatus?.id === shallowNestedQuoteId
+            ? resolvedNestedQuoteStatus
+            : null;
 
     // Convert media attachments to viewer formats
     const mediaAttachments = useMemo(
@@ -195,7 +241,8 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
             {hasQuote(status) &&
                 depth < MAX_QUOTE_DEPTH &&
                 (() => {
-                    const nestedQuotedStatus = getQuotedStatus(status);
+                    const nestedQuotedStatus =
+                        getQuotedStatus(status) ?? resolvedNestedQuoteForCurrentStatus;
                     const nestedQuote = status.quote;
 
                     if (nestedQuotedStatus) {
@@ -208,6 +255,7 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
                                 onImageClick={onImageClick}
                                 onVideoClick={onVideoClick}
                                 onAudioClick={onAudioClick}
+                                accountSession={accountSession}
                             />
                         );
                     }

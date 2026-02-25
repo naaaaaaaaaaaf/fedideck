@@ -249,6 +249,7 @@ export const StatusCard = React.memo(function StatusCard({
                                         onImageClick={onImageClick}
                                         onVideoClick={onVideoClick}
                                         onAudioClick={onAudioClick}
+                                        accountSession={accountSession}
                                     />
                                 );
                             }

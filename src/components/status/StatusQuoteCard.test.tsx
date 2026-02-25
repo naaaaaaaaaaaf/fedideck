@@ -1,8 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StatusQuoteCard } from './StatusQuoteCard';
 import type { mastodon } from 'masto';
+import type { AccountSession, MastoClient } from '../../api/mastoClient';
+import * as mastoClient from '../../api/mastoClient';
 
 // Mock DisplayName component
 vi.mock('../DisplayName', () => ({
@@ -65,7 +67,20 @@ function createMockStatus(overrides: Partial<mastodon.v1.Status> = {}): mastodon
     } as mastodon.v1.Status;
 }
 
+function createMockAccountSession(): AccountSession {
+    return {
+        id: 'session-1',
+        instanceUrl: 'https://example.com',
+        accessToken: 'test-token',
+        account: createMockStatus().account,
+    };
+}
+
 describe('StatusQuoteCard', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks();
+    });
+
     it('renders quoted status content', () => {
         const status = createMockStatus({ content: '<p>Quoted post content</p>' });
         render(<StatusQuoteCard status={status} />);
@@ -187,5 +202,40 @@ describe('StatusQuoteCard', () => {
 
         const card = container.firstChild as HTMLElement;
         expect(card).toHaveClass('mt-4');
+    });
+
+    it('resolves accepted shallow nested quote when accountSession is provided', async () => {
+        const rootStatus = createMockStatus({
+            id: 'root-1',
+            content: '<p>Root quoted content</p>',
+            account: {
+                ...createMockStatus().account,
+                id: 'root-user',
+                displayName: 'Root User',
+                acct: 'rootuser',
+            },
+        });
+
+        const quotedStatus = createMockStatus({
+            id: 'quote-2',
+            content: '<p>Second quote content</p>',
+            quote: {
+                state: 'accepted',
+                quotedStatusId: 'root-1',
+            } as mastodon.v1.ShallowQuote,
+        });
+
+        vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as MastoClient);
+        vi.spyOn(mastoClient, 'fetchStatus').mockResolvedValue(rootStatus);
+
+        render(
+            <StatusQuoteCard status={quotedStatus} accountSession={createMockAccountSession()} />
+        );
+
+        await waitFor(() => {
+            expect(mastoClient.fetchStatus).toHaveBeenCalledWith(expect.anything(), 'root-1');
+        });
+
+        expect(await screen.findByText('Root quoted content')).toBeInTheDocument();
     });
 });

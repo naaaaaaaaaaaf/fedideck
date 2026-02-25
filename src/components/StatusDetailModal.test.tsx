@@ -80,6 +80,7 @@ vi.mock('../api/mastoClient', async (importOriginal) => {
     return {
         ...actual,
         getStatusContext: vi.fn().mockResolvedValue({ ancestors: [], descendants: [] }),
+        fetchStatus: vi.fn(),
         votePoll: vi.fn(),
     };
 });
@@ -90,6 +91,9 @@ describe('StatusDetailModal', () => {
             ancestors: [],
             descendants: [],
         });
+        vi.mocked(mastoClient.fetchStatus).mockImplementation(async (_client, statusId) =>
+            createMockStatus({ id: statusId })
+        );
     });
 
     describe('rendering', () => {
@@ -1682,6 +1686,97 @@ describe('StatusDetailModal', () => {
                 // The ancestor content should now be the main display
                 expect(screen.getByText('Ancestor post content')).toBeInTheDocument();
                 expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+        });
+
+        it('should resolve shallow quote after quote navigation and open the root quoted status', async () => {
+            const user = userEvent.setup();
+            const accountSession = createMockAccountSession();
+
+            const rootStatus = createMockStatus({
+                id: 'root-1',
+                content: '<p>Root quoted post</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'root-user',
+                    displayName: 'Root User',
+                    acct: 'rootuser',
+                },
+            });
+
+            const secondStatus = createMockStatus({
+                id: 'quote-2',
+                content: '<p>Second quoted post</p>',
+                quote: {
+                    state: 'accepted',
+                    quotedStatusId: 'root-1',
+                } as mastodon.v1.ShallowQuote,
+                account: {
+                    ...createMockStatus().account,
+                    id: 'second-user',
+                    displayName: 'Second User',
+                    acct: 'seconduser',
+                },
+            });
+
+            const thirdStatus = createMockStatus({
+                id: 'quote-3',
+                content: '<p>Third quote post</p>',
+                quote: {
+                    state: 'accepted',
+                    quotedStatus: secondStatus,
+                } as mastodon.v1.Quote,
+                account: {
+                    ...createMockStatus().account,
+                    id: 'third-user',
+                    displayName: 'Third User',
+                    acct: 'thirduser',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+            vi.mocked(mastoClient.fetchStatus).mockImplementation(async (_client, statusId) => {
+                if (statusId === 'root-1') return rootStatus;
+                return createMockStatus({ id: statusId });
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={thirdStatus}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Navigate to second quoted status from the first quote card
+            const secondQuoteContent = await screen.findByText('Second quoted post');
+            await user.click(secondQuoteContent);
+
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'quote-2'
+                );
+            });
+
+            // ShallowQuote should be resolved and root quote card should appear
+            await waitFor(() => {
+                expect(mastoClient.fetchStatus).toHaveBeenCalledWith(expect.anything(), 'root-1');
+            });
+            const rootQuoteContent = await screen.findByText('Root quoted post');
+            expect(rootQuoteContent).toBeInTheDocument();
+
+            // Root quote card should be clickable and navigable
+            await user.click(rootQuoteContent);
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'root-1'
+                );
             });
         });
 

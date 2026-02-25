@@ -5,6 +5,7 @@ import {
     type AccountSession,
     getClient,
     getStatusContext,
+    fetchStatus,
     type StatusContext,
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
@@ -295,6 +296,59 @@ export function StatusDetailModal({
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
+    const navigatedStatusId = navigatedStatus?.id ?? null;
+    const navigatedShallowQuoteId = useMemo(() => {
+        if (!navigatedStatus?.quote) return null;
+
+        const quote = navigatedStatus.quote;
+        if (quote.state !== 'accepted') return null;
+        if (isFullQuote(quote)) return null;
+
+        return quote.quotedStatusId ?? null;
+    }, [navigatedStatus]);
+
+    // Resolve ShallowQuote after in-modal navigation so deep quote chains stay navigable
+    useEffect(() => {
+        if (!isOpen || !accountSession || !navigatedStatusId || !navigatedShallowQuoteId) return;
+
+        let cancelled = false;
+
+        const fetchQuotedStatus = async () => {
+            try {
+                const client = getClient(accountSession);
+                const quotedStatus = await fetchStatus(client, navigatedShallowQuoteId);
+
+                if (!cancelled) {
+                    setNavigatedStatus((prev) => {
+                        if (!prev || prev.id !== navigatedStatusId) return prev;
+
+                        const currentQuote = prev.quote;
+                        if (!currentQuote || currentQuote.state !== 'accepted') return prev;
+                        if (isFullQuote(currentQuote)) return prev;
+                        if (currentQuote.quotedStatusId !== navigatedShallowQuoteId) return prev;
+
+                        return {
+                            ...prev,
+                            quote: {
+                                state: 'accepted',
+                                quotedStatus,
+                            } as mastodon.v1.Quote,
+                        };
+                    });
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error('Failed to fetch quoted status:', error);
+                }
+            }
+        };
+
+        fetchQuotedStatus();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isOpen, accountSession, navigatedStatusId, navigatedShallowQuoteId]);
 
     // Fetch thread context when modal opens
     useEffect(() => {
@@ -795,41 +849,45 @@ export function StatusDetailModal({
                             })()}
 
                         {/* Quote Card */}
-                        {hasQuote(displayStatus) &&
-                            (() => {
-                                const quotedStatus = getQuotedStatus(displayStatus);
-                                const quote = displayStatus.quote;
+                        {hasQuote(displayStatus) && (
+                            <div className="mb-4">
+                                {(() => {
+                                    const quotedStatus = getQuotedStatus(displayStatus);
+                                    const quote = displayStatus.quote;
 
-                                // If we have the full quoted status, show the card
-                                if (quotedStatus) {
-                                    return (
-                                        <StatusQuoteCard
-                                            status={quotedStatus}
-                                            variant="detail"
-                                            onClick={handleQuoteNavigate}
-                                            onImageClick={onImageClick}
-                                            onVideoClick={onVideoClick}
-                                            onAudioClick={onAudioClick}
-                                        />
-                                    );
-                                }
+                                    // If we have the full quoted status, show the card
+                                    if (quotedStatus) {
+                                        return (
+                                            <StatusQuoteCard
+                                                status={quotedStatus}
+                                                variant="detail"
+                                                onClick={handleQuoteNavigate}
+                                                onImageClick={onImageClick}
+                                                onVideoClick={onVideoClick}
+                                                onAudioClick={onAudioClick}
+                                                accountSession={accountSession}
+                                            />
+                                        );
+                                    }
 
-                                // If quote exists but no quotedStatus, show placeholder
-                                if (quote) {
-                                    // Check if this is a ShallowQuote (accepted but no status)
-                                    const isShallow =
-                                        quote.state === 'accepted' && !isFullQuote(quote);
-                                    return (
-                                        <StatusQuotePlaceholder
-                                            state={quote.state}
-                                            variant="detail"
-                                            isShallow={isShallow}
-                                        />
-                                    );
-                                }
+                                    // If quote exists but no quotedStatus, show placeholder
+                                    if (quote) {
+                                        // Check if this is a ShallowQuote (accepted but no status)
+                                        const isShallow =
+                                            quote.state === 'accepted' && !isFullQuote(quote);
+                                        return (
+                                            <StatusQuotePlaceholder
+                                                state={quote.state}
+                                                variant="detail"
+                                                isShallow={isShallow}
+                                            />
+                                        );
+                                    }
 
-                                return null;
-                            })()}
+                                    return null;
+                                })()}
+                            </div>
+                        )}
 
                         {/* Timestamp and visibility */}
                         <div className="text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">

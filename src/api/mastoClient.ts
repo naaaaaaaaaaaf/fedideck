@@ -331,6 +331,17 @@ export async function getStatusContext(
 }
 
 /**
+ * Fetch a single status by ID
+ */
+export async function fetchStatus(
+    client: MastoClient,
+    statusId: string
+): Promise<mastodon.v1.Status> {
+    const status = await client.v1.statuses.$select(statusId).fetch();
+    return status;
+}
+
+/**
  * Custom emoji type matching Mastodon's CustomEmoji entity
  */
 export interface CustomEmoji {
