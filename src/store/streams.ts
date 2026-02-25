@@ -206,6 +206,15 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                         streamHasChanges = true;
                         return { ...s, reblog: status };
                     }
+                    // Check if this is a quote containing the status
+                    if (
+                        s.quote?.state === 'accepted' &&
+                        'quotedStatus' in s.quote &&
+                        s.quote.quotedStatus?.id === status.id
+                    ) {
+                        streamHasChanges = true;
+                        return { ...s, quote: { ...s.quote, quotedStatus: status } };
+                    }
                     return s;
                 });
 
@@ -249,6 +258,27 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                             reblog: {
                                 ...s.reblog,
                                 poll: mergePollWithFallback(s.reblog.poll ?? null, poll),
+                            },
+                        };
+                    }
+                    // Check if this is a quote containing the status
+                    if (
+                        s.quote?.state === 'accepted' &&
+                        'quotedStatus' in s.quote &&
+                        s.quote.quotedStatus?.id === statusId
+                    ) {
+                        streamHasChanges = true;
+                        return {
+                            ...s,
+                            quote: {
+                                ...s.quote,
+                                quotedStatus: {
+                                    ...s.quote.quotedStatus,
+                                    poll: mergePollWithFallback(
+                                        s.quote.quotedStatus.poll ?? null,
+                                        poll
+                                    ),
+                                },
                             },
                         };
                     }

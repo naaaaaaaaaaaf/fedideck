@@ -196,6 +196,45 @@ describe('useStreamsStore', () => {
             // Public stream should be unchanged (same reference)
             expect(publicStreamAfter).toBe(publicStreamBefore);
         });
+
+        it('updates status inside quote.quotedStatus', () => {
+            const quotedStatus = { id: 'quoted-1', favourited: false } as mastodon.v1.Status;
+            const quoteStatus = {
+                id: 'quote-1',
+                quote: {
+                    state: 'accepted',
+                    quotedStatus: quotedStatus,
+                },
+            } as mastodon.v1.Status;
+            const updatedQuotedStatus = { id: 'quoted-1', favourited: true } as mastodon.v1.Status;
+
+            useStreamsStore.getState().setStatuses('account:home', [quoteStatus]);
+
+            useStreamsStore.getState().updateStatusGlobal(updatedQuotedStatus);
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            expect(stream.statuses[0].quote?.quotedStatus?.favourited).toBe(true);
+        });
+
+        it('does not update quote.quotedStatus when state is not accepted', () => {
+            const quotedStatus = { id: 'quoted-1', favourited: false } as mastodon.v1.Status;
+            const quoteStatus = {
+                id: 'quote-1',
+                quote: {
+                    state: 'pending',
+                    quotedStatus: quotedStatus,
+                },
+            } as mastodon.v1.Status;
+            const updatedQuotedStatus = { id: 'quoted-1', favourited: true } as mastodon.v1.Status;
+
+            useStreamsStore.getState().setStatuses('account:home', [quoteStatus]);
+
+            useStreamsStore.getState().updateStatusGlobal(updatedQuotedStatus);
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            // Should not be updated because state is 'pending'
+            expect(stream.statuses[0].quote?.quotedStatus?.favourited).toBe(false);
+        });
     });
 
     describe('updatePollGlobal', () => {
@@ -317,6 +356,35 @@ describe('useStreamsStore', () => {
             expect(stream.statuses[0].poll?.votesCount).toBe(10);
             expect(stream.statuses[0].poll?.options[0].votesCount).toBe(6);
             expect(stream.statuses[0].poll?.options[1].votesCount).toBe(4);
+        });
+
+        it('updates poll inside quote.quotedStatus', () => {
+            const makePoll = (id: string, voted: boolean = false) =>
+                ({
+                    id,
+                    voted,
+                    options: [{ title: 'Option 1', votesCount: 1 }],
+                }) as mastodon.v1.Poll;
+
+            const quotedStatus = {
+                id: 'quoted-1',
+                poll: makePoll('poll-1', false),
+            } as mastodon.v1.Status;
+            const quoteStatus = {
+                id: 'quote-1',
+                quote: {
+                    state: 'accepted',
+                    quotedStatus: quotedStatus,
+                },
+            } as mastodon.v1.Status;
+            const updatedPoll = makePoll('poll-1', true);
+
+            useStreamsStore.getState().setStatuses('account:home', [quoteStatus]);
+
+            useStreamsStore.getState().updatePollGlobal('quoted-1', updatedPoll);
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            expect(stream.statuses[0].quote?.quotedStatus?.poll?.voted).toBe(true);
         });
     });
 
