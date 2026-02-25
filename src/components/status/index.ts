@@ -13,3 +13,5 @@ export { StatusMedia } from './StatusMedia';
 export { StatusPoll } from './StatusPoll';
 export { StatusActions } from './StatusActions';
 export { StatusReplyIndicator } from './StatusReplyIndicator';
+export { StatusQuoteCard } from './StatusQuoteCard';
+export { StatusQuotePlaceholder } from './StatusQuotePlaceholder';
