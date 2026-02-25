@@ -8,6 +8,7 @@ import { useStreamsStore, getStreamKey } from '../store/streams';
 import { useAccountsStore } from '../store/accounts';
 import { getClient } from '../api/mastoClient';
 import { formatAccountHandle } from '../utils/accountHandle';
+import { getDisplayStatus } from '../utils/statusView';
 import {
     fetchHomeTimeline,
     fetchPublicTimeline,
@@ -64,6 +65,7 @@ export function Column({
     const appendNotifications = useStreamsStore((s) => s.appendNotifications);
     const setError = useStreamsStore((s) => s.setError);
     const updateStatusGlobal = useStreamsStore((s) => s.updateStatusGlobal);
+    const updatePollGlobal = useStreamsStore((s) => s.updatePollGlobal);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -357,7 +359,7 @@ export function Column({
                 {!isNotificationColumn &&
                     data?.statuses.map((status) => {
                         // Get the display status ID for NSFW check (handle reblog case)
-                        const displayStatus = status.reblog ?? status;
+                        const displayStatus = getDisplayStatus(status);
 
                         return (
                             <StatusCard
@@ -365,6 +367,7 @@ export function Column({
                                 status={status}
                                 accountSession={account}
                                 onStatusUpdate={updateStatusGlobal}
+                                onPollUpdate={updatePollGlobal}
                                 onReply={handleReply}
                                 onStatusClick={handleStatusClick}
                                 onImageClick={handleImageClick}

@@ -102,6 +102,7 @@ function App() {
     const removeStatusForAccountStreams = useStreamsStore((s) => s.removeStatusForAccountStreams);
     const updateStatus = useStreamsStore((s) => s.updateStatus);
     const updateStatusGlobal = useStreamsStore((s) => s.updateStatusGlobal);
+    const updatePollGlobal = useStreamsStore((s) => s.updatePollGlobal);
     const prependNotification = useStreamsStore((s) => s.prependNotification);
 
     // Ref to track if default columns have been added
@@ -333,6 +334,22 @@ function App() {
         }
     };
 
+    // Handle poll updates - update global store and modal state
+    const handlePollUpdate = useCallback(
+        (statusId: string, poll: mastodon.v1.Poll) => {
+            updatePollGlobal(statusId, poll);
+            // Also update detail modal state if the status is currently displayed
+            setDetailStatus((prev) => {
+                if (!prev) return prev;
+                if (prev.id === statusId) return { ...prev, poll };
+                if (prev.reblog?.id === statusId)
+                    return { ...prev, reblog: { ...prev.reblog, poll } };
+                return prev;
+            });
+        },
+        [updatePollGlobal]
+    );
+
     return (
         <div className="h-screen flex overflow-hidden">
             <Sidebar
@@ -381,6 +398,7 @@ function App() {
                 accountSession={detailAccountSession}
                 onReply={handleStatusDetailReply}
                 onStatusUpdate={updateStatusGlobal}
+                onPollUpdate={handlePollUpdate}
                 onStatusDelete={handleStatusDeleteRequest}
                 onStatusEdit={handleStatusEditRequest}
                 onImageClick={handleImageClick}
@@ -396,21 +414,21 @@ function App() {
                 accountSession={profileAccountSession}
             />
             <ImageViewer
-                key={imageViewerKey}
+                key={`image-viewer-${imageViewerKey}`}
                 isOpen={isImageViewerOpen}
                 onClose={handleImageViewerClose}
                 images={viewerImages}
                 initialIndex={viewerInitialIndex}
             />
             <VideoViewer
-                key={videoViewerKey}
+                key={`video-viewer-${videoViewerKey}`}
                 isOpen={isVideoViewerOpen}
                 onClose={handleVideoViewerClose}
                 videos={viewerVideos}
                 initialIndex={viewerInitialVideoIndex}
             />
             <AudioPlayer
-                key={audioPlayerKey}
+                key={`audio-player-${audioPlayerKey}`}
                 isOpen={isAudioPlayerOpen}
                 onClose={handleAudioPlayerClose}
                 tracks={audioTracks}

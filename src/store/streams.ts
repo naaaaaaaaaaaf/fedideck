@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { mastodon } from 'masto';
+import { mergePollWithFallback } from '../utils/poll';
 
 /** Maximum number of statuses to keep per stream (prevents memory bloat) */
 export const MAX_STATUSES_PER_STREAM = 200;
@@ -36,6 +37,7 @@ interface StreamsState {
     removeStatusForAccountStreams: (accountId: string, statusId: string) => void;
     updateStatus: (key: string, status: mastodon.v1.Status) => void;
     updateStatusGlobal: (status: mastodon.v1.Status) => void;
+    updatePollGlobal: (statusId: string, poll: mastodon.v1.Poll) => void;
     setNotifications: (
         key: string,
         notifications: mastodon.v1.Notification[],
@@ -203,6 +205,52 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                     if (s.reblog && s.reblog.id === status.id) {
                         streamHasChanges = true;
                         return { ...s, reblog: status };
+                    }
+                    return s;
+                });
+
+                if (streamHasChanges) {
+                    newData[key] = {
+                        ...current,
+                        statuses: updatedStatuses,
+                    };
+                    hasAnyChanges = true;
+                }
+            }
+
+            return hasAnyChanges ? { data: newData } : state;
+        });
+    },
+
+    // Update only the poll field across all streams (prevents overwriting concurrent updates)
+    updatePollGlobal: (statusId: string, poll: mastodon.v1.Poll) => {
+        set((state) => {
+            const newData = { ...state.data };
+            let hasAnyChanges = false;
+
+            for (const key of Object.keys(newData)) {
+                const current = newData[key];
+                let streamHasChanges = false;
+
+                const updatedStatuses = current.statuses.map((s) => {
+                    // Direct match - merge poll only
+                    if (s.id === statusId) {
+                        streamHasChanges = true;
+                        return {
+                            ...s,
+                            poll: mergePollWithFallback(s.poll ?? null, poll),
+                        };
+                    }
+                    // Check if this is a reblog containing the status
+                    if (s.reblog && s.reblog.id === statusId) {
+                        streamHasChanges = true;
+                        return {
+                            ...s,
+                            reblog: {
+                                ...s.reblog,
+                                poll: mergePollWithFallback(s.reblog.poll ?? null, poll),
+                            },
+                        };
                     }
                     return s;
                 });

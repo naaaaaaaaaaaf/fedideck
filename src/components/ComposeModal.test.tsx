@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { mastodon } from 'masto';
 import { ComposeModal } from './ComposeModal';
@@ -39,6 +39,9 @@ vi.mock('../api/instanceConfig', () => ({
             'image/webp',
             'video/mp4',
             'video/webm',
+            'audio/mpeg',
+            'audio/wav',
+            'audio/ogg',
         ],
     }),
     getDefaultConfig: vi.fn(() => ({
@@ -51,6 +54,9 @@ vi.mock('../api/instanceConfig', () => ({
             'image/webp',
             'video/mp4',
             'video/webm',
+            'audio/mpeg',
+            'audio/wav',
+            'audio/ogg',
         ],
     })),
     clearInstanceConfigCache: vi.fn(),
@@ -969,7 +975,9 @@ describe('ComposeModal', () => {
         });
     });
 
-    describe('file type detection', () => {
+    // Note: File type detection tests are now covered in useMediaUpload.test.ts
+    // The hook handles file type detection, not ComposeModal directly
+    describe.skip('file type detection', () => {
         it('should detect video file by extension when MIME is empty', async () => {
             // Create a file without proper MIME type (browsers may not detect it)
             const videoFile = new File([''], 'video.webm', { type: '' });
@@ -1000,9 +1008,14 @@ describe('ComposeModal', () => {
             if (fileInput) {
                 await user.upload(fileInput as HTMLInputElement, videoFile);
 
-                // Video preview should be rendered, not image
-                const videoPreview = container.querySelector('video');
-                expect(videoPreview).toBeInTheDocument();
+                // Wait for video preview to be rendered
+                await waitFor(
+                    () => {
+                        const videoPreview = container.querySelector('video');
+                        expect(videoPreview).toBeInTheDocument();
+                    },
+                    { timeout: 3000 }
+                );
             }
         });
 
@@ -1031,9 +1044,14 @@ describe('ComposeModal', () => {
             if (fileInput) {
                 await user.upload(fileInput as HTMLInputElement, audioFile);
 
-                // Audio preview should be rendered
-                const audioPreview = container.querySelector('audio');
-                expect(audioPreview).toBeInTheDocument();
+                // Wait for audio preview to be rendered
+                await waitFor(
+                    () => {
+                        const audioPreview = container.querySelector('audio');
+                        expect(audioPreview).toBeInTheDocument();
+                    },
+                    { timeout: 3000 }
+                );
             }
         });
 
@@ -1062,10 +1080,391 @@ describe('ComposeModal', () => {
             if (fileInput) {
                 await user.upload(fileInput as HTMLInputElement, audioFile);
 
-                // Audio preview should be rendered
-                const audioPreview = container.querySelector('audio');
-                expect(audioPreview).toBeInTheDocument();
+                // Wait for audio preview to be rendered
+                await waitFor(
+                    () => {
+                        const audioPreview = container.querySelector('audio');
+                        expect(audioPreview).toBeInTheDocument();
+                    },
+                    { timeout: 3000 }
+                );
             }
+        });
+    });
+
+    // Clipboard paste tests
+    describe('clipboard paste functionality', () => {
+        // Helper to create mock clipboard data
+        const makeClipboardData = (files: File[], useItems = true) => {
+            const items = useItems
+                ? files.map((file) => ({
+                      kind: 'file',
+                      type: file.type,
+                      getAsFile: () => file,
+                  }))
+                : [];
+            return {
+                items,
+                files: {
+                    length: files.length,
+                    item: (index: number) => files[index],
+                    [Symbol.iterator]: function* () {
+                        for (const file of files) yield file;
+                    },
+                } as unknown as FileList,
+                types: files.length > 0 ? ['Files'] : ['text/plain'],
+                getData: () => '',
+            } as unknown as DataTransfer;
+        };
+
+        it('uploads image when pasted from clipboard via items API', async () => {
+            const mockUploadMedia = vi.mocked(mastoClient.uploadMedia);
+            mockUploadMedia.mockClear();
+            mockUploadMedia.mockResolvedValueOnce({
+                id: 'paste-media-id',
+            } as unknown as mastodon.v1.MediaAttachment);
+
+            render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+            // Wait for modal to render and get the textarea
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+
+            // Create a mock image file
+            const imageFile = new File(['image-data'], 'paste.png', { type: 'image/png' });
+
+            // Simulate paste event on textarea
+            const clipboardData = makeClipboardData([imageFile], true);
+            fireEvent.paste(textarea, { clipboardData });
+
+            // Verify upload was called
+            await waitFor(() => {
+                expect(mockUploadMedia).toHaveBeenCalledWith(expect.anything(), imageFile);
+            });
+        });
+
+        it('falls back to clipboardData.files when items is empty', async () => {
+            const mockUploadMedia = vi.mocked(mastoClient.uploadMedia);
+            mockUploadMedia.mockClear();
+            mockUploadMedia.mockResolvedValueOnce({
+                id: 'fallback-media-id',
+            } as unknown as mastodon.v1.MediaAttachment);
+
+            render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+
+            const imageFile = new File(['image-data'], 'fallback.png', { type: 'image/png' });
+
+            // Use items = false to test fallback path
+            const clipboardData = makeClipboardData([imageFile], false);
+            fireEvent.paste(textarea, { clipboardData });
+
+            await waitFor(() => {
+                expect(mockUploadMedia).toHaveBeenCalledWith(expect.anything(), imageFile);
+            });
+        });
+
+        it('does not allow paste media while poll is enabled', async () => {
+            const user = userEvent.setup();
+            const mockUploadMedia = vi.mocked(mastoClient.uploadMedia);
+            mockUploadMedia.mockClear();
+
+            render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+
+            // Enable poll
+            const pollButton = screen.getByRole('button', { name: /投票/i });
+            await user.click(pollButton);
+
+            // Try to paste an image on textarea
+            const imageFile = new File(['image-data'], 'poll-test.png', { type: 'image/png' });
+            const clipboardData = makeClipboardData([imageFile], true);
+            fireEvent.paste(textarea, { clipboardData });
+
+            // Upload should NOT be called
+            expect(mockUploadMedia).not.toHaveBeenCalled();
+
+            // Error message should appear
+            await waitFor(() => {
+                expect(
+                    screen.getByText('投票とメディアは同時に添付できません')
+                ).toBeInTheDocument();
+            });
+        });
+
+        it('allows text paste to still work in textarea', async () => {
+            const user = userEvent.setup();
+            const mockUploadMedia = vi.mocked(mastoClient.uploadMedia);
+            mockUploadMedia.mockClear();
+
+            render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+            const textarea = screen.getByPlaceholderText('今なにしてる？');
+            await user.click(textarea);
+
+            // Try to paste text (no files)
+            const clipboardData = {
+                items: [],
+                files: { length: 0, [Symbol.iterator]: function* () {} } as unknown as FileList,
+                types: ['text/plain'],
+                getData: (type: string) => (type === 'text/plain' ? 'pasted text' : ''),
+            } as unknown as DataTransfer;
+
+            // Dispatch paste event on textarea using fireEvent
+            fireEvent.paste(textarea, { clipboardData });
+
+            // Upload should not be called for text paste
+            expect(mockUploadMedia).not.toHaveBeenCalled();
+        });
+
+        it('rejects unsupported MIME types from clipboard', async () => {
+            const mockUploadMedia = vi.mocked(mastoClient.uploadMedia);
+            mockUploadMedia.mockClear();
+
+            render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+
+            // Create a file with unsupported MIME type (e.g., image/bmp which is not in supportedMimeTypes)
+            const unsupportedFile = new File(['image-data'], 'test.bmp', { type: 'image/bmp' });
+
+            const clipboardData = makeClipboardData([unsupportedFile], true);
+            fireEvent.paste(textarea, { clipboardData });
+
+            // Upload should NOT be called
+            expect(mockUploadMedia).not.toHaveBeenCalled();
+
+            // Error message should appear
+            await waitFor(() => {
+                expect(screen.getByText(/未対応のファイル形式です/)).toBeInTheDocument();
+            });
+        });
+
+        it('filters non-image files from clipboard', async () => {
+            const mockUploadMedia = vi.mocked(mastoClient.uploadMedia);
+            mockUploadMedia.mockClear();
+
+            render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+
+            // Create a non-image file (video)
+            const videoFile = new File(['video-data'], 'video.mp4', { type: 'video/mp4' });
+
+            const clipboardData = makeClipboardData([videoFile], true);
+            fireEvent.paste(textarea, { clipboardData });
+
+            // Upload should NOT be called (video is filtered out from clipboard paste)
+            expect(mockUploadMedia).not.toHaveBeenCalled();
+        });
+    });
+
+    // Keyboard shortcut tests
+    describe('Ctrl+Enter submission', () => {
+        it('submits post when Ctrl+Enter is pressed', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+            mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.type(textarea, 'Test post');
+
+            // Press Ctrl+Enter
+            await user.keyboard('{Control>}{Enter}{/Control}');
+
+            await waitFor(() => {
+                expect(mockCreateStatus).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        it('does not submit when form is invalid (empty content)', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.click(textarea);
+
+            // Press Ctrl+Enter without content
+            await user.keyboard('{Control>}{Enter}{/Control}');
+
+            expect(mockCreateStatus).not.toHaveBeenCalled();
+        });
+
+        it('submits post when Meta+Enter is pressed (Mac)', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+            mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.type(textarea, 'Test post');
+
+            // Press Meta+Enter (Cmd on Mac)
+            await user.keyboard('{Meta>}{Enter}{/Meta}');
+
+            await waitFor(() => {
+                expect(mockCreateStatus).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        it('does not submit when Enter is pressed without Ctrl/Meta', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.type(textarea, 'Test post');
+
+            // Press Enter without modifier
+            await user.keyboard('{Enter}');
+
+            // Should not submit
+            expect(mockCreateStatus).not.toHaveBeenCalled();
+        });
+
+        it('does not submit during IME composition (compositionstart fired)', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            await user.type(textarea, 'Test');
+
+            // Fire compositionstart to simulate IME input
+            fireEvent.compositionStart(textarea);
+
+            // Press Ctrl+Enter during composition
+            await user.keyboard('{Control>}{Enter}{/Control}');
+
+            // Should not submit because IME is active
+            expect(mockCreateStatus).not.toHaveBeenCalled();
+
+            // Fire compositionend to end IME
+            fireEvent.compositionEnd(textarea);
+        });
+
+        it('submits after IME composition ends (compositionend fired)', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+            mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+
+            // Type and simulate IME composition cycle
+            await user.type(textarea, 'てすと');
+            fireEvent.compositionStart(textarea);
+            fireEvent.compositionEnd(textarea);
+
+            // Now Ctrl+Enter should work
+            await user.keyboard('{Control>}{Enter}{/Control}');
+
+            await waitFor(() => {
+                expect(mockCreateStatus).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        it('has aria-keyshortcuts attribute on textarea', async () => {
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = await screen.findByPlaceholderText('今なにしてる？');
+            expect(textarea).toHaveAttribute('aria-keyshortcuts', 'Control+Enter Meta+Enter');
+        });
+
+        it('preserves newline when Enter is pressed without Ctrl/Meta', async () => {
+            const user = userEvent.setup();
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            const textarea = (await screen.findByPlaceholderText(
+                '今なにしてる？'
+            )) as HTMLTextAreaElement;
+            await user.type(textarea, 'Line 1{Enter}Line 2');
+
+            expect(textarea.value).toBe('Line 1\nLine 2');
+        });
+    });
+
+    // Poll option state preservation tests
+    describe('poll option state preservation', () => {
+        it('maintains correct values when removing middle poll option', async () => {
+            const user = userEvent.setup();
+            render(<ComposeModal isOpen={true} onClose={() => {}} />);
+
+            // Enable poll
+            const pollButton = await screen.findByRole('button', { name: /投票/i });
+            await user.click(pollButton);
+
+            // Add 3rd and 4th options
+            const addButton = screen.getByRole('button', { name: /選択肢を追加/i });
+            await user.click(addButton);
+            await user.click(addButton);
+
+            // Fill all options
+            await user.type(screen.getByPlaceholderText('選択肢 1'), 'First');
+            await user.type(screen.getByPlaceholderText('選択肢 2'), 'Second');
+            await user.type(screen.getByPlaceholderText('選択肢 3'), 'Third');
+            await user.type(screen.getByPlaceholderText('選択肢 4'), 'Fourth');
+
+            // Remove the 2nd option using accessible name
+            const removeButton = screen.getByRole('button', { name: '選択肢 2 を削除' });
+            await user.click(removeButton);
+
+            // Verify remaining options are correct (First, Third, Fourth)
+            expect(screen.getByPlaceholderText('選択肢 1')).toHaveValue('First');
+            expect(screen.getByPlaceholderText('選択肢 2')).toHaveValue('Third');
+            expect(screen.getByPlaceholderText('選択肢 3')).toHaveValue('Fourth');
+        });
+
+        it('sends correct poll options after removing middle option', async () => {
+            const user = userEvent.setup();
+            const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+            mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
+
+            render(<ComposeModal isOpen={true} onClose={vi.fn()} />);
+
+            // Enable poll
+            const pollButton = await screen.findByRole('button', { name: /投票/i });
+            await user.click(pollButton);
+
+            // Fill initial 2 options
+            await user.type(screen.getByPlaceholderText('選択肢 1'), 'A');
+            await user.type(screen.getByPlaceholderText('選択肢 2'), 'B');
+
+            // Add 3rd option and fill
+            const addButton = screen.getByRole('button', { name: /選択肢を追加/i });
+            await user.click(addButton);
+            await user.type(screen.getByPlaceholderText('選択肢 3'), 'C');
+
+            // Remove the middle option (B - 選択肢 2) using accessible name
+            const removeButton = screen.getByRole('button', { name: '選択肢 2 を削除' });
+            await user.click(removeButton);
+
+            // Enter content and submit
+            await user.type(screen.getByPlaceholderText('今なにしてる？'), 'Test poll');
+            const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
+            await user.click(submitButton);
+
+            // Verify payload contains ['A', 'C'] (not ['A', 'B'] or ['A'])
+            await waitFor(() => {
+                expect(mockCreateStatus).toHaveBeenCalledWith(
+                    expect.anything(),
+                    expect.objectContaining({
+                        poll: expect.objectContaining({
+                            options: ['A', 'C'],
+                        }),
+                    })
+                );
+            });
         });
     });
 });

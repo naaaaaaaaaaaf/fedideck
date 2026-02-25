@@ -1,30 +1,32 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { mastodon } from 'masto';
-import { LuX, LuRepeat2, LuMessageCircle, LuStar, LuTriangleAlert, LuLoader } from 'react-icons/lu';
+import { LuX, LuTriangleAlert, LuLoader, LuRefreshCw } from 'react-icons/lu';
 import {
     type AccountSession,
-    type MastoClient,
     getClient,
-    favouriteStatus,
-    unfavouriteStatus,
-    reblogStatus,
-    unreblogStatus,
     getStatusContext,
     type StatusContext,
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
-import { formatDate } from '../utils/dateFormat';
+import { useStatusActions } from '../hooks/useStatusActions';
+import { useCardInteraction } from '../hooks/useCardInteraction';
+import { useNsfwState } from '../hooks/useNsfwState';
+import { usePollState } from '../hooks/usePollState';
+import { usePollCountdown } from '../hooks/usePollCountdown';
+import { formatDate, formatFullDate } from '../utils/dateFormat';
 import { getVisibilityMeta } from '../utils/statusVisibility';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { firstNonEmpty } from '../utils/firstNonEmpty';
+import { getPollVotesDenominator } from '../utils/poll';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
+import { toImageViewerImages } from '../utils/imageAttachments';
 import type { ImageViewerImage } from './ImageViewer';
 import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
-import { StatusMenu } from './StatusMenu';
+import { StatusReblogIndicator, StatusActions } from './status';
 
 interface StatusDetailModalProps {
     isOpen: boolean;
@@ -33,6 +35,7 @@ interface StatusDetailModalProps {
     accountSession?: AccountSession;
     onReply?: (status: mastodon.v1.Status) => void;
     onStatusUpdate?: (status: mastodon.v1.Status) => void;
+    onPollUpdate?: (statusId: string, poll: mastodon.v1.Poll) => void;
     onStatusDelete?: (status: mastodon.v1.Status, accountId: string) => void;
     onStatusEdit?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
@@ -41,17 +44,6 @@ interface StatusDetailModalProps {
     // NSFW blur state from parent (optional - for syncing with StatusCard)
     nsfwRevealedStatusIds?: Set<string>;
     onNsfwReveal?: (statusId: string) => void;
-}
-
-function formatFullDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    return date.toLocaleString('ja-JP', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
 }
 
 // Compact status display for thread ancestors/descendants
@@ -64,32 +56,22 @@ interface ThreadItemProps {
 
 function ThreadItem({ status, type, depth = 0, onClick }: ThreadItemProps) {
     const account = status.account;
-    if (!account) return null;
 
     const maxDepth = 3; // Maximum indentation level
     const indentLevel = Math.min(depth, maxDepth);
 
-    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!onClick) return;
-        // Guard against e.target not being an Element
-        if (!(e.target instanceof Element)) return;
-        // Don't trigger if clicking on interactive elements
-        if (e.target.closest('a, button, video, audio, summary')) return;
-        onClick(status);
-    };
+    // Custom selector for ThreadItem (excludes [role="button"] to allow thread item to be clickable)
+    const threadInteractiveSelector =
+        'a, button, input, label, select, textarea, video, audio, summary';
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-        if (!onClick) return;
-        if (e.key === 'Enter' || e.key === ' ') {
-            // Guard against e.target not being an Element
-            if (!(e.target instanceof Element)) return;
-            // Don't trigger if focus is on interactive elements (same as handleClick)
-            if (e.target.closest('a, button, video, audio, summary')) return;
+    // Card interaction handlers - must be called before early return
+    const { handleClick, handleKeyDown } = useCardInteraction({
+        onClick: onClick ? () => onClick(status) : undefined,
+        isEnabled: !!onClick,
+        interactiveSelector: threadInteractiveSelector,
+    });
 
-            e.preventDefault();
-            onClick(status);
-        }
-    };
+    if (!account) return null;
 
     // Shared content JSX to avoid duplication
     const sharedContent = (
@@ -217,6 +199,7 @@ export function StatusDetailModal({
     accountSession,
     onReply,
     onStatusUpdate,
+    onPollUpdate,
     onStatusDelete,
     onStatusEdit,
     onImageClick,
@@ -231,24 +214,51 @@ export function StatusDetailModal({
     // Get the display status (navigated > original reblog > original)
     const displayStatus = navigatedStatus ?? status?.reblog ?? status;
 
-    // NSFW state: controlled from parent or local
-    // If parent provides state (nsfwRevealedStatusIds), always use it
-    // When onNsfwReveal is missing, operates in read-only mode
-    const isControlled = nsfwRevealedStatusIds !== undefined;
-    const [localNsfwRevealed, setLocalNsfwRevealed] = useState(false);
+    // Status actions (favourite/reblog) with optimistic UI
+    const {
+        favourited,
+        favouritesCount,
+        reblogged,
+        reblogsCount,
+        isLoading,
+        canReblog,
+        handleFavourite,
+        handleReblog,
+    } = useStatusActions({
+        status: displayStatus,
+        accountSession,
+        onStatusUpdate,
+    });
 
-    // Check if current status is revealed (controlled) or use local state
-    const nsfwRevealed = isControlled
-        ? displayStatus
-            ? nsfwRevealedStatusIds.has(displayStatus.id)
-            : false
-        : localNsfwRevealed;
+    // NSFW state with controlled/uncontrolled mode
+    // For controlled mode, check if current status id is in the revealed set
+    const { nsfwRevealed, handleNsfwToggle } = useNsfwState({
+        isRevealed: nsfwRevealedStatusIds?.has(displayStatus?.id ?? ''),
+        onReveal: onNsfwReveal,
+        statusId: displayStatus?.id ?? '',
+    });
 
-    const [localFavourited, setLocalFavourited] = useState(false);
-    const [localFavouritesCount, setLocalFavouritesCount] = useState(0);
-    const [localReblogged, setLocalReblogged] = useState(false);
-    const [localReblogsCount, setLocalReblogsCount] = useState(0);
-    const [isLoading, setIsLoading] = useState({ favourite: false, reblog: false });
+    // Poll state using usePollState hook (with auto-refresh on expiry for modal)
+    const {
+        localPoll,
+        selectedOptions: selectedPollOptions,
+        pollLoading,
+        pollRefreshing,
+        canVote,
+        canRefresh,
+        handleOptionToggle: handlePollOptionToggle,
+        handleVote: handlePollVote,
+        handleRefresh: handlePollRefresh,
+    } = usePollState({
+        poll: displayStatus?.poll ?? null,
+        statusId: displayStatus?.id ?? '',
+        accountSession: accountSession ?? null,
+        onPollUpdate,
+        autoRefreshOnExpiry: true,
+    });
+
+    // Poll countdown display
+    const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
 
     // Thread context state
     const [context, setContext] = useState<StatusContext | null>(null);
@@ -274,20 +284,6 @@ export function StatusDetailModal({
         setContextError(null);
         setIsLoadingContext(false);
     }, [status?.id, isOpen]);
-
-    // Sync local state when status changes or modal opens
-    useEffect(() => {
-        if (displayStatus && isOpen) {
-            setLocalFavourited(displayStatus.favourited ?? false);
-            setLocalFavouritesCount(displayStatus.favouritesCount ?? 0);
-            setLocalReblogged(displayStatus.reblogged ?? false);
-            setLocalReblogsCount(displayStatus.reblogsCount ?? 0);
-            // Only reset NSFW state if not controlled by parent
-            if (!isControlled) {
-                setLocalNsfwRevealed(false);
-            }
-        }
-    }, [displayStatus, isOpen, isControlled]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
@@ -367,18 +363,10 @@ export function StatusDetailModal({
     // Convert image attachments to ImageViewerImage format (memoized)
     // Must be before early return to maintain hooks order
     // Filter out images without valid URLs to prevent broken image rendering
-    const imageViewerImages = useMemo(() => {
-        const mediaAttachments = displayStatus?.mediaAttachments ?? [];
-        return mediaAttachments
-            .filter((media) => media.type === 'image')
-            .slice(0, 4)
-            .map((media) => ({
-                url: firstNonEmpty(media.url, media.previewUrl),
-                previewUrl: media.previewUrl ?? undefined,
-                description: media.description ?? undefined,
-            }))
-            .filter((image) => image.url !== '');
-    }, [displayStatus?.mediaAttachments]);
+    const imageViewerImages = useMemo(
+        () => toImageViewerImages(displayStatus?.mediaAttachments),
+        [displayStatus?.mediaAttachments]
+    );
 
     // Convert video/gifv attachments to VideoViewerVideo format (memoized)
     const videoViewerVideos = useMemo(
@@ -422,87 +410,12 @@ export function StatusDetailModal({
     if (!account) return null;
 
     const mediaAttachments = displayStatus.mediaAttachments ?? [];
-    const poll = displayStatus.poll;
-    const canReblog =
-        displayStatus.visibility !== 'private' && displayStatus.visibility !== 'direct';
 
     const handleThreadNavigate = (clickedStatus: mastodon.v1.Status) => {
         setContext(null);
         setContextError(null);
         setIsLoadingContext(true);
         setNavigatedStatus(clickedStatus);
-    };
-
-    const handleFavourite = async () => {
-        if (!accountSession || isLoading.favourite) return;
-
-        setIsLoading((prev) => ({ ...prev, favourite: true }));
-        const wasLocalFavourited = localFavourited;
-        setLocalFavourited(!wasLocalFavourited);
-        setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev - 1 : prev + 1));
-
-        try {
-            const client: MastoClient = getClient(accountSession);
-            const updatedStatus = wasLocalFavourited
-                ? await unfavouriteStatus(client, displayStatus.id)
-                : await favouriteStatus(client, displayStatus.id);
-
-            setLocalFavourited(updatedStatus.favourited ?? false);
-            setLocalFavouritesCount(updatedStatus.favouritesCount ?? 0);
-            onStatusUpdate?.(updatedStatus);
-        } catch (error) {
-            setLocalFavourited(wasLocalFavourited);
-            setLocalFavouritesCount((prev) => (wasLocalFavourited ? prev + 1 : prev - 1));
-            console.error('Failed to toggle favourite:', error);
-        } finally {
-            setIsLoading((prev) => ({ ...prev, favourite: false }));
-        }
-    };
-
-    const handleReblog = async () => {
-        if (!accountSession || isLoading.reblog || !canReblog) return;
-
-        setIsLoading((prev) => ({ ...prev, reblog: true }));
-        const wasLocalReblogged = localReblogged;
-        setLocalReblogged(!wasLocalReblogged);
-        setLocalReblogsCount((prev) => (wasLocalReblogged ? prev - 1 : prev + 1));
-
-        try {
-            const client: MastoClient = getClient(accountSession);
-            const updatedStatus = wasLocalReblogged
-                ? await unreblogStatus(client, displayStatus.id)
-                : await reblogStatus(client, displayStatus.id);
-
-            const actualStatus = updatedStatus.reblog ?? updatedStatus;
-            setLocalReblogged(actualStatus.reblogged ?? false);
-            setLocalReblogsCount(actualStatus.reblogsCount ?? 0);
-            onStatusUpdate?.(actualStatus);
-        } catch (error) {
-            setLocalReblogged(wasLocalReblogged);
-            setLocalReblogsCount((prev) => (wasLocalReblogged ? prev + 1 : prev - 1));
-            console.error('Failed to toggle reblog:', error);
-        } finally {
-            setIsLoading((prev) => ({ ...prev, reblog: false }));
-        }
-    };
-
-    const handleNsfwToggle = () => {
-        const newValue = !nsfwRevealed;
-
-        // Controlled mode: use parent state
-        if (isControlled) {
-            // If callback provided, notify parent (read-only mode if no callback)
-            if (newValue && onNsfwReveal && displayStatus) {
-                onNsfwReveal(displayStatus.id);
-            }
-            return;
-        }
-
-        // Uncontrolled mode: notify parent if callback provided, then toggle local state
-        if (newValue && onNsfwReveal && displayStatus) {
-            onNsfwReveal(displayStatus.id);
-        }
-        setLocalNsfwRevealed(newValue);
     };
 
     const handleReply = () => {
@@ -586,13 +499,7 @@ export function StatusDetailModal({
                     >
                         {/* Reblog indicator */}
                         {reblogger && (
-                            <div className="flex items-center gap-2 text-sm text-slate-400 mb-3">
-                                <LuRepeat2 className="text-green-400" aria-hidden="true" />
-                                <img src={reblogger.avatar} alt="" className="w-5 h-5 rounded" />
-                                <span>
-                                    <DisplayName account={reblogger} /> がブースト
-                                </span>
-                            </div>
+                            <StatusReblogIndicator reblogger={reblogger} variant="detail" />
                         )}
 
                         {/* Author info */}
@@ -739,40 +646,137 @@ export function StatusDetailModal({
                         )}
 
                         {/* Poll */}
-                        {poll && poll.options && poll.options.length > 0 && (
-                            <div className="mb-4 p-4 bg-slate-800/50 rounded-xl">
-                                {poll.options.map((option, i) => {
-                                    const votesCount = poll.votesCount ?? 0;
-                                    const percentage =
-                                        votesCount > 0
-                                            ? Math.round(
-                                                  ((option.votesCount ?? 0) / votesCount) * 100
-                                              )
-                                            : 0;
-                                    return (
-                                        <div key={i} className="mb-3 last:mb-0">
-                                            <div className="flex justify-between text-sm mb-1">
-                                                <span className="text-slate-200">
-                                                    {option.title}
-                                                </span>
-                                                <span className="text-slate-400">
-                                                    {percentage}%
-                                                </span>
-                                            </div>
-                                            <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-indigo-500 transition-all rounded-full"
-                                                    style={{ width: `${percentage}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                <div className="text-sm text-slate-400 mt-3 pt-3 border-t border-slate-700">
-                                    {poll.votesCount ?? 0}票{poll.expired && ' · 終了'}
-                                </div>
-                            </div>
-                        )}
+                        {localPoll &&
+                            localPoll.options &&
+                            localPoll.options.length > 0 &&
+                            (() => {
+                                return (
+                                    <fieldset className="mb-4 p-4 bg-slate-800/50 rounded-xl">
+                                        <legend className="sr-only">投票</legend>
+                                        {canVote ? (
+                                            // Voting UI
+                                            <>
+                                                {localPoll.options.map((option, i) => (
+                                                    <label
+                                                        key={`${localPoll.id}-${i}`}
+                                                        className="flex items-center gap-3 mb-3 last:mb-0 cursor-pointer hover:bg-slate-700/30 p-2 rounded-lg"
+                                                    >
+                                                        <input
+                                                            type={
+                                                                localPoll.multiple
+                                                                    ? 'checkbox'
+                                                                    : 'radio'
+                                                            }
+                                                            name={`poll-${localPoll.id}`}
+                                                            checked={selectedPollOptions.has(i)}
+                                                            onChange={() =>
+                                                                handlePollOptionToggle(i)
+                                                            }
+                                                            disabled={pollLoading}
+                                                            className="w-4 h-4 accent-indigo-500"
+                                                        />
+                                                        <span className="text-slate-200">
+                                                            {option.title}
+                                                        </span>
+                                                    </label>
+                                                ))}
+                                                <button
+                                                    type="button"
+                                                    onClick={handlePollVote}
+                                                    disabled={
+                                                        selectedPollOptions.size === 0 ||
+                                                        pollLoading
+                                                    }
+                                                    aria-busy={pollLoading}
+                                                    className={`mt-3 px-4 py-2 text-sm rounded-lg transition-colors ${
+                                                        selectedPollOptions.size === 0 ||
+                                                        pollLoading
+                                                            ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                                            : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                                                    }`}
+                                                >
+                                                    {pollLoading ? '投票中...' : '投票'}
+                                                </button>
+                                            </>
+                                        ) : (
+                                            // Results UI
+                                            <>
+                                                {localPoll.options.map((option, i) => {
+                                                    const votesCount =
+                                                        getPollVotesDenominator(localPoll);
+                                                    const percentage =
+                                                        votesCount > 0
+                                                            ? Math.round(
+                                                                  ((option.votesCount ?? 0) /
+                                                                      votesCount) *
+                                                                      100
+                                                              )
+                                                            : 0;
+                                                    const isOwnVote =
+                                                        localPoll.ownVotes?.includes(i) ?? false;
+                                                    return (
+                                                        <div
+                                                            key={`${localPoll.id}-${i}`}
+                                                            className="mb-3 last:mb-0"
+                                                        >
+                                                            <div className="flex justify-between text-sm mb-1">
+                                                                <span className="text-slate-200">
+                                                                    {isOwnVote && (
+                                                                        <span className="text-indigo-400 mr-1">
+                                                                            ✓
+                                                                        </span>
+                                                                    )}
+                                                                    {option.title}
+                                                                </span>
+                                                                <span className="text-slate-400">
+                                                                    {percentage}%
+                                                                </span>
+                                                            </div>
+                                                            <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden">
+                                                                <div
+                                                                    className={`h-full transition-all rounded-full ${
+                                                                        isOwnVote
+                                                                            ? 'bg-indigo-400'
+                                                                            : 'bg-indigo-500'
+                                                                    }`}
+                                                                    style={{
+                                                                        width: `${percentage}%`,
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                                <div className="text-sm text-slate-400 mt-3 pt-3 border-t border-slate-700 flex items-center justify-between">
+                                                    <span>
+                                                        {getPollVotesDenominator(localPoll)}票
+                                                        {localPoll.expired
+                                                            ? ' · 終了'
+                                                            : pollCountdown && (
+                                                                  <span> · {pollCountdown}</span>
+                                                              )}
+                                                    </span>
+                                                    {!localPoll.expired && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={handlePollRefresh}
+                                                            disabled={!canRefresh || pollRefreshing}
+                                                            className="text-indigo-400 hover:text-indigo-300 disabled:opacity-50 inline-flex items-center gap-1"
+                                                            aria-label="投票結果を更新"
+                                                        >
+                                                            <LuRefreshCw
+                                                                className={`w-3.5 h-3.5 ${pollRefreshing ? 'animate-spin' : ''}`}
+                                                                aria-hidden="true"
+                                                            />
+                                                            {pollRefreshing ? '更新中...' : '更新'}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                    </fieldset>
+                                );
+                            })()}
 
                         {/* Timestamp and visibility */}
                         <div className="text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">
@@ -799,11 +803,10 @@ export function StatusDetailModal({
                         {/* Stats */}
                         <div className="flex items-center gap-6 text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">
                             <span>
-                                <strong className="text-slate-200">{localReblogsCount}</strong>{' '}
-                                ブースト
+                                <strong className="text-slate-200">{reblogsCount}</strong> ブースト
                             </span>
                             <span>
-                                <strong className="text-slate-200">{localFavouritesCount}</strong>{' '}
+                                <strong className="text-slate-200">{favouritesCount}</strong>{' '}
                                 お気に入り
                             </span>
                             {displayStatus.repliesCount > 0 && (
@@ -827,54 +830,27 @@ export function StatusDetailModal({
                 </div>
 
                 {/* Action bar - outside scroll container to allow menu overflow */}
-                <div className="flex items-center justify-around text-slate-400 border-t border-slate-700/50 px-4 py-2 shrink-0">
-                    <button
-                        onClick={handleReply}
-                        className="flex items-center gap-2 px-4 py-2 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
-                    >
-                        <LuMessageCircle className="w-5 h-5" aria-hidden="true" />
-                        <span>返信</span>
-                    </button>
-                    <button
-                        onClick={handleReblog}
-                        disabled={!accountSession || isLoading.reblog || !canReblog}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                            !canReblog
-                                ? 'opacity-50 cursor-not-allowed'
-                                : localReblogged
-                                  ? 'text-green-400 hover:bg-green-400/10'
-                                  : 'hover:text-green-400 hover:bg-green-400/10'
-                        } ${isLoading.reblog ? 'opacity-50' : ''}`}
-                        title={!canReblog ? 'この投稿はブーストできません' : undefined}
-                    >
-                        <LuRepeat2 className="w-5 h-5" aria-hidden="true" />
-                        <span>ブースト</span>
-                    </button>
-                    <button
-                        onClick={handleFavourite}
-                        disabled={!accountSession || isLoading.favourite}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                            localFavourited
-                                ? 'text-amber-400 hover:bg-amber-400/10'
-                                : 'hover:text-amber-400 hover:bg-amber-400/10'
-                        } ${isLoading.favourite ? 'opacity-50' : ''}`}
-                    >
-                        <LuStar
-                            className={`w-5 h-5 ${localFavourited ? 'fill-current' : ''}`}
-                            aria-hidden="true"
-                        />
-                        <span>お気に入り</span>
-                    </button>
-                    {displayStatus && (
-                        <StatusMenu
-                            statusUrl={displayStatus.url ?? displayStatus.uri}
-                            canDelete={canDelete ?? false}
-                            canEdit={canEdit ?? false}
-                            onDelete={handleStatusDelete}
-                            onEdit={handleStatusEdit}
-                        />
-                    )}
-                </div>
+                {displayStatus && (
+                    <StatusActions
+                        repliesCount={displayStatus.repliesCount ?? 0}
+                        reblogsCount={reblogsCount ?? 0}
+                        favouritesCount={favouritesCount ?? 0}
+                        favourited={favourited}
+                        reblogged={reblogged}
+                        canReblog={canReblog}
+                        isAuthenticated={Boolean(accountSession)}
+                        isLoading={isLoading}
+                        onReply={handleReply}
+                        onReblog={handleReblog}
+                        onFavourite={handleFavourite}
+                        variant="detail"
+                        statusUrl={displayStatus.url ?? displayStatus.uri}
+                        canDelete={canDelete ?? false}
+                        canEdit={canEdit ?? false}
+                        onDelete={handleStatusDelete}
+                        onEdit={handleStatusEdit}
+                    />
+                )}
             </div>
         </div>
     );

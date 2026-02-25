@@ -47,6 +47,25 @@ export const VISIBILITY_META: Record<Visibility, VisibilityMeta> = {
  */
 export const VISIBILITY_ORDER: Visibility[] = ['public', 'unlisted', 'private', 'direct'];
 
+/**
+ * Runtime type guard for Visibility.
+ * Validates that a value is a known visibility option.
+ */
+export function isValidVisibility(value: unknown): value is Visibility {
+    return (
+        typeof value === 'string' &&
+        (value === 'public' || value === 'unlisted' || value === 'private' || value === 'direct')
+    );
+}
+
+/**
+ * Safely casts a value to Visibility with fallback.
+ * Returns the value if valid, otherwise returns the default (public).
+ */
+export function toVisibility(value: unknown, fallback: Visibility = 'public'): Visibility {
+    return isValidVisibility(value) ? value : fallback;
+}
+
 const FALLBACK_META: VisibilityMeta = {
     label: '不明',
     icon: LuGlobe,
