@@ -26,7 +26,13 @@ import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
-import { StatusReblogIndicator, StatusActions } from './status';
+import {
+    StatusReblogIndicator,
+    StatusActions,
+    StatusQuoteCard,
+    StatusQuotePlaceholder,
+} from './status';
+import { hasQuote, getQuotedStatus, isFullQuote, stripQuoteInline } from '../utils/statusView';
 
 interface StatusDetailModalProps {
     isOpen: boolean;
@@ -425,6 +431,14 @@ export function StatusDetailModal({
         onClose();
     };
 
+    // Handle quote card click - navigate within modal
+    const handleQuoteNavigate = (quotedStatus: mastodon.v1.Status) => {
+        setContext(null);
+        setContextError(null);
+        setIsLoadingContext(true);
+        setNavigatedStatus(quotedStatus);
+    };
+
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center"
@@ -545,7 +559,7 @@ export function StatusDetailModal({
                                     className="text-slate-200 text-lg leading-relaxed status-content"
                                     dangerouslySetInnerHTML={{
                                         __html: replaceEmojisWithImages(
-                                            displayStatus.content,
+                                            stripQuoteInline(displayStatus.content),
                                             displayStatus.emojis
                                         ),
                                     }}
@@ -559,7 +573,7 @@ export function StatusDetailModal({
                                 className="text-slate-200 text-lg leading-relaxed mb-4 status-content"
                                 dangerouslySetInnerHTML={{
                                     __html: replaceEmojisWithImages(
-                                        displayStatus.content,
+                                        stripQuoteInline(displayStatus.content),
                                         displayStatus.emojis
                                     ),
                                 }}
@@ -778,6 +792,43 @@ export function StatusDetailModal({
                                         )}
                                     </fieldset>
                                 );
+                            })()}
+
+                        {/* Quote Card */}
+                        {hasQuote(displayStatus) &&
+                            (() => {
+                                const quotedStatus = getQuotedStatus(displayStatus);
+                                const quote = displayStatus.quote;
+
+                                // If we have the full quoted status, show the card
+                                if (quotedStatus) {
+                                    return (
+                                        <StatusQuoteCard
+                                            status={quotedStatus}
+                                            variant="detail"
+                                            onClick={handleQuoteNavigate}
+                                            onImageClick={onImageClick}
+                                            onVideoClick={onVideoClick}
+                                            onAudioClick={onAudioClick}
+                                        />
+                                    );
+                                }
+
+                                // If quote exists but no quotedStatus, show placeholder
+                                if (quote) {
+                                    // Check if this is a ShallowQuote (accepted but no status)
+                                    const isShallow =
+                                        quote.state === 'accepted' && !isFullQuote(quote);
+                                    return (
+                                        <StatusQuotePlaceholder
+                                            state={quote.state}
+                                            variant="detail"
+                                            isShallow={isShallow}
+                                        />
+                                    );
+                                }
+
+                                return null;
                             })()}
 
                         {/* Timestamp and visibility */}
