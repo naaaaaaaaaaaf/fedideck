@@ -11,6 +11,8 @@ vi.mock('../api/mastoClient', () => ({
     unfavouriteStatus: vi.fn(),
     reblogStatus: vi.fn(),
     unreblogStatus: vi.fn(),
+    bookmarkStatus: vi.fn(),
+    unbookmarkStatus: vi.fn(),
 }));
 
 const mockAccountSession = {
@@ -54,6 +56,7 @@ const createMockStatus = (overrides: Partial<mastodon.v1.Status> = {}): mastodon
         repliesCount: 2,
         favourited: false,
         reblogged: false,
+        bookmarked: false,
         ...overrides,
     }) as mastodon.v1.Status;
 
@@ -69,6 +72,7 @@ describe('useStatusActions', () => {
                 favouritesCount: 100,
                 reblogged: true,
                 reblogsCount: 50,
+                bookmarked: true,
             });
 
             const { result } = renderHook(() =>
@@ -79,6 +83,7 @@ describe('useStatusActions', () => {
             expect(result.current.favouritesCount).toBe(100);
             expect(result.current.reblogged).toBe(true);
             expect(result.current.reblogsCount).toBe(50);
+            expect(result.current.bookmarked).toBe(true);
         });
 
         it('should use default values when props are undefined', () => {
@@ -87,6 +92,7 @@ describe('useStatusActions', () => {
                 favouritesCount: undefined,
                 reblogged: undefined,
                 reblogsCount: undefined,
+                bookmarked: undefined,
             });
 
             const { result } = renderHook(() =>
@@ -97,6 +103,7 @@ describe('useStatusActions', () => {
             expect(result.current.favouritesCount).toBe(0);
             expect(result.current.reblogged).toBe(false);
             expect(result.current.reblogsCount).toBe(0);
+            expect(result.current.bookmarked).toBe(false);
         });
     });
 
@@ -326,6 +333,171 @@ describe('useStatusActions', () => {
         });
     });
 
+    describe('Bookmark toggle', () => {
+        it('should optimistically update bookmark state', async () => {
+            const status = createMockStatus({
+                bookmarked: false,
+            });
+
+            const mockClient = {} as mastoClient.MastoClient;
+            vi.mocked(mastoClient.getClient).mockReturnValue(mockClient);
+            vi.mocked(mastoClient.bookmarkStatus).mockResolvedValue(
+                createMockStatus({ bookmarked: true })
+            );
+
+            const { result } = renderHook(() =>
+                useStatusActions({ status, accountSession: mockAccountSession })
+            );
+
+            expect(result.current.bookmarked).toBe(false);
+
+            await act(async () => {
+                await result.current.handleBookmark();
+            });
+
+            expect(result.current.bookmarked).toBe(true);
+        });
+
+        it('should call bookmarkStatus API when not bookmarked', async () => {
+            const status = createMockStatus({ bookmarked: false });
+            const mockClient = {} as mastoClient.MastoClient;
+            vi.mocked(mastoClient.getClient).mockReturnValue(mockClient);
+            vi.mocked(mastoClient.bookmarkStatus).mockResolvedValue(
+                createMockStatus({ bookmarked: true })
+            );
+
+            const { result } = renderHook(() =>
+                useStatusActions({ status, accountSession: mockAccountSession })
+            );
+
+            await act(async () => {
+                await result.current.handleBookmark();
+            });
+
+            expect(mastoClient.bookmarkStatus).toHaveBeenCalledWith(mockClient, 'status-1');
+            expect(mastoClient.unbookmarkStatus).not.toHaveBeenCalled();
+        });
+
+        it('should call unbookmarkStatus API when already bookmarked', async () => {
+            const status = createMockStatus({ bookmarked: true });
+            const mockClient = {} as mastoClient.MastoClient;
+            vi.mocked(mastoClient.getClient).mockReturnValue(mockClient);
+            vi.mocked(mastoClient.unbookmarkStatus).mockResolvedValue(
+                createMockStatus({ bookmarked: false })
+            );
+
+            const { result } = renderHook(() =>
+                useStatusActions({ status, accountSession: mockAccountSession })
+            );
+
+            await act(async () => {
+                await result.current.handleBookmark();
+            });
+
+            expect(mastoClient.unbookmarkStatus).toHaveBeenCalledWith(mockClient, 'status-1');
+            expect(mastoClient.bookmarkStatus).not.toHaveBeenCalled();
+        });
+
+        it('should rollback on bookmark error', async () => {
+            const status = createMockStatus({
+                bookmarked: false,
+            });
+            const mockClient = {} as mastoClient.MastoClient;
+            vi.mocked(mastoClient.getClient).mockReturnValue(mockClient);
+            vi.mocked(mastoClient.bookmarkStatus).mockRejectedValue(new Error('API error'));
+
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            const { result } = renderHook(() =>
+                useStatusActions({ status, accountSession: mockAccountSession })
+            );
+
+            await act(async () => {
+                await result.current.handleBookmark();
+            });
+
+            // Should rollback to original state
+            expect(result.current.bookmarked).toBe(false);
+            expect(consoleSpy).toHaveBeenCalledWith(
+                'Failed to toggle bookmark:',
+                expect.any(Error)
+            );
+
+            consoleSpy.mockRestore();
+        });
+
+        it('should call onStatusUpdate after successful bookmark', async () => {
+            const status = createMockStatus();
+            const mockClient = {} as mastoClient.MastoClient;
+            const updatedStatus = createMockStatus({ bookmarked: true });
+            vi.mocked(mastoClient.getClient).mockReturnValue(mockClient);
+            vi.mocked(mastoClient.bookmarkStatus).mockResolvedValue(updatedStatus);
+
+            const onStatusUpdate = vi.fn();
+
+            const { result } = renderHook(() =>
+                useStatusActions({
+                    status,
+                    accountSession: mockAccountSession,
+                    onStatusUpdate,
+                })
+            );
+
+            await act(async () => {
+                await result.current.handleBookmark();
+            });
+
+            expect(onStatusUpdate).toHaveBeenCalledWith(updatedStatus);
+        });
+
+        it('should not call onStatusUpdate on bookmark error', async () => {
+            const status = createMockStatus();
+            const mockClient = {} as mastoClient.MastoClient;
+            vi.mocked(mastoClient.getClient).mockReturnValue(mockClient);
+            vi.mocked(mastoClient.bookmarkStatus).mockRejectedValue(new Error('API error'));
+
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            const onStatusUpdate = vi.fn();
+
+            const { result } = renderHook(() =>
+                useStatusActions({
+                    status,
+                    accountSession: mockAccountSession,
+                    onStatusUpdate,
+                })
+            );
+
+            await act(async () => {
+                await result.current.handleBookmark();
+            });
+
+            expect(onStatusUpdate).not.toHaveBeenCalled();
+
+            consoleSpy.mockRestore();
+        });
+
+        it('should set isLoading.bookmark during bookmark operation', async () => {
+            const status = createMockStatus();
+            const mockClient = {} as mastoClient.MastoClient;
+            vi.mocked(mastoClient.getClient).mockReturnValue(mockClient);
+            vi.mocked(mastoClient.bookmarkStatus).mockResolvedValue(
+                createMockStatus({ bookmarked: true })
+            );
+
+            const { result } = renderHook(() =>
+                useStatusActions({ status, accountSession: mockAccountSession })
+            );
+
+            expect(result.current.isLoading.bookmark).toBe(false);
+
+            await act(async () => {
+                await result.current.handleBookmark();
+            });
+
+            expect(result.current.isLoading.bookmark).toBe(false);
+        });
+    });
+
     describe('canReblog', () => {
         it('should return true for public visibility', () => {
             const status = createMockStatus({ visibility: 'public' });
@@ -392,6 +564,7 @@ describe('useStatusActions', () => {
                 favouritesCount: 10,
                 reblogged: false,
                 reblogsCount: 5,
+                bookmarked: false,
             });
 
             const mockClient = {} as mastoClient.MastoClient;
@@ -412,7 +585,32 @@ describe('useStatusActions', () => {
             expect(merged).not.toBeNull();
             expect(merged!.favourited).toBe(true);
             expect(merged!.favouritesCount).toBe(11);
+            expect(merged!.bookmarked).toBe(false);
             expect(merged!.id).toBe('status-1');
+        });
+
+        it('should merge bookmarked state with status', async () => {
+            const status = createMockStatus({
+                bookmarked: false,
+            });
+
+            const mockClient = {} as mastoClient.MastoClient;
+            vi.mocked(mastoClient.getClient).mockReturnValue(mockClient);
+            vi.mocked(mastoClient.bookmarkStatus).mockResolvedValue(
+                createMockStatus({ bookmarked: true })
+            );
+
+            const { result } = renderHook(() =>
+                useStatusActions({ status, accountSession: mockAccountSession })
+            );
+
+            await act(async () => {
+                await result.current.handleBookmark();
+            });
+
+            const merged = result.current.statusWithLocalState;
+            expect(merged).not.toBeNull();
+            expect(merged!.bookmarked).toBe(true);
         });
     });
 
@@ -441,6 +639,19 @@ describe('useStatusActions', () => {
 
             expect(mastoClient.getClient).not.toHaveBeenCalled();
             expect(mastoClient.reblogStatus).not.toHaveBeenCalled();
+        });
+
+        it('should not perform bookmark without accountSession', async () => {
+            const status = createMockStatus();
+
+            const { result } = renderHook(() => useStatusActions({ status }));
+
+            await act(async () => {
+                await result.current.handleBookmark();
+            });
+
+            expect(mastoClient.getClient).not.toHaveBeenCalled();
+            expect(mastoClient.bookmarkStatus).not.toHaveBeenCalled();
         });
     });
 
