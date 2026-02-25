@@ -214,16 +214,18 @@ export function StatusDetailModal({
     // Get the display status (navigated > original reblog > original)
     const displayStatus = navigatedStatus ?? status?.reblog ?? status;
 
-    // Status actions (favourite/reblog) with optimistic UI
+    // Status actions (favourite/reblog/bookmark) with optimistic UI
     const {
         favourited,
         favouritesCount,
         reblogged,
         reblogsCount,
+        bookmarked,
         isLoading,
         canReblog,
         handleFavourite,
         handleReblog,
+        handleBookmark,
     } = useStatusActions({
         status: displayStatus,
         accountSession,
@@ -837,12 +839,14 @@ export function StatusDetailModal({
                         favouritesCount={favouritesCount ?? 0}
                         favourited={favourited}
                         reblogged={reblogged}
+                        bookmarked={bookmarked}
                         canReblog={canReblog}
                         isAuthenticated={Boolean(accountSession)}
                         isLoading={isLoading}
                         onReply={handleReply}
                         onReblog={handleReblog}
                         onFavourite={handleFavourite}
+                        onBookmark={handleBookmark}
                         variant="detail"
                         statusUrl={displayStatus.url ?? displayStatus.uri}
                         canDelete={canDelete ?? false}
