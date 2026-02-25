@@ -121,7 +121,6 @@ export const StatusActions = React.memo(function StatusActions({
                               ? 'この投稿はブーストできません'
                               : undefined
                     }
-                    aria-disabled={!isAuthenticated || !canReblog}
                 >
                     <LuRepeat2 className={iconSize} aria-hidden="true" />
                     <span>ブースト</span>
@@ -139,7 +138,6 @@ export const StatusActions = React.memo(function StatusActions({
                               : 'hover:text-amber-400 hover:bg-amber-400/10'
                     } ${isLoading.favourite ? 'opacity-50' : ''}`}
                     title={!isAuthenticated ? 'アカウント接続が必要です' : undefined}
-                    aria-disabled={!isAuthenticated}
                 >
                     <LuStar
                         className={`${iconSize} ${favourited ? 'fill-current' : ''}`}
@@ -160,7 +158,6 @@ export const StatusActions = React.memo(function StatusActions({
                               : 'hover:text-indigo-400 hover:bg-indigo-400/10'
                     } ${isLoading.bookmark ? 'opacity-50' : ''}`}
                     title={!isAuthenticated ? 'アカウント接続が必要です' : undefined}
-                    aria-disabled={!isAuthenticated}
                 >
                     <LuBookmark
                         className={`${iconSize} ${bookmarked ? 'fill-current' : ''}`}
@@ -216,7 +213,6 @@ export const StatusActions = React.memo(function StatusActions({
                           : undefined
                 }
                 aria-label={reblogged ? 'ブースト解除' : 'ブースト'}
-                aria-disabled={!isAuthenticated || !canReblog}
             >
                 <LuRepeat2 className={iconSize} aria-hidden="true" />
                 {reblogsCount > 0 && <span className="text-sm">{reblogsCount}</span>}
