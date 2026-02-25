@@ -10,6 +10,7 @@ import { toAudioViewerTracks } from '../../utils/audioAttachments';
 import type { ImageViewerImage } from '../ImageViewer';
 import type { VideoViewerVideo } from '../../types/video';
 import type { AudioViewerTrack } from '../../types/audio';
+import { hasQuote } from '../../utils/statusView';
 
 interface StatusQuoteCardProps {
     /** The quoted status to display */
@@ -129,6 +130,7 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
                 spoilerText={status.spoilerText || undefined}
                 variant="card"
                 className="line-clamp-3"
+                hasQuote={hasQuote(status)}
             />
 
             {/* Compact media preview */}
