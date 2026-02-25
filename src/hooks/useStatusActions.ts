@@ -95,7 +95,10 @@ export function useStatusActions({
             setLocalReblogsCount(newProps.reblogsCount);
             setLocalBookmarked(newProps.bookmarked);
             pendingPropsRef.current = null;
-            // Clear loading state to prevent UI from being stuck
+            // Clear loading state and in-flight guards to prevent UI from being stuck
+            isFavouriteInFlightRef.current = false;
+            isReblogInFlightRef.current = false;
+            isBookmarkInFlightRef.current = false;
             setIsLoading({ favourite: false, reblog: false, bookmark: false });
             return;
         }

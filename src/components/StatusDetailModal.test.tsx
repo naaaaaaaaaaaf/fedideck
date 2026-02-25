@@ -1417,6 +1417,114 @@ describe('StatusDetailModal', () => {
         });
     });
 
+    describe('bookmark action', () => {
+        it('should call bookmarkStatus API when bookmark button is clicked', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ bookmarked: false });
+            const accountSession = createMockAccountSession();
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
+            const bookmarkSpy = vi
+                .spyOn(mastoClient, 'bookmarkStatus')
+                .mockResolvedValue(createMockStatus({ bookmarked: true }));
+
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
+
+            // In detail variant, button has span text "ブックマーク"
+            const bookmarkButton = screen.getByText('ブックマーク').closest('button');
+            expect(bookmarkButton).not.toBeNull();
+            await user.click(bookmarkButton!);
+
+            await waitFor(() => {
+                expect(bookmarkSpy).toHaveBeenCalledWith({}, '12345');
+            });
+        });
+
+        it('should call unbookmarkStatus API when bookmark button is clicked on bookmarked status', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ bookmarked: true });
+            const accountSession = createMockAccountSession();
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
+            const unbookmarkSpy = vi
+                .spyOn(mastoClient, 'unbookmarkStatus')
+                .mockResolvedValue(createMockStatus({ bookmarked: false }));
+
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
+
+            // In detail variant, button has span text "ブックマーク"
+            const bookmarkButton = screen.getByText('ブックマーク').closest('button');
+            expect(bookmarkButton).not.toBeNull();
+            await user.click(bookmarkButton!);
+
+            await waitFor(() => {
+                expect(unbookmarkSpy).toHaveBeenCalledWith({}, '12345');
+            });
+        });
+
+        it('should not trigger bookmark action when accountSession is not provided', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ bookmarked: false });
+            const bookmarkSpy = vi.spyOn(mastoClient, 'bookmarkStatus');
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    // No accountSession
+                />
+            );
+
+            const bookmarkButton = screen.getByText('ブックマーク').closest('button');
+            expect(bookmarkButton).not.toBeNull();
+            await user.click(bookmarkButton!);
+            expect(bookmarkSpy).not.toHaveBeenCalled();
+        });
+
+        it('should show bookmark button as active when status is bookmarked', async () => {
+            const status = createMockStatus({ bookmarked: true });
+            const accountSession = createMockAccountSession();
+
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
+
+            const bookmarkButton = screen.getByText('ブックマーク').closest('button');
+            expect(bookmarkButton).not.toBeNull();
+            expect(bookmarkButton).toHaveClass('text-indigo-400');
+        });
+    });
+
     describe('thread navigation', () => {
         beforeEach(() => {
             vi.clearAllMocks();

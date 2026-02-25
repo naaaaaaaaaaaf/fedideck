@@ -825,32 +825,27 @@ describe('useStatusActions', () => {
                 { initialProps: { status: status1 } }
             );
 
-            // Start favourite operation (don't await yet)
-            let operationComplete = false;
-            const operationPromise = result.current.handleFavourite().finally(() => {
-                operationComplete = true;
-            });
-
-            // Wait for the loading state to be set
+            // Start favourite operation inside act
+            let operationPromise: Promise<void>;
             await act(async () => {
-                // Give React a chance to process the setIsLoading call
-                await new Promise((resolve) => setTimeout(resolve, 0));
+                operationPromise = result.current.handleFavourite();
             });
 
-            // While loading, change status (simulates thread navigation)
-            rerender({ status: status2 });
+            // While loading, change status (simulates thread navigation) inside act
+            await act(async () => {
+                rerender({ status: status2 });
+            });
 
             // Complete the API call for the old status
             resolveFavourite!(createMockStatus({ id: 'status-1', favourited: true }));
 
             // Wait for the operation to complete
             await act(async () => {
-                await operationPromise;
+                await operationPromise!;
             });
 
             // isLoading.favourite should be cleared even though status changed
             expect(result.current.isLoading.favourite).toBe(false);
-            expect(operationComplete).toBe(true);
         });
 
         it('should always clear isLoading.reblog even when status changes during request', async () => {
@@ -872,31 +867,69 @@ describe('useStatusActions', () => {
                 { initialProps: { status: status1 } }
             );
 
-            // Start reblog operation (don't await yet)
-            let operationComplete = false;
-            const operationPromise = result.current.handleReblog().finally(() => {
-                operationComplete = true;
-            });
-
-            // Wait for the loading state to be set
+            // Start reblog operation inside act
+            let operationPromise: Promise<void>;
             await act(async () => {
-                await new Promise((resolve) => setTimeout(resolve, 0));
+                operationPromise = result.current.handleReblog();
             });
 
-            // While loading, change status (simulates thread navigation)
-            rerender({ status: status2 });
+            // While loading, change status (simulates thread navigation) inside act
+            await act(async () => {
+                rerender({ status: status2 });
+            });
 
             // Complete the API call for the old status
             resolveReblog!(createMockStatus({ id: 'status-1', reblogged: true }));
 
             // Wait for the operation to complete
             await act(async () => {
-                await operationPromise;
+                await operationPromise!;
             });
 
             // isLoading.reblog should be cleared even though status changed
             expect(result.current.isLoading.reblog).toBe(false);
-            expect(operationComplete).toBe(true);
+        });
+
+        it('should always clear isLoading.bookmark even when status changes during request', async () => {
+            const status1 = createMockStatus({ id: 'status-1', bookmarked: false });
+            const status2 = createMockStatus({ id: 'status-2', bookmarked: false });
+
+            const mockClient = {} as mastoClient.MastoClient;
+            vi.mocked(mastoClient.getClient).mockReturnValue(mockClient);
+
+            // Create a delayed promise that we can control
+            let resolveBookmark: (value: mastodon.v1.Status) => void;
+            const bookmarkPromise = new Promise<mastodon.v1.Status>((resolve) => {
+                resolveBookmark = resolve;
+            });
+            vi.mocked(mastoClient.bookmarkStatus).mockReturnValue(bookmarkPromise);
+
+            const { result, rerender } = renderHook(
+                ({ status }) => useStatusActions({ status, accountSession: mockAccountSession }),
+                { initialProps: { status: status1 } }
+            );
+
+            // Start bookmark operation inside act
+            let operationPromise: Promise<void>;
+            await act(async () => {
+                operationPromise = result.current.handleBookmark();
+            });
+
+            // While loading, change status (simulates thread navigation) inside act
+            await act(async () => {
+                rerender({ status: status2 });
+            });
+
+            // Complete the API call for the old status
+            resolveBookmark!(createMockStatus({ id: 'status-1', bookmarked: true }));
+
+            // Wait for the operation to complete
+            await act(async () => {
+                await operationPromise!;
+            });
+
+            // isLoading.bookmark should be cleared even though status changed
+            expect(result.current.isLoading.bookmark).toBe(false);
         });
     });
 
