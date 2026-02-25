@@ -198,6 +198,7 @@ export const StatusActions = React.memo(function StatusActions({
                 type="button"
                 onClick={onFavourite}
                 disabled={!isAuthenticated || isLoading.favourite}
+                tabIndex={!isAuthenticated ? -1 : undefined}
                 className={`${actionButtonBase} ${
                     !isAuthenticated
                         ? 'opacity-50 cursor-not-allowed'
