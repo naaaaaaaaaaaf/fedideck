@@ -48,7 +48,7 @@ interface StatusActionsProps {
 }
 
 /**
- * Displays action buttons for a status (reply, reblog, favourite).
+ * Displays action buttons for a status (reply, reblog, favourite, bookmark).
  * Supports card and detail variants with different layouts.
  */
 export const StatusActions = React.memo(function StatusActions({
