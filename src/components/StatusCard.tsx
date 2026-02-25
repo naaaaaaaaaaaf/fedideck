@@ -62,7 +62,7 @@ export const StatusCard = React.memo(function StatusCard({
     const displayStatus = getDisplayStatus(status);
     const reblogger = getReblogger(status);
 
-    // Status actions (favourite/rebookmark/reblog) with optimistic UI
+    // Status actions (favourite/reblog/bookmark) with optimistic UI
     const {
         favourited,
         favouritesCount,
