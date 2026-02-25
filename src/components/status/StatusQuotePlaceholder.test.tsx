@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { StatusQuotePlaceholder } from './StatusQuotePlaceholder';
-import type { mastodon } from 'masto';
 
 describe('StatusQuotePlaceholder', () => {
     describe('non-accepted states', () => {

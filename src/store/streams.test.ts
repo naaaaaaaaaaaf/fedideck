@@ -213,7 +213,8 @@ describe('useStreamsStore', () => {
             useStreamsStore.getState().updateStatusGlobal(updatedQuotedStatus);
 
             const stream = useStreamsStore.getState().data['account:home'];
-            expect(stream.statuses[0].quote?.quotedStatus?.favourited).toBe(true);
+            const quote = stream.statuses[0].quote as mastodon.v1.Quote;
+            expect(quote.quotedStatus?.favourited).toBe(true);
         });
 
         it('does not update quote.quotedStatus when state is not accepted', () => {
@@ -232,8 +233,9 @@ describe('useStreamsStore', () => {
             useStreamsStore.getState().updateStatusGlobal(updatedQuotedStatus);
 
             const stream = useStreamsStore.getState().data['account:home'];
+            const quote = stream.statuses[0].quote as mastodon.v1.Quote;
             // Should not be updated because state is 'pending'
-            expect(stream.statuses[0].quote?.quotedStatus?.favourited).toBe(false);
+            expect(quote.quotedStatus?.favourited).toBe(false);
         });
     });
 
@@ -384,7 +386,8 @@ describe('useStreamsStore', () => {
             useStreamsStore.getState().updatePollGlobal('quoted-1', updatedPoll);
 
             const stream = useStreamsStore.getState().data['account:home'];
-            expect(stream.statuses[0].quote?.quotedStatus?.poll?.voted).toBe(true);
+            const quote = stream.statuses[0].quote as mastodon.v1.Quote;
+            expect(quote.quotedStatus?.poll?.voted).toBe(true);
         });
     });
 

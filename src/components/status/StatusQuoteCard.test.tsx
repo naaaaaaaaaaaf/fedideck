@@ -163,7 +163,7 @@ describe('StatusQuoteCard', () => {
                 multiple: false,
                 votesCount: 5,
                 votersCount: 5,
-                options: [{ title: 'Option 1', votesCount: 3 }],
+                options: [{ title: 'Option 1', votesCount: 3, emojis: [] }],
                 emojis: [],
             } as mastodon.v1.Poll,
         });
