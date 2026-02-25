@@ -1,5 +1,5 @@
 import React from 'react';
-import { LuMessageCircle, LuRepeat2, LuStar } from 'react-icons/lu';
+import { LuMessageCircle, LuRepeat2, LuStar, LuBookmark } from 'react-icons/lu';
 import { StatusMenu } from '../StatusMenu';
 
 interface StatusActionsProps {
@@ -13,18 +13,22 @@ interface StatusActionsProps {
     favourited: boolean;
     /** Whether the status is reblogged */
     reblogged: boolean;
+    /** Whether the status is bookmarked */
+    bookmarked: boolean;
     /** Whether the status can be reblogged */
     canReblog: boolean;
     /** Whether the user is authenticated (has account session) */
     isAuthenticated?: boolean;
     /** Loading states for actions */
-    isLoading: { favourite: boolean; reblog: boolean };
+    isLoading: { favourite: boolean; reblog: boolean; bookmark: boolean };
     /** Callback for reply action */
     onReply?: () => void;
     /** Callback for reblog action */
     onReblog: () => void;
     /** Callback for favourite action */
     onFavourite: () => void;
+    /** Callback for bookmark action */
+    onBookmark: () => void;
     /** Size variant for styling */
     variant?: 'card' | 'detail';
     /** Status URL for sharing */
@@ -53,12 +57,14 @@ export const StatusActions = React.memo(function StatusActions({
     favouritesCount,
     favourited,
     reblogged,
+    bookmarked,
     canReblog,
     isAuthenticated = true,
     isLoading,
     onReply,
     onReblog,
     onFavourite,
+    onBookmark,
     variant = 'card',
     statusUrl,
     canDelete,
@@ -141,6 +147,27 @@ export const StatusActions = React.memo(function StatusActions({
                     />
                     <span>お気に入り</span>
                 </button>
+                <button
+                    type="button"
+                    onClick={onBookmark}
+                    disabled={!isAuthenticated || isLoading.bookmark}
+                    tabIndex={!isAuthenticated ? -1 : undefined}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                        !isAuthenticated
+                            ? 'opacity-50 cursor-not-allowed'
+                            : bookmarked
+                              ? 'text-indigo-400 hover:bg-indigo-400/10'
+                              : 'hover:text-indigo-400 hover:bg-indigo-400/10'
+                    } ${isLoading.bookmark ? 'opacity-50' : ''}`}
+                    title={!isAuthenticated ? 'アカウント接続が必要です' : undefined}
+                    aria-disabled={!isAuthenticated}
+                >
+                    <LuBookmark
+                        className={`${iconSize} ${bookmarked ? 'fill-current' : ''}`}
+                        aria-hidden="true"
+                    />
+                    <span>ブックマーク</span>
+                </button>
                 <StatusMenu
                     statusUrl={statusUrl}
                     canDelete={canDelete}
@@ -214,6 +241,26 @@ export const StatusActions = React.memo(function StatusActions({
                     aria-hidden="true"
                 />
                 {favouritesCount > 0 && <span className="text-sm">{favouritesCount}</span>}
+            </button>
+            <button
+                type="button"
+                onClick={onBookmark}
+                disabled={!isAuthenticated || isLoading.bookmark}
+                tabIndex={!isAuthenticated ? -1 : undefined}
+                className={`${actionButtonBase} ${
+                    !isAuthenticated
+                        ? 'opacity-50 cursor-not-allowed'
+                        : bookmarked
+                          ? 'text-indigo-400 hover:text-indigo-300 hover:bg-indigo-400/10'
+                          : 'hover:text-indigo-400 hover:bg-indigo-400/10'
+                } ${isLoading.bookmark ? 'opacity-50' : ''}`}
+                aria-label={bookmarked ? 'ブックマーク解除' : 'ブックマーク'}
+                title={!isAuthenticated ? 'アカウント接続が必要です' : undefined}
+            >
+                <LuBookmark
+                    className={`${iconSize} ${bookmarked ? 'fill-current' : ''}`}
+                    aria-hidden="true"
+                />
             </button>
             <StatusMenu
                 statusUrl={statusUrl}
