@@ -291,6 +291,28 @@ export async function unreblogStatus(
 }
 
 /**
+ * Bookmark a status
+ */
+export async function bookmarkStatus(
+    client: MastoClient,
+    statusId: string
+): Promise<mastodon.v1.Status> {
+    const status = await client.v1.statuses.$select(statusId).bookmark();
+    return status;
+}
+
+/**
+ * Remove bookmark from a status
+ */
+export async function unbookmarkStatus(
+    client: MastoClient,
+    statusId: string
+): Promise<mastodon.v1.Status> {
+    const status = await client.v1.statuses.$select(statusId).unbookmark();
+    return status;
+}
+
+/**
  * Context for a status containing ancestors (parent chain) and descendants (replies)
  */
 export type StatusContext = mastodon.v1.Context;

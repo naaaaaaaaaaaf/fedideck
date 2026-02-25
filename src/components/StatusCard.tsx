@@ -62,16 +62,18 @@ export const StatusCard = React.memo(function StatusCard({
     const displayStatus = getDisplayStatus(status);
     const reblogger = getReblogger(status);
 
-    // Status actions (favourite/reblog) with optimistic UI
+    // Status actions (favourite/reblog/bookmark) with optimistic UI
     const {
         favourited,
         favouritesCount,
         reblogged,
         reblogsCount,
+        bookmarked,
         isLoading,
         canReblog,
         handleFavourite,
         handleReblog,
+        handleBookmark,
         statusWithLocalState,
     } = useStatusActions({
         status: displayStatus,
@@ -234,12 +236,14 @@ export const StatusCard = React.memo(function StatusCard({
                         favouritesCount={favouritesCount ?? 0}
                         favourited={favourited}
                         reblogged={reblogged}
+                        bookmarked={bookmarked}
                         canReblog={canReblog}
                         isAuthenticated={Boolean(accountSession)}
                         isLoading={isLoading}
                         onReply={onReply ? () => onReply(displayStatus) : undefined}
                         onReblog={handleReblog}
                         onFavourite={handleFavourite}
+                        onBookmark={handleBookmark}
                         variant="card"
                         statusUrl={displayStatus.url ?? displayStatus.uri}
                         canDelete={
