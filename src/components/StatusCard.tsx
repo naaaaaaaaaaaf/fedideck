@@ -21,7 +21,10 @@ import {
     StatusPoll,
     StatusActions,
     StatusReplyIndicator,
+    StatusQuoteCard,
+    StatusQuotePlaceholder,
 } from './status';
+import { hasQuote, getQuotedStatus, isFullQuote } from '../utils/statusView';
 
 interface StatusCardProps {
     status: mastodon.v1.Status;
@@ -195,6 +198,7 @@ export const StatusCard = React.memo(function StatusCard({
                         emojis={displayStatus.emojis}
                         spoilerText={displayStatus.spoilerText}
                         variant="card"
+                        hasQuote={hasQuote(displayStatus)}
                     />
 
                     {/* Media attachments */}
@@ -228,6 +232,42 @@ export const StatusCard = React.memo(function StatusCard({
                             variant="card"
                         />
                     )}
+
+                    {/* Quote Card */}
+                    {hasQuote(displayStatus) &&
+                        (() => {
+                            const quotedStatus = getQuotedStatus(displayStatus);
+                            const quote = displayStatus.quote;
+
+                            // If we have the full quoted status, show the card
+                            if (quotedStatus) {
+                                return (
+                                    <StatusQuoteCard
+                                        status={quotedStatus}
+                                        variant="card"
+                                        onClick={onStatusClick}
+                                        onImageClick={onImageClick}
+                                        onVideoClick={onVideoClick}
+                                        onAudioClick={onAudioClick}
+                                    />
+                                );
+                            }
+
+                            // If quote exists but no quotedStatus, show placeholder
+                            if (quote) {
+                                // Check if this is a ShallowQuote (accepted but no status)
+                                const isShallow = quote.state === 'accepted' && !isFullQuote(quote);
+                                return (
+                                    <StatusQuotePlaceholder
+                                        state={quote.state}
+                                        variant="card"
+                                        isShallow={isShallow}
+                                    />
+                                );
+                            }
+
+                            return null;
+                        })()}
 
                     {/* Action bar */}
                     <StatusActions
