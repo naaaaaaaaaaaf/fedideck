@@ -10,7 +10,8 @@ import { toAudioViewerTracks } from '../../utils/audioAttachments';
 import type { ImageViewerImage } from '../ImageViewer';
 import type { VideoViewerVideo } from '../../types/video';
 import type { AudioViewerTrack } from '../../types/audio';
-import { hasQuote } from '../../utils/statusView';
+import { hasQuote, getQuotedStatus, isFullQuote } from '../../utils/statusView';
+import { StatusQuotePlaceholder } from './StatusQuotePlaceholder';
 
 interface StatusQuoteCardProps {
     /** The quoted status to display */
@@ -25,7 +26,12 @@ interface StatusQuoteCardProps {
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
     /** Audio click handler */
     onAudioClick?: (tracks: AudioViewerTrack[], index: number) => void;
+    /** Nesting depth for recursive quote display (default: 0, max: 2) */
+    depth?: number;
 }
+
+/** Maximum nesting depth for quote cards to prevent infinite recursion */
+const MAX_QUOTE_DEPTH = 2;
 
 /**
  * Displays a quoted status within a status card.
@@ -38,6 +44,7 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
     onImageClick,
     onVideoClick,
     onAudioClick,
+    depth = 0,
 }: StatusQuoteCardProps) {
     const account = status.account;
     const isDetail = variant === 'detail';
@@ -183,6 +190,42 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
                     <span className={textClass}>投票</span>
                 </div>
             )}
+
+            {/* Nested quote card - only render if depth allows */}
+            {hasQuote(status) &&
+                depth < MAX_QUOTE_DEPTH &&
+                (() => {
+                    const nestedQuotedStatus = getQuotedStatus(status);
+                    const nestedQuote = status.quote;
+
+                    if (nestedQuotedStatus) {
+                        return (
+                            <StatusQuoteCard
+                                status={nestedQuotedStatus}
+                                variant="card"
+                                depth={depth + 1}
+                                onClick={onClick}
+                                onImageClick={onImageClick}
+                                onVideoClick={onVideoClick}
+                                onAudioClick={onAudioClick}
+                            />
+                        );
+                    }
+
+                    if (nestedQuote) {
+                        const isShallow =
+                            nestedQuote.state === 'accepted' && !isFullQuote(nestedQuote);
+                        return (
+                            <StatusQuotePlaceholder
+                                state={nestedQuote.state}
+                                variant="card"
+                                isShallow={isShallow}
+                            />
+                        );
+                    }
+
+                    return null;
+                })()}
         </div>
     );
 });
