@@ -31,6 +31,8 @@ interface StatusQuoteCardProps {
     depth?: number;
     /** Account session for resolving shallow quote chains */
     accountSession?: AccountSession;
+    /** Set of visited status IDs to prevent circular reference rendering */
+    visitedIds?: Set<string>;
 }
 
 /** Maximum nesting depth for quote cards to prevent infinite recursion */
@@ -49,7 +51,14 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
     onAudioClick,
     depth = 0,
     accountSession,
+    visitedIds: externalVisitedIds,
 }: StatusQuoteCardProps) {
+    // Create a new Set for this branch if not provided, including current status
+    const visitedIds = useMemo(() => {
+        const set = externalVisitedIds ?? new Set<string>();
+        set.add(status.id);
+        return set;
+    }, [externalVisitedIds, status.id]);
     const account = status.account;
     const isDetail = variant === 'detail';
     const [resolvedNestedQuoteStatus, setResolvedNestedQuoteStatus] =
@@ -237,7 +246,7 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
                 </div>
             )}
 
-            {/* Nested quote card - only render if depth allows */}
+            {/* Nested quote card - only render if depth allows and not circular */}
             {hasQuote(status) &&
                 depth < MAX_QUOTE_DEPTH &&
                 (() => {
@@ -246,6 +255,10 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
                     const nestedQuote = status.quote;
 
                     if (nestedQuotedStatus) {
+                        // Skip if already visited (circular reference)
+                        if (visitedIds.has(nestedQuotedStatus.id)) {
+                            return null;
+                        }
                         return (
                             <StatusQuoteCard
                                 status={nestedQuotedStatus}
@@ -256,6 +269,7 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
                                 onVideoClick={onVideoClick}
                                 onAudioClick={onAudioClick}
                                 accountSession={accountSession}
+                                visitedIds={visitedIds}
                             />
                         );
                     }

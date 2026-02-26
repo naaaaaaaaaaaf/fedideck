@@ -627,7 +627,9 @@ export function StatusDetailModal({
                                 className="text-slate-200 text-lg leading-relaxed mb-4 status-content"
                                 dangerouslySetInnerHTML={{
                                     __html: replaceEmojisWithImages(
-                                        stripQuoteInline(displayStatus.content),
+                                        hasQuote(displayStatus)
+                                            ? stripQuoteInline(displayStatus.content)
+                                            : displayStatus.content,
                                         displayStatus.emojis
                                     ),
                                 }}

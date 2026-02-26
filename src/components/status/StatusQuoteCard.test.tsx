@@ -238,4 +238,99 @@ describe('StatusQuoteCard', () => {
 
         expect(await screen.findByText('Root quoted content')).toBeInTheDocument();
     });
+
+    it('does not render quotes beyond MAX_QUOTE_DEPTH (4th level is hidden)', async () => {
+        // Create a 4-level quote chain: statusD -> statusC -> statusB -> statusA
+        const statusA = createMockStatus({
+            id: 'status-a',
+            content: '<p>Status A content</p>',
+        });
+
+        const statusB = createMockStatus({
+            id: 'status-b',
+            content: '<p>Status B content</p>',
+            quote: {
+                state: 'accepted',
+                quotedStatusId: 'status-a',
+                quotedStatus: statusA,
+            } as mastodon.v1.Quote,
+        });
+
+        const statusC = createMockStatus({
+            id: 'status-c',
+            content: '<p>Status C content</p>',
+            quote: {
+                state: 'accepted',
+                quotedStatusId: 'status-b',
+                quotedStatus: statusB,
+            } as mastodon.v1.Quote,
+        });
+
+        const statusD = createMockStatus({
+            id: 'status-d',
+            content: '<p>Status D content</p>',
+            quote: {
+                state: 'accepted',
+                quotedStatusId: 'status-c',
+                quotedStatus: statusC,
+            } as mastodon.v1.Quote,
+        });
+
+        vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as MastoClient);
+
+        render(<StatusQuoteCard status={statusD} accountSession={createMockAccountSession()} />);
+
+        // Status D (root, depth=0) is visible
+        expect(screen.getByText('Status D content')).toBeInTheDocument();
+
+        // Status C (depth=1) is visible
+        expect(screen.getByText('Status C content')).toBeInTheDocument();
+
+        // Status B (depth=2) is visible (MAX_QUOTE_DEPTH=2 allows up to depth=2)
+        expect(screen.getByText('Status B content')).toBeInTheDocument();
+
+        // Status A (depth=3) is NOT visible due to MAX_QUOTE_DEPTH=2
+        expect(screen.queryByText('Status A content')).not.toBeInTheDocument();
+    });
+
+    it('prevents circular reference rendering', () => {
+        // Create status A that quotes status B
+        const statusB = createMockStatus({
+            id: 'status-b',
+            content: '<p>Status B content</p>',
+        });
+
+        // Create status A that quotes B
+        const statusA = createMockStatus({
+            id: 'status-a',
+            content: '<p>Status A content</p>',
+            quote: {
+                state: 'accepted',
+                quotedStatusId: 'status-b',
+                quotedStatus: statusB,
+            } as mastodon.v1.Quote,
+        });
+
+        // Now make B quote A (circular)
+        statusB.quote = {
+            state: 'accepted',
+            quotedStatusId: 'status-a',
+            quotedStatus: statusA,
+        } as mastodon.v1.Quote;
+
+        vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as MastoClient);
+
+        render(<StatusQuoteCard status={statusA} accountSession={createMockAccountSession()} />);
+
+        // Status A (root) is visible
+        expect(screen.getByText('Status A content')).toBeInTheDocument();
+
+        // Status B (quoted by A) is visible
+        expect(screen.getByText('Status B content')).toBeInTheDocument();
+
+        // Status A should NOT appear again (circular reference prevented)
+        // Count occurrences of 'Status A content' - should be exactly 1
+        const statusATexts = screen.getAllByText('Status A content');
+        expect(statusATexts).toHaveLength(1);
+    });
 });

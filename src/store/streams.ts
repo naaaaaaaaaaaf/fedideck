@@ -207,6 +207,9 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                         return { ...s, reblog: status };
                     }
                     // Check if this is a quote containing the status
+                    // Note: This only updates 1 level of nesting. Deeply nested quotes
+                    // (e.g., quote.quotedStatus.quote.quotedStatus) are not updated.
+                    // This is acceptable since MAX_QUOTE_DEPTH=2 limits display depth anyway.
                     if (
                         s.quote?.state === 'accepted' &&
                         'quotedStatus' in s.quote &&
