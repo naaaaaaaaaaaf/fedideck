@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getInstanceConfig, clearInstanceConfigCache, getDefaultConfig } from './instanceConfig';
+import {
+    getInstanceConfig,
+    clearInstanceConfigCache,
+    getDefaultConfig,
+    supportsQuotes,
+} from './instanceConfig';
 import type { MastoClient } from './mastoClient';
 
 // Mock masto client
@@ -595,6 +600,80 @@ describe('instanceConfig', () => {
 
             expect(config1).not.toBe(config2);
             expect(config1).toEqual(config2);
+        });
+    });
+
+    describe('supportsQuotes', () => {
+        describe('supported versions', () => {
+            it('should return true for "4.5.0"', () => {
+                expect(supportsQuotes('4.5.0')).toBe(true);
+            });
+
+            it('should return true for "4.5.1"', () => {
+                expect(supportsQuotes('4.5.1')).toBe(true);
+            });
+
+            it('should return true for "4.6.0"', () => {
+                expect(supportsQuotes('4.6.0')).toBe(true);
+            });
+
+            it('should return true for "5.0.0"', () => {
+                expect(supportsQuotes('5.0.0')).toBe(true);
+            });
+        });
+
+        describe('unsupported versions', () => {
+            it('should return false for "4.4.9"', () => {
+                expect(supportsQuotes('4.4.9')).toBe(false);
+            });
+
+            it('should return false for "4.4.0"', () => {
+                expect(supportsQuotes('4.4.0')).toBe(false);
+            });
+
+            it('should return false for "3.5.0"', () => {
+                expect(supportsQuotes('3.5.0')).toBe(false);
+            });
+        });
+
+        describe('special formats', () => {
+            it('should return true for "4.5.0+glitch" (Glitch edition)', () => {
+                expect(supportsQuotes('4.5.0+glitch')).toBe(true);
+            });
+
+            it('should return true for "4.5.0rc1" (release candidate)', () => {
+                expect(supportsQuotes('4.5.0rc1')).toBe(true);
+            });
+
+            it('should return true for "4.6.0+glitch"', () => {
+                expect(supportsQuotes('4.6.0+glitch')).toBe(true);
+            });
+
+            it('should return false for "4.4.9+glitch"', () => {
+                expect(supportsQuotes('4.4.9+glitch')).toBe(false);
+            });
+        });
+
+        describe('edge cases', () => {
+            it('should return false for empty string', () => {
+                expect(supportsQuotes('')).toBe(false);
+            });
+
+            it('should return false for invalid format "abc"', () => {
+                expect(supportsQuotes('abc')).toBe(false);
+            });
+
+            it('should return false for invalid format "version4.5.0"', () => {
+                expect(supportsQuotes('version4.5.0')).toBe(false);
+            });
+
+            it('should return false for partial version "4"', () => {
+                expect(supportsQuotes('4')).toBe(false);
+            });
+
+            it('should return false for "4."', () => {
+                expect(supportsQuotes('4.')).toBe(false);
+            });
         });
     });
 });

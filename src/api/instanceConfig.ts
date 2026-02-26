@@ -21,7 +21,7 @@ interface CacheEntry {
 /**
  * Check if Mastodon version supports quote posts (v4.5.0+)
  */
-function supportsQuotes(version: string): boolean {
+export function supportsQuotes(version: string): boolean {
     // Mastodon version strings can be:
     // - "4.5.0" (standard)
     // - "4.5.0+glitch" (Glitch edition)
