@@ -32,12 +32,16 @@ export function hasQuote(status: mastodon.v1.Status): boolean {
 /**
  * Type guard to check if a quote is a full Quote (with embedded quotedStatus).
  * ShallowQuote only has quotedStatusId, not the full Status object.
+ * Note: Even if 'quotedStatus' key exists, it may be null, so we check for non-null value.
  *
  * @param quote - The quote object (Quote or ShallowQuote)
- * @returns true if this is a full Quote with quotedStatus property
+ * @returns true if this is a full Quote with non-null quotedStatus property
  */
 export function isFullQuote(quote: QuoteOrShallow): quote is mastodon.v1.Quote {
-    return 'quotedStatus' in quote;
+    if (!('quotedStatus' in quote)) {
+        return false;
+    }
+    return quote.quotedStatus != null;
 }
 
 /**

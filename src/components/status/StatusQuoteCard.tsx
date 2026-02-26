@@ -54,8 +54,9 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
     visitedIds: externalVisitedIds,
 }: StatusQuoteCardProps) {
     // Create a new Set for this branch if not provided, including current status
+    // Clone the external Set to avoid mutating props during render
     const visitedIds = useMemo(() => {
-        const set = externalVisitedIds ?? new Set<string>();
+        const set = externalVisitedIds ? new Set(externalVisitedIds) : new Set<string>();
         set.add(status.id);
         return set;
     }, [externalVisitedIds, status.id]);
@@ -155,9 +156,13 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
     };
 
     // Variant-specific styles
-    const containerClass = isDetail
-        ? 'mt-4 bg-slate-800/30 border border-slate-700/30 rounded-lg p-3 cursor-pointer hover:bg-slate-800/50 transition-colors'
-        : 'mt-3 bg-slate-800/30 border border-slate-700/30 rounded-lg p-3 cursor-pointer hover:bg-slate-800/50 transition-colors';
+    const isInteractive = Boolean(onClick);
+    const baseContainerClass = isDetail
+        ? 'mt-4 bg-slate-800/30 border border-slate-700/30 rounded-lg p-3 transition-colors'
+        : 'mt-3 bg-slate-800/30 border border-slate-700/30 rounded-lg p-3 transition-colors';
+    const containerClass = isInteractive
+        ? `${baseContainerClass} cursor-pointer hover:bg-slate-800/50`
+        : baseContainerClass;
 
     const avatarClass = isDetail ? 'w-10 h-10 rounded-lg' : 'w-8 h-8 rounded';
     const textClass = isDetail ? 'text-sm' : 'text-xs';
@@ -165,11 +170,15 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
     return (
         <div
             className={containerClass}
-            onClick={onClick ? handleClick : undefined}
-            onKeyDown={onClick ? handleKeyDown : undefined}
-            tabIndex={onClick ? 0 : undefined}
-            role={onClick ? 'button' : undefined}
-            aria-label={`${account.displayName || account.username}の引用投稿を表示`}
+            onClick={isInteractive ? handleClick : undefined}
+            onKeyDown={isInteractive ? handleKeyDown : undefined}
+            tabIndex={isInteractive ? 0 : undefined}
+            role={isInteractive ? 'button' : undefined}
+            aria-label={
+                isInteractive
+                    ? `${account.displayName || account.username}の引用投稿を表示`
+                    : undefined
+            }
         >
             {/* Header: Avatar + Name + Time */}
             <div className="flex items-center gap-2 mb-2">
@@ -219,11 +228,15 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
                         </button>
                     )}
                     {(hasVideo || hasAudio) && (
-                        <div
-                            className="flex items-center gap-2 bg-slate-700/50 rounded px-2 py-1.5 text-slate-300 cursor-pointer"
+                        <button
+                            type="button"
+                            className="flex items-center gap-2 bg-slate-700/50 rounded px-2 py-1.5 text-slate-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
                             onClick={handleMediaClick}
+                            aria-label={`${hasVideo ? '動画' : '音声'}を表示${hasVideo && videoViewerVideos.length > 1 ? `（他${videoViewerVideos.length - 1}件）` : ''}${hasAudio && audioViewerTracks.length > 1 ? `（他${audioViewerTracks.length - 1}件）` : ''}`}
                         >
-                            <span className="text-sm">📹</span>
+                            <span className="text-sm" aria-hidden="true">
+                                📹
+                            </span>
                             <span className={textClass}>
                                 {hasVideo ? '動画' : '音声'}
                                 {hasVideo &&
@@ -233,7 +246,7 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
                                     audioViewerTracks.length > 1 &&
                                     ` (${audioViewerTracks.length})`}
                             </span>
-                        </div>
+                        </button>
                     )}
                 </div>
             )}

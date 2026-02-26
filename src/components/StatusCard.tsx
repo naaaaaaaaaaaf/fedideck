@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { mastodon } from 'masto';
-import { type AccountSession } from '../api/mastoClient';
+import { type AccountSession, fetchStatus, getClient } from '../api/mastoClient';
 import { getDisplayStatus, getReblogger } from '../utils/statusView';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
@@ -104,6 +104,44 @@ export const StatusCard = React.memo(function StatusCard({
 
     // Poll countdown display
     const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
+
+    // Resolve ShallowQuote (accepted with quotedStatusId but no quotedStatus)
+    const [resolvedShallowQuoteStatus, setResolvedShallowQuoteStatus] =
+        useState<mastodon.v1.Status | null>(null);
+
+    const shallowQuoteId = useMemo(() => {
+        const quote = displayStatus.quote;
+        if (!quote) return null;
+        if (quote.state !== 'accepted') return null;
+        if (isFullQuote(quote)) return null;
+        return quote.quotedStatusId ?? null;
+    }, [displayStatus.quote]);
+
+    useEffect(() => {
+        if (!accountSession || !shallowQuoteId) return;
+
+        let cancelled = false;
+
+        const resolveShallowQuote = async () => {
+            try {
+                const client = getClient(accountSession);
+                const quotedStatus = await fetchStatus(client, shallowQuoteId);
+                if (!cancelled) {
+                    setResolvedShallowQuoteStatus(quotedStatus);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error('Failed to fetch shallow quoted status:', error);
+                }
+            }
+        };
+
+        resolveShallowQuote();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [accountSession, shallowQuoteId]);
 
     // NSFW state with controlled/uncontrolled mode
     const { nsfwRevealed, handleNsfwToggle } = useNsfwState({
@@ -236,7 +274,11 @@ export const StatusCard = React.memo(function StatusCard({
                     {/* Quote Card */}
                     {hasQuote(displayStatus) &&
                         (() => {
-                            const quotedStatus = getQuotedStatus(displayStatus);
+                            const quotedStatus =
+                                getQuotedStatus(displayStatus) ??
+                                (shallowQuoteId && resolvedShallowQuoteStatus?.id === shallowQuoteId
+                                    ? resolvedShallowQuoteStatus
+                                    : null);
                             const quote = displayStatus.quote;
 
                             // If we have the full quoted status, show the card

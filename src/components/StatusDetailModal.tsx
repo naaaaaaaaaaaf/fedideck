@@ -269,6 +269,44 @@ export function StatusDetailModal({
     // Poll countdown display
     const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
 
+    // Resolve ShallowQuote (accepted with quotedStatusId but no quotedStatus)
+    const [resolvedShallowQuoteStatus, setResolvedShallowQuoteStatus] =
+        useState<mastodon.v1.Status | null>(null);
+
+    const shallowQuoteId = useMemo(() => {
+        const quote = displayStatus?.quote;
+        if (!quote) return null;
+        if (quote.state !== 'accepted') return null;
+        if (isFullQuote(quote)) return null;
+        return quote.quotedStatusId ?? null;
+    }, [displayStatus?.quote]);
+
+    useEffect(() => {
+        if (!accountSession || !shallowQuoteId) return;
+
+        let cancelled = false;
+
+        const resolveShallowQuote = async () => {
+            try {
+                const client = getClient(accountSession);
+                const quotedStatus = await fetchStatus(client, shallowQuoteId);
+                if (!cancelled) {
+                    setResolvedShallowQuoteStatus(quotedStatus);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error('Failed to fetch shallow quoted status:', error);
+                }
+            }
+        };
+
+        resolveShallowQuote();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [accountSession, shallowQuoteId]);
+
     // Thread context state
     const [context, setContext] = useState<StatusContext | null>(null);
     const [isLoadingContext, setIsLoadingContext] = useState(false);
@@ -854,7 +892,12 @@ export function StatusDetailModal({
                         {hasQuote(displayStatus) && (
                             <div className="mb-4">
                                 {(() => {
-                                    const quotedStatus = getQuotedStatus(displayStatus);
+                                    const quotedStatus =
+                                        getQuotedStatus(displayStatus) ??
+                                        (shallowQuoteId &&
+                                        resolvedShallowQuoteStatus?.id === shallowQuoteId
+                                            ? resolvedShallowQuoteStatus
+                                            : null);
                                     const quote = displayStatus.quote;
 
                                     // If we have the full quoted status, show the card
