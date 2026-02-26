@@ -225,8 +225,9 @@ describe('StatusActions', () => {
             render(<StatusActions {...defaultProps} isAuthenticated={false} />);
 
             // All buttons have the same title, so we check for existence
+            // Reblog, favourite, bookmark, and quote buttons have the tooltip
             const tooltipElements = screen.getAllByTitle('アカウント接続が必要です');
-            expect(tooltipElements.length).toBe(3);
+            expect(tooltipElements.length).toBe(4);
         });
 
         it('enables buttons when authenticated', () => {
