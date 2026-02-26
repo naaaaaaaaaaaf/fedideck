@@ -171,6 +171,11 @@ export interface PollParams {
 }
 
 /**
+ * Quote approval policy for creating quote posts
+ */
+export type QuoteApprovalPolicy = 'public' | 'followers';
+
+/**
  * Parameters for creating a new status
  */
 export interface CreateStatusParams {
@@ -182,6 +187,8 @@ export interface CreateStatusParams {
     language?: string;
     mediaIds?: string[];
     poll?: PollParams;
+    quotedStatusId?: string;
+    quoteApprovalPolicy?: QuoteApprovalPolicy;
 }
 
 /**
@@ -204,6 +211,8 @@ export async function createStatus(
     if (params.language) createParams.language = params.language;
     if (params.mediaIds && params.mediaIds.length > 0) createParams.mediaIds = params.mediaIds;
     if (params.poll) createParams.poll = params.poll;
+    if (params.quotedStatusId) createParams.quotedStatusId = params.quotedStatusId;
+    if (params.quoteApprovalPolicy) createParams.quoteApprovalPolicy = params.quoteApprovalPolicy;
 
     const status = await client.v1.statuses.create(createParams);
     return status;
