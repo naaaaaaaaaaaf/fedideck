@@ -57,7 +57,7 @@ export const StatusReplyIndicator = React.memo(function StatusReplyIndicator({
 
     return (
         <div
-            className={`flex items-center gap-2 text-sm text-slate-400 mb-2 ml-12 ${
+            className={`flex items-center gap-2 text-sm text-slate-400 mb-2 ${
                 isClickable ? 'cursor-pointer hover:text-slate-300' : ''
             } ${className}`}
             {...clickableProps}
