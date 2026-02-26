@@ -1017,7 +1017,10 @@ export function StatusDetailModal({
                         isLoading={isLoading}
                         onReply={handleReply}
                         onQuote={onQuote ? () => onQuote(displayStatus) : undefined}
-                        canQuote={instanceConfig?.supportsQuotes ?? false}
+                        canQuote={
+                            (instanceConfig?.supportsQuotes ?? false) &&
+                            displayStatus.quoteApproval?.currentUser !== 'denied'
+                        }
                         onReblog={handleReblog}
                         onFavourite={handleFavourite}
                         onBookmark={handleBookmark}

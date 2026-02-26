@@ -337,7 +337,10 @@ export const StatusCard = React.memo(function StatusCard({
                         isLoading={isLoading}
                         onReply={onReply ? () => onReply(displayStatus) : undefined}
                         onQuote={onQuote ? () => onQuote(displayStatus) : undefined}
-                        canQuote={instanceConfig?.supportsQuotes ?? false}
+                        canQuote={
+                            (instanceConfig?.supportsQuotes ?? false) &&
+                            displayStatus.quoteApproval?.currentUser !== 'denied'
+                        }
                         onReblog={handleReblog}
                         onFavourite={handleFavourite}
                         onBookmark={handleBookmark}
