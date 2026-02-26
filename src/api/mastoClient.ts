@@ -13,7 +13,7 @@ export interface AccountSession {
 const clientCache = new Map<string, MastoClient>();
 
 // Maximum number of statuses to cache (LRU-style eviction)
-const MAX_STATUS_CACHE_SIZE = 100;
+export const MAX_STATUS_CACHE_SIZE = 100;
 
 // In-memory cache for fetched statuses (to avoid duplicate fetches for ShallowQuote resolution)
 // Key format: "instanceUrl:sessionId:statusId" for scoped caching
