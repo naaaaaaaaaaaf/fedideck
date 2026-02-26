@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { mastodon } from 'masto';
 import { mergePollWithFallback } from '../utils/poll';
+import { isFullQuote } from '../utils/statusView';
 
 /** Maximum number of statuses to keep per stream (prevents memory bloat) */
 export const MAX_STATUSES_PER_STREAM = 200;
@@ -206,6 +207,17 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                         streamHasChanges = true;
                         return { ...s, reblog: status };
                     }
+                    // Check if this is a quote containing the status
+                    // Note: This only updates 1 level of nesting. Deeply nested quotes
+                    // (e.g., quote.quotedStatus.quote.quotedStatus) are not updated.
+                    // This is acceptable since MAX_QUOTE_DEPTH=2 limits display depth anyway.
+                    if (s.quote?.state === 'accepted' && isFullQuote(s.quote)) {
+                        const quotedStatus = s.quote.quotedStatus;
+                        if (quotedStatus && quotedStatus.id === status.id) {
+                            streamHasChanges = true;
+                            return { ...s, quote: { ...s.quote, quotedStatus: status } };
+                        }
+                    }
                     return s;
                 });
 
@@ -251,6 +263,26 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                                 poll: mergePollWithFallback(s.reblog.poll ?? null, poll),
                             },
                         };
+                    }
+                    // Check if this is a quote containing the status
+                    if (s.quote?.state === 'accepted' && isFullQuote(s.quote)) {
+                        const quotedStatus = s.quote.quotedStatus;
+                        if (quotedStatus && quotedStatus.id === statusId) {
+                            streamHasChanges = true;
+                            return {
+                                ...s,
+                                quote: {
+                                    ...s.quote,
+                                    quotedStatus: {
+                                        ...quotedStatus,
+                                        poll: mergePollWithFallback(
+                                            quotedStatus.poll ?? null,
+                                            poll
+                                        ),
+                                    },
+                                },
+                            };
+                        }
                     }
                     return s;
                 });

@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { mastodon } from 'masto';
-import { type AccountSession } from '../api/mastoClient';
+import { type AccountSession, fetchStatus, getClient } from '../api/mastoClient';
 import { getDisplayStatus, getReblogger } from '../utils/statusView';
 import { toVideoViewerVideos } from '../utils/videoAttachments';
 import { toAudioViewerTracks } from '../utils/audioAttachments';
@@ -21,7 +21,10 @@ import {
     StatusPoll,
     StatusActions,
     StatusReplyIndicator,
+    StatusQuoteCard,
+    StatusQuotePlaceholder,
 } from './status';
+import { hasQuote, getQuotedStatus, isFullQuote } from '../utils/statusView';
 
 interface StatusCardProps {
     status: mastodon.v1.Status;
@@ -101,6 +104,50 @@ export const StatusCard = React.memo(function StatusCard({
 
     // Poll countdown display
     const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
+
+    // Resolve ShallowQuote (accepted with quotedStatusId but no quotedStatus)
+    const [resolvedShallowQuoteStatus, setResolvedShallowQuoteStatus] =
+        useState<mastodon.v1.Status | null>(null);
+
+    const shallowQuoteId = useMemo(() => {
+        const quote = displayStatus.quote;
+        if (!quote) return null;
+        if (quote.state !== 'accepted') return null;
+        if (isFullQuote(quote)) return null;
+        return quote.quotedStatusId ?? null;
+    }, [displayStatus.quote]);
+
+    useEffect(() => {
+        if (!accountSession || !shallowQuoteId) {
+            setResolvedShallowQuoteStatus(null);
+            return;
+        }
+
+        // Clear previous resolution when ID changes
+        setResolvedShallowQuoteStatus(null);
+
+        let cancelled = false;
+
+        const resolveShallowQuote = async () => {
+            try {
+                const client = getClient(accountSession);
+                const quotedStatus = await fetchStatus(client, shallowQuoteId, accountSession);
+                if (!cancelled) {
+                    setResolvedShallowQuoteStatus(quotedStatus);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error('Failed to fetch shallow quoted status:', error);
+                }
+            }
+        };
+
+        resolveShallowQuote();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [accountSession, shallowQuoteId]);
 
     // NSFW state with controlled/uncontrolled mode
     const { nsfwRevealed, handleNsfwToggle } = useNsfwState({
@@ -195,6 +242,7 @@ export const StatusCard = React.memo(function StatusCard({
                         emojis={displayStatus.emojis}
                         spoilerText={displayStatus.spoilerText}
                         variant="card"
+                        hasQuote={hasQuote(displayStatus)}
                     />
 
                     {/* Media attachments */}
@@ -228,6 +276,47 @@ export const StatusCard = React.memo(function StatusCard({
                             variant="card"
                         />
                     )}
+
+                    {/* Quote Card */}
+                    {hasQuote(displayStatus) &&
+                        (() => {
+                            const quotedStatus =
+                                getQuotedStatus(displayStatus) ??
+                                (shallowQuoteId && resolvedShallowQuoteStatus?.id === shallowQuoteId
+                                    ? resolvedShallowQuoteStatus
+                                    : null);
+                            const quote = displayStatus.quote;
+
+                            // If we have the full quoted status, show the card
+                            if (quotedStatus) {
+                                return (
+                                    <StatusQuoteCard
+                                        status={quotedStatus}
+                                        variant="card"
+                                        onClick={onStatusClick}
+                                        onImageClick={onImageClick}
+                                        onVideoClick={onVideoClick}
+                                        onAudioClick={onAudioClick}
+                                        accountSession={accountSession}
+                                    />
+                                );
+                            }
+
+                            // If quote exists but no quotedStatus, show placeholder
+                            if (quote) {
+                                // Check if this is a ShallowQuote (accepted but no status)
+                                const isShallow = quote.state === 'accepted' && !isFullQuote(quote);
+                                return (
+                                    <StatusQuotePlaceholder
+                                        state={quote.state}
+                                        variant="card"
+                                        isShallow={isShallow}
+                                    />
+                                );
+                            }
+
+                            return null;
+                        })()}
 
                     {/* Action bar */}
                     <StatusActions

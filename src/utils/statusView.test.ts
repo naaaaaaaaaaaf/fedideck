@@ -4,6 +4,12 @@ import {
     getDisplayStatusOrNull,
     hasContentWarning,
     getReblogger,
+    hasQuote,
+    isFullQuote,
+    getQuotedStatus,
+    getQuoteState,
+    getQuoteStateMessage,
+    stripQuoteInline,
 } from './statusView';
 import type { mastodon } from 'masto';
 
@@ -122,6 +128,201 @@ describe('statusView utilities', () => {
                 account: reblogger,
             });
             expect(getReblogger(reblogStatus)).toBe(reblogger);
+        });
+    });
+
+    describe('hasQuote', () => {
+        it('returns false when status has no quote', () => {
+            const status = createMockStatus();
+            expect(hasQuote(status)).toBe(false);
+        });
+
+        it('returns true when status has a quote', () => {
+            const quotedStatus = createMockStatus({ id: 'quoted' });
+            const status = createMockStatus({
+                quote: {
+                    state: 'accepted',
+                    quotedStatus,
+                } as mastodon.v1.Quote,
+            });
+            expect(hasQuote(status)).toBe(true);
+        });
+
+        it('returns true when status has a ShallowQuote', () => {
+            const status = createMockStatus({
+                quote: {
+                    state: 'pending',
+                    quotedStatusId: '123',
+                } as mastodon.v1.ShallowQuote,
+            });
+            expect(hasQuote(status)).toBe(true);
+        });
+    });
+
+    describe('isFullQuote', () => {
+        it('returns true for full Quote with quotedStatus', () => {
+            const quotedStatus = createMockStatus({ id: 'quoted' });
+            const quote = {
+                state: 'accepted' as const,
+                quotedStatus,
+            };
+            expect(isFullQuote(quote)).toBe(true);
+        });
+
+        it('returns false for ShallowQuote', () => {
+            const shallowQuote = {
+                state: 'pending' as const,
+                quotedStatusId: '123',
+            };
+            expect(isFullQuote(shallowQuote)).toBe(false);
+        });
+    });
+
+    describe('getQuotedStatus', () => {
+        it('returns null when status has no quote', () => {
+            const status = createMockStatus();
+            expect(getQuotedStatus(status)).toBeNull();
+        });
+
+        it('returns null when quote state is not accepted', () => {
+            const status = createMockStatus({
+                quote: {
+                    state: 'pending',
+                    quotedStatusId: '123',
+                } as mastodon.v1.ShallowQuote,
+            });
+            expect(getQuotedStatus(status)).toBeNull();
+        });
+
+        it('returns null for ShallowQuote with accepted state', () => {
+            const status = createMockStatus({
+                quote: {
+                    state: 'accepted',
+                    quotedStatusId: '123',
+                } as mastodon.v1.ShallowQuote,
+            });
+            expect(getQuotedStatus(status)).toBeNull();
+        });
+
+        it('returns quotedStatus for full Quote with accepted state', () => {
+            const quotedStatus = createMockStatus({ id: 'quoted' });
+            const status = createMockStatus({
+                quote: {
+                    state: 'accepted',
+                    quotedStatus,
+                } as mastodon.v1.Quote,
+            });
+            expect(getQuotedStatus(status)).toBe(quotedStatus);
+        });
+
+        it('returns null when quotedStatus is null', () => {
+            const status = createMockStatus({
+                quote: {
+                    state: 'accepted',
+                    quotedStatus: null,
+                } as mastodon.v1.Quote,
+            });
+            expect(getQuotedStatus(status)).toBeNull();
+        });
+    });
+
+    describe('getQuoteState', () => {
+        it('returns null when status has no quote', () => {
+            const status = createMockStatus();
+            expect(getQuoteState(status)).toBeNull();
+        });
+
+        it('returns the quote state', () => {
+            const states: mastodon.v1.QuoteState[] = [
+                'accepted',
+                'pending',
+                'rejected',
+                'revoked',
+                'deleted',
+                'unauthorized',
+                'blocked_account',
+                'blocked_domain',
+                'muted_account',
+            ];
+            for (const state of states) {
+                const status = createMockStatus({
+                    quote: { state } as mastodon.v1.Quote,
+                });
+                expect(getQuoteState(status)).toBe(state);
+            }
+        });
+    });
+
+    describe('getQuoteStateMessage', () => {
+        it('returns null for accepted state', () => {
+            expect(getQuoteStateMessage('accepted')).toBeNull();
+        });
+
+        it('returns correct message for pending', () => {
+            expect(getQuoteStateMessage('pending')).toBe('引用の承認待ち');
+        });
+
+        it('returns correct message for rejected', () => {
+            expect(getQuoteStateMessage('rejected')).toBe('引用が拒否されました');
+        });
+
+        it('returns correct message for revoked', () => {
+            expect(getQuoteStateMessage('revoked')).toBe('引用が取り消されました');
+        });
+
+        it('returns correct message for deleted', () => {
+            expect(getQuoteStateMessage('deleted')).toBe('引用元の投稿が削除されました');
+        });
+
+        it('returns correct message for unauthorized', () => {
+            expect(getQuoteStateMessage('unauthorized')).toBe('引用する権限がありません');
+        });
+
+        it('returns correct message for blocked_account', () => {
+            expect(getQuoteStateMessage('blocked_account')).toBe(
+                'ブロックしたアカウントの投稿です'
+            );
+        });
+
+        it('returns correct message for blocked_domain', () => {
+            expect(getQuoteStateMessage('blocked_domain')).toBe('ブロックしたドメインの投稿です');
+        });
+
+        it('returns correct message for muted_account', () => {
+            expect(getQuoteStateMessage('muted_account')).toBe('ミュートしたアカウントの投稿です');
+        });
+    });
+
+    describe('stripQuoteInline', () => {
+        it('returns unchanged HTML when no quote-inline element', () => {
+            const html = '<p>Hello world</p>';
+            expect(stripQuoteInline(html)).toBe(html);
+        });
+
+        it('removes quote-inline element', () => {
+            const html =
+                '<p>Hello world</p><span class="quote-inline"><a href="https://example.com">Quote</a></span>';
+            const result = stripQuoteInline(html);
+            expect(result).toBe('<p>Hello world</p>');
+        });
+
+        it('removes multiple quote-inline elements', () => {
+            const html =
+                '<span class="quote-inline">1</span><p>Text</p><span class="quote-inline">2</span>';
+            const result = stripQuoteInline(html);
+            expect(result).toBe('<p>Text</p>');
+        });
+
+        it('handles nested quote-inline elements', () => {
+            const html = '<div><span class="quote-inline"><strong>Bold</strong></span></div>';
+            const result = stripQuoteInline(html);
+            expect(result).toBe('<div></div>');
+        });
+
+        it('preserves other classes', () => {
+            const html = '<p class="content">Text</p><span class="quote-inline other">Quote</span>';
+            const result = stripQuoteInline(html);
+            expect(result).toBe('<p class="content">Text</p>');
         });
     });
 });
