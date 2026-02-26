@@ -48,6 +48,7 @@ describe('instanceConfig', () => {
                 maxCharacters: 5000,
                 maxMediaAttachments: 5,
                 supportedMimeTypes: ['image/jpeg', 'image/png'],
+                supportsQuotes: false, // No version in mock, defaults to false
             });
             expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(1);
         });
@@ -210,6 +211,7 @@ describe('instanceConfig', () => {
             expect(config).toEqual({
                 maxCharacters: 500,
                 maxMediaAttachments: 4,
+                supportsQuotes: false,
                 supportedMimeTypes: [
                     'image/jpeg',
                     'image/png',
@@ -558,6 +560,7 @@ describe('instanceConfig', () => {
             expect(defaultConfig).toEqual({
                 maxCharacters: 500,
                 maxMediaAttachments: 4,
+                supportsQuotes: false,
                 supportedMimeTypes: [
                     'image/jpeg',
                     'image/png',

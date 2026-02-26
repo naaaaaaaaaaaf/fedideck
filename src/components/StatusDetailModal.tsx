@@ -14,6 +14,7 @@ import { useCardInteraction } from '../hooks/useCardInteraction';
 import { useNsfwState } from '../hooks/useNsfwState';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
+import { useInstanceConfig } from '../hooks/useInstanceConfig';
 import { formatDate, formatFullDate } from '../utils/dateFormat';
 import { getVisibilityMeta } from '../utils/statusVisibility';
 import { replaceEmojisWithImages } from '../utils/emoji';
@@ -270,6 +271,9 @@ export function StatusDetailModal({
 
     // Poll countdown display
     const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
+
+    // Instance config for quote support check
+    const { instanceConfig } = useInstanceConfig({ accountSession });
 
     // Resolve ShallowQuote (accepted with quotedStatusId but no quotedStatus)
     const [resolvedShallowQuoteStatus, setResolvedShallowQuoteStatus] =
@@ -1013,6 +1017,7 @@ export function StatusDetailModal({
                         isLoading={isLoading}
                         onReply={handleReply}
                         onQuote={onQuote ? () => onQuote(displayStatus) : undefined}
+                        canQuote={instanceConfig?.supportsQuotes ?? false}
                         onReblog={handleReblog}
                         onFavourite={handleFavourite}
                         onBookmark={handleBookmark}

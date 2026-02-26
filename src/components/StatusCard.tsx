@@ -10,6 +10,7 @@ import { useCardInteraction } from '../hooks/useCardInteraction';
 import { useNsfwState } from '../hooks/useNsfwState';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
+import { useInstanceConfig } from '../hooks/useInstanceConfig';
 import type { ImageViewerImage } from './ImageViewer';
 import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
@@ -106,6 +107,9 @@ export const StatusCard = React.memo(function StatusCard({
 
     // Poll countdown display
     const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
+
+    // Instance config for quote support check
+    const { instanceConfig } = useInstanceConfig({ accountSession });
 
     // Resolve ShallowQuote (accepted with quotedStatusId but no quotedStatus)
     const [resolvedShallowQuoteStatus, setResolvedShallowQuoteStatus] =
@@ -333,6 +337,7 @@ export const StatusCard = React.memo(function StatusCard({
                         isLoading={isLoading}
                         onReply={onReply ? () => onReply(displayStatus) : undefined}
                         onQuote={onQuote ? () => onQuote(displayStatus) : undefined}
+                        canQuote={instanceConfig?.supportsQuotes ?? false}
                         onReblog={handleReblog}
                         onFavourite={handleFavourite}
                         onBookmark={handleBookmark}

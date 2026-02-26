@@ -7,6 +7,7 @@ export interface InstanceConfig {
     maxCharacters: number;
     maxMediaAttachments: number;
     supportedMimeTypes: string[];
+    supportsQuotes: boolean;
 }
 
 /**
@@ -15,6 +16,25 @@ export interface InstanceConfig {
 interface CacheEntry {
     config: InstanceConfig;
     expiresAt: number;
+}
+
+/**
+ * Check if Mastodon version supports quote posts (v4.5.0+)
+ */
+function supportsQuotes(version: string): boolean {
+    // Mastodon version strings can be:
+    // - "4.5.0" (standard)
+    // - "4.5.0+glitch" (Glitch edition)
+    // - "4.5.0rc1" (release candidate)
+    // We only care about the major.minor.patch part
+    const match = version.match(/^(\d+)\.(\d+)/);
+    if (!match) return false;
+
+    const major = parseInt(match[1], 10);
+    const minor = parseInt(match[2], 10);
+
+    // Mastodon 4.5.0+ supports quotes
+    return major > 4 || (major === 4 && minor >= 5);
 }
 
 // In-memory cache using instance URL as key
@@ -27,6 +47,7 @@ const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 const DEFAULT_CONFIG: InstanceConfig = {
     maxCharacters: 500,
     maxMediaAttachments: 4,
+    supportsQuotes: false,
     supportedMimeTypes: [
         'image/jpeg',
         'image/png',
@@ -107,6 +128,7 @@ export async function getInstanceConfig(
             DEFAULT_CONFIG.maxMediaAttachments,
         // Create a copy to prevent mutations to the cached value
         supportedMimeTypes: apiMimeTypes ? [...apiMimeTypes] : DEFAULT_CONFIG.supportedMimeTypes,
+        supportsQuotes: supportsQuotes(instance.version ?? ''),
     };
 
     // Cache the result

@@ -4,7 +4,7 @@ import { getInstanceConfig, getDefaultConfig, type InstanceConfig } from '../api
 
 interface UseInstanceConfigOptions {
     accountSession: AccountSession | null | undefined;
-    isOpen: boolean;
+    isOpen?: boolean; // Optional: if omitted, fetches when accountSession is available
 }
 
 interface UseInstanceConfigReturn {
@@ -18,7 +18,7 @@ interface UseInstanceConfigReturn {
  */
 export function useInstanceConfig({
     accountSession,
-    isOpen,
+    isOpen = true, // Default to true for backward compatibility
 }: UseInstanceConfigOptions): UseInstanceConfigReturn {
     const [instanceConfig, setInstanceConfig] = useState<InstanceConfig | null>(null);
     const [isLoading, setIsLoading] = useState(false);
