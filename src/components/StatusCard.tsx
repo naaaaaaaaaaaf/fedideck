@@ -118,7 +118,13 @@ export const StatusCard = React.memo(function StatusCard({
     }, [displayStatus.quote]);
 
     useEffect(() => {
-        if (!accountSession || !shallowQuoteId) return;
+        if (!accountSession || !shallowQuoteId) {
+            setResolvedShallowQuoteStatus(null);
+            return;
+        }
+
+        // Clear previous resolution when ID changes
+        setResolvedShallowQuoteStatus(null);
 
         let cancelled = false;
 

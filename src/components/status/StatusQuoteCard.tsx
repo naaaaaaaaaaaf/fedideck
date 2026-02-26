@@ -75,7 +75,13 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
 
     // Resolve accepted ShallowQuote so nested root quote can be opened
     useEffect(() => {
-        if (!accountSession || !shallowNestedQuoteId) return;
+        if (!accountSession || !shallowNestedQuoteId) {
+            setResolvedNestedQuoteStatus(null);
+            return;
+        }
+
+        // Clear previous resolution when ID changes
+        setResolvedNestedQuoteStatus(null);
 
         let cancelled = false;
 
