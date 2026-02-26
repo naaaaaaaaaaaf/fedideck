@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
     createStatus,
     favouriteStatus,
@@ -15,9 +15,12 @@ import {
     editStatus,
     votePoll,
     fetchPoll,
+    fetchStatus,
+    clearStatusCache,
     type CreateStatusParams,
     type EditStatusParams,
     type MastoClient,
+    type AccountSession,
 } from './mastoClient';
 
 describe('createStatus', () => {
@@ -965,7 +968,7 @@ describe('fetchPoll', () => {
                 { title: 'Option 2', votesCount: 4 },
             ],
             voted: false,
-            ownVotes: null,
+            ownVotes: [],
         };
         const mockFetch = vi.fn().mockResolvedValue(mockPoll);
         const mockClient = {
@@ -1060,5 +1063,162 @@ describe('fetchPoll', () => {
         } as unknown as MastoClient;
 
         await expect(fetchPoll(mockClient, 'nonexistent')).rejects.toThrow('Record not found');
+    });
+});
+
+describe('fetchStatus', () => {
+    let mockClient: MastoClient;
+    let mockFetch: ReturnType<typeof vi.fn>;
+    const mockSession: AccountSession = {
+        id: 'session-1',
+        instanceUrl: 'https://example.com',
+        accessToken: 'test-token',
+        account: {
+            id: 'account-1',
+            username: 'testuser',
+            acct: 'testuser',
+            displayName: 'Test User',
+            locked: false,
+            bot: false,
+            group: false,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            note: '',
+            url: 'https://example.com/@testuser',
+            avatar: '',
+            avatarStatic: '',
+            header: '',
+            headerStatic: '',
+            followersCount: 0,
+            followingCount: 0,
+            statusesCount: 0,
+            lastStatusAt: '2026-01-01T00:00:00.000Z',
+            emojis: [],
+            fields: [],
+            roles: [],
+        },
+    };
+
+    beforeEach(() => {
+        mockFetch = vi.fn().mockResolvedValue({
+            id: 'status-123',
+            content: '<p>Test status</p>',
+        });
+        mockClient = {
+            v1: {
+                statuses: {
+                    $select: vi.fn().mockReturnValue({
+                        fetch: mockFetch,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+
+        // Clear cache before each test
+        clearStatusCache();
+    });
+
+    afterEach(() => {
+        clearStatusCache();
+    });
+
+    it('fetches status by ID', async () => {
+        const result = await fetchStatus(mockClient, 'status-123');
+
+        expect(mockClient.v1.statuses.$select).toHaveBeenCalledWith('status-123');
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+        expect(result.id).toBe('status-123');
+    });
+
+    it('caches status and returns cached value on second call', async () => {
+        // First call
+        const result1 = await fetchStatus(mockClient, 'status-123', mockSession);
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+
+        // Second call should return cached value
+        const result2 = await fetchStatus(mockClient, 'status-123', mockSession);
+        expect(mockFetch).toHaveBeenCalledTimes(1); // Still 1, not called again
+
+        expect(result1).toBe(result2);
+    });
+
+    it('deduplicates concurrent requests for the same status ID', async () => {
+        // Start two concurrent requests
+        const [result1, result2] = await Promise.all([
+            fetchStatus(mockClient, 'status-123', mockSession),
+            fetchStatus(mockClient, 'status-123', mockSession),
+        ]);
+
+        // Should only call API once
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+        expect(result1).toBe(result2);
+    });
+
+    it('scopes cache by session (different instances do not share cache)', async () => {
+        const session1 = { ...mockSession, id: 'session-1', instanceUrl: 'https://instance1.com' };
+        const session2 = { ...mockSession, id: 'session-2', instanceUrl: 'https://instance2.com' };
+
+        // Fetch with session1
+        await fetchStatus(mockClient, 'status-123', session1);
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+
+        // Fetch same ID with session2 should trigger new API call
+        await fetchStatus(mockClient, 'status-123', session2);
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('scopes cache by session ID (same instance, different accounts)', async () => {
+        const session1 = { ...mockSession, id: 'session-1' };
+        const session2 = { ...mockSession, id: 'session-2' };
+
+        // Fetch with session1
+        await fetchStatus(mockClient, 'status-123', session1);
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+
+        // Fetch same ID with session2 should trigger new API call
+        await fetchStatus(mockClient, 'status-123', session2);
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('works without session (no scoping)', async () => {
+        // Fetch without session
+        await fetchStatus(mockClient, 'status-123');
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+
+        // Fetch same ID without session should return cached value
+        await fetchStatus(mockClient, 'status-123');
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('clears cache when clearStatusCache is called', async () => {
+        // Fetch and cache
+        await fetchStatus(mockClient, 'status-123', mockSession);
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+
+        // Clear cache
+        clearStatusCache();
+
+        // Fetch again should trigger new API call
+        await fetchStatus(mockClient, 'status-123', mockSession);
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('throws error when API call fails', async () => {
+        mockFetch.mockRejectedValueOnce(new Error('Status not found'));
+
+        await expect(fetchStatus(mockClient, 'nonexistent')).rejects.toThrow('Status not found');
+    });
+
+    it('removes in-flight request after failure', async () => {
+        mockFetch.mockRejectedValueOnce(new Error('Failed'));
+
+        // First call fails
+        await expect(fetchStatus(mockClient, 'status-123', mockSession)).rejects.toThrow('Failed');
+
+        // Reset mock to succeed
+        mockFetch.mockResolvedValueOnce({ id: 'status-123', content: '<p>Success</p>' });
+
+        // Second call should work (in-flight was cleaned up)
+        const result = await fetchStatus(mockClient, 'status-123', mockSession);
+        expect(result.id).toBe('status-123');
     });
 });

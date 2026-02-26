@@ -74,10 +74,12 @@ export function removeClient(session: AccountSession): void {
 }
 
 /**
- * Clear all cached clients
+ * Clear all cached clients and status caches
  */
 export function clearAllClients(): void {
     clientCache.clear();
+    statusCache.clear();
+    inFlightStatusRequests.clear();
 }
 
 /**
