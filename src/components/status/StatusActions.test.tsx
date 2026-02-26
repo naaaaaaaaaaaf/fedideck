@@ -243,4 +243,60 @@ describe('StatusActions', () => {
             expect(bookmarkButton).not.toBeDisabled();
         });
     });
+
+    describe('canQuote', () => {
+        it('hides quote button when canQuote is false (default)', () => {
+            render(<StatusActions {...defaultProps} />);
+
+            expect(screen.queryByLabelText('引用')).not.toBeInTheDocument();
+        });
+
+        it('shows quote button when canQuote is true in card variant', () => {
+            render(<StatusActions {...defaultProps} canQuote={true} />);
+
+            expect(screen.getByLabelText('引用')).toBeInTheDocument();
+        });
+
+        it('shows quote button when canQuote is true in detail variant', () => {
+            render(<StatusActions {...defaultProps} variant="detail" canQuote={true} />);
+
+            expect(screen.getByText('引用')).toBeInTheDocument();
+        });
+
+        it('calls onQuote when quote button is clicked in card variant', () => {
+            const onQuote = vi.fn();
+            render(<StatusActions {...defaultProps} canQuote={true} onQuote={onQuote} />);
+
+            fireEvent.click(screen.getByLabelText('引用'));
+            expect(onQuote).toHaveBeenCalled();
+        });
+
+        it('calls onQuote when quote button is clicked in detail variant', () => {
+            const onQuote = vi.fn();
+            render(
+                <StatusActions
+                    {...defaultProps}
+                    variant="detail"
+                    canQuote={true}
+                    onQuote={onQuote}
+                />
+            );
+
+            fireEvent.click(screen.getByText('引用'));
+            expect(onQuote).toHaveBeenCalled();
+        });
+
+        it('disables quote button when not authenticated', () => {
+            render(<StatusActions {...defaultProps} canQuote={true} isAuthenticated={false} />);
+
+            expect(screen.getByLabelText('引用')).toBeDisabled();
+        });
+
+        it('shows authentication required tooltip for quote button when not authenticated', () => {
+            render(<StatusActions {...defaultProps} canQuote={true} isAuthenticated={false} />);
+
+            const quoteButton = screen.getByLabelText('引用');
+            expect(quoteButton).toHaveAttribute('title', 'アカウント接続が必要です');
+        });
+    });
 });

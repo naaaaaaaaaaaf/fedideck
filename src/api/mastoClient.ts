@@ -173,7 +173,7 @@ export interface PollParams {
 /**
  * Quote approval policy for creating quote posts
  */
-export type QuoteApprovalPolicy = 'public' | 'followers';
+export type QuoteApprovalPolicy = 'public' | 'followers' | 'nobody';
 
 /**
  * Parameters for creating a new status

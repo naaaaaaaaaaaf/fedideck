@@ -151,6 +151,22 @@ describe('NotificationCard', () => {
             expect(screen.getByText(/通報/)).toBeInTheDocument();
         });
 
+        it('should display quote notification', () => {
+            const notification = createMockNotification('quote', {
+                status: createMockStatus(),
+            });
+            render(<NotificationCard notification={notification} />);
+            expect(screen.getByText(/引用/)).toBeInTheDocument();
+        });
+
+        it('should display quoted_update notification', () => {
+            const notification = createMockNotification('quoted_update', {
+                status: createMockStatus(),
+            });
+            render(<NotificationCard notification={notification} />);
+            expect(screen.getByText(/引用先が編集/)).toBeInTheDocument();
+        });
+
         it('should display unknown type with its raw type string', () => {
             const notification = createMockNotification('custom_type');
             render(<NotificationCard notification={notification} />);

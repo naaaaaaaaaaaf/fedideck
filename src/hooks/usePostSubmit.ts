@@ -139,6 +139,12 @@ export function usePostSubmit({
     const handleSubmit = useCallback(async () => {
         if (!canSubmit || !accountSession) return;
 
+        // Guard: reply and quote are mutually exclusive
+        if (replyToStatus && quoteToStatus) {
+            onError('返信と引用は同時に指定できません');
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {

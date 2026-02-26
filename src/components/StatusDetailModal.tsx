@@ -539,6 +539,11 @@ export function StatusDetailModal({
         onClose();
     };
 
+    const handleQuote = () => {
+        onQuote?.(displayStatus);
+        onClose();
+    };
+
     // Handle quote card click - navigate within modal
     const handleQuoteNavigate = (quotedStatus: mastodon.v1.Status) => {
         setContext(null);
@@ -1016,7 +1021,7 @@ export function StatusDetailModal({
                         isAuthenticated={Boolean(accountSession)}
                         isLoading={isLoading}
                         onReply={handleReply}
-                        onQuote={onQuote ? () => onQuote(displayStatus) : undefined}
+                        onQuote={onQuote ? handleQuote : undefined}
                         canQuote={
                             (instanceConfig?.supportsQuotes ?? false) &&
                             displayStatus.quoteApproval?.currentUser !== 'denied'

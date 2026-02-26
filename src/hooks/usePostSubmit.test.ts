@@ -46,6 +46,14 @@ describe('usePostSubmit', () => {
         avatar: 'https://example.com/avatar.png',
     };
 
+    const mockQuoteToStatus = {
+        id: 'quote-456',
+        acct: 'quoted@example.com',
+        displayName: 'Quoted User',
+        content: '<p>Quoted post</p>',
+        avatar: 'https://example.com/quoted-avatar.png',
+    };
+
     const defaultState: PostSubmitState = {
         content: 'Test post content',
         visibility: 'public' as Visibility,
@@ -266,6 +274,43 @@ describe('usePostSubmit', () => {
                     inReplyToId: 'reply-123',
                 })
             );
+        });
+
+        it('should include quoted status ID when quoting', async () => {
+            const { result } = renderHook(() =>
+                usePostSubmit({
+                    ...defaultProps,
+                    quoteToStatus: mockQuoteToStatus as any,
+                })
+            );
+
+            await act(async () => {
+                await result.current.handleSubmit();
+            });
+
+            expect(mastoClient.createStatus).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.objectContaining({
+                    quotedStatusId: 'quote-456',
+                })
+            );
+        });
+
+        it('should error when both reply and quote are set', async () => {
+            const { result } = renderHook(() =>
+                usePostSubmit({
+                    ...defaultProps,
+                    replyToStatus: mockReplyToStatus as any,
+                    quoteToStatus: mockQuoteToStatus as any,
+                })
+            );
+
+            await act(async () => {
+                await result.current.handleSubmit();
+            });
+
+            expect(mockOnError).toHaveBeenCalledWith('返信と引用は同時に指定できません');
+            expect(mastoClient.createStatus).not.toHaveBeenCalled();
         });
 
         it('should include media IDs when media is uploaded', async () => {

@@ -174,6 +174,9 @@ function App() {
 
     const handleReply = (status: mastodon.v1.Status, accountId: string) => {
         const account = status.account;
+        // Clear quote state to ensure mutual exclusion
+        setQuoteToStatus(undefined);
+        setQuoteAccountId(undefined);
         setReplyToStatus({
             id: status.id,
             acct: account.acct,
@@ -187,6 +190,9 @@ function App() {
 
     const handleQuote = (status: mastodon.v1.Status, accountId: string) => {
         const account = status.account;
+        // Clear reply state to ensure mutual exclusion
+        setReplyToStatus(undefined);
+        setReplyAccountId(undefined);
         setQuoteToStatus({
             id: status.id,
             acct: account.acct,
