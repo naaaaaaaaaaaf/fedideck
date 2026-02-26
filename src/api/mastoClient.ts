@@ -12,6 +12,12 @@ export interface AccountSession {
 // Cache of Mastodon REST clients per account
 const clientCache = new Map<string, MastoClient>();
 
+// In-memory cache for fetched statuses (to avoid duplicate fetches for ShallowQuote resolution)
+const statusCache = new Map<string, mastodon.v1.Status>();
+
+// In-flight requests map to deduplicate concurrent fetches for the same status
+const inFlightStatusRequests = new Map<string, Promise<mastodon.v1.Status>>();
+
 /**
  * Create or retrieve a cached Mastodon REST API client for an account
  */
@@ -331,14 +337,51 @@ export async function getStatusContext(
 }
 
 /**
- * Fetch a single status by ID
+ * Fetch a single status by ID with caching and in-flight deduplication.
+ * This prevents duplicate API calls when multiple components request the same status
+ * (e.g., multiple ShallowQuote cards for the same quotedStatusId).
+ *
+ * @param client - Mastodon API client
+ * @param statusId - ID of the status to fetch
+ * @returns The requested status
  */
 export async function fetchStatus(
     client: MastoClient,
     statusId: string
 ): Promise<mastodon.v1.Status> {
-    const status = await client.v1.statuses.$select(statusId).fetch();
-    return status;
+    // Check cache first
+    const cached = statusCache.get(statusId);
+    if (cached) {
+        return cached;
+    }
+
+    // Check if there's an in-flight request for this status
+    const inFlight = inFlightStatusRequests.get(statusId);
+    if (inFlight) {
+        return inFlight;
+    }
+
+    // Create new request and store in in-flight map
+    const request = client.v1.statuses.$select(statusId).fetch();
+    inFlightStatusRequests.set(statusId, request);
+
+    try {
+        const status = await request;
+        // Cache the result
+        statusCache.set(statusId, status);
+        return status;
+    } finally {
+        // Remove from in-flight map regardless of success/failure
+        inFlightStatusRequests.delete(statusId);
+    }
+}
+
+/**
+ * Clear the status cache (e.g., on logout or account switch)
+ */
+export function clearStatusCache(): void {
+    statusCache.clear();
+    inFlightStatusRequests.clear();
 }
 
 /**
