@@ -108,23 +108,6 @@ export const StatusActions = React.memo(function StatusActions({
                     <LuMessageCircle className={iconSize} aria-hidden="true" />
                     <span>返信</span>
                 </button>
-                {canQuote && (
-                    <button
-                        type="button"
-                        onClick={onQuote}
-                        disabled={!isAuthenticated}
-                        tabIndex={!isAuthenticated ? -1 : undefined}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                            !isAuthenticated
-                                ? 'opacity-50 cursor-not-allowed'
-                                : 'hover:text-purple-400 hover:bg-purple-400/10'
-                        }`}
-                        title={!isAuthenticated ? 'アカウント接続が必要です' : undefined}
-                    >
-                        <LuQuote className={iconSize} aria-hidden="true" />
-                        <span>引用</span>
-                    </button>
-                )}
                 <button
                     type="button"
                     onClick={onReblog}
@@ -148,6 +131,23 @@ export const StatusActions = React.memo(function StatusActions({
                     <LuRepeat2 className={iconSize} aria-hidden="true" />
                     <span>ブースト</span>
                 </button>
+                {canQuote && (
+                    <button
+                        type="button"
+                        onClick={onQuote}
+                        disabled={!isAuthenticated}
+                        tabIndex={!isAuthenticated ? -1 : undefined}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                            !isAuthenticated
+                                ? 'opacity-50 cursor-not-allowed'
+                                : 'hover:text-purple-400 hover:bg-purple-400/10'
+                        }`}
+                        title={!isAuthenticated ? 'アカウント接続が必要です' : undefined}
+                    >
+                        <LuQuote className={iconSize} aria-hidden="true" />
+                        <span>引用</span>
+                    </button>
+                )}
                 <button
                     type="button"
                     onClick={onFavourite}
@@ -216,23 +216,6 @@ export const StatusActions = React.memo(function StatusActions({
                 <LuMessageCircle className={iconSize} aria-hidden="true" />
                 {repliesCount > 0 && <span className="text-sm">{repliesCount}</span>}
             </button>
-            {canQuote && (
-                <button
-                    type="button"
-                    onClick={onQuote}
-                    disabled={!isAuthenticated}
-                    tabIndex={!isAuthenticated ? -1 : undefined}
-                    className={`${actionButtonBase} ${
-                        !isAuthenticated
-                            ? 'opacity-50 cursor-not-allowed'
-                            : 'hover:text-purple-400 hover:bg-purple-400/10'
-                    }`}
-                    aria-label="引用"
-                    title={!isAuthenticated ? 'アカウント接続が必要です' : undefined}
-                >
-                    <LuQuote className={iconSize} aria-hidden="true" />
-                </button>
-            )}
             <button
                 type="button"
                 onClick={onReblog}
@@ -257,6 +240,23 @@ export const StatusActions = React.memo(function StatusActions({
                 <LuRepeat2 className={iconSize} aria-hidden="true" />
                 {reblogsCount > 0 && <span className="text-sm">{reblogsCount}</span>}
             </button>
+            {canQuote && (
+                <button
+                    type="button"
+                    onClick={onQuote}
+                    disabled={!isAuthenticated}
+                    tabIndex={!isAuthenticated ? -1 : undefined}
+                    className={`${actionButtonBase} ${
+                        !isAuthenticated
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'hover:text-purple-400 hover:bg-purple-400/10'
+                    }`}
+                    aria-label="引用"
+                    title={!isAuthenticated ? 'アカウント接続が必要です' : undefined}
+                >
+                    <LuQuote className={iconSize} aria-hidden="true" />
+                </button>
+            )}
             <button
                 type="button"
                 onClick={onFavourite}
