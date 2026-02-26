@@ -387,6 +387,9 @@ export async function fetchStatus(
     // Check cache first
     const cached = statusCache.get(cacheKey);
     if (cached) {
+        // LRU: move to end (most recently used) before returning
+        statusCache.delete(cacheKey);
+        statusCache.set(cacheKey, cached);
         return cached;
     }
 
