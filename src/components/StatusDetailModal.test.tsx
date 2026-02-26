@@ -1765,7 +1765,11 @@ describe('StatusDetailModal', () => {
 
             // ShallowQuote should be resolved and root quote card should appear
             await waitFor(() => {
-                expect(mastoClient.fetchStatus).toHaveBeenCalledWith(expect.anything(), 'root-1');
+                expect(mastoClient.fetchStatus).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'root-1',
+                    expect.anything()
+                );
             });
             const rootQuoteContent = await screen.findByText('Root quoted post');
             expect(rootQuoteContent).toBeInTheDocument();

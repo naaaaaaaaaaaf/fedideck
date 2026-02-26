@@ -289,7 +289,7 @@ export function StatusDetailModal({
         const resolveShallowQuote = async () => {
             try {
                 const client = getClient(accountSession);
-                const quotedStatus = await fetchStatus(client, shallowQuoteId);
+                const quotedStatus = await fetchStatus(client, shallowQuoteId, accountSession);
                 if (!cancelled) {
                     setResolvedShallowQuoteStatus(quotedStatus);
                 }
@@ -354,7 +354,11 @@ export function StatusDetailModal({
         const fetchQuotedStatus = async () => {
             try {
                 const client = getClient(accountSession);
-                const quotedStatus = await fetchStatus(client, navigatedShallowQuoteId);
+                const quotedStatus = await fetchStatus(
+                    client,
+                    navigatedShallowQuoteId,
+                    accountSession
+                );
 
                 if (!cancelled) {
                     setNavigatedStatus((prev) => {

@@ -12,11 +12,26 @@ export interface AccountSession {
 // Cache of Mastodon REST clients per account
 const clientCache = new Map<string, MastoClient>();
 
+// Maximum number of statuses to cache (LRU-style eviction)
+const MAX_STATUS_CACHE_SIZE = 100;
+
 // In-memory cache for fetched statuses (to avoid duplicate fetches for ShallowQuote resolution)
+// Key format: "instanceUrl:sessionId:statusId" for scoped caching
 const statusCache = new Map<string, mastodon.v1.Status>();
 
 // In-flight requests map to deduplicate concurrent fetches for the same status
 const inFlightStatusRequests = new Map<string, Promise<mastodon.v1.Status>>();
+
+/**
+ * Build a scoped cache key for status caching.
+ * Includes instanceUrl and sessionId to prevent ID collisions across instances/accounts.
+ */
+function buildStatusCacheKey(statusId: string, session?: AccountSession): string {
+    if (!session) {
+        return statusId;
+    }
+    return `${session.instanceUrl}:${session.id}:${statusId}`;
+}
 
 /**
  * Create or retrieve a cached Mastodon REST API client for an account
@@ -38,10 +53,24 @@ export function getClient(session: AccountSession): MastoClient {
 
 /**
  * Remove a client from cache (e.g., on logout)
+ * Also clears associated status cache entries for this session.
  */
 export function removeClient(session: AccountSession): void {
     const cacheKey = `${session.instanceUrl}:${session.id}`;
     clientCache.delete(cacheKey);
+
+    // Clear all status cache entries for this session
+    const prefix = `${session.instanceUrl}:${session.id}:`;
+    for (const key of statusCache.keys()) {
+        if (key.startsWith(prefix)) {
+            statusCache.delete(key);
+        }
+    }
+    for (const key of inFlightStatusRequests.keys()) {
+        if (key.startsWith(prefix)) {
+            inFlightStatusRequests.delete(key);
+        }
+    }
 }
 
 /**
@@ -343,36 +372,49 @@ export async function getStatusContext(
  *
  * @param client - Mastodon API client
  * @param statusId - ID of the status to fetch
+ * @param session - Optional session for scoped caching (prevents ID collisions across instances)
  * @returns The requested status
  */
 export async function fetchStatus(
     client: MastoClient,
-    statusId: string
+    statusId: string,
+    session?: AccountSession
 ): Promise<mastodon.v1.Status> {
+    const cacheKey = buildStatusCacheKey(statusId, session);
+
     // Check cache first
-    const cached = statusCache.get(statusId);
+    const cached = statusCache.get(cacheKey);
     if (cached) {
         return cached;
     }
 
     // Check if there's an in-flight request for this status
-    const inFlight = inFlightStatusRequests.get(statusId);
+    const inFlight = inFlightStatusRequests.get(cacheKey);
     if (inFlight) {
         return inFlight;
     }
 
     // Create new request and store in in-flight map
     const request = client.v1.statuses.$select(statusId).fetch();
-    inFlightStatusRequests.set(statusId, request);
+    inFlightStatusRequests.set(cacheKey, request);
 
     try {
         const status = await request;
+
+        // Enforce cache size limit (LRU-style: delete oldest entries)
+        if (statusCache.size >= MAX_STATUS_CACHE_SIZE) {
+            const firstKey = statusCache.keys().next().value;
+            if (firstKey) {
+                statusCache.delete(firstKey);
+            }
+        }
+
         // Cache the result
-        statusCache.set(statusId, status);
+        statusCache.set(cacheKey, status);
         return status;
     } finally {
         // Remove from in-flight map regardless of success/failure
-        inFlightStatusRequests.delete(statusId);
+        inFlightStatusRequests.delete(cacheKey);
     }
 }
 

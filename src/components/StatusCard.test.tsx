@@ -2551,10 +2551,11 @@ describe('StatusCard', () => {
             // Wait for the fetch to complete and quote card to render
             await screen.findByText('Fetched quoted content');
 
-            // fetchStatus should have been called with the quotedStatusId
+            // fetchStatus should have been called with the quotedStatusId and session
             expect(mastoClient.fetchStatus).toHaveBeenCalledWith(
                 expect.anything(),
-                'shallow-quoted-123'
+                'shallow-quoted-123',
+                mockAccountSession
             );
         });
 

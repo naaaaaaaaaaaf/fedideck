@@ -82,7 +82,11 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
         const resolveNestedQuote = async () => {
             try {
                 const client = getClient(accountSession);
-                const quotedStatus = await fetchStatus(client, shallowNestedQuoteId);
+                const quotedStatus = await fetchStatus(
+                    client,
+                    shallowNestedQuoteId,
+                    accountSession
+                );
                 if (!cancelled) {
                     setResolvedNestedQuoteStatus(quotedStatus);
                 }
@@ -199,8 +203,8 @@ export const StatusQuoteCard = React.memo(function StatusQuoteCard({
                 content={status.content}
                 emojis={status.emojis}
                 spoilerText={status.spoilerText || undefined}
-                variant="card"
-                className="line-clamp-3"
+                variant={variant ?? 'card'}
+                className={variant === 'detail' ? undefined : 'line-clamp-3'}
                 hasQuote={hasQuote(status)}
             />
 

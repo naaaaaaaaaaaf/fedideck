@@ -233,7 +233,11 @@ describe('StatusQuoteCard', () => {
         );
 
         await waitFor(() => {
-            expect(mastoClient.fetchStatus).toHaveBeenCalledWith(expect.anything(), 'root-1');
+            expect(mastoClient.fetchStatus).toHaveBeenCalledWith(
+                expect.anything(),
+                'root-1',
+                expect.anything()
+            );
         });
 
         expect(await screen.findByText('Root quoted content')).toBeInTheDocument();

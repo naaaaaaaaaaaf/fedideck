@@ -125,7 +125,7 @@ export const StatusCard = React.memo(function StatusCard({
         const resolveShallowQuote = async () => {
             try {
                 const client = getClient(accountSession);
-                const quotedStatus = await fetchStatus(client, shallowQuoteId);
+                const quotedStatus = await fetchStatus(client, shallowQuoteId, accountSession);
                 if (!cancelled) {
                     setResolvedShallowQuoteStatus(quotedStatus);
                 }
