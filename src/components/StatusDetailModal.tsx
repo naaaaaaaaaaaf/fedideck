@@ -41,6 +41,7 @@ interface StatusDetailModalProps {
     status: mastodon.v1.Status | null;
     accountSession?: AccountSession;
     onReply?: (status: mastodon.v1.Status) => void;
+    onQuote?: (status: mastodon.v1.Status) => void;
     onStatusUpdate?: (status: mastodon.v1.Status) => void;
     onPollUpdate?: (statusId: string, poll: mastodon.v1.Poll) => void;
     onStatusDelete?: (status: mastodon.v1.Status, accountId: string) => void;
@@ -205,6 +206,7 @@ export function StatusDetailModal({
     status,
     accountSession,
     onReply,
+    onQuote,
     onStatusUpdate,
     onPollUpdate,
     onStatusDelete,
@@ -1010,6 +1012,7 @@ export function StatusDetailModal({
                         isAuthenticated={Boolean(accountSession)}
                         isLoading={isLoading}
                         onReply={handleReply}
+                        onQuote={onQuote ? () => onQuote(displayStatus) : undefined}
                         onReblog={handleReblog}
                         onFavourite={handleFavourite}
                         onBookmark={handleBookmark}

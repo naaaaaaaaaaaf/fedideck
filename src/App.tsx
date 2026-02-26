@@ -5,7 +5,12 @@ import { Sidebar } from './components/Sidebar';
 import { ColumnContainer } from './deck/ColumnContainer';
 import { LoginModal } from './components/LoginModal';
 import { AddColumnModal } from './components/AddColumnModal';
-import { ComposeModal, type ReplyToStatus, type EditTarget } from './components/ComposeModal';
+import {
+    ComposeModal,
+    type ReplyToStatus,
+    type EditTarget,
+    type QuoteToStatus,
+} from './components/ComposeModal';
 import { StatusDetailModal } from './components/StatusDetailModal';
 import { ProfileModal } from './components/ProfileModal';
 import { ImageViewer, type ImageViewerImage } from './components/ImageViewer';
@@ -30,6 +35,8 @@ function App() {
     const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
     const [replyToStatus, setReplyToStatus] = useState<ReplyToStatus | undefined>(undefined);
     const [replyAccountId, setReplyAccountId] = useState<string | undefined>(undefined);
+    const [quoteToStatus, setQuoteToStatus] = useState<QuoteToStatus | undefined>(undefined);
+    const [quoteAccountId, setQuoteAccountId] = useState<string | undefined>(undefined);
     const [editTarget, setEditTarget] = useState<EditTarget | undefined>(undefined);
     const [isStatusDetailOpen, setIsStatusDetailOpen] = useState(false);
     const [detailStatus, setDetailStatus] = useState<mastodon.v1.Status | null>(null);
@@ -178,6 +185,19 @@ function App() {
         setIsComposeModalOpen(true);
     };
 
+    const handleQuote = (status: mastodon.v1.Status, accountId: string) => {
+        const account = status.account;
+        setQuoteToStatus({
+            id: status.id,
+            acct: account.acct,
+            displayName: account.displayName || account.username,
+            content: status.content,
+            avatar: account.avatar,
+        });
+        setQuoteAccountId(accountId);
+        setIsComposeModalOpen(true);
+    };
+
     const handleStatusClick = (status: mastodon.v1.Status, accountId: string) => {
         const accountSession = accounts.find((a) => a.id === accountId);
         setDetailStatus(status);
@@ -201,6 +221,12 @@ function App() {
         }
     };
 
+    const handleStatusDetailQuote = (status: mastodon.v1.Status) => {
+        if (detailAccountSession) {
+            handleQuote(status, detailAccountSession.id);
+        }
+    };
+
     const handleDetailModalClose = () => {
         setIsStatusDetailOpen(false);
         setDetailStatus(null);
@@ -217,6 +243,8 @@ function App() {
         setIsComposeModalOpen(false);
         setReplyToStatus(undefined);
         setReplyAccountId(undefined);
+        setQuoteToStatus(undefined);
+        setQuoteAccountId(undefined);
         setEditTarget(undefined);
     };
 
@@ -361,6 +389,7 @@ function App() {
                 <ColumnContainer
                     onAddColumn={() => setIsAddColumnModalOpen(true)}
                     onReply={handleReply}
+                    onQuote={handleQuote}
                     onStatusClick={handleStatusClick}
                     onImageClick={handleImageClick}
                     onVideoClick={handleVideoClick}
@@ -387,7 +416,8 @@ function App() {
                 isOpen={isComposeModalOpen}
                 onClose={handleComposeClose}
                 replyToStatus={replyToStatus}
-                accountId={replyAccountId}
+                quoteToStatus={quoteToStatus}
+                accountId={replyAccountId ?? quoteAccountId}
                 editTarget={editTarget}
                 onStatusEdited={handleStatusEdited}
             />
@@ -397,6 +427,7 @@ function App() {
                 status={detailStatus}
                 accountSession={detailAccountSession}
                 onReply={handleStatusDetailReply}
+                onQuote={handleStatusDetailQuote}
                 onStatusUpdate={updateStatusGlobal}
                 onPollUpdate={handlePollUpdate}
                 onStatusDelete={handleStatusDeleteRequest}

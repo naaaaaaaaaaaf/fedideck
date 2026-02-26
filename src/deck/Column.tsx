@@ -27,6 +27,7 @@ interface ColumnProps {
     stream: StreamConfig;
     onRemove?: () => void;
     onReply?: (status: mastodon.v1.Status, accountSessionId: string) => void;
+    onQuote?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onStatusClick?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
@@ -43,6 +44,7 @@ export function Column({
     stream,
     onRemove,
     onReply,
+    onQuote,
     onStatusClick,
     onImageClick,
     onVideoClick,
@@ -92,6 +94,10 @@ export function Column({
     const handleReply = useMemo(
         () => (onReply ? (status: mastodon.v1.Status) => onReply(status, accountId) : undefined),
         [onReply, accountId]
+    );
+    const handleQuote = useMemo(
+        () => (onQuote ? (status: mastodon.v1.Status) => onQuote(status, accountId) : undefined),
+        [onQuote, accountId]
     );
     const handleStatusDelete = useMemo(
         () =>
@@ -369,6 +375,7 @@ export function Column({
                                 onStatusUpdate={updateStatusGlobal}
                                 onPollUpdate={updatePollGlobal}
                                 onReply={handleReply}
+                                onQuote={handleQuote}
                                 onStatusClick={handleStatusClick}
                                 onImageClick={handleImageClick}
                                 onVideoClick={handleVideoClick}

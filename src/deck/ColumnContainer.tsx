@@ -11,6 +11,7 @@ import type { AudioViewerTrack } from '../types/audio';
 interface ColumnContainerProps {
     onAddColumn?: () => void;
     onReply?: (status: mastodon.v1.Status, accountSessionId: string) => void;
+    onQuote?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onStatusClick?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
@@ -25,6 +26,7 @@ interface ColumnContainerProps {
 export function ColumnContainer({
     onAddColumn,
     onReply,
+    onQuote,
     onStatusClick,
     onImageClick,
     onVideoClick,
@@ -54,6 +56,7 @@ export function ColumnContainer({
                     stream={column.stream}
                     onRemove={() => removeColumn(column.id)}
                     onReply={onReply}
+                    onQuote={onQuote}
                     onStatusClick={onStatusClick}
                     onImageClick={onImageClick}
                     onVideoClick={onVideoClick}
