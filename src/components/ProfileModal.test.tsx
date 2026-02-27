@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProfileModal } from './ProfileModal';
@@ -129,6 +129,14 @@ describe('ProfileModal', () => {
         // Restore IntersectionObserver to prevent side effects on other tests
         if (originalIntersectionObserver !== undefined) {
             window.IntersectionObserver = originalIntersectionObserver;
+        }
+    });
+
+    // Ensure IntersectionObserver is cleaned up after all tests in this file
+    // to prevent side effects on other test files when original was undefined
+    afterAll(() => {
+        if (originalIntersectionObserver === undefined) {
+            delete (window as unknown as Record<string, unknown>).IntersectionObserver;
         }
     });
 
