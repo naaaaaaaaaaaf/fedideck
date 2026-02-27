@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { mastodon } from 'masto';
 import {
     createStatus,
     favouriteStatus,
@@ -1674,11 +1675,12 @@ describe('fetchAccountFollowers', () => {
         bot: false,
         discoverable: true,
         group: false,
-        lastStatusAt: null,
+        lastStatusAt: '',
         noindex: false,
         moved: null,
         suspended: false,
         limited: false,
+        roles: [],
     };
 
     beforeEach(() => {
@@ -1790,11 +1792,12 @@ describe('fetchAccountFollowing', () => {
         bot: false,
         discoverable: true,
         group: false,
-        lastStatusAt: null,
+        lastStatusAt: '',
         noindex: false,
         moved: null,
         suspended: false,
         limited: false,
+        roles: [],
     };
 
     beforeEach(() => {

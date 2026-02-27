@@ -25,11 +25,12 @@ describe('UserListItem', () => {
         bot: false,
         discoverable: true,
         group: false,
-        lastStatusAt: null,
+        lastStatusAt: '',
         noindex: false,
         moved: null,
         suspended: false,
         limited: false,
+        roles: [],
     };
 
     it('renders account avatar', () => {
