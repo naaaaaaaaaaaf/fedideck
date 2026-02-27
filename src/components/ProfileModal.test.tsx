@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProfileModal } from './ProfileModal';
 import type { mastodon } from 'masto';
@@ -30,10 +30,12 @@ class MockIntersectionObserver {
 // Helper to trigger intersection from tests
 function triggerIntersection(isIntersecting: boolean) {
     if (intersectionCallback) {
-        intersectionCallback(
-            [{ isIntersecting } as IntersectionObserverEntry],
-            {} as IntersectionObserver
-        );
+        act(() => {
+            intersectionCallback!(
+                [{ isIntersecting } as IntersectionObserverEntry],
+                {} as IntersectionObserver
+            );
+        });
     }
 }
 
@@ -123,14 +125,19 @@ describe('ProfileModal', () => {
 
     const onClose = vi.fn();
 
+    // Store original IntersectionObserver for cleanup
+    let originalIntersectionObserver: typeof IntersectionObserver | undefined;
+
     beforeEach(() => {
         // Reset mock functions for each test
         mockObserve.mockClear();
         mockUnobserve.mockClear();
         mockDisconnect.mockClear();
         intersectionCallback = null;
-        // Stub IntersectionObserver
-        vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+        // Save original and replace with mock
+        originalIntersectionObserver = window.IntersectionObserver;
+        window.IntersectionObserver =
+            MockIntersectionObserver as unknown as typeof IntersectionObserver;
         // Suppress console.error during tests to keep CI logs clean
         consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         // Reset mocks for each test
@@ -151,7 +158,12 @@ describe('ProfileModal', () => {
 
     afterEach(() => {
         consoleErrorSpy.mockRestore();
-        vi.unstubAllGlobals();
+        // Restore original IntersectionObserver
+        if (originalIntersectionObserver !== undefined) {
+            window.IntersectionObserver = originalIntersectionObserver;
+        } else {
+            delete (window as Record<string, unknown>).IntersectionObserver;
+        }
     });
 
     it('does not render when isOpen is false', () => {
@@ -760,6 +772,134 @@ describe('ProfileModal', () => {
             unmount();
 
             expect(mockDisconnect).toHaveBeenCalled();
+        });
+
+        it('loads more statuses with maxId when scrolling to bottom', async () => {
+            // First page of results - need full page to enable hasMoreStatuses
+            const fullPage = Array.from({ length: 20 }, (_, i) => ({
+                ...mockStatus1,
+                id: `status-${i + 1}`,
+                content: `<p>Status ${i + 1}</p>`,
+            })) as unknown as mastodon.v1.Status[];
+            mockFetchAccountStatuses.mockResolvedValueOnce(fullPage);
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            // Wait for initial load and IntersectionObserver to be set up
+            await waitFor(() => {
+                expect(screen.getByText('Status 1')).toBeInTheDocument();
+                expect(mockObserve).toHaveBeenCalled();
+            });
+
+            // Second page of results
+            const mockStatus2 = {
+                ...mockStatus1,
+                id: 'status-21',
+                content: '<p>Second page status</p>',
+            } as unknown as mastodon.v1.Status;
+            mockFetchAccountStatuses.mockResolvedValueOnce([mockStatus2]);
+
+            // Trigger intersection to load more
+            triggerIntersection(true);
+
+            // Wait for second fetch with maxId
+            await waitFor(() => {
+                expect(mockFetchAccountStatuses).toHaveBeenCalledTimes(2);
+                expect(mockFetchAccountStatuses).toHaveBeenNthCalledWith(
+                    2,
+                    expect.anything(),
+                    '123',
+                    expect.objectContaining({ maxId: 'status-20' })
+                );
+            });
+
+            // Verify second status is appended
+            await waitFor(() => {
+                expect(screen.getByText('Second page status')).toBeInTheDocument();
+            });
+        });
+
+        it('stops auto-loading on pagination error and recovers with manual retry', async () => {
+            // First page of results - need full page to enable hasMoreStatuses
+            const fullPage = Array.from({ length: 20 }, (_, i) => ({
+                ...mockStatus1,
+                id: `status-${i + 1}`,
+                content: `<p>Status ${i + 1}</p>`,
+            })) as unknown as mastodon.v1.Status[];
+            mockFetchAccountStatuses.mockResolvedValueOnce(fullPage);
+
+            const { container } = render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            // Wait for initial load and IntersectionObserver to be set up
+            await waitFor(() => {
+                expect(screen.getByText('Status 1')).toBeInTheDocument();
+                expect(mockObserve).toHaveBeenCalled();
+            });
+
+            // Second fetch fails
+            mockFetchAccountStatuses.mockRejectedValueOnce(new Error('Network error'));
+
+            // Trigger intersection to attempt loading more
+            triggerIntersection(true);
+
+            // Wait for error to be displayed
+            await waitFor(() => {
+                expect(screen.getByText('投稿の読み込みに失敗しました')).toBeInTheDocument();
+            });
+
+            // Should not show "end of list" message (error state instead)
+            expect(screen.queryByText('これ以上投稿はありません')).not.toBeInTheDocument();
+
+            // Trigger intersection again - should NOT auto-retry (error guard)
+            triggerIntersection(true);
+
+            // Wait a bit to ensure no additional fetch
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            // Should still be at 2 calls (initial + failed attempt)
+            expect(mockFetchAccountStatuses).toHaveBeenCalledTimes(2);
+
+            // Find retry button in the pagination error section
+            const retryButtons = container.querySelectorAll('button');
+            let retryButton: HTMLButtonElement | null = null;
+            for (const button of retryButtons) {
+                if (button.textContent?.includes('再読み込み')) {
+                    retryButton = button as HTMLButtonElement;
+                    break;
+                }
+            }
+            expect(retryButton).not.toBeNull();
+
+            // Setup third fetch to succeed
+            const mockStatus2 = {
+                ...mockStatus1,
+                id: 'status-21',
+                content: '<p>Second page status</p>',
+            } as unknown as mastodon.v1.Status;
+            mockFetchAccountStatuses.mockResolvedValueOnce([mockStatus2]);
+
+            // Click retry button
+            const user = userEvent.setup();
+            await user.click(retryButton!);
+
+            // Should show second status after successful retry
+            await waitFor(() => {
+                expect(screen.getByText('Second page status')).toBeInTheDocument();
+            });
         });
     });
 });
