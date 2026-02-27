@@ -923,9 +923,9 @@ describe('ProfileModal', () => {
             );
 
             // Check tab buttons exist
-            expect(screen.getByRole('tab', { name: /200 投稿/ })).toBeInTheDocument();
-            expect(screen.getByRole('tab', { name: /100 フォロワー/ })).toBeInTheDocument();
-            expect(screen.getByRole('tab', { name: /50 フォロー中/ })).toBeInTheDocument();
+            expect(screen.getByRole('tab', { name: /200.*投稿/ })).toBeInTheDocument();
+            expect(screen.getByRole('tab', { name: /100.*フォロワー/ })).toBeInTheDocument();
+            expect(screen.getByRole('tab', { name: /50.*フォロー中/ })).toBeInTheDocument();
         });
 
         it('posts tab is selected by default', async () => {
@@ -940,7 +940,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            const postsTab = screen.getByRole('tab', { name: /200 投稿/ });
+            const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
             expect(postsTab).toHaveAttribute('aria-selected', 'true');
         });
 
@@ -957,7 +957,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            const followersTab = screen.getByRole('tab', { name: /100 フォロワー/ });
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
             await user.click(followersTab);
 
             expect(followersTab).toHaveAttribute('aria-selected', 'true');
@@ -977,7 +977,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            const followingTab = screen.getByRole('tab', { name: /50 フォロー中/ });
+            const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
             await user.click(followingTab);
 
             expect(followingTab).toHaveAttribute('aria-selected', 'true');
@@ -997,7 +997,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            const followersTab = screen.getByRole('tab', { name: /100 フォロワー/ });
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
             await user.click(followersTab);
 
             await waitFor(() => {
@@ -1018,7 +1018,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            const followingTab = screen.getByRole('tab', { name: /50 フォロー中/ });
+            const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
             await user.click(followingTab);
 
             await waitFor(() => {
@@ -1039,7 +1039,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            const followersTab = screen.getByRole('tab', { name: /100 フォロワー/ });
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
             await user.click(followersTab);
 
             await waitFor(() => {
@@ -1060,7 +1060,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            const followingTab = screen.getByRole('tab', { name: /50 フォロー中/ });
+            const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
             await user.click(followingTab);
 
             await waitFor(() => {
@@ -1107,7 +1107,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            const followersTab = screen.getByRole('tab', { name: /100 フォロワー/ });
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
             await user.click(followersTab);
 
             await waitFor(() => {
@@ -1155,7 +1155,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            const followingTab = screen.getByRole('tab', { name: /50 フォロー中/ });
+            const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
             await user.click(followingTab);
 
             await waitFor(() => {
@@ -1206,7 +1206,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            const followersTab = screen.getByRole('tab', { name: /100 フォロワー/ });
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
             await user.click(followersTab);
 
             await waitFor(() => {
@@ -1235,7 +1235,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            const followersTab = screen.getByRole('tab', { name: /100 フォロワー/ });
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
             await user.click(followersTab);
 
             await waitFor(() => {
@@ -1260,7 +1260,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            const followingTab = screen.getByRole('tab', { name: /50 フォロー中/ });
+            const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
             await user.click(followingTab);
 
             await waitFor(() => {
@@ -1286,7 +1286,7 @@ describe('ProfileModal', () => {
             );
 
             // Switch to followers tab
-            const followersTab = screen.getByRole('tab', { name: /100 フォロワー/ });
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
             await user.click(followersTab);
 
             expect(followersTab).toHaveAttribute('aria-selected', 'true');
@@ -1312,7 +1312,7 @@ describe('ProfileModal', () => {
             );
 
             // Posts tab should be selected again
-            const postsTab = screen.getByRole('tab', { name: /200 投稿/ });
+            const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
             expect(postsTab).toHaveAttribute('aria-selected', 'true');
         });
     });

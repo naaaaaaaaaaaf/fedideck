@@ -821,7 +821,7 @@ export function ProfileModal({
 
                             {/* Stats as Tabs */}
                             <div
-                                className="flex items-center justify-center gap-4 text-slate-400 text-sm w-full border-t border-slate-700/50 pt-4"
+                                className="flex items-center justify-center gap-2 text-slate-400 text-sm w-full border-t border-slate-700/50 pt-4 flex-wrap"
                                 role="tablist"
                                 aria-label="プロフィールタブ"
                             >
@@ -832,19 +832,17 @@ export function ProfileModal({
                                     aria-controls="tabpanel-posts"
                                     tabIndex={activeTab === 'posts' ? 0 : -1}
                                     onClick={() => handleTabChange('posts')}
-                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${
                                         activeTab === 'posts'
                                             ? 'text-slate-100 bg-slate-700/50'
                                             : 'hover:text-slate-200 hover:bg-slate-700/30'
                                     }`}
                                 >
                                     <LuFileText className="w-4 h-4" aria-hidden="true" />
-                                    <span>
-                                        <strong className="text-slate-200">
-                                            {displayAccount.statusesCount}
-                                        </strong>{' '}
-                                        投稿
-                                    </span>
+                                    <strong className="text-slate-200">
+                                        {displayAccount.statusesCount}
+                                    </strong>
+                                    <span>投稿</span>
                                 </button>
                                 <button
                                     type="button"
@@ -853,19 +851,17 @@ export function ProfileModal({
                                     aria-controls="tabpanel-followers"
                                     tabIndex={activeTab === 'followers' ? 0 : -1}
                                     onClick={() => handleTabChange('followers')}
-                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${
                                         activeTab === 'followers'
                                             ? 'text-slate-100 bg-slate-700/50'
                                             : 'hover:text-slate-200 hover:bg-slate-700/30'
                                     }`}
                                 >
                                     <LuUsers className="w-4 h-4" aria-hidden="true" />
-                                    <span>
-                                        <strong className="text-slate-200">
-                                            {displayAccount.followersCount}
-                                        </strong>{' '}
-                                        フォロワー
-                                    </span>
+                                    <strong className="text-slate-200">
+                                        {displayAccount.followersCount}
+                                    </strong>
+                                    <span>フォロワー</span>
                                 </button>
                                 <button
                                     type="button"
@@ -874,19 +870,17 @@ export function ProfileModal({
                                     aria-controls="tabpanel-following"
                                     tabIndex={activeTab === 'following' ? 0 : -1}
                                     onClick={() => handleTabChange('following')}
-                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${
                                         activeTab === 'following'
                                             ? 'text-slate-100 bg-slate-700/50'
                                             : 'hover:text-slate-200 hover:bg-slate-700/30'
                                     }`}
                                 >
                                     <LuUser className="w-4 h-4" aria-hidden="true" />
-                                    <span>
-                                        <strong className="text-slate-200">
-                                            {displayAccount.followingCount}
-                                        </strong>{' '}
-                                        フォロー中
-                                    </span>
+                                    <strong className="text-slate-200">
+                                        {displayAccount.followingCount}
+                                    </strong>
+                                    <span>フォロー中</span>
                                 </button>
                             </div>
                         </div>
