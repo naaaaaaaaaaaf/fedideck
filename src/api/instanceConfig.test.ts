@@ -479,6 +479,99 @@ describe('instanceConfig', () => {
                 expect(mockClient.v1.instance.fetch).not.toHaveBeenCalled();
             });
         });
+
+        describe('in-flight request deduplication', () => {
+            it('should dedupe concurrent requests to the same instance', async () => {
+                let resolveFetch: (value: unknown) => void;
+                const fetchPromise = new Promise((resolve) => {
+                    resolveFetch = resolve;
+                });
+
+                const mockClient = {
+                    v1: {
+                        instance: {
+                            fetch: vi.fn().mockReturnValue(fetchPromise),
+                        },
+                    },
+                } as unknown as MastoClient;
+
+                // Start multiple concurrent requests before the first one resolves
+                const request1 = getInstanceConfig(mockClient, 'https://example.com');
+                const request2 = getInstanceConfig(mockClient, 'https://example.com');
+                const request3 = getInstanceConfig(mockClient, 'https://example.com');
+
+                // Resolve the fetch promise
+                resolveFetch!({
+                    configuration: {
+                        statuses: {
+                            maxCharacters: 5000,
+                            maxMediaAttachments: 5,
+                        },
+                        mediaAttachments: {
+                            supportedMimeTypes: ['image/jpeg'],
+                        },
+                    },
+                });
+
+                // Wait for all requests to complete
+                const [result1, result2, result3] = await Promise.all([
+                    request1,
+                    request2,
+                    request3,
+                ]);
+
+                // All requests should return the same config
+                expect(result1.maxCharacters).toBe(5000);
+                expect(result2.maxCharacters).toBe(5000);
+                expect(result3.maxCharacters).toBe(5000);
+
+                // The API should only be called once despite 3 concurrent requests
+                expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(1);
+            });
+
+            it('should not dedupe requests to different instances', async () => {
+                const mockClient1 = createMockClient({
+                    maxCharacters: 5000,
+                    maxMediaAttachments: 5,
+                    supportedMimeTypes: ['image/jpeg'],
+                });
+                const mockClient2 = createMockClient({
+                    maxCharacters: 1000,
+                    maxMediaAttachments: 3,
+                    supportedMimeTypes: ['image/png'],
+                });
+
+                // Concurrent requests to different instances
+                await Promise.all([
+                    getInstanceConfig(mockClient1, 'https://example.com'),
+                    getInstanceConfig(mockClient2, 'https://other.com'),
+                ]);
+
+                // Each instance should have its own fetch call
+                expect(mockClient1.v1.instance.fetch).toHaveBeenCalledTimes(1);
+                expect(mockClient2.v1.instance.fetch).toHaveBeenCalledTimes(1);
+            });
+
+            it('should clear in-flight request after completion', async () => {
+                const mockClient = createMockClient({
+                    maxCharacters: 5000,
+                    maxMediaAttachments: 5,
+                    supportedMimeTypes: ['image/jpeg'],
+                });
+
+                // First request
+                await getInstanceConfig(mockClient, 'https://example.com');
+                expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(1);
+
+                // Clear cache but not in-flight (simulates cache expiry)
+                clearInstanceConfigCache('https://example.com');
+
+                // Second request should use cache if in-flight was cleared
+                // But since cache was cleared, it should fetch again
+                await getInstanceConfig(mockClient, 'https://example.com');
+                expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(2);
+            });
+        });
     });
 
     describe('clearInstanceConfigCache', () => {
