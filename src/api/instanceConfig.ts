@@ -26,7 +26,7 @@ export function supportsQuotes(version: string): boolean {
     // - "4.5.0" (standard)
     // - "4.5.0+glitch" (Glitch edition)
     // - "4.5.0rc1" (release candidate)
-    // We only care about the major.minor.patch part
+    // We only care about the major.minor part
     const match = version.match(/^(\d+)\.(\d+)/);
     if (!match) return false;
 
