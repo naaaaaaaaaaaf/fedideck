@@ -506,6 +506,63 @@ describe('ComposeModal', () => {
         });
     });
 
+    // Quote mode tests
+    const mockQuoteToStatus = {
+        id: 'quote-status-456',
+        acct: 'quoteuser@example.com',
+        displayName: 'Quote User',
+        content: '<p>Quote target content</p>',
+        avatar: 'https://example.com/quote-avatar.png',
+    };
+
+    it('shows quote header when quoteToStatus is provided', async () => {
+        render(<ComposeModal isOpen={true} onClose={() => {}} quoteToStatus={mockQuoteToStatus} />);
+        // Use findBy* to wait for async instance config fetching to complete
+        expect(await screen.findByText('引用')).toBeInTheDocument();
+        expect(screen.queryByText('新しい投稿')).not.toBeInTheDocument();
+    });
+
+    it('displays quote indicator with target user info', async () => {
+        render(<ComposeModal isOpen={true} onClose={() => {}} quoteToStatus={mockQuoteToStatus} />);
+        // Use findBy* to wait for async instance config fetching to complete
+        expect(await screen.findByText('引用先:')).toBeInTheDocument();
+        // Quote indicator contains the target user info
+        expect(screen.getAllByText('Quote User').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('@quoteuser@example.com').length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('does not prefill content with mention when quoting', async () => {
+        render(<ComposeModal isOpen={true} onClose={() => {}} quoteToStatus={mockQuoteToStatus} />);
+        await screen.findByText('引用先:');
+        const textarea = screen.getByPlaceholderText('今なにしてる？') as HTMLTextAreaElement;
+        // Quote mode should NOT prefill with mention
+        expect(textarea.value).toBe('');
+    });
+
+    it('includes quoteId when submitting a quote', async () => {
+        const user = userEvent.setup();
+        const onClose = vi.fn();
+        const mockCreateStatus = vi.mocked(mastoClient.createStatus);
+        mockCreateStatus.mockResolvedValueOnce({} as unknown as mastodon.v1.Status);
+
+        render(<ComposeModal isOpen={true} onClose={onClose} quoteToStatus={mockQuoteToStatus} />);
+
+        const textarea = screen.getByPlaceholderText('今なにしてる？');
+        await user.type(textarea, 'My quote comment');
+
+        const submitButton = screen.getByRole('button', { name: /投稿を送信/ });
+        await user.click(submitButton);
+
+        await waitFor(() => {
+            expect(mockCreateStatus).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.objectContaining({
+                    quotedStatusId: 'quote-status-456',
+                })
+            );
+        });
+    });
+
     // Emoji palette tests
     // Note: emoji-picker-element uses Shadow DOM which React Testing Library cannot access.
     // The library itself is well-tested, so we only test our integration points here.
