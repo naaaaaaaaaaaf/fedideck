@@ -189,11 +189,13 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
                                     }
                                 `}
                                 aria-label={
-                                    requested
-                                        ? 'リクエスト済み'
-                                        : following
-                                          ? 'フォロー解除'
-                                          : 'フォロー'
+                                    isFollowLoading || isRelationshipFetching
+                                        ? '処理中'
+                                        : requested
+                                          ? 'リクエスト済み'
+                                          : following
+                                            ? 'フォロー解除'
+                                            : 'フォロー'
                                 }
                                 title={
                                     !accountSession

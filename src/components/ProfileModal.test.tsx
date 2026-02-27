@@ -425,11 +425,11 @@ describe('ProfileModal', () => {
             );
 
             await waitFor(() => {
-                // Find the follow button by aria-label (text is "..." during loading)
-                const button = screen.getByRole('button', { name: 'フォロー' });
+                // Find the follow button by aria-label (aria-label is "処理中" during loading)
+                const button = screen.getByRole('button', { name: '処理中' });
                 expect(button).toBeDisabled();
-                // Check that it contains "..." text (responsive loading indicator)
-                expect(button).toHaveTextContent('...');
+                // Check that it contains "処理中..." text
+                expect(button).toHaveTextContent('処理中...');
             });
         });
 
