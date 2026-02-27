@@ -274,10 +274,11 @@ export function StatusDetailModal({
 
     // Instance config for quote support check
     // Only fetch when modal is open and quote functionality is needed
+    // Skip fetch if user already denied quote approval for this status
     const { instanceConfig } = useInstanceConfig({
         accountSession,
         isOpen,
-        enabled: Boolean(onQuote),
+        enabled: Boolean(onQuote) && displayStatus?.quoteApproval?.currentUser !== 'denied',
     });
 
     // Resolve ShallowQuote (accepted with quotedStatusId but no quotedStatus)
