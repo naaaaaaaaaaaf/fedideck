@@ -179,6 +179,8 @@ export function ProfileModal({
             if (reqId !== statusesRequestIdRef.current) return;
             console.error('Failed to fetch more statuses:', err);
             setStatusesError('投稿の読み込みに失敗しました');
+            // Stop auto-loading to prevent infinite retry loop
+            setHasMoreStatuses(false);
         } finally {
             if (reqId === statusesRequestIdRef.current) {
                 setIsLoadingStatuses(false);
@@ -257,7 +259,13 @@ export function ProfileModal({
 
         const observer = new IntersectionObserver(
             (entries) => {
-                if (entries[0].isIntersecting && hasMoreStatuses && !isLoadingStatuses) {
+                // Don't auto-load if there's an error (user must manually retry)
+                if (
+                    entries[0].isIntersecting &&
+                    hasMoreStatuses &&
+                    !isLoadingStatuses &&
+                    !statusesError
+                ) {
                     loadMoreStatuses();
                 }
             },
@@ -272,7 +280,7 @@ export function ProfileModal({
         return () => {
             observer.disconnect();
         };
-    }, [isOpen, hasMoreStatuses, isLoadingStatuses, loadMoreStatuses]);
+    }, [isOpen, hasMoreStatuses, isLoadingStatuses, statusesError, loadMoreStatuses]);
 
     if (!isOpen || !account) {
         return null;
