@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { mastodon } from 'masto';
 import {
     LuX,
@@ -8,24 +8,85 @@ import {
     LuFileText,
     LuUserPlus,
     LuUserMinus,
+    LuCircleAlert,
+    LuRefreshCw,
 } from 'react-icons/lu';
-import { type AccountSession, type MastoClient, getClient, fetchAccount } from '../api/mastoClient';
+import {
+    type AccountSession,
+    type MastoClient,
+    getClient,
+    fetchAccount,
+    fetchAccountStatuses,
+} from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { useRelationshipActions } from '../hooks/useRelationshipActions';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { DisplayName } from './DisplayName';
+import { StatusCard } from './StatusCard';
+import type { ImageViewerImage } from './ImageViewer';
+import type { VideoViewerVideo } from '../types/video';
+import type { AudioViewerTrack } from '../types/audio';
+
+const PAGE_SIZE = 20;
 
 interface ProfileModalProps {
     isOpen: boolean;
     onClose: () => void;
     account: mastodon.v1.Account | null;
     accountSession?: AccountSession;
+    onReply?: (status: mastodon.v1.Status, accountSessionId: string) => void;
+    onQuote?: (status: mastodon.v1.Status, accountSessionId: string) => void;
+    onStatusClick?: (status: mastodon.v1.Status, accountSessionId: string) => void;
+    onImageClick?: (images: ImageViewerImage[], index: number) => void;
+    onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
+    onAudioClick?: (tracks: AudioViewerTrack[], index: number) => void;
+    onAccountClick?: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
+    onNsfwReveal?: (statusId: string) => void;
+    nsfwRevealedStatusIds?: Set<string>;
+    onStatusUpdate?: (updatedStatus: mastodon.v1.Status) => void;
+    onStatusDelete?: (status: mastodon.v1.Status, accountSessionId: string) => void;
+    onStatusEdit?: (status: mastodon.v1.Status, accountSessionId: string) => void;
+    supportsQuotes?: boolean;
+    /** ID of status that was just deleted, used to remove from local list */
+    deletedStatusId?: string;
 }
 
-export function ProfileModal({ isOpen, onClose, account, accountSession }: ProfileModalProps) {
+export function ProfileModal({
+    isOpen,
+    onClose,
+    account,
+    accountSession,
+    onReply,
+    onQuote,
+    onStatusClick,
+    onImageClick,
+    onVideoClick,
+    onAudioClick,
+    onAccountClick,
+    onNsfwReveal,
+    nsfwRevealedStatusIds,
+    onStatusUpdate,
+    onStatusDelete,
+    onStatusEdit,
+    supportsQuotes = false,
+    deletedStatusId,
+}: ProfileModalProps) {
     const [fullAccount, setFullAccount] = useState<mastodon.v1.Account | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [hasError, setHasError] = useState(false);
+
+    // Post list state
+    const [statuses, setStatuses] = useState<mastodon.v1.Status[]>([]);
+    const [isLoadingStatuses, setIsLoadingStatuses] = useState(false);
+    const [hasMoreStatuses, setHasMoreStatuses] = useState(true);
+    const [statusesError, setStatusesError] = useState<string | null>(null);
+    const loadMoreRef = useRef<HTMLDivElement>(null);
+
+    // Ref to track statuses for pagination without causing callback recreation
+    const statusesRef = useRef<mastodon.v1.Status[]>([]);
+
+    // Request ID ref for stale response detection
+    const statusesRequestIdRef = useRef(0);
 
     // Refs for focus management
     const modalRef = useRef<HTMLDivElement>(null);
@@ -41,6 +102,9 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
     // Extract stable ID for useEffect dependencies
     const accountId = account?.id;
 
+    // Stable account session ID for callbacks
+    const accountSessionId = accountSession?.id;
+
     // Relationship actions hook for follow/unfollow functionality
     const {
         following,
@@ -55,19 +119,158 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
         accountSession,
     });
 
+    // Stable callback wrappers to prevent React.memo invalidation in StatusCard
+    // Using useMemo to memoize conditional expressions that return either a callback or undefined.
+    const handleReply = useMemo(
+        () =>
+            onReply && accountSessionId
+                ? (status: mastodon.v1.Status) => onReply(status, accountSessionId)
+                : undefined,
+        [onReply, accountSessionId]
+    );
+    const handleQuote = useMemo(
+        () =>
+            onQuote && accountSessionId
+                ? (status: mastodon.v1.Status) => onQuote(status, accountSessionId)
+                : undefined,
+        [onQuote, accountSessionId]
+    );
+    const handleStatusClick = useMemo(
+        () =>
+            onStatusClick && accountSessionId
+                ? (status: mastodon.v1.Status) => onStatusClick(status, accountSessionId)
+                : undefined,
+        [onStatusClick, accountSessionId]
+    );
+    // Wrap onStatusUpdate to also update local statuses array
+    const handleStatusUpdate = useCallback(
+        (updatedStatus: mastodon.v1.Status) => {
+            // Update local state
+            setStatuses((prev) => {
+                const newStatuses = prev.map((s) =>
+                    s.id === updatedStatus.id ? updatedStatus : s
+                );
+                statusesRef.current = newStatuses;
+                return newStatuses;
+            });
+            // Call outer callback for global state update
+            onStatusUpdate?.(updatedStatus);
+        },
+        [onStatusUpdate]
+    );
+    const handleStatusDelete = useMemo(
+        () =>
+            onStatusDelete && accountSessionId
+                ? (status: mastodon.v1.Status) => onStatusDelete(status, accountSessionId)
+                : undefined,
+        [onStatusDelete, accountSessionId]
+    );
+    const handleStatusEdit = useMemo(
+        () =>
+            onStatusEdit && accountSessionId
+                ? (status: mastodon.v1.Status) => onStatusEdit(status, accountSessionId)
+                : undefined,
+        [onStatusEdit, accountSessionId]
+    );
+
+    // Load initial statuses with stale response protection
+    const loadStatuses = useCallback(async () => {
+        if (!accountId || !accountSession) return;
+
+        const reqId = ++statusesRequestIdRef.current;
+        setIsLoadingStatuses(true);
+        setStatusesError(null);
+
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const fetchedStatuses = await fetchAccountStatuses(client, accountId, {
+                limit: PAGE_SIZE,
+            });
+
+            // Ignore stale response
+            if (reqId !== statusesRequestIdRef.current) return;
+
+            statusesRef.current = fetchedStatuses;
+            setStatuses(fetchedStatuses);
+            setHasMoreStatuses(fetchedStatuses.length === PAGE_SIZE);
+        } catch (err) {
+            if (reqId !== statusesRequestIdRef.current) return;
+            console.error('Failed to fetch statuses:', err);
+            setStatusesError('投稿の読み込みに失敗しました');
+        } finally {
+            if (reqId === statusesRequestIdRef.current) {
+                setIsLoadingStatuses(false);
+            }
+        }
+    }, [accountId, accountSession]);
+
+    // Load more statuses for infinite scroll
+    const loadMoreStatuses = useCallback(async () => {
+        if (!accountId || !accountSession || !hasMoreStatuses) return;
+
+        const reqId = ++statusesRequestIdRef.current;
+        setIsLoadingStatuses(true);
+        setStatusesError(null);
+
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const lastStatusId = statusesRef.current[statusesRef.current.length - 1]?.id;
+
+            const fetchedStatuses = await fetchAccountStatuses(client, accountId, {
+                maxId: lastStatusId,
+                limit: PAGE_SIZE,
+            });
+
+            // Ignore stale response
+            if (reqId !== statusesRequestIdRef.current) return;
+
+            if (fetchedStatuses.length > 0) {
+                setStatuses((prev) => {
+                    const newStatuses = [...prev, ...fetchedStatuses];
+                    statusesRef.current = newStatuses;
+                    return newStatuses;
+                });
+            }
+            setHasMoreStatuses(fetchedStatuses.length === PAGE_SIZE);
+        } catch (err) {
+            if (reqId !== statusesRequestIdRef.current) return;
+            console.error('Failed to fetch more statuses:', err);
+            setStatusesError('投稿の読み込みに失敗しました');
+            // Auto-loading is stopped by statusesError guard in observer
+            // User can manually retry via reload button
+        } finally {
+            if (reqId === statusesRequestIdRef.current) {
+                setIsLoadingStatuses(false);
+            }
+        }
+    }, [accountId, accountSession, hasMoreStatuses]);
+
     // Reset state when modal closes or account changes, then fetch if available
     useEffect(() => {
+        // Invalidate any pending requests
+        statusesRequestIdRef.current += 1;
+
         // Reset state when modal closes
         if (!isOpen) {
             setFullAccount(null);
             setHasError(false);
             setIsLoading(false);
+            setStatuses([]);
+            statusesRef.current = [];
+            setHasMoreStatuses(true);
+            setStatusesError(null);
+            setIsLoadingStatuses(false);
             return;
         }
 
         // Reset state when account changes (modal stays open but different account)
         setFullAccount(null);
         setHasError(false);
+        setStatuses([]);
+        statusesRef.current = [];
+        setHasMoreStatuses(true);
+        setStatusesError(null);
+        setIsLoadingStatuses(false);
 
         // Only fetch if we have both account and session
         if (!accountId || !accountSession) {
@@ -99,11 +302,53 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
         };
 
         fetchFullAccount();
+        loadStatuses();
 
         return () => {
             cancelled = true;
         };
-    }, [isOpen, accountId, accountSession]);
+    }, [isOpen, accountId, accountSession, loadStatuses]);
+
+    // IntersectionObserver for infinite scroll
+    useEffect(() => {
+        // Only create observer when modal is open
+        if (!isOpen) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                // Don't auto-load if there's an error (user must manually retry)
+                if (
+                    entries[0].isIntersecting &&
+                    hasMoreStatuses &&
+                    !isLoadingStatuses &&
+                    !statusesError
+                ) {
+                    loadMoreStatuses();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        const currentRef = loadMoreRef.current;
+        if (currentRef) {
+            observer.observe(currentRef);
+        }
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [isOpen, hasMoreStatuses, isLoadingStatuses, statusesError, loadMoreStatuses]);
+
+    // Remove deleted status from local list when deletion succeeds
+    useEffect(() => {
+        if (deletedStatusId) {
+            setStatuses((prev) => {
+                const newStatuses = prev.filter((s) => s.id !== deletedStatusId);
+                statusesRef.current = newStatuses;
+                return newStatuses;
+            });
+        }
+    }, [deletedStatusId]);
 
     if (!isOpen || !account) {
         return null;
@@ -311,6 +556,111 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
                             </div>
                         </div>
                     )}
+
+                    {/* Post list section */}
+                    <div className="mt-6 border-t border-slate-700/50 pt-4">
+                        <h3 className="text-sm font-semibold text-slate-300 mb-4">投稿</h3>
+
+                        {/* Statuses loading indicator */}
+                        {isLoadingStatuses && statuses.length === 0 && (
+                            <div className="flex items-center justify-center py-8 text-slate-400">
+                                <LuLoader
+                                    className="w-5 h-5 animate-spin mr-2"
+                                    aria-hidden="true"
+                                />
+                                <span>投稿を読み込み中...</span>
+                            </div>
+                        )}
+
+                        {/* Statuses error */}
+                        {statusesError && statuses.length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                                <LuCircleAlert className="w-5 h-5 mb-2" aria-hidden="true" />
+                                <span className="mb-2">{statusesError}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => loadStatuses()}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                                >
+                                    <LuRefreshCw className="w-4 h-4" aria-hidden="true" />
+                                    再読み込み
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Empty state */}
+                        {!isLoadingStatuses && !statusesError && statuses.length === 0 && (
+                            <div className="text-center py-8 text-slate-400">
+                                <span>投稿がありません</span>
+                            </div>
+                        )}
+
+                        {/* Status list */}
+                        {statuses.length > 0 && (
+                            <div className="space-y-3">
+                                {statuses.map((status) => (
+                                    <StatusCard
+                                        key={status.id}
+                                        status={status}
+                                        accountSession={accountSession}
+                                        onStatusUpdate={handleStatusUpdate}
+                                        onReply={handleReply}
+                                        onQuote={handleQuote}
+                                        supportsQuotes={supportsQuotes}
+                                        onStatusClick={handleStatusClick}
+                                        onImageClick={onImageClick}
+                                        onVideoClick={onVideoClick}
+                                        onAudioClick={onAudioClick}
+                                        onAccountClick={onAccountClick}
+                                        onNsfwReveal={onNsfwReveal}
+                                        isNsfwRevealed={nsfwRevealedStatusIds?.has(status.id)}
+                                        onStatusDelete={handleStatusDelete}
+                                        onStatusEdit={handleStatusEdit}
+                                    />
+                                ))}
+
+                                {/* Load more indicator */}
+                                <div ref={loadMoreRef} className="py-4">
+                                    {isLoadingStatuses && statuses.length > 0 && (
+                                        <div className="flex items-center justify-center text-slate-400">
+                                            <LuLoader
+                                                className="w-4 h-4 animate-spin mr-2"
+                                                aria-hidden="true"
+                                            />
+                                            <span className="text-sm">読み込み中...</span>
+                                        </div>
+                                    )}
+                                    {/* Pagination error - show retry button */}
+                                    {statusesError && statuses.length > 0 && (
+                                        <div className="flex flex-col items-center justify-center text-slate-400">
+                                            <LuCircleAlert
+                                                className="w-4 h-4 mb-2"
+                                                aria-hidden="true"
+                                            />
+                                            <span className="text-sm mb-2">{statusesError}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => loadMoreStatuses()}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                                            >
+                                                <LuRefreshCw
+                                                    className="w-4 h-4"
+                                                    aria-hidden="true"
+                                                />
+                                                再読み込み
+                                            </button>
+                                        </div>
+                                    )}
+                                    {/* End of list - only show if no error */}
+                                    {!hasMoreStatuses && !statusesError && statuses.length > 0 && (
+                                        <div className="text-center text-slate-500 text-sm">
+                                            これ以上投稿はありません
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

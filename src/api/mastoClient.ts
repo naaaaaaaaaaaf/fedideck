@@ -625,3 +625,40 @@ export async function unfollowAccount(
     const relationship = await client.v1.accounts.$select(accountId).unfollow();
     return relationship;
 }
+
+/**
+ * Options for fetching account statuses
+ */
+export interface FetchAccountStatusesOptions {
+    maxId?: string;
+    sinceId?: string;
+    limit?: number;
+    excludeReblogs?: boolean;
+    excludeReplies?: boolean;
+    onlyMedia?: boolean;
+    pinned?: boolean;
+}
+
+/**
+ * Fetch statuses posted by an account
+ * @param client - Mastodon API client
+ * @param accountId - ID of the account to fetch statuses for
+ * @param options - Pagination and filter options
+ * @returns Array of statuses
+ */
+export async function fetchAccountStatuses(
+    client: MastoClient,
+    accountId: string,
+    options?: FetchAccountStatusesOptions
+): Promise<mastodon.v1.Status[]> {
+    const statuses = await client.v1.accounts.$select(accountId).statuses.list({
+        maxId: options?.maxId,
+        sinceId: options?.sinceId,
+        limit: options?.limit ?? 20,
+        excludeReblogs: options?.excludeReblogs,
+        excludeReplies: options?.excludeReplies,
+        onlyMedia: options?.onlyMedia,
+        pinned: options?.pinned,
+    });
+    return statuses;
+}

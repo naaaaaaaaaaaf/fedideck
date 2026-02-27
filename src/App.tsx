@@ -25,6 +25,7 @@ import { getClient, deleteStatus } from './api/mastoClient';
 import { useColumnsStore } from './store/columns';
 import { useStreamsStore, getStreamKey } from './store/streams';
 import { initStreamManager } from './streaming/streamManager';
+import { useInstanceConfig } from './hooks/useInstanceConfig';
 
 // NSFW cache size limit for LRU eviction
 const MAX_NSFW_CACHE_SIZE = 100;
@@ -75,6 +76,12 @@ function App() {
         AccountSession | undefined
     >();
 
+    // Instance config for ProfileModal (to determine supportsQuotes)
+    const { instanceConfig: profileInstanceConfig } = useInstanceConfig({
+        accountSession: profileAccountSession,
+        isOpen: isProfileModalOpen,
+    });
+
     // ImageViewer state
     const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
     const [viewerImages, setViewerImages] = useState<ImageViewerImage[]>([]);
@@ -99,6 +106,8 @@ function App() {
     const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
     const [isDeleteLoading, setIsDeleteLoading] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+    // Track deleted status ID to notify ProfileModal
+    const [deletedStatusId, setDeletedStatusId] = useState<string | undefined>(undefined);
 
     const loadFromStorage = useAccountsStore((state) => state.loadFromStorage);
     const accounts = useAccountsStore((state) => state.accounts);
@@ -243,6 +252,7 @@ function App() {
         setIsProfileModalOpen(false);
         setProfileAccount(null);
         setProfileAccountSession(undefined);
+        setDeletedStatusId(undefined);
     };
 
     const handleComposeClose = () => {
@@ -340,6 +350,9 @@ function App() {
             const client = getClient(session);
             await deleteStatus(client, deleteTargetStatus.id);
             removeStatusForAccountStreams(deleteAccountId, deleteTargetStatus.id);
+
+            // Notify ProfileModal to remove deleted status from local list
+            setDeletedStatusId(deleteTargetStatus.id);
 
             // Close detail modal if viewing the deleted status
             if (
@@ -449,6 +462,20 @@ function App() {
                 onClose={handleProfileModalClose}
                 account={profileAccount}
                 accountSession={profileAccountSession}
+                onReply={handleReply}
+                onQuote={handleQuote}
+                onStatusClick={handleStatusClick}
+                onImageClick={handleImageClick}
+                onVideoClick={handleVideoClick}
+                onAudioClick={handleAudioClick}
+                onAccountClick={handleAccountClick}
+                onNsfwReveal={addNsfwRevealedStatusId}
+                nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
+                onStatusUpdate={updateStatusGlobal}
+                onStatusDelete={handleStatusDeleteRequest}
+                onStatusEdit={handleStatusEditRequest}
+                supportsQuotes={profileInstanceConfig?.supportsQuotes ?? false}
+                deletedStatusId={deletedStatusId}
             />
             <ImageViewer
                 key={`image-viewer-${imageViewerKey}`}

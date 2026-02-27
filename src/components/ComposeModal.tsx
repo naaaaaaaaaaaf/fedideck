@@ -366,7 +366,7 @@ export function ComposeModal({
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center"
+            className="fixed inset-0 z-[65] flex items-center justify-center"
             onKeyDown={handleModalKeyDown}
             role="dialog"
             aria-modal="true"
