@@ -143,7 +143,7 @@ export async function getInstanceConfig(
             // Create a copy to prevent mutations to the cached value
             supportedMimeTypes: apiMimeTypes
                 ? [...apiMimeTypes]
-                : DEFAULT_CONFIG.supportedMimeTypes,
+                : [...DEFAULT_CONFIG.supportedMimeTypes],
             supportsQuotes: supportsQuotes(instance.version ?? ''),
         };
 
