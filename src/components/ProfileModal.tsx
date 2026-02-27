@@ -176,8 +176,8 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
                                         requested
                                             ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
                                             : following
-                                              ? 'border border-slate-600 text-slate-300 hover:border-red-400 hover:text-red-400'
-                                              : 'bg-indigo-500 hover:bg-indigo-600 text-white'
+                                              ? 'border border-slate-600 text-slate-300 hover:border-red-400 hover:text-red-400 disabled:hover:border-slate-600 disabled:hover:text-slate-300'
+                                              : 'bg-indigo-500 hover:bg-indigo-600 text-white disabled:hover:bg-indigo-500'
                                     }
                                     ${
                                         (isFollowLoading ||
