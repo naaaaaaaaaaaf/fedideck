@@ -134,7 +134,7 @@ export function ComposeModal({
         ? (accounts.find((a) => a.id === accountId) ??
           (isEditMode && editTarget
               ? accounts.find((a) => a.id === editTarget.accountSessionId)
-              : undefined))
+              : accounts.find((a) => a.id === activeAccountId)))
         : (accounts.find((a) => a.id === selectedAccountId) ??
           accounts.find((a) => a.id === activeAccountId));
 

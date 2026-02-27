@@ -252,13 +252,20 @@ describe('StatusActions', () => {
         });
 
         it('shows quote button when canQuote is true in card variant', () => {
-            render(<StatusActions {...defaultProps} canQuote={true} />);
+            render(<StatusActions {...defaultProps} canQuote={true} onQuote={vi.fn()} />);
 
             expect(screen.getByLabelText('引用')).toBeInTheDocument();
         });
 
         it('shows quote button when canQuote is true in detail variant', () => {
-            render(<StatusActions {...defaultProps} variant="detail" canQuote={true} />);
+            render(
+                <StatusActions
+                    {...defaultProps}
+                    variant="detail"
+                    canQuote={true}
+                    onQuote={vi.fn()}
+                />
+            );
 
             expect(screen.getByText('引用')).toBeInTheDocument();
         });
@@ -287,13 +294,27 @@ describe('StatusActions', () => {
         });
 
         it('disables quote button when not authenticated', () => {
-            render(<StatusActions {...defaultProps} canQuote={true} isAuthenticated={false} />);
+            render(
+                <StatusActions
+                    {...defaultProps}
+                    canQuote={true}
+                    onQuote={vi.fn()}
+                    isAuthenticated={false}
+                />
+            );
 
             expect(screen.getByLabelText('引用')).toBeDisabled();
         });
 
         it('shows authentication required tooltip for quote button when not authenticated', () => {
-            render(<StatusActions {...defaultProps} canQuote={true} isAuthenticated={false} />);
+            render(
+                <StatusActions
+                    {...defaultProps}
+                    canQuote={true}
+                    onQuote={vi.fn()}
+                    isAuthenticated={false}
+                />
+            );
 
             const quoteButton = screen.getByLabelText('引用');
             expect(quoteButton).toHaveAttribute('title', 'アカウント接続が必要です');
