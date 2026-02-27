@@ -17,6 +17,8 @@ import {
     getClient,
     fetchAccount,
     fetchAccountStatuses,
+    fetchAccountFollowers,
+    fetchAccountFollowing,
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { useRelationshipActions } from '../hooks/useRelationshipActions';
@@ -28,6 +30,9 @@ import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
 
 const PAGE_SIZE = 20;
+
+/** Tab type for profile modal */
+type ProfileTab = 'posts' | 'followers' | 'following';
 
 interface ProfileModalProps {
     isOpen: boolean;
@@ -87,6 +92,27 @@ export function ProfileModal({
 
     // Request ID ref for stale response detection
     const statusesRequestIdRef = useRef(0);
+
+    // Tab state
+    const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
+
+    // Followers list state
+    const [followers, setFollowers] = useState<mastodon.v1.Account[]>([]);
+    const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
+    const [hasMoreFollowers, setHasMoreFollowers] = useState(true);
+    const [followersError, setFollowersError] = useState<string | null>(null);
+    const loadMoreFollowersRef = useRef<HTMLDivElement>(null);
+    const followersRef = useRef<mastodon.v1.Account[]>([]);
+    const followersRequestIdRef = useRef(0);
+
+    // Following list state
+    const [followingList, setFollowingList] = useState<mastodon.v1.Account[]>([]);
+    const [isLoadingFollowingList, setIsLoadingFollowingList] = useState(false);
+    const [hasMoreFollowingList, setHasMoreFollowingList] = useState(true);
+    const [followingListError, setFollowingListError] = useState<string | null>(null);
+    const loadMoreFollowingListRef = useRef<HTMLDivElement>(null);
+    const followingListRef = useRef<mastodon.v1.Account[]>([]);
+    const followingListRequestIdRef = useRef(0);
 
     // Refs for focus management
     const modalRef = useRef<HTMLDivElement>(null);
@@ -245,10 +271,178 @@ export function ProfileModal({
         }
     }, [accountId, accountSession, hasMoreStatuses]);
 
+    // Load initial followers
+    const loadFollowers = useCallback(async () => {
+        if (!accountId || !accountSession) return;
+
+        const reqId = ++followersRequestIdRef.current;
+        setIsLoadingFollowers(true);
+        setFollowersError(null);
+
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const fetchedFollowers = await fetchAccountFollowers(client, accountId, {
+                limit: PAGE_SIZE,
+            });
+
+            // Ignore stale response
+            if (reqId !== followersRequestIdRef.current) return;
+
+            followersRef.current = fetchedFollowers;
+            setFollowers(fetchedFollowers);
+            setHasMoreFollowers(fetchedFollowers.length === PAGE_SIZE);
+        } catch (err) {
+            if (reqId !== followersRequestIdRef.current) return;
+            console.error('Failed to fetch followers:', err);
+            setFollowersError('フォロワーの読み込みに失敗しました');
+        } finally {
+            if (reqId === followersRequestIdRef.current) {
+                setIsLoadingFollowers(false);
+            }
+        }
+    }, [accountId, accountSession]);
+
+    // Load more followers for infinite scroll
+    const loadMoreFollowers = useCallback(async () => {
+        if (!accountId || !accountSession || !hasMoreFollowers) return;
+
+        const reqId = ++followersRequestIdRef.current;
+        setIsLoadingFollowers(true);
+        setFollowersError(null);
+
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const lastFollowerId = followersRef.current[followersRef.current.length - 1]?.id;
+
+            const fetchedFollowers = await fetchAccountFollowers(client, accountId, {
+                maxId: lastFollowerId,
+                limit: PAGE_SIZE,
+            });
+
+            // Ignore stale response
+            if (reqId !== followersRequestIdRef.current) return;
+
+            if (fetchedFollowers.length > 0) {
+                setFollowers((prev) => {
+                    const newFollowers = [...prev, ...fetchedFollowers];
+                    followersRef.current = newFollowers;
+                    return newFollowers;
+                });
+            }
+            setHasMoreFollowers(fetchedFollowers.length === PAGE_SIZE);
+        } catch (err) {
+            if (reqId !== followersRequestIdRef.current) return;
+            console.error('Failed to fetch more followers:', err);
+            setFollowersError('フォロワーの読み込みに失敗しました');
+        } finally {
+            if (reqId === followersRequestIdRef.current) {
+                setIsLoadingFollowers(false);
+            }
+        }
+    }, [accountId, accountSession, hasMoreFollowers]);
+
+    // Load initial following
+    const loadFollowingList = useCallback(async () => {
+        if (!accountId || !accountSession) return;
+
+        const reqId = ++followingListRequestIdRef.current;
+        setIsLoadingFollowingList(true);
+        setFollowingListError(null);
+
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const fetchedFollowing = await fetchAccountFollowing(client, accountId, {
+                limit: PAGE_SIZE,
+            });
+
+            // Ignore stale response
+            if (reqId !== followingListRequestIdRef.current) return;
+
+            followingListRef.current = fetchedFollowing;
+            setFollowingList(fetchedFollowing);
+            setHasMoreFollowingList(fetchedFollowing.length === PAGE_SIZE);
+        } catch (err) {
+            if (reqId !== followingListRequestIdRef.current) return;
+            console.error('Failed to fetch following:', err);
+            setFollowingListError('フォロー中の読み込みに失敗しました');
+        } finally {
+            if (reqId === followingListRequestIdRef.current) {
+                setIsLoadingFollowingList(false);
+            }
+        }
+    }, [accountId, accountSession]);
+
+    // Load more following for infinite scroll
+    const loadMoreFollowingList = useCallback(async () => {
+        if (!accountId || !accountSession || !hasMoreFollowingList) return;
+
+        const reqId = ++followingListRequestIdRef.current;
+        setIsLoadingFollowingList(true);
+        setFollowingListError(null);
+
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const lastFollowingId =
+                followingListRef.current[followingListRef.current.length - 1]?.id;
+
+            const fetchedFollowing = await fetchAccountFollowing(client, accountId, {
+                maxId: lastFollowingId,
+                limit: PAGE_SIZE,
+            });
+
+            // Ignore stale response
+            if (reqId !== followingListRequestIdRef.current) return;
+
+            if (fetchedFollowing.length > 0) {
+                setFollowingList((prev) => {
+                    const newFollowing = [...prev, ...fetchedFollowing];
+                    followingListRef.current = newFollowing;
+                    return newFollowing;
+                });
+            }
+            setHasMoreFollowingList(fetchedFollowing.length === PAGE_SIZE);
+        } catch (err) {
+            if (reqId !== followingListRequestIdRef.current) return;
+            console.error('Failed to fetch more following:', err);
+            setFollowingListError('フォロー中の読み込みに失敗しました');
+        } finally {
+            if (reqId === followingListRequestIdRef.current) {
+                setIsLoadingFollowingList(false);
+            }
+        }
+    }, [accountId, accountSession, hasMoreFollowingList]);
+
+    // Handle tab change
+    const handleTabChange = useCallback(
+        (tab: ProfileTab) => {
+            setActiveTab(tab);
+            // Load data when switching to a tab for the first time
+            if (tab === 'followers' && followers.length === 0 && !isLoadingFollowers) {
+                loadFollowers();
+            } else if (
+                tab === 'following' &&
+                followingList.length === 0 &&
+                !isLoadingFollowingList
+            ) {
+                loadFollowingList();
+            }
+        },
+        [
+            followers.length,
+            isLoadingFollowers,
+            loadFollowers,
+            followingList.length,
+            isLoadingFollowingList,
+            loadFollowingList,
+        ]
+    );
+
     // Reset state when modal closes or account changes, then fetch if available
     useEffect(() => {
         // Invalidate any pending requests
         statusesRequestIdRef.current += 1;
+        followersRequestIdRef.current += 1;
+        followingListRequestIdRef.current += 1;
 
         // Reset state when modal closes
         if (!isOpen) {
@@ -260,6 +454,20 @@ export function ProfileModal({
             setHasMoreStatuses(true);
             setStatusesError(null);
             setIsLoadingStatuses(false);
+            // Reset tab state
+            setActiveTab('posts');
+            // Reset followers state
+            setFollowers([]);
+            followersRef.current = [];
+            setHasMoreFollowers(true);
+            setFollowersError(null);
+            setIsLoadingFollowers(false);
+            // Reset following list state
+            setFollowingList([]);
+            followingListRef.current = [];
+            setHasMoreFollowingList(true);
+            setFollowingListError(null);
+            setIsLoadingFollowingList(false);
             return;
         }
 
@@ -271,6 +479,20 @@ export function ProfileModal({
         setHasMoreStatuses(true);
         setStatusesError(null);
         setIsLoadingStatuses(false);
+        // Reset tab state
+        setActiveTab('posts');
+        // Reset followers state
+        setFollowers([]);
+        followersRef.current = [];
+        setHasMoreFollowers(true);
+        setFollowersError(null);
+        setIsLoadingFollowers(false);
+        // Reset following list state
+        setFollowingList([]);
+        followingListRef.current = [];
+        setHasMoreFollowingList(true);
+        setFollowingListError(null);
+        setIsLoadingFollowingList(false);
 
         // Only fetch if we have both account and session
         if (!accountId || !accountSession) {
