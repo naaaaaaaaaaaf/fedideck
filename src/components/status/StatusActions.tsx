@@ -131,7 +131,7 @@ export const StatusActions = React.memo(function StatusActions({
                     <LuRepeat2 className={iconSize} aria-hidden="true" />
                     <span className="whitespace-nowrap">ブースト</span>
                 </button>
-                {canQuote && (
+                {canQuote && onQuote && (
                     <button
                         type="button"
                         onClick={onQuote}
@@ -240,7 +240,7 @@ export const StatusActions = React.memo(function StatusActions({
                 <LuRepeat2 className={iconSize} aria-hidden="true" />
                 {reblogsCount > 0 && <span className="text-sm">{reblogsCount}</span>}
             </button>
-            {canQuote && (
+            {canQuote && onQuote && (
                 <button
                     type="button"
                     onClick={onQuote}
