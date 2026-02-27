@@ -25,6 +25,7 @@ import { getClient, deleteStatus } from './api/mastoClient';
 import { useColumnsStore } from './store/columns';
 import { useStreamsStore, getStreamKey } from './store/streams';
 import { initStreamManager } from './streaming/streamManager';
+import { useInstanceConfig } from './hooks/useInstanceConfig';
 
 // NSFW cache size limit for LRU eviction
 const MAX_NSFW_CACHE_SIZE = 100;
@@ -74,6 +75,12 @@ function App() {
     const [profileAccountSession, setProfileAccountSession] = useState<
         AccountSession | undefined
     >();
+
+    // Instance config for ProfileModal (to determine supportsQuotes)
+    const { instanceConfig: profileInstanceConfig } = useInstanceConfig({
+        accountSession: profileAccountSession,
+        isOpen: isProfileModalOpen,
+    });
 
     // ImageViewer state
     const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
@@ -461,7 +468,7 @@ function App() {
                 onStatusUpdate={updateStatusGlobal}
                 onStatusDelete={handleStatusDeleteRequest}
                 onStatusEdit={handleStatusEditRequest}
-                supportsQuotes={true}
+                supportsQuotes={profileInstanceConfig?.supportsQuotes ?? false}
             />
             <ImageViewer
                 key={`image-viewer-${imageViewerKey}`}
