@@ -136,11 +136,14 @@ export function useRelationshipActions({
         // Optimistic update
         const wasFollowing = following;
         const wasRequested = requested;
-        setFollowing(!wasFollowing);
-        // When unfollowing a locked account that was requested but not following,
-        // we're actually canceling the request
-        if (wasRequested && !wasFollowing) {
+
+        if (wasFollowing || wasRequested) {
+            // Unfollowing or canceling request
+            setFollowing(false);
             setRequested(false);
+        } else {
+            // Following (may result in following or requested depending on lock status)
+            setFollowing(true);
         }
 
         try {
