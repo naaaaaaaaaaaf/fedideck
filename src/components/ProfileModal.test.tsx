@@ -12,7 +12,6 @@ class MockIntersectionObserver {
     unobserve = vi.fn();
     disconnect = vi.fn();
 }
-window.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
 
 // Mock StatusCard component to simplify tests
 vi.mock('./StatusCard', () => ({
@@ -100,7 +99,13 @@ describe('ProfileModal', () => {
 
     const onClose = vi.fn();
 
+    let originalIntersectionObserver: typeof IntersectionObserver | undefined;
+
     beforeEach(() => {
+        // Mock IntersectionObserver to prevent side effects on other tests
+        originalIntersectionObserver = window.IntersectionObserver;
+        window.IntersectionObserver =
+            MockIntersectionObserver as unknown as typeof IntersectionObserver;
         // Suppress console.error during tests to keep CI logs clean
         consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         // Reset mocks for each test
@@ -121,6 +126,10 @@ describe('ProfileModal', () => {
 
     afterEach(() => {
         consoleErrorSpy.mockRestore();
+        // Restore IntersectionObserver to prevent side effects on other tests
+        if (originalIntersectionObserver !== undefined) {
+            window.IntersectionObserver = originalIntersectionObserver;
+        }
     });
 
     it('does not render when isOpen is false', () => {
