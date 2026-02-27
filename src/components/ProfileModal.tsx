@@ -854,6 +854,7 @@ export function ProfileModal({
                                 onKeyDown={handleTabListKeyDown}
                             >
                                 <button
+                                    id="tab-posts"
                                     type="button"
                                     role="tab"
                                     aria-selected={activeTab === 'posts'}
@@ -873,6 +874,7 @@ export function ProfileModal({
                                     <span>投稿</span>
                                 </button>
                                 <button
+                                    id="tab-followers"
                                     type="button"
                                     role="tab"
                                     aria-selected={activeTab === 'followers'}
@@ -892,6 +894,7 @@ export function ProfileModal({
                                     <span>フォロワー</span>
                                 </button>
                                 <button
+                                    id="tab-following"
                                     type="button"
                                     role="tab"
                                     aria-selected={activeTab === 'following'}
