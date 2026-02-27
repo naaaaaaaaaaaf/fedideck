@@ -35,6 +35,9 @@ const PAGE_SIZE = 20;
 /** Tab type for profile modal */
 type ProfileTab = 'posts' | 'followers' | 'following';
 
+/** Tab order for keyboard navigation */
+const TAB_ORDER: ProfileTab[] = ['posts', 'followers', 'following'];
+
 interface ProfileModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -438,6 +441,30 @@ export function ProfileModal({
         ]
     );
 
+    // Handle keyboard navigation for tab list
+    const handleTabListKeyDown = useCallback(
+        (e: React.KeyboardEvent<HTMLDivElement>) => {
+            const current = TAB_ORDER.indexOf(activeTab);
+            let next = current;
+
+            if (e.key === 'ArrowRight') {
+                next = (current + 1) % TAB_ORDER.length;
+            } else if (e.key === 'ArrowLeft') {
+                next = (current - 1 + TAB_ORDER.length) % TAB_ORDER.length;
+            } else if (e.key === 'Home') {
+                next = 0;
+            } else if (e.key === 'End') {
+                next = TAB_ORDER.length - 1;
+            } else {
+                return;
+            }
+
+            e.preventDefault();
+            handleTabChange(TAB_ORDER[next]);
+        },
+        [activeTab, handleTabChange]
+    );
+
     // Reset state when modal closes or account changes, then fetch if available
     useEffect(() => {
         // Invalidate any pending requests
@@ -824,6 +851,7 @@ export function ProfileModal({
                                 className="flex items-center justify-center gap-2 text-slate-400 text-sm w-full border-t border-slate-700/50 pt-4 flex-wrap"
                                 role="tablist"
                                 aria-label="プロフィールタブ"
+                                onKeyDown={handleTabListKeyDown}
                             >
                                 <button
                                     type="button"
