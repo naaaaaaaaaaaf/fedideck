@@ -242,6 +242,9 @@ export function ProfileModal({
 
     // IntersectionObserver for infinite scroll
     useEffect(() => {
+        // Only create observer when modal is open
+        if (!isOpen) return;
+
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting && hasMoreStatuses && !isLoadingStatuses) {
@@ -257,11 +260,9 @@ export function ProfileModal({
         }
 
         return () => {
-            if (currentRef) {
-                observer.unobserve(currentRef);
-            }
+            observer.disconnect();
         };
-    }, [hasMoreStatuses, isLoadingStatuses, loadMoreStatuses]);
+    }, [isOpen, hasMoreStatuses, isLoadingStatuses, loadMoreStatuses]);
 
     if (!isOpen || !account) {
         return null;
