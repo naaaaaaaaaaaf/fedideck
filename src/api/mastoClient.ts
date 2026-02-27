@@ -577,3 +577,51 @@ export async function votePoll(
 export async function fetchPoll(client: MastoClient, pollId: string): Promise<mastodon.v1.Poll> {
     return client.v1.polls.$select(pollId).fetch();
 }
+
+/**
+ * Fetch the relationship between the authenticated user and another account
+ * @param client - Mastodon API client
+ * @param accountId - ID of the account to check relationship with
+ * @returns Relationship object containing following, followedBy, requested, etc.
+ */
+export async function fetchRelationship(
+    client: MastoClient,
+    accountId: string
+): Promise<mastodon.v1.Relationship> {
+    const relationships = await client.v1.accounts.relationships.fetch({
+        id: [accountId],
+    });
+    // API returns an array, but we only requested one account
+    if (relationships.length === 0) {
+        throw new Error(`Relationship not found for account ${accountId}`);
+    }
+    return relationships[0];
+}
+
+/**
+ * Follow an account
+ * @param client - Mastodon API client
+ * @param accountId - ID of the account to follow
+ * @returns Updated relationship object
+ */
+export async function followAccount(
+    client: MastoClient,
+    accountId: string
+): Promise<mastodon.v1.Relationship> {
+    const relationship = await client.v1.accounts.$select(accountId).follow();
+    return relationship;
+}
+
+/**
+ * Unfollow an account
+ * @param client - Mastodon API client
+ * @param accountId - ID of the account to unfollow
+ * @returns Updated relationship object
+ */
+export async function unfollowAccount(
+    client: MastoClient,
+    accountId: string
+): Promise<mastodon.v1.Relationship> {
+    const relationship = await client.v1.accounts.$select(accountId).unfollow();
+    return relationship;
+}

@@ -18,6 +18,9 @@ import {
     fetchStatus,
     clearStatusCache,
     MAX_STATUS_CACHE_SIZE,
+    fetchRelationship,
+    followAccount,
+    unfollowAccount,
     type CreateStatusParams,
     type EditStatusParams,
     type MastoClient,
@@ -1310,5 +1313,144 @@ describe('fetchStatus', () => {
         await fetchStatus(mockClient, 'status-old', mockSession);
         // Total: 2 (initial) + 98 (fill) + 1 (trigger) = 101, no new call for status-old
         expect(mockFetch).toHaveBeenCalledTimes(MAX_STATUS_CACHE_SIZE + 1);
+    });
+});
+
+describe('fetchRelationship', () => {
+    let mockClient: MastoClient;
+    let mockFetch: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+        mockFetch = vi.fn();
+        mockClient = {
+            v1: {
+                accounts: {
+                    relationships: {
+                        fetch: mockFetch,
+                    },
+                },
+            },
+        } as unknown as MastoClient;
+    });
+
+    it('fetches relationship for an account', async () => {
+        const mockRelationship = {
+            id: 'target-id',
+            following: true,
+            followedBy: false,
+            requested: false,
+        };
+        mockFetch.mockResolvedValueOnce([mockRelationship]);
+
+        const result = await fetchRelationship(mockClient, 'target-id');
+
+        expect(mockFetch).toHaveBeenCalledWith({ id: ['target-id'] });
+        expect(result).toEqual(mockRelationship);
+    });
+
+    it('throws error when relationship not found', async () => {
+        mockFetch.mockResolvedValueOnce([]);
+
+        await expect(fetchRelationship(mockClient, 'nonexistent-id')).rejects.toThrow(
+            'Relationship not found for account nonexistent-id'
+        );
+    });
+});
+
+describe('followAccount', () => {
+    let mockClient: MastoClient;
+    let mockFollow: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+        mockFollow = vi.fn();
+        mockClient = {
+            v1: {
+                accounts: {
+                    $select: vi.fn().mockReturnValue({
+                        follow: mockFollow,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+    });
+
+    it('follows an account', async () => {
+        const mockRelationship = {
+            id: 'target-id',
+            following: true,
+            followedBy: false,
+            requested: false,
+        };
+        mockFollow.mockResolvedValueOnce(mockRelationship);
+
+        const result = await followAccount(mockClient, 'target-id');
+
+        expect(mockClient.v1.accounts.$select).toHaveBeenCalledWith('target-id');
+        expect(mockFollow).toHaveBeenCalled();
+        expect(result).toEqual(mockRelationship);
+    });
+
+    it('returns requested state for locked account', async () => {
+        const mockRelationship = {
+            id: 'target-id',
+            following: false,
+            followedBy: false,
+            requested: true,
+        };
+        mockFollow.mockResolvedValueOnce(mockRelationship);
+
+        const result = await followAccount(mockClient, 'locked-user-id');
+
+        expect(result.requested).toBe(true);
+        expect(result.following).toBe(false);
+    });
+});
+
+describe('unfollowAccount', () => {
+    let mockClient: MastoClient;
+    let mockUnfollow: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+        mockUnfollow = vi.fn();
+        mockClient = {
+            v1: {
+                accounts: {
+                    $select: vi.fn().mockReturnValue({
+                        unfollow: mockUnfollow,
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+    });
+
+    it('unfollows an account', async () => {
+        const mockRelationship = {
+            id: 'target-id',
+            following: false,
+            followedBy: false,
+            requested: false,
+        };
+        mockUnfollow.mockResolvedValueOnce(mockRelationship);
+
+        const result = await unfollowAccount(mockClient, 'target-id');
+
+        expect(mockClient.v1.accounts.$select).toHaveBeenCalledWith('target-id');
+        expect(mockUnfollow).toHaveBeenCalled();
+        expect(result).toEqual(mockRelationship);
+    });
+
+    it('cancels follow request for locked account', async () => {
+        const mockRelationship = {
+            id: 'target-id',
+            following: false,
+            followedBy: false,
+            requested: false,
+        };
+        mockUnfollow.mockResolvedValueOnce(mockRelationship);
+
+        const result = await unfollowAccount(mockClient, 'locked-user-id');
+
+        expect(result.requested).toBe(false);
+        expect(result.following).toBe(false);
     });
 });
