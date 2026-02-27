@@ -21,10 +21,12 @@ import {
     fetchRelationship,
     followAccount,
     unfollowAccount,
+    fetchAccountStatuses,
     type CreateStatusParams,
     type EditStatusParams,
     type MastoClient,
     type AccountSession,
+    type FetchAccountStatusesOptions,
 } from './mastoClient';
 
 describe('createStatus', () => {
@@ -1452,5 +1454,194 @@ describe('unfollowAccount', () => {
 
         expect(result.requested).toBe(false);
         expect(result.following).toBe(false);
+    });
+});
+
+describe('fetchAccountStatuses', () => {
+    let mockClient: MastoClient;
+    let mockList: ReturnType<typeof vi.fn>;
+
+    const mockStatus = {
+        id: 'status-1',
+        content: '<p>Test status</p>',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        account: {
+            id: 'account-1',
+            username: 'testuser',
+            acct: 'testuser@example.com',
+            displayName: 'Test User',
+            avatar: '',
+        },
+    };
+
+    beforeEach(() => {
+        mockList = vi.fn();
+        mockClient = {
+            v1: {
+                accounts: {
+                    $select: vi.fn().mockReturnValue({
+                        statuses: {
+                            list: mockList,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+    });
+
+    it('fetches account statuses with default options', async () => {
+        mockList.mockResolvedValueOnce([mockStatus]);
+
+        const result = await fetchAccountStatuses(mockClient, 'account-1');
+
+        expect(mockClient.v1.accounts.$select).toHaveBeenCalledWith('account-1');
+        expect(mockList).toHaveBeenCalledWith({
+            maxId: undefined,
+            sinceId: undefined,
+            limit: 20,
+            excludeReblogs: undefined,
+            excludeReplies: undefined,
+            onlyMedia: undefined,
+            pinned: undefined,
+        });
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe('status-1');
+    });
+
+    it('fetches account statuses with maxId for pagination', async () => {
+        const olderStatus = { ...mockStatus, id: 'status-older' };
+        mockList.mockResolvedValueOnce([olderStatus]);
+
+        const options: FetchAccountStatusesOptions = {
+            maxId: 'status-1',
+        };
+
+        const result = await fetchAccountStatuses(mockClient, 'account-1', options);
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                maxId: 'status-1',
+            })
+        );
+        expect(result[0].id).toBe('status-older');
+    });
+
+    it('fetches account statuses with custom limit', async () => {
+        mockList.mockResolvedValueOnce([mockStatus]);
+
+        const options: FetchAccountStatusesOptions = {
+            limit: 40,
+        };
+
+        await fetchAccountStatuses(mockClient, 'account-1', options);
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                limit: 40,
+            })
+        );
+    });
+
+    it('fetches account statuses with excludeReblogs option', async () => {
+        mockList.mockResolvedValueOnce([mockStatus]);
+
+        const options: FetchAccountStatusesOptions = {
+            excludeReblogs: true,
+        };
+
+        await fetchAccountStatuses(mockClient, 'account-1', options);
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                excludeReblogs: true,
+            })
+        );
+    });
+
+    it('fetches account statuses with excludeReplies option', async () => {
+        mockList.mockResolvedValueOnce([mockStatus]);
+
+        const options: FetchAccountStatusesOptions = {
+            excludeReplies: true,
+        };
+
+        await fetchAccountStatuses(mockClient, 'account-1', options);
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                excludeReplies: true,
+            })
+        );
+    });
+
+    it('fetches account statuses with onlyMedia option', async () => {
+        mockList.mockResolvedValueOnce([mockStatus]);
+
+        const options: FetchAccountStatusesOptions = {
+            onlyMedia: true,
+        };
+
+        await fetchAccountStatuses(mockClient, 'account-1', options);
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                onlyMedia: true,
+            })
+        );
+    });
+
+    it('fetches account statuses with pinned option', async () => {
+        mockList.mockResolvedValueOnce([mockStatus]);
+
+        const options: FetchAccountStatusesOptions = {
+            pinned: true,
+        };
+
+        await fetchAccountStatuses(mockClient, 'account-1', options);
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                pinned: true,
+            })
+        );
+    });
+
+    it('fetches account statuses with multiple options', async () => {
+        mockList.mockResolvedValueOnce([mockStatus]);
+
+        const options: FetchAccountStatusesOptions = {
+            maxId: 'status-10',
+            limit: 30,
+            excludeReblogs: true,
+            excludeReplies: true,
+        };
+
+        await fetchAccountStatuses(mockClient, 'account-1', options);
+
+        expect(mockList).toHaveBeenCalledWith({
+            maxId: 'status-10',
+            sinceId: undefined,
+            limit: 30,
+            excludeReblogs: true,
+            excludeReplies: true,
+            onlyMedia: undefined,
+            pinned: undefined,
+        });
+    });
+
+    it('returns empty array when account has no statuses', async () => {
+        mockList.mockResolvedValueOnce([]);
+
+        const result = await fetchAccountStatuses(mockClient, 'account-empty');
+
+        expect(result).toEqual([]);
+    });
+
+    it('throws error when account not found', async () => {
+        mockList.mockRejectedValueOnce(new Error('Record not found'));
+
+        await expect(fetchAccountStatuses(mockClient, 'nonexistent')).rejects.toThrow(
+            'Record not found'
+        );
     });
 });

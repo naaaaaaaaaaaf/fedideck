@@ -6,6 +6,25 @@ import type { mastodon } from 'masto';
 import type { AccountSession } from '../api/mastoClient';
 import * as mastoClient from '../api/mastoClient';
 
+// Mock IntersectionObserver for infinite scroll
+class MockIntersectionObserver {
+    observe = vi.fn();
+    unobserve = vi.fn();
+    disconnect = vi.fn();
+}
+window.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
+
+// Mock StatusCard component to simplify tests
+vi.mock('./StatusCard', () => ({
+    StatusCard: function MockStatusCard({ status }: { status: { id: string; content: string } }) {
+        return (
+            <div data-testid={`status-card-${status.id}`}>
+                <div dangerouslySetInnerHTML={{ __html: status.content }} />
+            </div>
+        );
+    },
+}));
+
 vi.mock('../api/mastoClient', async () => {
     const actual = await vi.importActual('../api/mastoClient');
     return {
@@ -18,6 +37,7 @@ vi.mock('../api/mastoClient', async () => {
             },
         })),
         fetchAccount: vi.fn(),
+        fetchAccountStatuses: vi.fn(),
     };
 });
 
@@ -38,6 +58,7 @@ import { useRelationshipActions } from '../hooks/useRelationshipActions';
 
 const mockUseRelationshipActions = vi.mocked(useRelationshipActions);
 const mockFetchAccount = vi.mocked(mastoClient.fetchAccount);
+const mockFetchAccountStatuses = vi.mocked(mastoClient.fetchAccountStatuses);
 
 describe('ProfileModal', () => {
     // Suppress console.error during tests to keep CI logs clean
@@ -85,6 +106,7 @@ describe('ProfileModal', () => {
         // Reset mocks for each test
         onClose.mockClear();
         mockFetchAccount.mockResolvedValue(mockAccount);
+        mockFetchAccountStatuses.mockResolvedValue([]);
         // Reset useRelationshipActions mock to default values
         mockUseRelationshipActions.mockReturnValue({
             following: false,
@@ -458,6 +480,129 @@ describe('ProfileModal', () => {
                 const button = screen.getByRole('button', { name: 'フォロー' });
                 expect(button).toBeDisabled();
                 expect(button).toHaveAttribute('title', 'アカウント接続が必要です');
+            });
+        });
+    });
+
+    describe('Post list', () => {
+        const mockStatus = {
+            id: 'status-1',
+            content: '<p>Test status content</p>',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            account: mockAccount,
+            visibility: 'public',
+            uri: 'https://mastodon.social/@testuser/1',
+            url: 'https://mastodon.social/@testuser/1',
+            reblog: null,
+            inReplyToId: null,
+            inReplyToAccountId: null,
+            reblogsCount: 0,
+            favouritesCount: 0,
+            repliesCount: 0,
+            reblogged: false,
+            favourited: false,
+            bookmarked: false,
+            muted: false,
+            sensitive: false,
+            spoilerText: '',
+            language: 'en',
+            mentions: [],
+            tags: [],
+            emojis: [],
+            mediaAttachments: [],
+            application: null,
+            card: null,
+            poll: null,
+            filtered: [],
+        } as unknown as mastodon.v1.Status;
+
+        it('displays loading state while fetching statuses', async () => {
+            mockFetchAccountStatuses.mockImplementation(
+                () => new Promise((resolve) => setTimeout(() => resolve([]), 100))
+            );
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            // Should show loading indicator for statuses
+            await waitFor(() => {
+                expect(screen.getByText('投稿を読み込み中...')).toBeInTheDocument();
+            });
+        });
+
+        it('displays statuses after loading', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([mockStatus]);
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            // Wait for statuses to load
+            await waitFor(() => {
+                expect(screen.getByText('Test status content')).toBeInTheDocument();
+            });
+        });
+
+        it('displays empty state when no statuses', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            // Wait for empty state
+            await waitFor(() => {
+                expect(screen.getByText('投稿がありません')).toBeInTheDocument();
+            });
+        });
+
+        it('does not fetch statuses without accountSession', async () => {
+            render(<ProfileModal isOpen={true} onClose={onClose} account={mockAccount} />);
+
+            // Wait a bit to ensure no fetch happens
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            expect(mockFetchAccountStatuses).not.toHaveBeenCalled();
+            // Should show empty state since no fetch was made
+            await waitFor(() => {
+                expect(screen.getByText('投稿がありません')).toBeInTheDocument();
+            });
+        });
+
+        it('calls fetchAccountStatuses with correct parameters', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([mockStatus]);
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(mockFetchAccountStatuses).toHaveBeenCalledWith(
+                    expect.anything(),
+                    '123',
+                    expect.objectContaining({ limit: 20 })
+                );
             });
         });
     });

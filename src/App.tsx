@@ -449,6 +449,19 @@ function App() {
                 onClose={handleProfileModalClose}
                 account={profileAccount}
                 accountSession={profileAccountSession}
+                onReply={handleReply}
+                onQuote={handleQuote}
+                onStatusClick={handleStatusClick}
+                onImageClick={handleImageClick}
+                onVideoClick={handleVideoClick}
+                onAudioClick={handleAudioClick}
+                onAccountClick={handleAccountClick}
+                onNsfwReveal={addNsfwRevealedStatusId}
+                nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
+                onStatusUpdate={updateStatusGlobal}
+                onStatusDelete={handleStatusDeleteRequest}
+                onStatusEdit={handleStatusEditRequest}
+                supportsQuotes={true}
             />
             <ImageViewer
                 key={`image-viewer-${imageViewerKey}`}
