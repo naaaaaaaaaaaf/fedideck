@@ -251,7 +251,7 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
                         <div
                             className={`
                                 flex flex-col items-center text-center
-                                ${!isOwnProfile && displayAccount ? 'pt-16' : ''}
+                                ${!isOwnProfile ? 'pt-16' : ''}
                             `}
                         >
                             {/* Avatar */}
