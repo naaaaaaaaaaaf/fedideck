@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProfileModal } from './ProfileModal';
@@ -7,10 +7,14 @@ import type { AccountSession } from '../api/mastoClient';
 import * as mastoClient from '../api/mastoClient';
 
 // Mock IntersectionObserver for infinite scroll
+const mockObserve = vi.fn();
+const mockUnobserve = vi.fn();
+const mockDisconnect = vi.fn();
+
 class MockIntersectionObserver {
-    observe = vi.fn();
-    unobserve = vi.fn();
-    disconnect = vi.fn();
+    observe = mockObserve;
+    unobserve = mockUnobserve;
+    disconnect = mockDisconnect;
 }
 
 // Mock StatusCard component to simplify tests
@@ -99,13 +103,19 @@ describe('ProfileModal', () => {
 
     const onClose = vi.fn();
 
-    let originalIntersectionObserver: typeof IntersectionObserver | undefined;
+    // Store original IntersectionObserver once before all tests
+    const originalIntersectionObserver = window.IntersectionObserver;
 
-    beforeEach(() => {
-        // Mock IntersectionObserver to prevent side effects on other tests
-        originalIntersectionObserver = window.IntersectionObserver;
+    beforeAll(() => {
         window.IntersectionObserver =
             MockIntersectionObserver as unknown as typeof IntersectionObserver;
+    });
+
+    beforeEach(() => {
+        // Reset mock functions for each test
+        mockObserve.mockClear();
+        mockUnobserve.mockClear();
+        mockDisconnect.mockClear();
         // Suppress console.error during tests to keep CI logs clean
         consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         // Reset mocks for each test
@@ -126,18 +136,11 @@ describe('ProfileModal', () => {
 
     afterEach(() => {
         consoleErrorSpy.mockRestore();
-        // Restore IntersectionObserver to prevent side effects on other tests
-        if (originalIntersectionObserver !== undefined) {
-            window.IntersectionObserver = originalIntersectionObserver;
-        }
     });
 
-    // Ensure IntersectionObserver is cleaned up after all tests in this file
-    // to prevent side effects on other test files when original was undefined
     afterAll(() => {
-        if (originalIntersectionObserver === undefined) {
-            delete (window as unknown as Record<string, unknown>).IntersectionObserver;
-        }
+        // Restore original IntersectionObserver after all tests
+        window.IntersectionObserver = originalIntersectionObserver;
     });
 
     it('does not render when isOpen is false', () => {
