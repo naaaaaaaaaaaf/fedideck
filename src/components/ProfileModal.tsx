@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { mastodon } from 'masto';
 import {
     LuX,
@@ -115,6 +115,44 @@ export function ProfileModal({
         targetAccountId: accountId ?? null,
         accountSession,
     });
+
+    // Stable callback wrappers to prevent React.memo invalidation in StatusCard
+    // Using useMemo to memoize conditional expressions that return either a callback or undefined.
+    const handleReply = useMemo(
+        () =>
+            onReply && accountSessionId
+                ? (status: mastodon.v1.Status) => onReply(status, accountSessionId)
+                : undefined,
+        [onReply, accountSessionId]
+    );
+    const handleQuote = useMemo(
+        () =>
+            onQuote && accountSessionId
+                ? (status: mastodon.v1.Status) => onQuote(status, accountSessionId)
+                : undefined,
+        [onQuote, accountSessionId]
+    );
+    const handleStatusClick = useMemo(
+        () =>
+            onStatusClick && accountSessionId
+                ? (status: mastodon.v1.Status) => onStatusClick(status, accountSessionId)
+                : undefined,
+        [onStatusClick, accountSessionId]
+    );
+    const handleStatusDelete = useMemo(
+        () =>
+            onStatusDelete && accountSessionId
+                ? (status: mastodon.v1.Status) => onStatusDelete(status, accountSessionId)
+                : undefined,
+        [onStatusDelete, accountSessionId]
+    );
+    const handleStatusEdit = useMemo(
+        () =>
+            onStatusEdit && accountSessionId
+                ? (status: mastodon.v1.Status) => onStatusEdit(status, accountSessionId)
+                : undefined,
+        [onStatusEdit, accountSessionId]
+    );
 
     // Load initial statuses with stale response protection
     const loadStatuses = useCallback(async () => {
@@ -536,38 +574,18 @@ export function ProfileModal({
                                         status={status}
                                         accountSession={accountSession}
                                         onStatusUpdate={onStatusUpdate}
-                                        onReply={
-                                            onReply && accountSessionId
-                                                ? (s) => onReply(s, accountSessionId)
-                                                : undefined
-                                        }
-                                        onQuote={
-                                            onQuote && accountSessionId
-                                                ? (s) => onQuote(s, accountSessionId)
-                                                : undefined
-                                        }
+                                        onReply={handleReply}
+                                        onQuote={handleQuote}
                                         supportsQuotes={supportsQuotes}
-                                        onStatusClick={
-                                            onStatusClick && accountSessionId
-                                                ? (s) => onStatusClick(s, accountSessionId)
-                                                : undefined
-                                        }
+                                        onStatusClick={handleStatusClick}
                                         onImageClick={onImageClick}
                                         onVideoClick={onVideoClick}
                                         onAudioClick={onAudioClick}
                                         onAccountClick={onAccountClick}
                                         onNsfwReveal={onNsfwReveal}
                                         isNsfwRevealed={nsfwRevealedStatusIds?.has(status.id)}
-                                        onStatusDelete={
-                                            onStatusDelete && accountSessionId
-                                                ? (s) => onStatusDelete(s, accountSessionId)
-                                                : undefined
-                                        }
-                                        onStatusEdit={
-                                            onStatusEdit && accountSessionId
-                                                ? (s) => onStatusEdit(s, accountSessionId)
-                                                : undefined
-                                        }
+                                        onStatusDelete={handleStatusDelete}
+                                        onStatusEdit={handleStatusEdit}
                                     />
                                 ))}
 

@@ -162,7 +162,7 @@ describe('ProfileModal', () => {
         if (originalIntersectionObserver !== undefined) {
             window.IntersectionObserver = originalIntersectionObserver;
         } else {
-            delete (window as Record<string, unknown>).IntersectionObserver;
+            delete (window as unknown as Record<string, unknown>).IntersectionObserver;
         }
     });
 
