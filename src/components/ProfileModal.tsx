@@ -746,9 +746,25 @@ export function ProfileModal({
                                 />
                             )}
 
-                            {/* Stats */}
-                            <div className="flex items-center justify-center gap-6 text-slate-400 text-sm w-full border-t border-slate-700/50 pt-4">
-                                <div className="flex items-center gap-2">
+                            {/* Stats as Tabs */}
+                            <div
+                                className="flex items-center justify-center gap-4 text-slate-400 text-sm w-full border-t border-slate-700/50 pt-4"
+                                role="tablist"
+                                aria-label="プロフィールタブ"
+                            >
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activeTab === 'posts'}
+                                    aria-controls="tabpanel-posts"
+                                    tabIndex={activeTab === 'posts' ? 0 : -1}
+                                    onClick={() => handleTabChange('posts')}
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${
+                                        activeTab === 'posts'
+                                            ? 'text-slate-100 bg-slate-700/50'
+                                            : 'hover:text-slate-200 hover:bg-slate-700/30'
+                                    }`}
+                                >
                                     <LuFileText className="w-4 h-4" aria-hidden="true" />
                                     <span>
                                         <strong className="text-slate-200">
@@ -756,8 +772,20 @@ export function ProfileModal({
                                         </strong>{' '}
                                         投稿
                                     </span>
-                                </div>
-                                <div className="flex items-center gap-2">
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activeTab === 'followers'}
+                                    aria-controls="tabpanel-followers"
+                                    tabIndex={activeTab === 'followers' ? 0 : -1}
+                                    onClick={() => handleTabChange('followers')}
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${
+                                        activeTab === 'followers'
+                                            ? 'text-slate-100 bg-slate-700/50'
+                                            : 'hover:text-slate-200 hover:bg-slate-700/30'
+                                    }`}
+                                >
                                     <LuUsers className="w-4 h-4" aria-hidden="true" />
                                     <span>
                                         <strong className="text-slate-200">
@@ -765,8 +793,20 @@ export function ProfileModal({
                                         </strong>{' '}
                                         フォロワー
                                     </span>
-                                </div>
-                                <div className="flex items-center gap-2">
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activeTab === 'following'}
+                                    aria-controls="tabpanel-following"
+                                    tabIndex={activeTab === 'following' ? 0 : -1}
+                                    onClick={() => handleTabChange('following')}
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${
+                                        activeTab === 'following'
+                                            ? 'text-slate-100 bg-slate-700/50'
+                                            : 'hover:text-slate-200 hover:bg-slate-700/30'
+                                    }`}
+                                >
                                     <LuUser className="w-4 h-4" aria-hidden="true" />
                                     <span>
                                         <strong className="text-slate-200">
@@ -774,114 +814,148 @@ export function ProfileModal({
                                         </strong>{' '}
                                         フォロー中
                                     </span>
-                                </div>
+                                </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Post list section */}
+                    {/* Tab panels */}
                     <div className="mt-6 border-t border-slate-700/50 pt-4">
-                        <h3 className="text-sm font-semibold text-slate-300 mb-4">投稿</h3>
-
-                        {/* Statuses loading indicator */}
-                        {isLoadingStatuses && statuses.length === 0 && (
-                            <div className="flex items-center justify-center py-8 text-slate-400">
-                                <LuLoader
-                                    className="w-5 h-5 animate-spin mr-2"
-                                    aria-hidden="true"
-                                />
-                                <span>投稿を読み込み中...</span>
-                            </div>
-                        )}
-
-                        {/* Statuses error */}
-                        {statusesError && statuses.length === 0 && (
-                            <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-                                <LuCircleAlert className="w-5 h-5 mb-2" aria-hidden="true" />
-                                <span className="mb-2">{statusesError}</span>
-                                <button
-                                    type="button"
-                                    onClick={() => loadStatuses()}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-                                >
-                                    <LuRefreshCw className="w-4 h-4" aria-hidden="true" />
-                                    再読み込み
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Empty state */}
-                        {!isLoadingStatuses && !statusesError && statuses.length === 0 && (
-                            <div className="text-center py-8 text-slate-400">
-                                <span>投稿がありません</span>
-                            </div>
-                        )}
-
-                        {/* Status list */}
-                        {statuses.length > 0 && (
-                            <div className="space-y-3">
-                                {statuses.map((status) => (
-                                    <StatusCard
-                                        key={status.id}
-                                        status={status}
-                                        accountSession={accountSession}
-                                        onStatusUpdate={handleStatusUpdate}
-                                        onReply={handleReply}
-                                        onQuote={handleQuote}
-                                        supportsQuotes={supportsQuotes}
-                                        onStatusClick={handleStatusClick}
-                                        onImageClick={onImageClick}
-                                        onVideoClick={onVideoClick}
-                                        onAudioClick={onAudioClick}
-                                        onAccountClick={onAccountClick}
-                                        onNsfwReveal={onNsfwReveal}
-                                        isNsfwRevealed={nsfwRevealedStatusIds?.has(status.id)}
-                                        onStatusDelete={handleStatusDelete}
-                                        onStatusEdit={handleStatusEdit}
+                        {/* Posts tab panel */}
+                        <div
+                            id="tabpanel-posts"
+                            role="tabpanel"
+                            aria-labelledby="tab-posts"
+                            hidden={activeTab !== 'posts'}
+                        >
+                            {/* Statuses loading indicator */}
+                            {isLoadingStatuses && statuses.length === 0 && (
+                                <div className="flex items-center justify-center py-8 text-slate-400">
+                                    <LuLoader
+                                        className="w-5 h-5 animate-spin mr-2"
+                                        aria-hidden="true"
                                     />
-                                ))}
+                                    <span>投稿を読み込み中...</span>
+                                </div>
+                            )}
 
-                                {/* Load more indicator */}
-                                <div ref={loadMoreRef} className="py-4">
-                                    {isLoadingStatuses && statuses.length > 0 && (
-                                        <div className="flex items-center justify-center text-slate-400">
-                                            <LuLoader
-                                                className="w-4 h-4 animate-spin mr-2"
-                                                aria-hidden="true"
-                                            />
-                                            <span className="text-sm">読み込み中...</span>
-                                        </div>
-                                    )}
-                                    {/* Pagination error - show retry button */}
-                                    {statusesError && statuses.length > 0 && (
-                                        <div className="flex flex-col items-center justify-center text-slate-400">
-                                            <LuCircleAlert
-                                                className="w-4 h-4 mb-2"
-                                                aria-hidden="true"
-                                            />
-                                            <span className="text-sm mb-2">{statusesError}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => loadMoreStatuses()}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-                                            >
-                                                <LuRefreshCw
-                                                    className="w-4 h-4"
+                            {/* Statuses error */}
+                            {statusesError && statuses.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                                    <LuCircleAlert className="w-5 h-5 mb-2" aria-hidden="true" />
+                                    <span className="mb-2">{statusesError}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => loadStatuses()}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                                    >
+                                        <LuRefreshCw className="w-4 h-4" aria-hidden="true" />
+                                        再読み込み
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Empty state */}
+                            {!isLoadingStatuses && !statusesError && statuses.length === 0 && (
+                                <div className="text-center py-8 text-slate-400">
+                                    <span>投稿がありません</span>
+                                </div>
+                            )}
+
+                            {/* Status list */}
+                            {statuses.length > 0 && (
+                                <div className="space-y-3">
+                                    {statuses.map((status) => (
+                                        <StatusCard
+                                            key={status.id}
+                                            status={status}
+                                            accountSession={accountSession}
+                                            onStatusUpdate={handleStatusUpdate}
+                                            onReply={handleReply}
+                                            onQuote={handleQuote}
+                                            supportsQuotes={supportsQuotes}
+                                            onStatusClick={handleStatusClick}
+                                            onImageClick={onImageClick}
+                                            onVideoClick={onVideoClick}
+                                            onAudioClick={onAudioClick}
+                                            onAccountClick={onAccountClick}
+                                            onNsfwReveal={onNsfwReveal}
+                                            isNsfwRevealed={nsfwRevealedStatusIds?.has(status.id)}
+                                            onStatusDelete={handleStatusDelete}
+                                            onStatusEdit={handleStatusEdit}
+                                        />
+                                    ))}
+
+                                    {/* Load more indicator */}
+                                    <div ref={loadMoreRef} className="py-4">
+                                        {isLoadingStatuses && statuses.length > 0 && (
+                                            <div className="flex items-center justify-center text-slate-400">
+                                                <LuLoader
+                                                    className="w-4 h-4 animate-spin mr-2"
                                                     aria-hidden="true"
                                                 />
-                                                再読み込み
-                                            </button>
-                                        </div>
-                                    )}
-                                    {/* End of list - only show if no error */}
-                                    {!hasMoreStatuses && !statusesError && statuses.length > 0 && (
-                                        <div className="text-center text-slate-500 text-sm">
-                                            これ以上投稿はありません
-                                        </div>
-                                    )}
+                                                <span className="text-sm">読み込み中...</span>
+                                            </div>
+                                        )}
+                                        {/* Pagination error - show retry button */}
+                                        {statusesError && statuses.length > 0 && (
+                                            <div className="flex flex-col items-center justify-center text-slate-400">
+                                                <LuCircleAlert
+                                                    className="w-4 h-4 mb-2"
+                                                    aria-hidden="true"
+                                                />
+                                                <span className="text-sm mb-2">
+                                                    {statusesError}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => loadMoreStatuses()}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                                                >
+                                                    <LuRefreshCw
+                                                        className="w-4 h-4"
+                                                        aria-hidden="true"
+                                                    />
+                                                    再読み込み
+                                                </button>
+                                            </div>
+                                        )}
+                                        {/* End of list - only show if no error */}
+                                        {!hasMoreStatuses &&
+                                            !statusesError &&
+                                            statuses.length > 0 && (
+                                                <div className="text-center text-slate-500 text-sm">
+                                                    これ以上投稿はありません
+                                                </div>
+                                            )}
+                                    </div>
                                 </div>
+                            )}
+                        </div>
+
+                        {/* Followers tab panel - placeholder for Commit 5 */}
+                        <div
+                            id="tabpanel-followers"
+                            role="tabpanel"
+                            aria-labelledby="tab-followers"
+                            hidden={activeTab !== 'followers'}
+                        >
+                            <div className="text-center py-8 text-slate-400">
+                                フォロワー一覧（実装予定）
                             </div>
-                        )}
+                        </div>
+
+                        {/* Following tab panel - placeholder for Commit 5 */}
+                        <div
+                            id="tabpanel-following"
+                            role="tabpanel"
+                            aria-labelledby="tab-following"
+                            hidden={activeTab !== 'following'}
+                        >
+                            <div className="text-center py-8 text-slate-400">
+                                フォロー中一覧（実装予定）
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
