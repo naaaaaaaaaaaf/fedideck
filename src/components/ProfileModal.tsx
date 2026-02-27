@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { mastodon } from 'masto';
 import {
     LuX,
@@ -26,6 +26,8 @@ import { StatusCard } from './StatusCard';
 import type { ImageViewerImage } from './ImageViewer';
 import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
+
+const PAGE_SIZE = 20;
 
 interface ProfileModalProps {
     isOpen: boolean;
@@ -77,6 +79,9 @@ export function ProfileModal({
     const [statusesError, setStatusesError] = useState<string | null>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
 
+    // Request ID ref for stale response detection
+    const statusesRequestIdRef = useRef(0);
+
     // Refs for focus management
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -90,6 +95,9 @@ export function ProfileModal({
 
     // Extract stable ID for useEffect dependencies
     const accountId = account?.id;
+
+    // Stable account session ID for callbacks
+    const accountSessionId = accountSession?.id;
 
     // Relationship actions hook for follow/unfollow functionality
     const {
@@ -105,39 +113,41 @@ export function ProfileModal({
         accountSession,
     });
 
-    // Load initial statuses
-    const loadStatuses = async (isRefresh = false) => {
-        if (!accountId || !accountSession || isLoadingStatuses) return;
+    // Load initial statuses with stale response protection
+    const loadStatuses = useCallback(async () => {
+        if (!accountId || !accountSession) return;
 
+        const reqId = ++statusesRequestIdRef.current;
         setIsLoadingStatuses(true);
         setStatusesError(null);
 
         try {
             const client: MastoClient = getClient(accountSession);
             const fetchedStatuses = await fetchAccountStatuses(client, accountId, {
-                limit: 20,
+                limit: PAGE_SIZE,
             });
 
-            if (isRefresh) {
-                setStatuses(fetchedStatuses);
-            } else {
-                setStatuses(fetchedStatuses);
-            }
+            // Ignore stale response
+            if (reqId !== statusesRequestIdRef.current) return;
 
-            // If we got fewer than requested, there's no more
-            setHasMoreStatuses(fetchedStatuses.length === 20);
+            setStatuses(fetchedStatuses);
+            setHasMoreStatuses(fetchedStatuses.length === PAGE_SIZE);
         } catch (err) {
+            if (reqId !== statusesRequestIdRef.current) return;
             console.error('Failed to fetch statuses:', err);
             setStatusesError('投稿の読み込みに失敗しました');
         } finally {
-            setIsLoadingStatuses(false);
+            if (reqId === statusesRequestIdRef.current) {
+                setIsLoadingStatuses(false);
+            }
         }
-    };
+    }, [accountId, accountSession]);
 
     // Load more statuses for infinite scroll
-    const loadMoreStatuses = async () => {
-        if (!accountId || !accountSession || isLoadingStatuses || !hasMoreStatuses) return;
+    const loadMoreStatuses = useCallback(async () => {
+        if (!accountId || !accountSession || !hasMoreStatuses) return;
 
+        const reqId = ++statusesRequestIdRef.current;
         setIsLoadingStatuses(true);
         setStatusesError(null);
 
@@ -147,25 +157,32 @@ export function ProfileModal({
 
             const fetchedStatuses = await fetchAccountStatuses(client, accountId, {
                 maxId: lastStatusId,
-                limit: 20,
+                limit: PAGE_SIZE,
             });
+
+            // Ignore stale response
+            if (reqId !== statusesRequestIdRef.current) return;
 
             if (fetchedStatuses.length > 0) {
                 setStatuses((prev) => [...prev, ...fetchedStatuses]);
             }
-
-            // If we got fewer than requested, there's no more
-            setHasMoreStatuses(fetchedStatuses.length === 20);
+            setHasMoreStatuses(fetchedStatuses.length === PAGE_SIZE);
         } catch (err) {
+            if (reqId !== statusesRequestIdRef.current) return;
             console.error('Failed to fetch more statuses:', err);
             setStatusesError('投稿の読み込みに失敗しました');
         } finally {
-            setIsLoadingStatuses(false);
+            if (reqId === statusesRequestIdRef.current) {
+                setIsLoadingStatuses(false);
+            }
         }
-    };
+    }, [accountId, accountSession, hasMoreStatuses, statuses]);
 
     // Reset state when modal closes or account changes, then fetch if available
     useEffect(() => {
+        // Invalidate any pending requests
+        statusesRequestIdRef.current += 1;
+
         // Reset state when modal closes
         if (!isOpen) {
             setFullAccount(null);
@@ -174,6 +191,7 @@ export function ProfileModal({
             setStatuses([]);
             setHasMoreStatuses(true);
             setStatusesError(null);
+            setIsLoadingStatuses(false);
             return;
         }
 
@@ -183,6 +201,7 @@ export function ProfileModal({
         setStatuses([]);
         setHasMoreStatuses(true);
         setStatusesError(null);
+        setIsLoadingStatuses(false);
 
         // Only fetch if we have both account and session
         if (!accountId || !accountSession) {
@@ -219,8 +238,7 @@ export function ProfileModal({
         return () => {
             cancelled = true;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen, accountId, accountSession]);
+    }, [isOpen, accountId, accountSession, loadStatuses]);
 
     // IntersectionObserver for infinite scroll
     useEffect(() => {
@@ -243,8 +261,7 @@ export function ProfileModal({
                 observer.unobserve(currentRef);
             }
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [hasMoreStatuses, isLoadingStatuses, statuses]);
+    }, [hasMoreStatuses, isLoadingStatuses, loadMoreStatuses]);
 
     if (!isOpen || !account) {
         return null;
@@ -501,19 +518,19 @@ export function ProfileModal({
                                         accountSession={accountSession}
                                         onStatusUpdate={onStatusUpdate}
                                         onReply={
-                                            onReply
-                                                ? (s) => onReply(s, accountSession?.id ?? '')
+                                            onReply && accountSessionId
+                                                ? (s) => onReply(s, accountSessionId)
                                                 : undefined
                                         }
                                         onQuote={
-                                            onQuote
-                                                ? (s) => onQuote(s, accountSession?.id ?? '')
+                                            onQuote && accountSessionId
+                                                ? (s) => onQuote(s, accountSessionId)
                                                 : undefined
                                         }
                                         supportsQuotes={supportsQuotes}
                                         onStatusClick={
-                                            onStatusClick
-                                                ? (s) => onStatusClick(s, accountSession?.id ?? '')
+                                            onStatusClick && accountSessionId
+                                                ? (s) => onStatusClick(s, accountSessionId)
                                                 : undefined
                                         }
                                         onImageClick={onImageClick}
@@ -523,13 +540,13 @@ export function ProfileModal({
                                         onNsfwReveal={onNsfwReveal}
                                         isNsfwRevealed={nsfwRevealedStatusIds?.has(status.id)}
                                         onStatusDelete={
-                                            onStatusDelete
-                                                ? (s) => onStatusDelete(s, accountSession?.id ?? '')
+                                            onStatusDelete && accountSessionId
+                                                ? (s) => onStatusDelete(s, accountSessionId)
                                                 : undefined
                                         }
                                         onStatusEdit={
-                                            onStatusEdit
-                                                ? (s) => onStatusEdit(s, accountSession?.id ?? '')
+                                            onStatusEdit && accountSessionId
+                                                ? (s) => onStatusEdit(s, accountSessionId)
                                                 : undefined
                                         }
                                     />
