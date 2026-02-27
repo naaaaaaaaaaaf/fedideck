@@ -45,8 +45,8 @@ interface UsePostSubmitOptions {
     isOpen: boolean;
     isEditMode: boolean;
     editTarget: EditTarget | undefined;
-    replyToStatus?: ReplyToStatus | undefined;
-    quoteToStatus?: QuoteToStatus | undefined;
+    replyToStatus?: ReplyToStatus;
+    quoteToStatus?: QuoteToStatus;
     state: PostSubmitState;
     instanceConfig: { maxCharacters: number } | null;
     isUploading: boolean;
