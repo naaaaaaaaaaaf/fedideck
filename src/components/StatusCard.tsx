@@ -108,8 +108,11 @@ export const StatusCard = React.memo(function StatusCard({
     // Poll countdown display
     const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
 
-    // Instance config for quote support check
-    const { instanceConfig } = useInstanceConfig({ accountSession });
+    // Instance config for quote support check (only fetch when onQuote is available)
+    const { instanceConfig } = useInstanceConfig({
+        accountSession,
+        enabled: Boolean(onQuote),
+    });
 
     // Resolve ShallowQuote (accepted with quotedStatusId but no quotedStatus)
     const [resolvedShallowQuoteStatus, setResolvedShallowQuoteStatus] =
