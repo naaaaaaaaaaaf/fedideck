@@ -114,7 +114,7 @@ export function ComposeModal({
     const activeAccountId = useAccountsStore((state) => state.activeAccountId);
 
     // Whether account switching is allowed (disabled for replies, quotes, and edit mode)
-    const isAccountLocked = !!accountId || isEditMode;
+    const isAccountLocked = !!replyToStatus || !!quoteToStatus || isEditMode;
 
     // State for selected account (can be changed by user for new posts, but locked for replies)
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
