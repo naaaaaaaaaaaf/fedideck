@@ -3680,6 +3680,26 @@ describe('StatusDetailModal', () => {
             const onClose = vi.fn();
             const status = createMockStatus();
 
+            // Mock getClient to return a client with instance config that supports quotes
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({
+                v1: {
+                    instance: {
+                        fetch: vi.fn().mockResolvedValue({
+                            version: '4.5.0',
+                            configuration: {
+                                statuses: {
+                                    maxCharacters: 500,
+                                    maxMediaAttachments: 4,
+                                },
+                                mediaAttachments: {
+                                    supportedMimeTypes: ['image/jpeg'],
+                                },
+                            },
+                        }),
+                    },
+                },
+            } as unknown as ReturnType<typeof mastoClient.getClient>);
+
             await act(async () => {
                 render(
                     <StatusDetailModal

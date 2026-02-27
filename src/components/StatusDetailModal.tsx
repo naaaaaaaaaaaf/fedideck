@@ -273,7 +273,12 @@ export function StatusDetailModal({
     const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
 
     // Instance config for quote support check
-    const { instanceConfig } = useInstanceConfig({ accountSession });
+    // Only fetch when modal is open and quote functionality is needed
+    const { instanceConfig } = useInstanceConfig({
+        accountSession,
+        isOpen,
+        enabled: Boolean(onQuote),
+    });
 
     // Resolve ShallowQuote (accepted with quotedStatusId but no quotedStatus)
     const [resolvedShallowQuoteStatus, setResolvedShallowQuoteStatus] =
