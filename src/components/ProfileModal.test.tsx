@@ -526,9 +526,8 @@ describe('ProfileModal', () => {
         } as unknown as mastodon.v1.Status;
 
         it('displays loading state while fetching statuses', async () => {
-            mockFetchAccountStatuses.mockImplementation(
-                () => new Promise((resolve) => setTimeout(() => resolve([]), 100))
-            );
+            // Use a promise that never resolves to ensure loading state is visible
+            mockFetchAccountStatuses.mockImplementation(() => new Promise(() => {}));
 
             render(
                 <ProfileModal
@@ -584,14 +583,13 @@ describe('ProfileModal', () => {
         it('does not fetch statuses without accountSession', async () => {
             render(<ProfileModal isOpen={true} onClose={onClose} account={mockAccount} />);
 
-            // Wait a bit to ensure no fetch happens
-            await new Promise((resolve) => setTimeout(resolve, 100));
-
-            expect(mockFetchAccountStatuses).not.toHaveBeenCalled();
-            // Should show empty state since no fetch was made
+            // Wait for empty state to be displayed (which means no fetch happened)
             await waitFor(() => {
                 expect(screen.getByText('投稿がありません')).toBeInTheDocument();
             });
+
+            // Verify fetch was never called
+            expect(mockFetchAccountStatuses).not.toHaveBeenCalled();
         });
 
         it('calls fetchAccountStatuses with correct parameters', async () => {
