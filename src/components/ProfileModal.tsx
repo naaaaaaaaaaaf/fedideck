@@ -105,6 +105,7 @@ export function ProfileModal({
     const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
     const [hasMoreFollowers, setHasMoreFollowers] = useState(true);
     const [followersError, setFollowersError] = useState<string | null>(null);
+    const [followersLoaded, setFollowersLoaded] = useState(false);
     const loadMoreFollowersRef = useRef<HTMLDivElement>(null);
     const followersRef = useRef<mastodon.v1.Account[]>([]);
     const followersRequestIdRef = useRef(0);
@@ -114,6 +115,7 @@ export function ProfileModal({
     const [isLoadingFollowingList, setIsLoadingFollowingList] = useState(false);
     const [hasMoreFollowingList, setHasMoreFollowingList] = useState(true);
     const [followingListError, setFollowingListError] = useState<string | null>(null);
+    const [followingListLoaded, setFollowingListLoaded] = useState(false);
     const loadMoreFollowingListRef = useRef<HTMLDivElement>(null);
     const followingListRef = useRef<mastodon.v1.Account[]>([]);
     const followingListRequestIdRef = useRef(0);
@@ -295,6 +297,7 @@ export function ProfileModal({
             followersRef.current = fetchedFollowers;
             setFollowers(fetchedFollowers);
             setHasMoreFollowers(fetchedFollowers.length === PAGE_SIZE);
+            setFollowersLoaded(true);
         } catch (err) {
             if (reqId !== followersRequestIdRef.current) return;
             console.error('Failed to fetch followers:', err);
@@ -365,6 +368,7 @@ export function ProfileModal({
             followingListRef.current = fetchedFollowing;
             setFollowingList(fetchedFollowing);
             setHasMoreFollowingList(fetchedFollowing.length === PAGE_SIZE);
+            setFollowingListLoaded(true);
         } catch (err) {
             if (reqId !== followingListRequestIdRef.current) return;
             console.error('Failed to fetch following:', err);
@@ -421,21 +425,17 @@ export function ProfileModal({
         (tab: ProfileTab) => {
             setActiveTab(tab);
             // Load data when switching to a tab for the first time
-            if (tab === 'followers' && followers.length === 0 && !isLoadingFollowers) {
+            if (tab === 'followers' && !followersLoaded && !isLoadingFollowers) {
                 loadFollowers();
-            } else if (
-                tab === 'following' &&
-                followingList.length === 0 &&
-                !isLoadingFollowingList
-            ) {
+            } else if (tab === 'following' && !followingListLoaded && !isLoadingFollowingList) {
                 loadFollowingList();
             }
         },
         [
-            followers.length,
+            followersLoaded,
             isLoadingFollowers,
             loadFollowers,
-            followingList.length,
+            followingListLoaded,
             isLoadingFollowingList,
             loadFollowingList,
         ]
@@ -490,12 +490,14 @@ export function ProfileModal({
             setHasMoreFollowers(true);
             setFollowersError(null);
             setIsLoadingFollowers(false);
+            setFollowersLoaded(false);
             // Reset following list state
             setFollowingList([]);
             followingListRef.current = [];
             setHasMoreFollowingList(true);
             setFollowingListError(null);
             setIsLoadingFollowingList(false);
+            setFollowingListLoaded(false);
             return;
         }
 
@@ -515,12 +517,14 @@ export function ProfileModal({
         setHasMoreFollowers(true);
         setFollowersError(null);
         setIsLoadingFollowers(false);
+        setFollowersLoaded(false);
         // Reset following list state
         setFollowingList([]);
         followingListRef.current = [];
         setHasMoreFollowingList(true);
         setFollowingListError(null);
         setIsLoadingFollowingList(false);
+        setFollowingListLoaded(false);
 
         // Only fetch if we have both account and session
         if (!accountId || !accountSession) {
