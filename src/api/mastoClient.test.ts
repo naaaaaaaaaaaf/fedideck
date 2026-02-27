@@ -22,11 +22,14 @@ import {
     followAccount,
     unfollowAccount,
     fetchAccountStatuses,
+    fetchAccountFollowers,
+    fetchAccountFollowing,
     type CreateStatusParams,
     type EditStatusParams,
     type MastoClient,
     type AccountSession,
     type FetchAccountStatusesOptions,
+    type FetchAccountFollowsOptions,
 } from './mastoClient';
 
 describe('createStatus', () => {
@@ -1641,6 +1644,238 @@ describe('fetchAccountStatuses', () => {
         mockList.mockRejectedValueOnce(new Error('Record not found'));
 
         await expect(fetchAccountStatuses(mockClient, 'nonexistent')).rejects.toThrow(
+            'Record not found'
+        );
+    });
+});
+
+describe('fetchAccountFollowers', () => {
+    let mockClient: MastoClient;
+    let mockList: ReturnType<typeof vi.fn>;
+
+    const mockAccount: mastodon.v1.Account = {
+        id: '1',
+        username: 'follower1',
+        displayName: 'Follower One',
+        url: 'https://example.com/@follower1',
+        acct: 'follower1@example.com',
+        note: '',
+        avatar: 'https://example.com/avatar1.png',
+        avatarStatic: 'https://example.com/avatar1.png',
+        header: '',
+        headerStatic: '',
+        locked: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        followersCount: 0,
+        followingCount: 0,
+        statusesCount: 0,
+        emojis: [],
+        fields: [],
+        bot: false,
+        discoverable: true,
+        group: false,
+        lastStatusAt: null,
+        noindex: false,
+        moved: null,
+        suspended: false,
+        limited: false,
+    };
+
+    beforeEach(() => {
+        mockList = vi.fn();
+        mockClient = {
+            v1: {
+                accounts: {
+                    $select: () => ({
+                        followers: {
+                            list: mockList,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+    });
+
+    it('fetches account followers with default limit', async () => {
+        mockList.mockResolvedValueOnce([mockAccount]);
+
+        const result = await fetchAccountFollowers(mockClient, 'account-1');
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                limit: 20,
+            })
+        );
+        expect(result).toEqual([mockAccount]);
+    });
+
+    it('fetches account followers with custom limit', async () => {
+        mockList.mockResolvedValueOnce([mockAccount]);
+
+        const options: FetchAccountFollowsOptions = { limit: 50 };
+        await fetchAccountFollowers(mockClient, 'account-1', options);
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                limit: 50,
+            })
+        );
+    });
+
+    it('fetches account followers with maxId for pagination', async () => {
+        mockList.mockResolvedValueOnce([mockAccount]);
+
+        const options: FetchAccountFollowsOptions = { maxId: 'follower-10' };
+        await fetchAccountFollowers(mockClient, 'account-1', options);
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                maxId: 'follower-10',
+            })
+        );
+    });
+
+    it('fetches account followers with sinceId', async () => {
+        mockList.mockResolvedValueOnce([mockAccount]);
+
+        const options: FetchAccountFollowsOptions = { sinceId: 'follower-5' };
+        await fetchAccountFollowers(mockClient, 'account-1', options);
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                sinceId: 'follower-5',
+            })
+        );
+    });
+
+    it('returns empty array when account has no followers', async () => {
+        mockList.mockResolvedValueOnce([]);
+
+        const result = await fetchAccountFollowers(mockClient, 'account-empty');
+
+        expect(result).toEqual([]);
+    });
+
+    it('throws error when account not found', async () => {
+        mockList.mockRejectedValueOnce(new Error('Record not found'));
+
+        await expect(fetchAccountFollowers(mockClient, 'nonexistent')).rejects.toThrow(
+            'Record not found'
+        );
+    });
+});
+
+describe('fetchAccountFollowing', () => {
+    let mockClient: MastoClient;
+    let mockList: ReturnType<typeof vi.fn>;
+
+    const mockAccount: mastodon.v1.Account = {
+        id: '2',
+        username: 'following1',
+        displayName: 'Following One',
+        url: 'https://example.com/@following1',
+        acct: 'following1@example.com',
+        note: '',
+        avatar: 'https://example.com/avatar2.png',
+        avatarStatic: 'https://example.com/avatar2.png',
+        header: '',
+        headerStatic: '',
+        locked: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        followersCount: 0,
+        followingCount: 0,
+        statusesCount: 0,
+        emojis: [],
+        fields: [],
+        bot: false,
+        discoverable: true,
+        group: false,
+        lastStatusAt: null,
+        noindex: false,
+        moved: null,
+        suspended: false,
+        limited: false,
+    };
+
+    beforeEach(() => {
+        mockList = vi.fn();
+        mockClient = {
+            v1: {
+                accounts: {
+                    $select: () => ({
+                        following: {
+                            list: mockList,
+                        },
+                    }),
+                },
+            },
+        } as unknown as MastoClient;
+    });
+
+    it('fetches account following with default limit', async () => {
+        mockList.mockResolvedValueOnce([mockAccount]);
+
+        const result = await fetchAccountFollowing(mockClient, 'account-1');
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                limit: 20,
+            })
+        );
+        expect(result).toEqual([mockAccount]);
+    });
+
+    it('fetches account following with custom limit', async () => {
+        mockList.mockResolvedValueOnce([mockAccount]);
+
+        const options: FetchAccountFollowsOptions = { limit: 50 };
+        await fetchAccountFollowing(mockClient, 'account-1', options);
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                limit: 50,
+            })
+        );
+    });
+
+    it('fetches account following with maxId for pagination', async () => {
+        mockList.mockResolvedValueOnce([mockAccount]);
+
+        const options: FetchAccountFollowsOptions = { maxId: 'following-10' };
+        await fetchAccountFollowing(mockClient, 'account-1', options);
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                maxId: 'following-10',
+            })
+        );
+    });
+
+    it('fetches account following with sinceId', async () => {
+        mockList.mockResolvedValueOnce([mockAccount]);
+
+        const options: FetchAccountFollowsOptions = { sinceId: 'following-5' };
+        await fetchAccountFollowing(mockClient, 'account-1', options);
+
+        expect(mockList).toHaveBeenCalledWith(
+            expect.objectContaining({
+                sinceId: 'following-5',
+            })
+        );
+    });
+
+    it('returns empty array when account follows nobody', async () => {
+        mockList.mockResolvedValueOnce([]);
+
+        const result = await fetchAccountFollowing(mockClient, 'account-empty');
+
+        expect(result).toEqual([]);
+    });
+
+    it('throws error when account not found', async () => {
+        mockList.mockRejectedValueOnce(new Error('Record not found'));
+
+        await expect(fetchAccountFollowing(mockClient, 'nonexistent')).rejects.toThrow(
             'Record not found'
         );
     });
