@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProfileModal } from './ProfileModal';
@@ -10,11 +10,31 @@ import * as mastoClient from '../api/mastoClient';
 const mockObserve = vi.fn();
 const mockUnobserve = vi.fn();
 const mockDisconnect = vi.fn();
+let intersectionCallback: IntersectionObserverCallback | null = null;
 
 class MockIntersectionObserver {
+    constructor(callback: IntersectionObserverCallback) {
+        intersectionCallback = callback;
+    }
     observe = mockObserve;
     unobserve = mockUnobserve;
     disconnect = mockDisconnect;
+    readonly root = null;
+    readonly rootMargin = '';
+    readonly thresholds: readonly number[] = [];
+    takeRecords(): IntersectionObserverEntry[] {
+        return [];
+    }
+}
+
+// Helper to trigger intersection from tests
+function triggerIntersection(isIntersecting: boolean) {
+    if (intersectionCallback) {
+        intersectionCallback(
+            [{ isIntersecting } as IntersectionObserverEntry],
+            {} as IntersectionObserver
+        );
+    }
 }
 
 // Mock StatusCard component to simplify tests
@@ -103,19 +123,14 @@ describe('ProfileModal', () => {
 
     const onClose = vi.fn();
 
-    // Store original IntersectionObserver once before all tests
-    const originalIntersectionObserver = window.IntersectionObserver;
-
-    beforeAll(() => {
-        window.IntersectionObserver =
-            MockIntersectionObserver as unknown as typeof IntersectionObserver;
-    });
-
     beforeEach(() => {
         // Reset mock functions for each test
         mockObserve.mockClear();
         mockUnobserve.mockClear();
         mockDisconnect.mockClear();
+        intersectionCallback = null;
+        // Stub IntersectionObserver
+        vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
         // Suppress console.error during tests to keep CI logs clean
         consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         // Reset mocks for each test
@@ -136,11 +151,7 @@ describe('ProfileModal', () => {
 
     afterEach(() => {
         consoleErrorSpy.mockRestore();
-    });
-
-    afterAll(() => {
-        // Restore original IntersectionObserver after all tests
-        window.IntersectionObserver = originalIntersectionObserver;
+        vi.unstubAllGlobals();
     });
 
     it('does not render when isOpen is false', () => {
