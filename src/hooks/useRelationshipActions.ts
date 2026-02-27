@@ -134,6 +134,10 @@ export function useRelationshipActions({
         setIsLoading(true);
 
         // Optimistic update
+        // Note: For locked accounts, we optimistically set following: true, but the server
+        // will return requested: true, following: false. The UI briefly shows "フォロー中"
+        // before being corrected to "リクエスト済み" by the server response. This is acceptable
+        // because the server response is the authoritative source and arrives quickly.
         const wasFollowing = following;
         const wasRequested = requested;
 
