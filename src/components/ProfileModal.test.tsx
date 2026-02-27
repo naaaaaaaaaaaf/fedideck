@@ -21,6 +21,22 @@ vi.mock('../api/mastoClient', async () => {
     };
 });
 
+// Mock useRelationshipActions hook
+vi.mock('../hooks/useRelationshipActions', () => ({
+    useRelationshipActions: vi.fn(() => ({
+        following: false,
+        followedBy: false,
+        requested: false,
+        isLoading: false,
+        isFetching: false,
+        handleFollowToggle: vi.fn(),
+        isOwnProfile: false,
+    })),
+}));
+
+import { useRelationshipActions } from '../hooks/useRelationshipActions';
+
+const mockUseRelationshipActions = vi.mocked(useRelationshipActions);
 const mockFetchAccount = vi.mocked(mastoClient.fetchAccount);
 
 describe('ProfileModal', () => {
@@ -69,6 +85,16 @@ describe('ProfileModal', () => {
         // Reset mocks for each test
         onClose.mockClear();
         mockFetchAccount.mockResolvedValue(mockAccount);
+        // Reset useRelationshipActions mock to default values
+        mockUseRelationshipActions.mockReturnValue({
+            following: false,
+            followedBy: false,
+            requested: false,
+            isLoading: false,
+            isFetching: false,
+            handleFollowToggle: vi.fn(),
+            isOwnProfile: false,
+        });
     });
 
     afterEach(() => {
@@ -179,6 +205,257 @@ describe('ProfileModal', () => {
             expect(screen.getByText('@testuser@mastodon.social')).toBeInTheDocument();
             // Should fall back to username when displayName is empty
             expect(screen.getByText('testuser')).toBeInTheDocument();
+        });
+    });
+
+    describe('Follow functionality', () => {
+        it('renders follow button for other users profiles', async () => {
+            const otherAccount: mastodon.v1.Account = {
+                ...mockAccount,
+                id: 'other-user-id',
+                username: 'otheruser',
+                displayName: 'Other User',
+            };
+
+            mockUseRelationshipActions.mockReturnValue({
+                following: false,
+                followedBy: false,
+                requested: false,
+                isLoading: false,
+                isFetching: false,
+                handleFollowToggle: vi.fn(),
+                isOwnProfile: false,
+            });
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={otherAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByRole('button', { name: 'フォロー' })).toBeInTheDocument();
+            });
+        });
+
+        it('does not render follow button for own profile', async () => {
+            mockUseRelationshipActions.mockReturnValue({
+                following: false,
+                followedBy: false,
+                requested: false,
+                isLoading: false,
+                isFetching: false,
+                handleFollowToggle: vi.fn(),
+                isOwnProfile: true,
+            });
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('Test User')).toBeInTheDocument();
+            });
+
+            // Follow button should not be present
+            expect(screen.queryByRole('button', { name: 'フォロー' })).not.toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: 'フォロー中' })).not.toBeInTheDocument();
+        });
+
+        it('displays "フォローされています" badge when followed by user', async () => {
+            const otherAccount: mastodon.v1.Account = {
+                ...mockAccount,
+                id: 'other-user-id',
+            };
+
+            mockUseRelationshipActions.mockReturnValue({
+                following: false,
+                followedBy: true,
+                requested: false,
+                isLoading: false,
+                isFetching: false,
+                handleFollowToggle: vi.fn(),
+                isOwnProfile: false,
+            });
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={otherAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('フォローされています')).toBeInTheDocument();
+            });
+        });
+
+        it('displays "フォロー中" button when already following', async () => {
+            const otherAccount: mastodon.v1.Account = {
+                ...mockAccount,
+                id: 'other-user-id',
+            };
+
+            mockUseRelationshipActions.mockReturnValue({
+                following: true,
+                followedBy: false,
+                requested: false,
+                isLoading: false,
+                isFetching: false,
+                handleFollowToggle: vi.fn(),
+                isOwnProfile: false,
+            });
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={otherAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            await waitFor(() => {
+                const button = screen.getByRole('button', { name: 'フォロー解除' });
+                expect(button).toBeInTheDocument();
+                // Check that the button contains "中" text (responsive: hidden sm:inline)
+                expect(button).toHaveTextContent('中');
+            });
+        });
+
+        it('displays "リクエスト済み" button for locked accounts', async () => {
+            const lockedAccount: mastodon.v1.Account = {
+                ...mockAccount,
+                id: 'locked-user-id',
+                locked: true,
+            };
+
+            mockUseRelationshipActions.mockReturnValue({
+                following: false,
+                followedBy: false,
+                requested: true,
+                isLoading: false,
+                isFetching: false,
+                handleFollowToggle: vi.fn(),
+                isOwnProfile: false,
+            });
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={lockedAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            await waitFor(() => {
+                const button = screen.getByRole('button', { name: 'リクエスト済み' });
+                expect(button).toBeInTheDocument();
+                expect(button).toBeDisabled();
+            });
+        });
+
+        it('calls handleFollowToggle when follow button is clicked', async () => {
+            const handleFollowToggle = vi.fn();
+            const otherAccount: mastodon.v1.Account = {
+                ...mockAccount,
+                id: 'other-user-id',
+            };
+
+            mockUseRelationshipActions.mockReturnValue({
+                following: false,
+                followedBy: false,
+                requested: false,
+                isLoading: false,
+                isFetching: false,
+                handleFollowToggle,
+                isOwnProfile: false,
+            });
+
+            const user = userEvent.setup();
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={otherAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            const followButton = await screen.findByRole('button', { name: 'フォロー' });
+            await user.click(followButton);
+
+            expect(handleFollowToggle).toHaveBeenCalledTimes(1);
+        });
+
+        it('disables follow button during loading', async () => {
+            const otherAccount: mastodon.v1.Account = {
+                ...mockAccount,
+                id: 'other-user-id',
+            };
+
+            mockUseRelationshipActions.mockReturnValue({
+                following: false,
+                followedBy: false,
+                requested: false,
+                isLoading: true,
+                isFetching: false,
+                handleFollowToggle: vi.fn(),
+                isOwnProfile: false,
+            });
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={otherAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            await waitFor(() => {
+                // Find the follow button by aria-label (text is "..." during loading)
+                const button = screen.getByRole('button', { name: 'フォロー' });
+                expect(button).toBeDisabled();
+                // Check that it contains "..." text (responsive loading indicator)
+                expect(button).toHaveTextContent('...');
+            });
+        });
+
+        it('disables follow button when no session is provided', async () => {
+            const otherAccount: mastodon.v1.Account = {
+                ...mockAccount,
+                id: 'other-user-id',
+            };
+
+            mockUseRelationshipActions.mockReturnValue({
+                following: false,
+                followedBy: false,
+                requested: false,
+                isLoading: false,
+                isFetching: false,
+                handleFollowToggle: vi.fn(),
+                isOwnProfile: false,
+            });
+
+            render(<ProfileModal isOpen={true} onClose={onClose} account={otherAccount} />);
+
+            await waitFor(() => {
+                const button = screen.getByRole('button', { name: 'フォロー' });
+                expect(button).toBeDisabled();
+                expect(button).toHaveAttribute('title', 'アカウント接続が必要です');
+            });
         });
     });
 });

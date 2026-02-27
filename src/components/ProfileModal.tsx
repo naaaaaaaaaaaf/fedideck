@@ -1,8 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import type { mastodon } from 'masto';
-import { LuX, LuLoader, LuUser, LuUsers, LuFileText } from 'react-icons/lu';
+import {
+    LuX,
+    LuLoader,
+    LuUser,
+    LuUsers,
+    LuFileText,
+    LuUserPlus,
+    LuUserMinus,
+} from 'react-icons/lu';
 import { type AccountSession, type MastoClient, getClient, fetchAccount } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
+import { useRelationshipActions } from '../hooks/useRelationshipActions';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { DisplayName } from './DisplayName';
 
@@ -31,6 +40,20 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
 
     // Extract stable ID for useEffect dependencies
     const accountId = account?.id;
+
+    // Relationship actions hook for follow/unfollow functionality
+    const {
+        following,
+        followedBy,
+        requested,
+        isLoading: isFollowLoading,
+        isFetching: isRelationshipFetching,
+        handleFollowToggle,
+        isOwnProfile,
+    } = useRelationshipActions({
+        targetAccountId: accountId ?? null,
+        accountSession,
+    });
 
     // Reset state when modal closes or account changes, then fetch if available
     useEffect(() => {
@@ -125,7 +148,89 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
                 </div>
 
                 {/* Content */}
-                <div className="p-6 overflow-y-auto flex-1">
+                <div className="relative p-6 overflow-y-auto flex-1">
+                    {/* Follow button and badge - top right of content area */}
+                    {!isOwnProfile && displayAccount && (
+                        <div className="absolute top-6 right-6 flex flex-col items-end gap-2 z-10">
+                            {/* "Follows you" badge */}
+                            {followedBy && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-700 text-slate-300">
+                                    フォローされています
+                                </span>
+                            )}
+
+                            {/* Follow button */}
+                            <button
+                                type="button"
+                                onClick={handleFollowToggle}
+                                disabled={
+                                    isFollowLoading ||
+                                    isRelationshipFetching ||
+                                    !accountSession ||
+                                    requested
+                                }
+                                className={`
+                                    inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-sm
+                                    transition-all duration-200
+                                    ${
+                                        requested
+                                            ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                            : following
+                                              ? 'border border-slate-600 text-slate-300 hover:border-red-400 hover:text-red-400'
+                                              : 'bg-indigo-500 hover:bg-indigo-600 text-white'
+                                    }
+                                    ${
+                                        (isFollowLoading ||
+                                            isRelationshipFetching ||
+                                            !accountSession) &&
+                                        !requested
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : ''
+                                    }
+                                `}
+                                aria-label={
+                                    requested
+                                        ? 'リクエスト済み'
+                                        : following
+                                          ? 'フォロー解除'
+                                          : 'フォロー'
+                                }
+                                title={
+                                    !accountSession
+                                        ? 'アカウント接続が必要です'
+                                        : requested
+                                          ? 'フォローリクエストを送信済みです'
+                                          : undefined
+                                }
+                            >
+                                {isFollowLoading || isRelationshipFetching ? (
+                                    <>
+                                        <LuLoader
+                                            className="w-4 h-4 animate-spin"
+                                            aria-hidden="true"
+                                        />
+                                        <span>処理中...</span>
+                                    </>
+                                ) : requested ? (
+                                    <>
+                                        <LuUserPlus className="w-4 h-4" aria-hidden="true" />
+                                        <span>リクエスト済み</span>
+                                    </>
+                                ) : following ? (
+                                    <>
+                                        <LuUserMinus className="w-4 h-4" aria-hidden="true" />
+                                        <span>フォロー中</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <LuUserPlus className="w-4 h-4" aria-hidden="true" />
+                                        <span>フォロー</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    )}
+
                     {/* Loading indicator */}
                     {isLoading && !fullAccount && (
                         <div className="flex items-center justify-center py-8 text-slate-400">
@@ -143,7 +248,12 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
 
                     {/* Profile content */}
                     {displayAccount && (
-                        <div className="flex flex-col items-center text-center">
+                        <div
+                            className={`
+                                flex flex-col items-center text-center
+                                ${!isOwnProfile && displayAccount ? 'pt-16' : ''}
+                            `}
+                        >
                             {/* Avatar */}
                             <img
                                 src={displayAccount.avatar}

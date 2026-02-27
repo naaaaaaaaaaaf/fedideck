@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { mastodon } from 'masto';
 import {
     type AccountSession,
     type MastoClient,
