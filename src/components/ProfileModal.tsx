@@ -179,8 +179,8 @@ export function ProfileModal({
             if (reqId !== statusesRequestIdRef.current) return;
             console.error('Failed to fetch more statuses:', err);
             setStatusesError('投稿の読み込みに失敗しました');
-            // Stop auto-loading to prevent infinite retry loop
-            setHasMoreStatuses(false);
+            // Auto-loading is stopped by statusesError guard in observer
+            // User can manually retry via reload button
         } finally {
             if (reqId === statusesRequestIdRef.current) {
                 setIsLoadingStatuses(false);
@@ -582,7 +582,29 @@ export function ProfileModal({
                                             <span className="text-sm">読み込み中...</span>
                                         </div>
                                     )}
-                                    {!hasMoreStatuses && statuses.length > 0 && (
+                                    {/* Pagination error - show retry button */}
+                                    {statusesError && statuses.length > 0 && (
+                                        <div className="flex flex-col items-center justify-center text-slate-400">
+                                            <LuCircleAlert
+                                                className="w-4 h-4 mb-2"
+                                                aria-hidden="true"
+                                            />
+                                            <span className="text-sm mb-2">{statusesError}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => loadMoreStatuses()}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                                            >
+                                                <LuRefreshCw
+                                                    className="w-4 h-4"
+                                                    aria-hidden="true"
+                                                />
+                                                再読み込み
+                                            </button>
+                                        </div>
+                                    )}
+                                    {/* End of list - only show if no error */}
+                                    {!hasMoreStatuses && !statusesError && statuses.length > 0 && (
                                         <div className="text-center text-slate-500 text-sm">
                                             これ以上投稿はありません
                                         </div>
