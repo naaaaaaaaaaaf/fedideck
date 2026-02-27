@@ -1315,5 +1315,154 @@ describe('ProfileModal', () => {
             const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
             expect(postsTab).toHaveAttribute('aria-selected', 'true');
         });
+
+        describe('Keyboard navigation', () => {
+            it('navigates to next tab with ArrowRight', async () => {
+                mockFetchAccountStatuses.mockResolvedValueOnce([]);
+                mockFetchAccountFollowers.mockResolvedValueOnce([]);
+
+                render(
+                    <ProfileModal
+                        isOpen={true}
+                        onClose={onClose}
+                        account={mockAccount}
+                        accountSession={mockSession}
+                    />
+                );
+
+                const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+                postsTab.focus();
+
+                await user.keyboard('{ArrowRight}');
+
+                const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+                expect(followersTab).toHaveAttribute('aria-selected', 'true');
+            });
+
+            it('navigates to previous tab with ArrowLeft', async () => {
+                mockFetchAccountStatuses.mockResolvedValueOnce([]);
+                mockFetchAccountFollowers.mockResolvedValueOnce([]);
+
+                render(
+                    <ProfileModal
+                        isOpen={true}
+                        onClose={onClose}
+                        account={mockAccount}
+                        accountSession={mockSession}
+                    />
+                );
+
+                // First navigate to followers tab
+                const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+                await user.click(followersTab);
+
+                await user.keyboard('{ArrowLeft}');
+
+                const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+                expect(postsTab).toHaveAttribute('aria-selected', 'true');
+            });
+
+            it('wraps around when navigating past last tab', async () => {
+                mockFetchAccountStatuses.mockResolvedValueOnce([]);
+                mockFetchAccountFollowing.mockResolvedValueOnce([]);
+
+                render(
+                    <ProfileModal
+                        isOpen={true}
+                        onClose={onClose}
+                        account={mockAccount}
+                        accountSession={mockSession}
+                    />
+                );
+
+                // Navigate to following tab
+                const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
+                await user.click(followingTab);
+
+                // Press ArrowRight to wrap around to first tab
+                await user.keyboard('{ArrowRight}');
+
+                const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+                expect(postsTab).toHaveAttribute('aria-selected', 'true');
+            });
+
+            it('navigates to first tab with Home key', async () => {
+                mockFetchAccountStatuses.mockResolvedValueOnce([]);
+                mockFetchAccountFollowers.mockResolvedValueOnce([]);
+
+                render(
+                    <ProfileModal
+                        isOpen={true}
+                        onClose={onClose}
+                        account={mockAccount}
+                        accountSession={mockSession}
+                    />
+                );
+
+                // Navigate to followers tab
+                const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+                await user.click(followersTab);
+
+                await user.keyboard('{Home}');
+
+                const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+                expect(postsTab).toHaveAttribute('aria-selected', 'true');
+            });
+
+            it('navigates to last tab with End key', async () => {
+                mockFetchAccountStatuses.mockResolvedValueOnce([]);
+                mockFetchAccountFollowing.mockResolvedValueOnce([]);
+
+                render(
+                    <ProfileModal
+                        isOpen={true}
+                        onClose={onClose}
+                        account={mockAccount}
+                        accountSession={mockSession}
+                    />
+                );
+
+                const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+                postsTab.focus();
+
+                await user.keyboard('{End}');
+
+                const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
+                expect(followingTab).toHaveAttribute('aria-selected', 'true');
+            });
+
+            it('does not refetch followers when switching back to already-loaded empty tab', async () => {
+                mockFetchAccountStatuses.mockResolvedValueOnce([]);
+                // Return empty array - legitimately no followers
+                mockFetchAccountFollowers.mockResolvedValueOnce([]);
+
+                render(
+                    <ProfileModal
+                        isOpen={true}
+                        onClose={onClose}
+                        account={mockAccount}
+                        accountSession={mockSession}
+                    />
+                );
+
+                // Navigate to followers tab (should fetch)
+                const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+                await user.click(followersTab);
+
+                await waitFor(() => {
+                    expect(screen.getByText('フォロワーがいません')).toBeInTheDocument();
+                });
+
+                expect(mockFetchAccountFollowers).toHaveBeenCalledTimes(1);
+
+                // Navigate away then back
+                const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+                await user.click(postsTab);
+                await user.click(followersTab);
+
+                // Should NOT have fetched again
+                expect(mockFetchAccountFollowers).toHaveBeenCalledTimes(1);
+            });
+        });
     });
 });
