@@ -63,6 +63,8 @@ vi.mock('../api/mastoClient', async () => {
         })),
         fetchAccount: vi.fn(),
         fetchAccountStatuses: vi.fn(),
+        fetchAccountFollowers: vi.fn(),
+        fetchAccountFollowing: vi.fn(),
     };
 });
 
@@ -84,6 +86,8 @@ import { useRelationshipActions } from '../hooks/useRelationshipActions';
 const mockUseRelationshipActions = vi.mocked(useRelationshipActions);
 const mockFetchAccount = vi.mocked(mastoClient.fetchAccount);
 const mockFetchAccountStatuses = vi.mocked(mastoClient.fetchAccountStatuses);
+const mockFetchAccountFollowers = vi.mocked(mastoClient.fetchAccountFollowers);
+const mockFetchAccountFollowing = vi.mocked(mastoClient.fetchAccountFollowing);
 
 describe('ProfileModal', () => {
     // Suppress console.error during tests to keep CI logs clean
@@ -899,6 +903,565 @@ describe('ProfileModal', () => {
             // Should show second status after successful retry
             await waitFor(() => {
                 expect(screen.getByText('Second page status')).toBeInTheDocument();
+            });
+        });
+    });
+
+    describe('Tab navigation', () => {
+        const user = userEvent.setup();
+
+        it('displays tab buttons for posts, followers, and following', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            // Check tab buttons exist
+            expect(screen.getByRole('tab', { name: /200.*投稿/ })).toBeInTheDocument();
+            expect(screen.getByRole('tab', { name: /100.*フォロワー/ })).toBeInTheDocument();
+            expect(screen.getByRole('tab', { name: /50.*フォロー中/ })).toBeInTheDocument();
+        });
+
+        it('posts tab is selected by default', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+            expect(postsTab).toHaveAttribute('aria-selected', 'true');
+        });
+
+        it('switches to followers tab when clicked', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+            mockFetchAccountFollowers.mockResolvedValueOnce([]);
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+            await user.click(followersTab);
+
+            expect(followersTab).toHaveAttribute('aria-selected', 'true');
+            expect(mockFetchAccountFollowers).toHaveBeenCalled();
+        });
+
+        it('switches to following tab when clicked', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+            mockFetchAccountFollowing.mockResolvedValueOnce([]);
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
+            await user.click(followingTab);
+
+            expect(followingTab).toHaveAttribute('aria-selected', 'true');
+            expect(mockFetchAccountFollowing).toHaveBeenCalled();
+        });
+
+        it('shows followers loading state', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+            mockFetchAccountFollowers.mockImplementation(() => new Promise(() => {}));
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+            await user.click(followersTab);
+
+            await waitFor(() => {
+                expect(screen.getByText('フォロワーを読み込み中...')).toBeInTheDocument();
+            });
+        });
+
+        it('shows following loading state', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+            mockFetchAccountFollowing.mockImplementation(() => new Promise(() => {}));
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
+            await user.click(followingTab);
+
+            await waitFor(() => {
+                expect(screen.getByText('フォロー中を読み込み中...')).toBeInTheDocument();
+            });
+        });
+
+        it('shows followers empty state', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+            mockFetchAccountFollowers.mockResolvedValueOnce([]);
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+            await user.click(followersTab);
+
+            await waitFor(() => {
+                expect(screen.getByText('フォロワーがいません')).toBeInTheDocument();
+            });
+        });
+
+        it('shows following empty state', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+            mockFetchAccountFollowing.mockResolvedValueOnce([]);
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
+            await user.click(followingTab);
+
+            await waitFor(() => {
+                expect(screen.getByText('フォロー中のユーザーがいません')).toBeInTheDocument();
+            });
+        });
+
+        it('displays followers list', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+            const mockFollower: mastodon.v1.Account = {
+                id: 'follower-1',
+                username: 'followeruser',
+                acct: 'followeruser@mastodon.social',
+                displayName: 'Follower User',
+                avatar: 'https://example.com/follower-avatar.png',
+                avatarStatic: 'https://example.com/follower-avatar.png',
+                header: '',
+                headerStatic: '',
+                note: '',
+                url: 'https://mastodon.social/@followeruser',
+                followersCount: 10,
+                followingCount: 20,
+                statusesCount: 30,
+                createdAt: '2024-01-01T00:00:00.000Z',
+                bot: false,
+                discoverable: true,
+                locked: false,
+                group: false,
+                lastStatusAt: '',
+                emojis: [],
+                fields: [],
+                roles: [],
+                suspended: false,
+                limited: false,
+            };
+            mockFetchAccountFollowers.mockResolvedValueOnce([mockFollower]);
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+            await user.click(followersTab);
+
+            await waitFor(() => {
+                expect(screen.getByText('Follower User')).toBeInTheDocument();
+                expect(screen.getByText('@followeruser@mastodon.social')).toBeInTheDocument();
+            });
+        });
+
+        it('displays following list', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+            const mockFollowingUser: mastodon.v1.Account = {
+                id: 'following-1',
+                username: 'followinguser',
+                acct: 'followinguser@mastodon.social',
+                displayName: 'Following User',
+                avatar: 'https://example.com/following-avatar.png',
+                avatarStatic: 'https://example.com/following-avatar.png',
+                header: '',
+                headerStatic: '',
+                note: '',
+                url: 'https://mastodon.social/@followinguser',
+                followersCount: 10,
+                followingCount: 20,
+                statusesCount: 30,
+                createdAt: '2024-01-01T00:00:00.000Z',
+                bot: false,
+                discoverable: true,
+                locked: false,
+                group: false,
+                lastStatusAt: '',
+                emojis: [],
+                fields: [],
+                roles: [],
+                suspended: false,
+                limited: false,
+            };
+            mockFetchAccountFollowing.mockResolvedValueOnce([mockFollowingUser]);
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
+            await user.click(followingTab);
+
+            await waitFor(() => {
+                expect(screen.getByText('Following User')).toBeInTheDocument();
+                expect(screen.getByText('@followinguser@mastodon.social')).toBeInTheDocument();
+            });
+        });
+
+        it('calls onAccountClick when user is clicked in followers list', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+            const mockFollower: mastodon.v1.Account = {
+                id: 'follower-1',
+                username: 'followeruser',
+                acct: 'followeruser@mastodon.social',
+                displayName: 'Follower User',
+                avatar: 'https://example.com/follower-avatar.png',
+                avatarStatic: 'https://example.com/follower-avatar.png',
+                header: '',
+                headerStatic: '',
+                note: '',
+                url: 'https://mastodon.social/@followeruser',
+                followersCount: 10,
+                followingCount: 20,
+                statusesCount: 30,
+                createdAt: '2024-01-01T00:00:00.000Z',
+                bot: false,
+                discoverable: true,
+                locked: false,
+                group: false,
+                lastStatusAt: '',
+                emojis: [],
+                fields: [],
+                roles: [],
+                suspended: false,
+                limited: false,
+            };
+            mockFetchAccountFollowers.mockResolvedValueOnce([mockFollower]);
+
+            const onAccountClick = vi.fn();
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                    onAccountClick={onAccountClick}
+                />
+            );
+
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+            await user.click(followersTab);
+
+            await waitFor(() => {
+                expect(screen.getByText('Follower User')).toBeInTheDocument();
+            });
+
+            // Click on the user item
+            const userButton = screen.getByRole('button', {
+                name: 'Follower User (@followeruser@mastodon.social)',
+            });
+            await user.click(userButton);
+
+            expect(onAccountClick).toHaveBeenCalledWith(mockFollower, '123@mastodon.social');
+        });
+
+        it('shows followers error state with retry button', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+            mockFetchAccountFollowers.mockRejectedValueOnce(new Error('Network error'));
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+            await user.click(followersTab);
+
+            await waitFor(() => {
+                expect(screen.getByText('フォロワーの読み込みに失敗しました')).toBeInTheDocument();
+            });
+
+            // Find retry button
+            const retryButton = screen.getByRole('button', { name: /再読み込み/ });
+            expect(retryButton).toBeInTheDocument();
+        });
+
+        it('shows following error state with retry button', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([]);
+            mockFetchAccountFollowing.mockRejectedValueOnce(new Error('Network error'));
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
+            await user.click(followingTab);
+
+            await waitFor(() => {
+                expect(screen.getByText('フォロー中の読み込みに失敗しました')).toBeInTheDocument();
+            });
+
+            // Find retry button
+            const retryButton = screen.getByRole('button', { name: /再読み込み/ });
+            expect(retryButton).toBeInTheDocument();
+        });
+
+        it('resets to posts tab when modal reopens', async () => {
+            mockFetchAccountStatuses.mockResolvedValue([]);
+            mockFetchAccountFollowers.mockResolvedValue([]);
+
+            const { rerender } = render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            // Switch to followers tab
+            const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+            await user.click(followersTab);
+
+            expect(followersTab).toHaveAttribute('aria-selected', 'true');
+
+            // Close modal
+            rerender(
+                <ProfileModal
+                    isOpen={false}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            // Reopen modal
+            rerender(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            // Posts tab should be selected again
+            const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+            expect(postsTab).toHaveAttribute('aria-selected', 'true');
+        });
+
+        describe('Keyboard navigation', () => {
+            it('navigates to next tab with ArrowRight', async () => {
+                mockFetchAccountStatuses.mockResolvedValueOnce([]);
+                mockFetchAccountFollowers.mockResolvedValueOnce([]);
+
+                render(
+                    <ProfileModal
+                        isOpen={true}
+                        onClose={onClose}
+                        account={mockAccount}
+                        accountSession={mockSession}
+                    />
+                );
+
+                const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+                postsTab.focus();
+
+                await user.keyboard('{ArrowRight}');
+
+                const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+                expect(followersTab).toHaveAttribute('aria-selected', 'true');
+            });
+
+            it('navigates to previous tab with ArrowLeft', async () => {
+                mockFetchAccountStatuses.mockResolvedValueOnce([]);
+                mockFetchAccountFollowers.mockResolvedValueOnce([]);
+
+                render(
+                    <ProfileModal
+                        isOpen={true}
+                        onClose={onClose}
+                        account={mockAccount}
+                        accountSession={mockSession}
+                    />
+                );
+
+                // First navigate to followers tab
+                const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+                await user.click(followersTab);
+
+                await user.keyboard('{ArrowLeft}');
+
+                const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+                expect(postsTab).toHaveAttribute('aria-selected', 'true');
+            });
+
+            it('wraps around when navigating past last tab', async () => {
+                mockFetchAccountStatuses.mockResolvedValueOnce([]);
+                mockFetchAccountFollowing.mockResolvedValueOnce([]);
+
+                render(
+                    <ProfileModal
+                        isOpen={true}
+                        onClose={onClose}
+                        account={mockAccount}
+                        accountSession={mockSession}
+                    />
+                );
+
+                // Navigate to following tab
+                const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
+                await user.click(followingTab);
+
+                // Press ArrowRight to wrap around to first tab
+                await user.keyboard('{ArrowRight}');
+
+                const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+                expect(postsTab).toHaveAttribute('aria-selected', 'true');
+            });
+
+            it('navigates to first tab with Home key', async () => {
+                mockFetchAccountStatuses.mockResolvedValueOnce([]);
+                mockFetchAccountFollowers.mockResolvedValueOnce([]);
+
+                render(
+                    <ProfileModal
+                        isOpen={true}
+                        onClose={onClose}
+                        account={mockAccount}
+                        accountSession={mockSession}
+                    />
+                );
+
+                // Navigate to followers tab
+                const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+                await user.click(followersTab);
+
+                await user.keyboard('{Home}');
+
+                const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+                expect(postsTab).toHaveAttribute('aria-selected', 'true');
+            });
+
+            it('navigates to last tab with End key', async () => {
+                mockFetchAccountStatuses.mockResolvedValueOnce([]);
+                mockFetchAccountFollowing.mockResolvedValueOnce([]);
+
+                render(
+                    <ProfileModal
+                        isOpen={true}
+                        onClose={onClose}
+                        account={mockAccount}
+                        accountSession={mockSession}
+                    />
+                );
+
+                const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+                postsTab.focus();
+
+                await user.keyboard('{End}');
+
+                const followingTab = screen.getByRole('tab', { name: /50.*フォロー中/ });
+                expect(followingTab).toHaveAttribute('aria-selected', 'true');
+            });
+
+            it('does not refetch followers when switching back to already-loaded empty tab', async () => {
+                mockFetchAccountStatuses.mockResolvedValueOnce([]);
+                // Return empty array - legitimately no followers
+                mockFetchAccountFollowers.mockResolvedValueOnce([]);
+
+                render(
+                    <ProfileModal
+                        isOpen={true}
+                        onClose={onClose}
+                        account={mockAccount}
+                        accountSession={mockSession}
+                    />
+                );
+
+                // Navigate to followers tab (should fetch)
+                const followersTab = screen.getByRole('tab', { name: /100.*フォロワー/ });
+                await user.click(followersTab);
+
+                await waitFor(() => {
+                    expect(screen.getByText('フォロワーがいません')).toBeInTheDocument();
+                });
+
+                expect(mockFetchAccountFollowers).toHaveBeenCalledTimes(1);
+
+                // Navigate away then back
+                const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
+                await user.click(postsTab);
+                await user.click(followersTab);
+
+                // Should NOT have fetched again
+                expect(mockFetchAccountFollowers).toHaveBeenCalledTimes(1);
             });
         });
     });

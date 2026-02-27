@@ -17,17 +17,26 @@ import {
     getClient,
     fetchAccount,
     fetchAccountStatuses,
+    fetchAccountFollowers,
+    fetchAccountFollowing,
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { useRelationshipActions } from '../hooks/useRelationshipActions';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { DisplayName } from './DisplayName';
 import { StatusCard } from './StatusCard';
+import { UserListItem } from './UserListItem';
 import type { ImageViewerImage } from './ImageViewer';
 import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
 
 const PAGE_SIZE = 20;
+
+/** Tab type for profile modal */
+type ProfileTab = 'posts' | 'followers' | 'following';
+
+/** Tab order for keyboard navigation */
+const TAB_ORDER: ProfileTab[] = ['posts', 'followers', 'following'];
 
 interface ProfileModalProps {
     isOpen: boolean;
@@ -88,9 +97,42 @@ export function ProfileModal({
     // Request ID ref for stale response detection
     const statusesRequestIdRef = useRef(0);
 
+    // Tab state
+    const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
+
+    // Followers list state
+    const [followers, setFollowers] = useState<mastodon.v1.Account[]>([]);
+    const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
+    const [hasMoreFollowers, setHasMoreFollowers] = useState(true);
+    const [followersError, setFollowersError] = useState<string | null>(null);
+    const [followersLoaded, setFollowersLoaded] = useState(false);
+    const loadMoreFollowersRef = useRef<HTMLDivElement>(null);
+    const followersRef = useRef<mastodon.v1.Account[]>([]);
+    const followersRequestIdRef = useRef(0);
+
+    // Following list state
+    const [followingList, setFollowingList] = useState<mastodon.v1.Account[]>([]);
+    const [isLoadingFollowingList, setIsLoadingFollowingList] = useState(false);
+    const [hasMoreFollowingList, setHasMoreFollowingList] = useState(true);
+    const [followingListError, setFollowingListError] = useState<string | null>(null);
+    const [followingListLoaded, setFollowingListLoaded] = useState(false);
+    const loadMoreFollowingListRef = useRef<HTMLDivElement>(null);
+    const followingListRef = useRef<mastodon.v1.Account[]>([]);
+    const followingListRequestIdRef = useRef(0);
+
     // Refs for focus management
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const tabPostsRef = useRef<HTMLButtonElement>(null);
+    const tabFollowersRef = useRef<HTMLButtonElement>(null);
+    const tabFollowingRef = useRef<HTMLButtonElement>(null);
+
+    // Map tab names to refs for focus management
+    const tabRefs = {
+        posts: tabPostsRef,
+        followers: tabFollowersRef,
+        following: tabFollowingRef,
+    } as const;
 
     const { handleKeyDown } = useModalAccessibility({
         isOpen,
@@ -245,10 +287,202 @@ export function ProfileModal({
         }
     }, [accountId, accountSession, hasMoreStatuses]);
 
+    // Load initial followers
+    const loadFollowers = useCallback(async () => {
+        if (!accountId || !accountSession) return;
+
+        const reqId = ++followersRequestIdRef.current;
+        setIsLoadingFollowers(true);
+        setFollowersError(null);
+
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const fetchedFollowers = await fetchAccountFollowers(client, accountId, {
+                limit: PAGE_SIZE,
+            });
+
+            // Ignore stale response
+            if (reqId !== followersRequestIdRef.current) return;
+
+            followersRef.current = fetchedFollowers;
+            setFollowers(fetchedFollowers);
+            setHasMoreFollowers(fetchedFollowers.length === PAGE_SIZE);
+            setFollowersLoaded(true);
+        } catch (err) {
+            if (reqId !== followersRequestIdRef.current) return;
+            console.error('Failed to fetch followers:', err);
+            setFollowersError('フォロワーの読み込みに失敗しました');
+        } finally {
+            if (reqId === followersRequestIdRef.current) {
+                setIsLoadingFollowers(false);
+            }
+        }
+    }, [accountId, accountSession]);
+
+    // Load more followers for infinite scroll
+    const loadMoreFollowers = useCallback(async () => {
+        if (!accountId || !accountSession || !hasMoreFollowers) return;
+
+        const reqId = ++followersRequestIdRef.current;
+        setIsLoadingFollowers(true);
+        setFollowersError(null);
+
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const lastFollowerId = followersRef.current[followersRef.current.length - 1]?.id;
+
+            const fetchedFollowers = await fetchAccountFollowers(client, accountId, {
+                maxId: lastFollowerId,
+                limit: PAGE_SIZE,
+            });
+
+            // Ignore stale response
+            if (reqId !== followersRequestIdRef.current) return;
+
+            if (fetchedFollowers.length > 0) {
+                setFollowers((prev) => {
+                    const newFollowers = [...prev, ...fetchedFollowers];
+                    followersRef.current = newFollowers;
+                    return newFollowers;
+                });
+            }
+            setHasMoreFollowers(fetchedFollowers.length === PAGE_SIZE);
+        } catch (err) {
+            if (reqId !== followersRequestIdRef.current) return;
+            console.error('Failed to fetch more followers:', err);
+            setFollowersError('フォロワーの読み込みに失敗しました');
+        } finally {
+            if (reqId === followersRequestIdRef.current) {
+                setIsLoadingFollowers(false);
+            }
+        }
+    }, [accountId, accountSession, hasMoreFollowers]);
+
+    // Load initial following
+    const loadFollowingList = useCallback(async () => {
+        if (!accountId || !accountSession) return;
+
+        const reqId = ++followingListRequestIdRef.current;
+        setIsLoadingFollowingList(true);
+        setFollowingListError(null);
+
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const fetchedFollowing = await fetchAccountFollowing(client, accountId, {
+                limit: PAGE_SIZE,
+            });
+
+            // Ignore stale response
+            if (reqId !== followingListRequestIdRef.current) return;
+
+            followingListRef.current = fetchedFollowing;
+            setFollowingList(fetchedFollowing);
+            setHasMoreFollowingList(fetchedFollowing.length === PAGE_SIZE);
+            setFollowingListLoaded(true);
+        } catch (err) {
+            if (reqId !== followingListRequestIdRef.current) return;
+            console.error('Failed to fetch following:', err);
+            setFollowingListError('フォロー中の読み込みに失敗しました');
+        } finally {
+            if (reqId === followingListRequestIdRef.current) {
+                setIsLoadingFollowingList(false);
+            }
+        }
+    }, [accountId, accountSession]);
+
+    // Load more following for infinite scroll
+    const loadMoreFollowingList = useCallback(async () => {
+        if (!accountId || !accountSession || !hasMoreFollowingList) return;
+
+        const reqId = ++followingListRequestIdRef.current;
+        setIsLoadingFollowingList(true);
+        setFollowingListError(null);
+
+        try {
+            const client: MastoClient = getClient(accountSession);
+            const lastFollowingId =
+                followingListRef.current[followingListRef.current.length - 1]?.id;
+
+            const fetchedFollowing = await fetchAccountFollowing(client, accountId, {
+                maxId: lastFollowingId,
+                limit: PAGE_SIZE,
+            });
+
+            // Ignore stale response
+            if (reqId !== followingListRequestIdRef.current) return;
+
+            if (fetchedFollowing.length > 0) {
+                setFollowingList((prev) => {
+                    const newFollowing = [...prev, ...fetchedFollowing];
+                    followingListRef.current = newFollowing;
+                    return newFollowing;
+                });
+            }
+            setHasMoreFollowingList(fetchedFollowing.length === PAGE_SIZE);
+        } catch (err) {
+            if (reqId !== followingListRequestIdRef.current) return;
+            console.error('Failed to fetch more following:', err);
+            setFollowingListError('フォロー中の読み込みに失敗しました');
+        } finally {
+            if (reqId === followingListRequestIdRef.current) {
+                setIsLoadingFollowingList(false);
+            }
+        }
+    }, [accountId, accountSession, hasMoreFollowingList]);
+
+    // Handle tab change
+    const handleTabChange = useCallback(
+        (tab: ProfileTab) => {
+            setActiveTab(tab);
+            // Load data when switching to a tab for the first time
+            if (tab === 'followers' && !followersLoaded && !isLoadingFollowers) {
+                loadFollowers();
+            } else if (tab === 'following' && !followingListLoaded && !isLoadingFollowingList) {
+                loadFollowingList();
+            }
+        },
+        [
+            followersLoaded,
+            isLoadingFollowers,
+            loadFollowers,
+            followingListLoaded,
+            isLoadingFollowingList,
+            loadFollowingList,
+        ]
+    );
+
+    // Handle keyboard navigation for tab list
+    const handleTabListKeyDown = useCallback(
+        (e: React.KeyboardEvent<HTMLDivElement>) => {
+            const current = TAB_ORDER.indexOf(activeTab);
+            let next = current;
+
+            if (e.key === 'ArrowRight') {
+                next = (current + 1) % TAB_ORDER.length;
+            } else if (e.key === 'ArrowLeft') {
+                next = (current - 1 + TAB_ORDER.length) % TAB_ORDER.length;
+            } else if (e.key === 'Home') {
+                next = 0;
+            } else if (e.key === 'End') {
+                next = TAB_ORDER.length - 1;
+            } else {
+                return;
+            }
+
+            e.preventDefault();
+            handleTabChange(TAB_ORDER[next]);
+            // Move focus to the newly selected tab (ARIA best practice)
+            tabRefs[TAB_ORDER[next]].current?.focus();
+        },
+        [activeTab, handleTabChange]
+    );
+
     // Reset state when modal closes or account changes, then fetch if available
     useEffect(() => {
         // Invalidate any pending requests
         statusesRequestIdRef.current += 1;
+        followersRequestIdRef.current += 1;
+        followingListRequestIdRef.current += 1;
 
         // Reset state when modal closes
         if (!isOpen) {
@@ -260,6 +494,22 @@ export function ProfileModal({
             setHasMoreStatuses(true);
             setStatusesError(null);
             setIsLoadingStatuses(false);
+            // Reset tab state
+            setActiveTab('posts');
+            // Reset followers state
+            setFollowers([]);
+            followersRef.current = [];
+            setHasMoreFollowers(true);
+            setFollowersError(null);
+            setIsLoadingFollowers(false);
+            setFollowersLoaded(false);
+            // Reset following list state
+            setFollowingList([]);
+            followingListRef.current = [];
+            setHasMoreFollowingList(true);
+            setFollowingListError(null);
+            setIsLoadingFollowingList(false);
+            setFollowingListLoaded(false);
             return;
         }
 
@@ -271,6 +521,22 @@ export function ProfileModal({
         setHasMoreStatuses(true);
         setStatusesError(null);
         setIsLoadingStatuses(false);
+        // Reset tab state
+        setActiveTab('posts');
+        // Reset followers state
+        setFollowers([]);
+        followersRef.current = [];
+        setHasMoreFollowers(true);
+        setFollowersError(null);
+        setIsLoadingFollowers(false);
+        setFollowersLoaded(false);
+        // Reset following list state
+        setFollowingList([]);
+        followingListRef.current = [];
+        setHasMoreFollowingList(true);
+        setFollowingListError(null);
+        setIsLoadingFollowingList(false);
+        setFollowingListLoaded(false);
 
         // Only fetch if we have both account and session
         if (!accountId || !accountSession) {
@@ -309,10 +575,10 @@ export function ProfileModal({
         };
     }, [isOpen, accountId, accountSession, loadStatuses]);
 
-    // IntersectionObserver for infinite scroll
+    // IntersectionObserver for infinite scroll (posts)
     useEffect(() => {
-        // Only create observer when modal is open
-        if (!isOpen) return;
+        // Only create observer when modal is open and posts tab is active
+        if (!isOpen || activeTab !== 'posts') return;
 
         const observer = new IntersectionObserver(
             (entries) => {
@@ -337,7 +603,79 @@ export function ProfileModal({
         return () => {
             observer.disconnect();
         };
-    }, [isOpen, hasMoreStatuses, isLoadingStatuses, statusesError, loadMoreStatuses]);
+    }, [isOpen, activeTab, hasMoreStatuses, isLoadingStatuses, statusesError, loadMoreStatuses]);
+
+    // IntersectionObserver for infinite scroll (followers)
+    useEffect(() => {
+        // Only create observer when modal is open and followers tab is active
+        if (!isOpen || activeTab !== 'followers') return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (
+                    entries[0].isIntersecting &&
+                    hasMoreFollowers &&
+                    !isLoadingFollowers &&
+                    !followersError
+                ) {
+                    loadMoreFollowers();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        const currentRef = loadMoreFollowersRef.current;
+        if (currentRef) {
+            observer.observe(currentRef);
+        }
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [
+        isOpen,
+        activeTab,
+        hasMoreFollowers,
+        isLoadingFollowers,
+        followersError,
+        loadMoreFollowers,
+    ]);
+
+    // IntersectionObserver for infinite scroll (following)
+    useEffect(() => {
+        // Only create observer when modal is open and following tab is active
+        if (!isOpen || activeTab !== 'following') return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (
+                    entries[0].isIntersecting &&
+                    hasMoreFollowingList &&
+                    !isLoadingFollowingList &&
+                    !followingListError
+                ) {
+                    loadMoreFollowingList();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        const currentRef = loadMoreFollowingListRef.current;
+        if (currentRef) {
+            observer.observe(currentRef);
+        }
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [
+        isOpen,
+        activeTab,
+        hasMoreFollowingList,
+        isLoadingFollowingList,
+        followingListError,
+        loadMoreFollowingList,
+    ]);
 
     // Remove deleted status from local list when deletion succeeds
     useEffect(() => {
@@ -524,142 +862,393 @@ export function ProfileModal({
                                 />
                             )}
 
-                            {/* Stats */}
-                            <div className="flex items-center justify-center gap-6 text-slate-400 text-sm w-full border-t border-slate-700/50 pt-4">
-                                <div className="flex items-center gap-2">
+                            {/* Stats as Tabs */}
+                            <div
+                                className="flex items-center justify-center gap-2 text-slate-400 text-sm w-full border-t border-slate-700/50 pt-4 flex-wrap"
+                                role="tablist"
+                                aria-label="プロフィールタブ"
+                                onKeyDown={handleTabListKeyDown}
+                            >
+                                <button
+                                    ref={tabPostsRef}
+                                    id="tab-posts"
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activeTab === 'posts'}
+                                    aria-controls="tabpanel-posts"
+                                    tabIndex={activeTab === 'posts' ? 0 : -1}
+                                    onClick={() => handleTabChange('posts')}
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${
+                                        activeTab === 'posts'
+                                            ? 'text-slate-100 bg-slate-700/50'
+                                            : 'hover:text-slate-200 hover:bg-slate-700/30'
+                                    }`}
+                                >
                                     <LuFileText className="w-4 h-4" aria-hidden="true" />
-                                    <span>
-                                        <strong className="text-slate-200">
-                                            {displayAccount.statusesCount}
-                                        </strong>{' '}
-                                        投稿
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2">
+                                    <strong className="text-slate-200">
+                                        {displayAccount.statusesCount}
+                                    </strong>
+                                    <span>投稿</span>
+                                </button>
+                                <button
+                                    ref={tabFollowersRef}
+                                    id="tab-followers"
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activeTab === 'followers'}
+                                    aria-controls="tabpanel-followers"
+                                    tabIndex={activeTab === 'followers' ? 0 : -1}
+                                    onClick={() => handleTabChange('followers')}
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${
+                                        activeTab === 'followers'
+                                            ? 'text-slate-100 bg-slate-700/50'
+                                            : 'hover:text-slate-200 hover:bg-slate-700/30'
+                                    }`}
+                                >
                                     <LuUsers className="w-4 h-4" aria-hidden="true" />
-                                    <span>
-                                        <strong className="text-slate-200">
-                                            {displayAccount.followersCount}
-                                        </strong>{' '}
-                                        フォロワー
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2">
+                                    <strong className="text-slate-200">
+                                        {displayAccount.followersCount}
+                                    </strong>
+                                    <span>フォロワー</span>
+                                </button>
+                                <button
+                                    ref={tabFollowingRef}
+                                    id="tab-following"
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activeTab === 'following'}
+                                    aria-controls="tabpanel-following"
+                                    tabIndex={activeTab === 'following' ? 0 : -1}
+                                    onClick={() => handleTabChange('following')}
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${
+                                        activeTab === 'following'
+                                            ? 'text-slate-100 bg-slate-700/50'
+                                            : 'hover:text-slate-200 hover:bg-slate-700/30'
+                                    }`}
+                                >
                                     <LuUser className="w-4 h-4" aria-hidden="true" />
-                                    <span>
-                                        <strong className="text-slate-200">
-                                            {displayAccount.followingCount}
-                                        </strong>{' '}
-                                        フォロー中
-                                    </span>
-                                </div>
+                                    <strong className="text-slate-200">
+                                        {displayAccount.followingCount}
+                                    </strong>
+                                    <span>フォロー中</span>
+                                </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Post list section */}
+                    {/* Tab panels */}
                     <div className="mt-6 border-t border-slate-700/50 pt-4">
-                        <h3 className="text-sm font-semibold text-slate-300 mb-4">投稿</h3>
-
-                        {/* Statuses loading indicator */}
-                        {isLoadingStatuses && statuses.length === 0 && (
-                            <div className="flex items-center justify-center py-8 text-slate-400">
-                                <LuLoader
-                                    className="w-5 h-5 animate-spin mr-2"
-                                    aria-hidden="true"
-                                />
-                                <span>投稿を読み込み中...</span>
-                            </div>
-                        )}
-
-                        {/* Statuses error */}
-                        {statusesError && statuses.length === 0 && (
-                            <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-                                <LuCircleAlert className="w-5 h-5 mb-2" aria-hidden="true" />
-                                <span className="mb-2">{statusesError}</span>
-                                <button
-                                    type="button"
-                                    onClick={() => loadStatuses()}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-                                >
-                                    <LuRefreshCw className="w-4 h-4" aria-hidden="true" />
-                                    再読み込み
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Empty state */}
-                        {!isLoadingStatuses && !statusesError && statuses.length === 0 && (
-                            <div className="text-center py-8 text-slate-400">
-                                <span>投稿がありません</span>
-                            </div>
-                        )}
-
-                        {/* Status list */}
-                        {statuses.length > 0 && (
-                            <div className="space-y-3">
-                                {statuses.map((status) => (
-                                    <StatusCard
-                                        key={status.id}
-                                        status={status}
-                                        accountSession={accountSession}
-                                        onStatusUpdate={handleStatusUpdate}
-                                        onReply={handleReply}
-                                        onQuote={handleQuote}
-                                        supportsQuotes={supportsQuotes}
-                                        onStatusClick={handleStatusClick}
-                                        onImageClick={onImageClick}
-                                        onVideoClick={onVideoClick}
-                                        onAudioClick={onAudioClick}
-                                        onAccountClick={onAccountClick}
-                                        onNsfwReveal={onNsfwReveal}
-                                        isNsfwRevealed={nsfwRevealedStatusIds?.has(status.id)}
-                                        onStatusDelete={handleStatusDelete}
-                                        onStatusEdit={handleStatusEdit}
+                        {/* Posts tab panel */}
+                        <div
+                            id="tabpanel-posts"
+                            role="tabpanel"
+                            aria-labelledby="tab-posts"
+                            hidden={activeTab !== 'posts'}
+                        >
+                            {/* Statuses loading indicator */}
+                            {isLoadingStatuses && statuses.length === 0 && (
+                                <div className="flex items-center justify-center py-8 text-slate-400">
+                                    <LuLoader
+                                        className="w-5 h-5 animate-spin mr-2"
+                                        aria-hidden="true"
                                     />
-                                ))}
+                                    <span>投稿を読み込み中...</span>
+                                </div>
+                            )}
 
-                                {/* Load more indicator */}
-                                <div ref={loadMoreRef} className="py-4">
-                                    {isLoadingStatuses && statuses.length > 0 && (
-                                        <div className="flex items-center justify-center text-slate-400">
-                                            <LuLoader
-                                                className="w-4 h-4 animate-spin mr-2"
-                                                aria-hidden="true"
-                                            />
-                                            <span className="text-sm">読み込み中...</span>
-                                        </div>
-                                    )}
-                                    {/* Pagination error - show retry button */}
-                                    {statusesError && statuses.length > 0 && (
-                                        <div className="flex flex-col items-center justify-center text-slate-400">
-                                            <LuCircleAlert
-                                                className="w-4 h-4 mb-2"
-                                                aria-hidden="true"
-                                            />
-                                            <span className="text-sm mb-2">{statusesError}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => loadMoreStatuses()}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-                                            >
-                                                <LuRefreshCw
-                                                    className="w-4 h-4"
+                            {/* Statuses error */}
+                            {statusesError && statuses.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                                    <LuCircleAlert className="w-5 h-5 mb-2" aria-hidden="true" />
+                                    <span className="mb-2">{statusesError}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => loadStatuses()}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                                    >
+                                        <LuRefreshCw className="w-4 h-4" aria-hidden="true" />
+                                        再読み込み
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Empty state */}
+                            {!isLoadingStatuses && !statusesError && statuses.length === 0 && (
+                                <div className="text-center py-8 text-slate-400">
+                                    <span>投稿がありません</span>
+                                </div>
+                            )}
+
+                            {/* Status list */}
+                            {statuses.length > 0 && (
+                                <div className="space-y-3">
+                                    {statuses.map((status) => (
+                                        <StatusCard
+                                            key={status.id}
+                                            status={status}
+                                            accountSession={accountSession}
+                                            onStatusUpdate={handleStatusUpdate}
+                                            onReply={handleReply}
+                                            onQuote={handleQuote}
+                                            supportsQuotes={supportsQuotes}
+                                            onStatusClick={handleStatusClick}
+                                            onImageClick={onImageClick}
+                                            onVideoClick={onVideoClick}
+                                            onAudioClick={onAudioClick}
+                                            onAccountClick={onAccountClick}
+                                            onNsfwReveal={onNsfwReveal}
+                                            isNsfwRevealed={nsfwRevealedStatusIds?.has(status.id)}
+                                            onStatusDelete={handleStatusDelete}
+                                            onStatusEdit={handleStatusEdit}
+                                        />
+                                    ))}
+
+                                    {/* Load more indicator */}
+                                    <div ref={loadMoreRef} className="py-4">
+                                        {isLoadingStatuses && statuses.length > 0 && (
+                                            <div className="flex items-center justify-center text-slate-400">
+                                                <LuLoader
+                                                    className="w-4 h-4 animate-spin mr-2"
                                                     aria-hidden="true"
                                                 />
-                                                再読み込み
-                                            </button>
-                                        </div>
-                                    )}
-                                    {/* End of list - only show if no error */}
-                                    {!hasMoreStatuses && !statusesError && statuses.length > 0 && (
-                                        <div className="text-center text-slate-500 text-sm">
-                                            これ以上投稿はありません
-                                        </div>
-                                    )}
+                                                <span className="text-sm">読み込み中...</span>
+                                            </div>
+                                        )}
+                                        {/* Pagination error - show retry button */}
+                                        {statusesError && statuses.length > 0 && (
+                                            <div className="flex flex-col items-center justify-center text-slate-400">
+                                                <LuCircleAlert
+                                                    className="w-4 h-4 mb-2"
+                                                    aria-hidden="true"
+                                                />
+                                                <span className="text-sm mb-2">
+                                                    {statusesError}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => loadMoreStatuses()}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                                                >
+                                                    <LuRefreshCw
+                                                        className="w-4 h-4"
+                                                        aria-hidden="true"
+                                                    />
+                                                    再読み込み
+                                                </button>
+                                            </div>
+                                        )}
+                                        {/* End of list - only show if no error */}
+                                        {!hasMoreStatuses &&
+                                            !statusesError &&
+                                            statuses.length > 0 && (
+                                                <div className="text-center text-slate-500 text-sm">
+                                                    これ以上投稿はありません
+                                                </div>
+                                            )}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
+
+                        {/* Followers tab panel */}
+                        <div
+                            id="tabpanel-followers"
+                            role="tabpanel"
+                            aria-labelledby="tab-followers"
+                            hidden={activeTab !== 'followers'}
+                        >
+                            {/* Followers loading indicator */}
+                            {isLoadingFollowers && followers.length === 0 && (
+                                <div className="flex items-center justify-center py-8 text-slate-400">
+                                    <LuLoader
+                                        className="w-5 h-5 animate-spin mr-2"
+                                        aria-hidden="true"
+                                    />
+                                    <span>フォロワーを読み込み中...</span>
+                                </div>
+                            )}
+
+                            {/* Followers error */}
+                            {followersError && followers.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                                    <LuCircleAlert className="w-5 h-5 mb-2" aria-hidden="true" />
+                                    <span className="mb-2">{followersError}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => loadFollowers()}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                                    >
+                                        <LuRefreshCw className="w-4 h-4" aria-hidden="true" />
+                                        再読み込み
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Empty state */}
+                            {!isLoadingFollowers && !followersError && followers.length === 0 && (
+                                <div className="text-center py-8 text-slate-400">
+                                    <span>フォロワーがいません</span>
+                                </div>
+                            )}
+
+                            {/* Followers list */}
+                            {followers.length > 0 && (
+                                <div className="space-y-1">
+                                    {followers.map((followerAccount) => (
+                                        <UserListItem
+                                            key={followerAccount.id}
+                                            account={followerAccount}
+                                            onAccountClick={(acc) =>
+                                                onAccountClick?.(acc, accountSessionId)
+                                            }
+                                        />
+                                    ))}
+
+                                    {/* Load more indicator */}
+                                    <div ref={loadMoreFollowersRef} className="py-4">
+                                        {isLoadingFollowers && followers.length > 0 && (
+                                            <div className="flex items-center justify-center text-slate-400">
+                                                <LuLoader
+                                                    className="w-4 h-4 animate-spin mr-2"
+                                                    aria-hidden="true"
+                                                />
+                                                <span className="text-sm">読み込み中...</span>
+                                            </div>
+                                        )}
+                                        {followersError && followers.length > 0 && (
+                                            <div className="flex flex-col items-center justify-center text-slate-400">
+                                                <LuCircleAlert
+                                                    className="w-4 h-4 mb-2"
+                                                    aria-hidden="true"
+                                                />
+                                                <span className="text-sm mb-2">
+                                                    {followersError}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => loadMoreFollowers()}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                                                >
+                                                    <LuRefreshCw
+                                                        className="w-4 h-4"
+                                                        aria-hidden="true"
+                                                    />
+                                                    再読み込み
+                                                </button>
+                                            </div>
+                                        )}
+                                        {!hasMoreFollowers &&
+                                            !followersError &&
+                                            followers.length > 0 && (
+                                                <div className="text-center text-slate-500 text-sm">
+                                                    これ以上フォロワーはいません
+                                                </div>
+                                            )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Following tab panel */}
+                        <div
+                            id="tabpanel-following"
+                            role="tabpanel"
+                            aria-labelledby="tab-following"
+                            hidden={activeTab !== 'following'}
+                        >
+                            {/* Following loading indicator */}
+                            {isLoadingFollowingList && followingList.length === 0 && (
+                                <div className="flex items-center justify-center py-8 text-slate-400">
+                                    <LuLoader
+                                        className="w-5 h-5 animate-spin mr-2"
+                                        aria-hidden="true"
+                                    />
+                                    <span>フォロー中を読み込み中...</span>
+                                </div>
+                            )}
+
+                            {/* Following error */}
+                            {followingListError && followingList.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                                    <LuCircleAlert className="w-5 h-5 mb-2" aria-hidden="true" />
+                                    <span className="mb-2">{followingListError}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => loadFollowingList()}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                                    >
+                                        <LuRefreshCw className="w-4 h-4" aria-hidden="true" />
+                                        再読み込み
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Empty state */}
+                            {!isLoadingFollowingList &&
+                                !followingListError &&
+                                followingList.length === 0 && (
+                                    <div className="text-center py-8 text-slate-400">
+                                        <span>フォロー中のユーザーがいません</span>
+                                    </div>
+                                )}
+
+                            {/* Following list */}
+                            {followingList.length > 0 && (
+                                <div className="space-y-1">
+                                    {followingList.map((followingAccount) => (
+                                        <UserListItem
+                                            key={followingAccount.id}
+                                            account={followingAccount}
+                                            onAccountClick={(acc) =>
+                                                onAccountClick?.(acc, accountSessionId)
+                                            }
+                                        />
+                                    ))}
+
+                                    {/* Load more indicator */}
+                                    <div ref={loadMoreFollowingListRef} className="py-4">
+                                        {isLoadingFollowingList && followingList.length > 0 && (
+                                            <div className="flex items-center justify-center text-slate-400">
+                                                <LuLoader
+                                                    className="w-4 h-4 animate-spin mr-2"
+                                                    aria-hidden="true"
+                                                />
+                                                <span className="text-sm">読み込み中...</span>
+                                            </div>
+                                        )}
+                                        {followingListError && followingList.length > 0 && (
+                                            <div className="flex flex-col items-center justify-center text-slate-400">
+                                                <LuCircleAlert
+                                                    className="w-4 h-4 mb-2"
+                                                    aria-hidden="true"
+                                                />
+                                                <span className="text-sm mb-2">
+                                                    {followingListError}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => loadMoreFollowingList()}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                                                >
+                                                    <LuRefreshCw
+                                                        className="w-4 h-4"
+                                                        aria-hidden="true"
+                                                    />
+                                                    再読み込み
+                                                </button>
+                                            </div>
+                                        )}
+                                        {!hasMoreFollowingList &&
+                                            !followingListError &&
+                                            followingList.length > 0 && (
+                                                <div className="text-center text-slate-500 text-sm">
+                                                    これ以上フォロー中のユーザーはいません
+                                                </div>
+                                            )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

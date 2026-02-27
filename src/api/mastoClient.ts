@@ -662,3 +662,52 @@ export async function fetchAccountStatuses(
     });
     return statuses;
 }
+
+/**
+ * Options for fetching account followers/following
+ */
+export interface FetchAccountFollowsOptions {
+    maxId?: string;
+    sinceId?: string;
+    limit?: number;
+}
+
+/**
+ * Fetch accounts following the given account (followers)
+ * @param client - Mastodon API client
+ * @param accountId - ID of the account to fetch followers for
+ * @param options - Pagination options
+ * @returns Array of accounts
+ */
+export async function fetchAccountFollowers(
+    client: MastoClient,
+    accountId: string,
+    options?: FetchAccountFollowsOptions
+): Promise<mastodon.v1.Account[]> {
+    const accounts = await client.v1.accounts.$select(accountId).followers.list({
+        maxId: options?.maxId,
+        sinceId: options?.sinceId,
+        limit: options?.limit ?? 20,
+    });
+    return accounts;
+}
+
+/**
+ * Fetch accounts followed by the given account (following)
+ * @param client - Mastodon API client
+ * @param accountId - ID of the account to fetch following for
+ * @param options - Pagination options
+ * @returns Array of accounts
+ */
+export async function fetchAccountFollowing(
+    client: MastoClient,
+    accountId: string,
+    options?: FetchAccountFollowsOptions
+): Promise<mastodon.v1.Account[]> {
+    const accounts = await client.v1.accounts.$select(accountId).following.list({
+        maxId: options?.maxId,
+        sinceId: options?.sinceId,
+        limit: options?.limit ?? 20,
+    });
+    return accounts;
+}
