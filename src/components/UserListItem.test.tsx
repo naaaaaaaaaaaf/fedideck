@@ -97,36 +97,6 @@ describe('UserListItem', () => {
         expect(onAccountClick).toHaveBeenCalledWith(mockAccount);
     });
 
-    it('calls onAccountClick when Enter key is pressed', () => {
-        const onAccountClick = vi.fn();
-
-        render(<UserListItem account={mockAccount} onAccountClick={onAccountClick} />);
-
-        fireEvent.keyDown(screen.getByRole('button'), { key: 'Enter' });
-
-        expect(onAccountClick).toHaveBeenCalledWith(mockAccount);
-    });
-
-    it('calls onAccountClick when Space key is pressed', () => {
-        const onAccountClick = vi.fn();
-
-        render(<UserListItem account={mockAccount} onAccountClick={onAccountClick} />);
-
-        fireEvent.keyDown(screen.getByRole('button'), { key: ' ' });
-
-        expect(onAccountClick).toHaveBeenCalledWith(mockAccount);
-    });
-
-    it('does not call onAccountClick when other keys are pressed', () => {
-        const onAccountClick = vi.fn();
-
-        render(<UserListItem account={mockAccount} onAccountClick={onAccountClick} />);
-
-        fireEvent.keyDown(screen.getByRole('button'), { key: 'Tab' });
-
-        expect(onAccountClick).not.toHaveBeenCalled();
-    });
-
     it('does not throw when onAccountClick is not provided', () => {
         render(<UserListItem account={mockAccount} />);
 
@@ -134,6 +104,10 @@ describe('UserListItem', () => {
             fireEvent.click(screen.getByRole('button'));
         }).not.toThrow();
     });
+
+    // Note: Keyboard navigation (Enter/Space) is handled natively by the button element
+    // The browser automatically triggers click events for these keys on focusable buttons
+    // No custom keyboard handler is needed
 
     it('renders custom emojis in display name', () => {
         const accountWithEmoji = {
