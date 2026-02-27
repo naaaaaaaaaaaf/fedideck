@@ -678,4 +678,77 @@ describe('ProfileModal', () => {
             expect(mockFetchAccountStatuses).toHaveBeenCalledTimes(2);
         });
     });
+
+    describe('Infinite scroll', () => {
+        const mockStatus1 = {
+            id: 'status-1',
+            content: '<p>First status</p>',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            account: mockAccount,
+            visibility: 'public',
+            uri: 'https://mastodon.social/@testuser/1',
+            url: 'https://mastodon.social/@testuser/1',
+            reblog: null,
+            inReplyToId: null,
+            inReplyToAccountId: null,
+            reblogsCount: 0,
+            favouritesCount: 0,
+            repliesCount: 0,
+            reblogged: false,
+            favourited: false,
+            bookmarked: false,
+            muted: false,
+            sensitive: false,
+            spoilerText: '',
+            language: 'en',
+            mentions: [],
+            tags: [],
+            emojis: [],
+            mediaAttachments: [],
+            application: null,
+            card: null,
+            poll: null,
+            filtered: [],
+        } as unknown as mastodon.v1.Status;
+
+        it('sets up IntersectionObserver for infinite scroll', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([mockStatus1]);
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText('First status')).toBeInTheDocument();
+            });
+
+            expect(mockObserve).toHaveBeenCalled();
+        });
+
+        it('disconnects observer on unmount', async () => {
+            mockFetchAccountStatuses.mockResolvedValueOnce([mockStatus1]);
+
+            const { unmount } = render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            await waitFor(() => {
+                expect(mockObserve).toHaveBeenCalled();
+            });
+
+            unmount();
+
+            expect(mockDisconnect).toHaveBeenCalled();
+        });
+    });
 });
