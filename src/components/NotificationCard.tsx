@@ -47,7 +47,7 @@ export const NotificationCard = React.memo(function NotificationCard({
             case 'quote':
                 return { icon: <LuQuote />, label: '引用', color: 'text-purple-400' };
             case 'quoted_update':
-                return { icon: <LuPencil />, label: '引用先が編集', color: 'text-slate-400' };
+                return { icon: <LuPencil />, label: '引用先を編集', color: 'text-slate-400' };
             case 'favourite':
                 return { icon: <LuStar />, label: 'お気に入り', color: 'text-amber-400' };
             case 'follow':

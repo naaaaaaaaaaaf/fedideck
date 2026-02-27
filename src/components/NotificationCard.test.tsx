@@ -164,7 +164,7 @@ describe('NotificationCard', () => {
                 status: createMockStatus(),
             });
             render(<NotificationCard notification={notification} />);
-            expect(screen.getByText(/引用先が編集/)).toBeInTheDocument();
+            expect(screen.getByText(/引用先を編集/)).toBeInTheDocument();
         });
 
         it('should display unknown type with its raw type string', () => {
