@@ -47,6 +47,8 @@ interface ProfileModalProps {
     onStatusDelete?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onStatusEdit?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     supportsQuotes?: boolean;
+    /** ID of status that was just deleted, used to remove from local list */
+    deletedStatusId?: string;
 }
 
 export function ProfileModal({
@@ -67,6 +69,7 @@ export function ProfileModal({
     onStatusDelete,
     onStatusEdit,
     supportsQuotes = false,
+    deletedStatusId,
 }: ProfileModalProps) {
     const [fullAccount, setFullAccount] = useState<mastodon.v1.Account | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -138,6 +141,22 @@ export function ProfileModal({
                 ? (status: mastodon.v1.Status) => onStatusClick(status, accountSessionId)
                 : undefined,
         [onStatusClick, accountSessionId]
+    );
+    // Wrap onStatusUpdate to also update local statuses array
+    const handleStatusUpdate = useCallback(
+        (updatedStatus: mastodon.v1.Status) => {
+            // Update local state
+            setStatuses((prev) => {
+                const newStatuses = prev.map((s) =>
+                    s.id === updatedStatus.id ? updatedStatus : s
+                );
+                statusesRef.current = newStatuses;
+                return newStatuses;
+            });
+            // Call outer callback for global state update
+            onStatusUpdate?.(updatedStatus);
+        },
+        [onStatusUpdate]
     );
     const handleStatusDelete = useMemo(
         () =>
@@ -319,6 +338,17 @@ export function ProfileModal({
             observer.disconnect();
         };
     }, [isOpen, hasMoreStatuses, isLoadingStatuses, statusesError, loadMoreStatuses]);
+
+    // Remove deleted status from local list when deletion succeeds
+    useEffect(() => {
+        if (deletedStatusId) {
+            setStatuses((prev) => {
+                const newStatuses = prev.filter((s) => s.id !== deletedStatusId);
+                statusesRef.current = newStatuses;
+                return newStatuses;
+            });
+        }
+    }, [deletedStatusId]);
 
     if (!isOpen || !account) {
         return null;
@@ -573,7 +603,7 @@ export function ProfileModal({
                                         key={status.id}
                                         status={status}
                                         accountSession={accountSession}
-                                        onStatusUpdate={onStatusUpdate}
+                                        onStatusUpdate={handleStatusUpdate}
                                         onReply={handleReply}
                                         onQuote={handleQuote}
                                         supportsQuotes={supportsQuotes}
