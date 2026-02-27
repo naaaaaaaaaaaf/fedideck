@@ -164,26 +164,20 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
                                 type="button"
                                 onClick={handleFollowToggle}
                                 disabled={
-                                    isFollowLoading ||
-                                    isRelationshipFetching ||
-                                    !accountSession ||
-                                    requested
+                                    isFollowLoading || isRelationshipFetching || !accountSession
                                 }
                                 className={`
                                     inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-sm
                                     transition-all duration-200
                                     ${
                                         requested
-                                            ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                            ? 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-300'
                                             : following
                                               ? 'border border-slate-600 text-slate-300 hover:border-red-400 hover:text-red-400 disabled:hover:border-slate-600 disabled:hover:text-slate-300'
                                               : 'bg-indigo-500 hover:bg-indigo-600 text-white disabled:hover:bg-indigo-500'
                                     }
                                     ${
-                                        (isFollowLoading ||
-                                            isRelationshipFetching ||
-                                            !accountSession) &&
-                                        !requested
+                                        isFollowLoading || isRelationshipFetching || !accountSession
                                             ? 'opacity-50 cursor-not-allowed'
                                             : ''
                                     }
@@ -192,7 +186,7 @@ export function ProfileModal({ isOpen, onClose, account, accountSession }: Profi
                                     isFollowLoading || isRelationshipFetching
                                         ? '処理中'
                                         : requested
-                                          ? 'リクエスト済み'
+                                          ? 'フォローリクエストをキャンセル'
                                           : following
                                             ? 'フォロー解除'
                                             : 'フォロー'

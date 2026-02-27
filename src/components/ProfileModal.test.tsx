@@ -328,12 +328,12 @@ describe('ProfileModal', () => {
             await waitFor(() => {
                 const button = screen.getByRole('button', { name: 'フォロー解除' });
                 expect(button).toBeInTheDocument();
-                // Check that the button contains "中" text (responsive: hidden sm:inline)
+                // Check that the button contains "中" text
                 expect(button).toHaveTextContent('中');
             });
         });
 
-        it('displays "リクエスト済み" button for locked accounts', async () => {
+        it('displays cancel request button for locked accounts', async () => {
             const lockedAccount: mastodon.v1.Account = {
                 ...mockAccount,
                 id: 'locked-user-id',
@@ -360,9 +360,12 @@ describe('ProfileModal', () => {
             );
 
             await waitFor(() => {
-                const button = screen.getByRole('button', { name: 'リクエスト済み' });
+                const button = screen.getByRole('button', {
+                    name: 'フォローリクエストをキャンセル',
+                });
                 expect(button).toBeInTheDocument();
-                expect(button).toBeDisabled();
+                // Button should be enabled to allow canceling the request
+                expect(button).not.toBeDisabled();
             });
         });
 
