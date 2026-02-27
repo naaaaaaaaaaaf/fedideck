@@ -79,6 +79,9 @@ export function ProfileModal({
     const [statusesError, setStatusesError] = useState<string | null>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
 
+    // Ref to track statuses for pagination without causing callback recreation
+    const statusesRef = useRef<mastodon.v1.Status[]>([]);
+
     // Request ID ref for stale response detection
     const statusesRequestIdRef = useRef(0);
 
@@ -130,6 +133,7 @@ export function ProfileModal({
             // Ignore stale response
             if (reqId !== statusesRequestIdRef.current) return;
 
+            statusesRef.current = fetchedStatuses;
             setStatuses(fetchedStatuses);
             setHasMoreStatuses(fetchedStatuses.length === PAGE_SIZE);
         } catch (err) {
@@ -153,7 +157,7 @@ export function ProfileModal({
 
         try {
             const client: MastoClient = getClient(accountSession);
-            const lastStatusId = statuses[statuses.length - 1]?.id;
+            const lastStatusId = statusesRef.current[statusesRef.current.length - 1]?.id;
 
             const fetchedStatuses = await fetchAccountStatuses(client, accountId, {
                 maxId: lastStatusId,
@@ -164,7 +168,11 @@ export function ProfileModal({
             if (reqId !== statusesRequestIdRef.current) return;
 
             if (fetchedStatuses.length > 0) {
-                setStatuses((prev) => [...prev, ...fetchedStatuses]);
+                setStatuses((prev) => {
+                    const newStatuses = [...prev, ...fetchedStatuses];
+                    statusesRef.current = newStatuses;
+                    return newStatuses;
+                });
             }
             setHasMoreStatuses(fetchedStatuses.length === PAGE_SIZE);
         } catch (err) {
@@ -176,7 +184,7 @@ export function ProfileModal({
                 setIsLoadingStatuses(false);
             }
         }
-    }, [accountId, accountSession, hasMoreStatuses, statuses]);
+    }, [accountId, accountSession, hasMoreStatuses]);
 
     // Reset state when modal closes or account changes, then fetch if available
     useEffect(() => {
@@ -189,6 +197,7 @@ export function ProfileModal({
             setHasError(false);
             setIsLoading(false);
             setStatuses([]);
+            statusesRef.current = [];
             setHasMoreStatuses(true);
             setStatusesError(null);
             setIsLoadingStatuses(false);
@@ -199,6 +208,7 @@ export function ProfileModal({
         setFullAccount(null);
         setHasError(false);
         setStatuses([]);
+        statusesRef.current = [];
         setHasMoreStatuses(true);
         setStatusesError(null);
         setIsLoadingStatuses(false);
