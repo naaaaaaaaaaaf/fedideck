@@ -612,5 +612,59 @@ describe('ProfileModal', () => {
                 );
             });
         });
+
+        it('displays error message when fetchAccountStatuses fails', async () => {
+            mockFetchAccountStatuses.mockRejectedValueOnce(new Error('Network error'));
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            // Should show error message
+            await waitFor(() => {
+                expect(screen.getByText('投稿の読み込みに失敗しました')).toBeInTheDocument();
+            });
+        });
+
+        it('retries fetch when reload button is clicked after error', async () => {
+            const user = userEvent.setup();
+
+            // First call fails
+            mockFetchAccountStatuses.mockRejectedValueOnce(new Error('Network error'));
+
+            render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                />
+            );
+
+            // Wait for error state
+            await waitFor(() => {
+                expect(screen.getByText('投稿の読み込みに失敗しました')).toBeInTheDocument();
+            });
+
+            // Setup second call to succeed
+            mockFetchAccountStatuses.mockResolvedValueOnce([mockStatus]);
+
+            // Click reload button
+            const reloadButton = screen.getByRole('button', { name: '再読み込み' });
+            await user.click(reloadButton);
+
+            // Should show the status after successful reload
+            await waitFor(() => {
+                expect(screen.getByText('Test status content')).toBeInTheDocument();
+            });
+
+            // Verify fetch was called twice (initial + retry)
+            expect(mockFetchAccountStatuses).toHaveBeenCalledTimes(2);
+        });
     });
 });
