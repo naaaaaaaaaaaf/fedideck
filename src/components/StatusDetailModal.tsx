@@ -14,6 +14,7 @@ import { useCardInteraction } from '../hooks/useCardInteraction';
 import { useNsfwState } from '../hooks/useNsfwState';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
+import { useInstanceConfig } from '../hooks/useInstanceConfig';
 import { formatDate, formatFullDate } from '../utils/dateFormat';
 import { getVisibilityMeta } from '../utils/statusVisibility';
 import { replaceEmojisWithImages } from '../utils/emoji';
@@ -41,6 +42,7 @@ interface StatusDetailModalProps {
     status: mastodon.v1.Status | null;
     accountSession?: AccountSession;
     onReply?: (status: mastodon.v1.Status) => void;
+    onQuote?: (status: mastodon.v1.Status) => void;
     onStatusUpdate?: (status: mastodon.v1.Status) => void;
     onPollUpdate?: (statusId: string, poll: mastodon.v1.Poll) => void;
     onStatusDelete?: (status: mastodon.v1.Status, accountId: string) => void;
@@ -205,6 +207,7 @@ export function StatusDetailModal({
     status,
     accountSession,
     onReply,
+    onQuote,
     onStatusUpdate,
     onPollUpdate,
     onStatusDelete,
@@ -268,6 +271,15 @@ export function StatusDetailModal({
 
     // Poll countdown display
     const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
+
+    // Instance config for quote support check
+    // Only fetch when modal is open and quote functionality is needed
+    // Skip fetch if user already denied quote approval for this status
+    const { instanceConfig } = useInstanceConfig({
+        accountSession,
+        isOpen,
+        enabled: Boolean(onQuote) && displayStatus?.quoteApproval?.currentUser !== 'denied',
+    });
 
     // Resolve ShallowQuote (accepted with quotedStatusId but no quotedStatus)
     const [resolvedShallowQuoteStatus, setResolvedShallowQuoteStatus] =
@@ -530,6 +542,11 @@ export function StatusDetailModal({
 
     const handleReply = () => {
         onReply?.(displayStatus);
+        onClose();
+    };
+
+    const handleQuote = () => {
+        onQuote?.(displayStatus);
         onClose();
     };
 
@@ -1010,6 +1027,11 @@ export function StatusDetailModal({
                         isAuthenticated={Boolean(accountSession)}
                         isLoading={isLoading}
                         onReply={handleReply}
+                        onQuote={onQuote ? handleQuote : undefined}
+                        canQuote={
+                            (instanceConfig?.supportsQuotes ?? false) &&
+                            displayStatus.quoteApproval?.currentUser !== 'denied'
+                        }
                         onReblog={handleReblog}
                         onFavourite={handleFavourite}
                         onBookmark={handleBookmark}

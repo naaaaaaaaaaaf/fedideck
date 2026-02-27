@@ -1,5 +1,5 @@
 import React from 'react';
-import { LuMessageCircle, LuRepeat2, LuStar, LuBookmark } from 'react-icons/lu';
+import { LuMessageCircle, LuRepeat2, LuStar, LuBookmark, LuQuote } from 'react-icons/lu';
 import { StatusMenu } from '../StatusMenu';
 
 interface StatusActionsProps {
@@ -23,6 +23,10 @@ interface StatusActionsProps {
     isLoading: { favourite: boolean; reblog: boolean; bookmark: boolean };
     /** Callback for reply action */
     onReply?: () => void;
+    /** Callback for quote action */
+    onQuote?: () => void;
+    /** Whether the instance supports quote posts (Mastodon v4.5+) */
+    canQuote?: boolean;
     /** Callback for reblog action */
     onReblog: () => void;
     /** Callback for favourite action */
@@ -62,6 +66,8 @@ export const StatusActions = React.memo(function StatusActions({
     isAuthenticated = true,
     isLoading,
     onReply,
+    onQuote,
+    canQuote = false,
     onReblog,
     onFavourite,
     onBookmark,
@@ -87,27 +93,27 @@ export const StatusActions = React.memo(function StatusActions({
         // Detail variant: spread out buttons with text labels
         return (
             <div
-                className={`flex items-center justify-around text-slate-400 border-t border-slate-700/50 px-4 py-2 shrink-0 ${className}`}
+                className={`flex items-center justify-around text-slate-400 border-t border-slate-700/50 px-2 py-2 shrink-0 ${className}`}
             >
                 <button
                     type="button"
                     onClick={onReply}
                     disabled={replyDisabled}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors ${
                         replyDisabled
                             ? 'opacity-50 cursor-not-allowed'
                             : 'hover:text-blue-400 hover:bg-blue-400/10'
                     }`}
                 >
                     <LuMessageCircle className={iconSize} aria-hidden="true" />
-                    <span>返信</span>
+                    <span className="whitespace-nowrap">返信</span>
                 </button>
                 <button
                     type="button"
                     onClick={onReblog}
                     disabled={!isAuthenticated || isLoading.reblog || !canReblog}
                     tabIndex={!isAuthenticated || !canReblog ? -1 : undefined}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors ${
                         !isAuthenticated || !canReblog
                             ? 'opacity-50 cursor-not-allowed'
                             : reblogged
@@ -123,14 +129,31 @@ export const StatusActions = React.memo(function StatusActions({
                     }
                 >
                     <LuRepeat2 className={iconSize} aria-hidden="true" />
-                    <span>ブースト</span>
+                    <span className="whitespace-nowrap">ブースト</span>
                 </button>
+                {canQuote && onQuote && (
+                    <button
+                        type="button"
+                        onClick={onQuote}
+                        disabled={!isAuthenticated}
+                        tabIndex={!isAuthenticated ? -1 : undefined}
+                        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors ${
+                            !isAuthenticated
+                                ? 'opacity-50 cursor-not-allowed'
+                                : 'hover:text-purple-400 hover:bg-purple-400/10'
+                        }`}
+                        title={!isAuthenticated ? 'アカウント接続が必要です' : undefined}
+                    >
+                        <LuQuote className={iconSize} aria-hidden="true" />
+                        <span className="whitespace-nowrap">引用</span>
+                    </button>
+                )}
                 <button
                     type="button"
                     onClick={onFavourite}
                     disabled={!isAuthenticated || isLoading.favourite}
                     tabIndex={!isAuthenticated ? -1 : undefined}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors ${
                         !isAuthenticated
                             ? 'opacity-50 cursor-not-allowed'
                             : favourited
@@ -143,14 +166,14 @@ export const StatusActions = React.memo(function StatusActions({
                         className={`${iconSize} ${favourited ? 'fill-current' : ''}`}
                         aria-hidden="true"
                     />
-                    <span>お気に入り</span>
+                    <span className="whitespace-nowrap">お気に入り</span>
                 </button>
                 <button
                     type="button"
                     onClick={onBookmark}
                     disabled={!isAuthenticated || isLoading.bookmark}
                     tabIndex={!isAuthenticated ? -1 : undefined}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors ${
                         !isAuthenticated
                             ? 'opacity-50 cursor-not-allowed'
                             : bookmarked
@@ -163,7 +186,7 @@ export const StatusActions = React.memo(function StatusActions({
                         className={`${iconSize} ${bookmarked ? 'fill-current' : ''}`}
                         aria-hidden="true"
                     />
-                    <span>ブックマーク</span>
+                    <span className="whitespace-nowrap">ブックマーク</span>
                 </button>
                 <StatusMenu
                     statusUrl={statusUrl}
@@ -217,6 +240,23 @@ export const StatusActions = React.memo(function StatusActions({
                 <LuRepeat2 className={iconSize} aria-hidden="true" />
                 {reblogsCount > 0 && <span className="text-sm">{reblogsCount}</span>}
             </button>
+            {canQuote && onQuote && (
+                <button
+                    type="button"
+                    onClick={onQuote}
+                    disabled={!isAuthenticated}
+                    tabIndex={!isAuthenticated ? -1 : undefined}
+                    className={`${actionButtonBase} ${
+                        !isAuthenticated
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'hover:text-purple-400 hover:bg-purple-400/10'
+                    }`}
+                    aria-label="引用"
+                    title={!isAuthenticated ? 'アカウント接続が必要です' : undefined}
+                >
+                    <LuQuote className={iconSize} aria-hidden="true" />
+                </button>
+            )}
             <button
                 type="button"
                 onClick={onFavourite}

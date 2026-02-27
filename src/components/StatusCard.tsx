@@ -33,6 +33,8 @@ interface StatusCardProps {
     onStatusUpdate?: (updatedStatus: mastodon.v1.Status) => void;
     onPollUpdate?: (statusId: string, poll: mastodon.v1.Poll) => void;
     onReply?: (status: mastodon.v1.Status) => void;
+    onQuote?: (status: mastodon.v1.Status) => void;
+    supportsQuotes?: boolean; // Whether the instance supports quotes (passed from Column)
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
@@ -51,6 +53,8 @@ export const StatusCard = React.memo(function StatusCard({
     onStatusUpdate,
     onPollUpdate,
     onReply,
+    onQuote,
+    supportsQuotes = false,
     onStatusClick,
     onImageClick,
     onVideoClick,
@@ -330,6 +334,10 @@ export const StatusCard = React.memo(function StatusCard({
                         isAuthenticated={Boolean(accountSession)}
                         isLoading={isLoading}
                         onReply={onReply ? () => onReply(displayStatus) : undefined}
+                        onQuote={onQuote ? () => onQuote(displayStatus) : undefined}
+                        canQuote={
+                            supportsQuotes && displayStatus.quoteApproval?.currentUser !== 'denied'
+                        }
                         onReblog={handleReblog}
                         onFavourite={handleFavourite}
                         onBookmark={handleBookmark}

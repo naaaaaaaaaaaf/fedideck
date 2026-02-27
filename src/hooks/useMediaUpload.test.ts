@@ -36,6 +36,7 @@ describe('useMediaUpload', () => {
         maxCharacters: 500,
         maxMediaAttachments: 4,
         supportedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'audio/mpeg'],
+        supportsQuotes: true,
     };
 
     const mockOnError = vi.fn();

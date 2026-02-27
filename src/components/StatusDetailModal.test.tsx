@@ -3670,4 +3670,86 @@ describe('StatusDetailModal', () => {
             expect(refreshButton).not.toBeDisabled();
         });
     });
+
+    describe('quote button behavior', () => {
+        const mockAccountSession = createMockAccountSession();
+
+        it('should call onQuote with displayStatus and close modal when quote button is clicked', async () => {
+            const user = userEvent.setup();
+            const onQuote = vi.fn();
+            const onClose = vi.fn();
+            const status = createMockStatus();
+
+            // Mock getClient to return a client with instance config that supports quotes
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({
+                v1: {
+                    instance: {
+                        fetch: vi.fn().mockResolvedValue({
+                            version: '4.5.0',
+                            configuration: {
+                                statuses: {
+                                    maxCharacters: 500,
+                                    maxMediaAttachments: 4,
+                                },
+                                mediaAttachments: {
+                                    supportedMimeTypes: ['image/jpeg'],
+                                },
+                            },
+                        }),
+                    },
+                },
+            } as unknown as ReturnType<typeof mastoClient.getClient>);
+
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={onClose}
+                        status={status}
+                        accountSession={mockAccountSession}
+                        onQuote={onQuote}
+                    />
+                );
+            });
+
+            // Quote button should be visible when onQuote is provided
+            // Use findBy to wait for the button to appear (instance config needs to load)
+            const quoteButton = await screen.findByRole('button', { name: '引用' });
+            expect(quoteButton).toBeInTheDocument();
+
+            // Click the quote button
+            await user.click(quoteButton);
+
+            // onQuote should be called with the status
+            expect(onQuote).toHaveBeenCalledTimes(1);
+            expect(onQuote).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                    content: '<p>Test content for detail modal</p>',
+                })
+            );
+
+            // Modal should be closed
+            expect(onClose).toHaveBeenCalledTimes(1);
+        });
+
+        it('should not show quote button when onQuote is not provided', async () => {
+            const status = createMockStatus();
+
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={vi.fn()}
+                        status={status}
+                        accountSession={mockAccountSession}
+                        // onQuote not provided
+                    />
+                );
+            });
+
+            // Quote button should not be in the document
+            expect(screen.queryByRole('button', { name: '引用' })).not.toBeInTheDocument();
+        });
+    });
 });

@@ -4,7 +4,8 @@ import { getInstanceConfig, getDefaultConfig, type InstanceConfig } from '../api
 
 interface UseInstanceConfigOptions {
     accountSession: AccountSession | null | undefined;
-    isOpen: boolean;
+    isOpen?: boolean; // Optional: if omitted, fetches when accountSession is available
+    enabled?: boolean; // Optional: if false, skips fetching (useful for optional features like quotes)
 }
 
 interface UseInstanceConfigReturn {
@@ -18,7 +19,8 @@ interface UseInstanceConfigReturn {
  */
 export function useInstanceConfig({
     accountSession,
-    isOpen,
+    isOpen = true, // Default to true for backward compatibility
+    enabled = true, // Default to true for backward compatibility
 }: UseInstanceConfigOptions): UseInstanceConfigReturn {
     const [instanceConfig, setInstanceConfig] = useState<InstanceConfig | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -34,8 +36,8 @@ export function useInstanceConfig({
     });
 
     useEffect(() => {
-        // Don't fetch if modal is closed or no account selected
-        if (!accountSession || !isOpen) {
+        // Don't fetch if modal is closed, no account selected, or explicitly disabled
+        if (!accountSession || !isOpen || !enabled) {
             setInstanceConfig(null);
             setIsLoading(false);
             return;
@@ -107,7 +109,7 @@ export function useInstanceConfig({
             // eslint-disable-next-line react-hooks/exhaustive-deps
             requestSeqRef.current++;
         };
-    }, [accountSession, isOpen]);
+    }, [accountSession, isOpen, enabled]);
 
     return {
         instanceConfig,

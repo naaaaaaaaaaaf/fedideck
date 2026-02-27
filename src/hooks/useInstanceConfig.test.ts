@@ -32,6 +32,7 @@ describe('useInstanceConfig', () => {
         maxCharacters: 500,
         maxMediaAttachments: 4,
         supportedMimeTypes: ['image/jpeg', 'image/png', 'video/mp4'],
+        supportsQuotes: true,
     };
 
     const defaultConfig = {
@@ -45,6 +46,7 @@ describe('useInstanceConfig', () => {
             'video/mp4',
             'video/webm',
         ],
+        supportsQuotes: false,
     };
 
     beforeEach(() => {
