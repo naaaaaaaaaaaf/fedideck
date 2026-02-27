@@ -10,7 +10,6 @@ import { useCardInteraction } from '../hooks/useCardInteraction';
 import { useNsfwState } from '../hooks/useNsfwState';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
-import { useInstanceConfig } from '../hooks/useInstanceConfig';
 import type { ImageViewerImage } from './ImageViewer';
 import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
@@ -35,6 +34,7 @@ interface StatusCardProps {
     onPollUpdate?: (statusId: string, poll: mastodon.v1.Poll) => void;
     onReply?: (status: mastodon.v1.Status) => void;
     onQuote?: (status: mastodon.v1.Status) => void;
+    supportsQuotes?: boolean; // Whether the instance supports quotes (passed from Column)
     onStatusClick?: (status: mastodon.v1.Status) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
@@ -54,6 +54,7 @@ export const StatusCard = React.memo(function StatusCard({
     onPollUpdate,
     onReply,
     onQuote,
+    supportsQuotes = false,
     onStatusClick,
     onImageClick,
     onVideoClick,
@@ -107,12 +108,6 @@ export const StatusCard = React.memo(function StatusCard({
 
     // Poll countdown display
     const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
-
-    // Instance config for quote support check (only fetch when onQuote is available)
-    const { instanceConfig } = useInstanceConfig({
-        accountSession,
-        enabled: Boolean(onQuote),
-    });
 
     // Resolve ShallowQuote (accepted with quotedStatusId but no quotedStatus)
     const [resolvedShallowQuoteStatus, setResolvedShallowQuoteStatus] =
@@ -341,8 +336,7 @@ export const StatusCard = React.memo(function StatusCard({
                         onReply={onReply ? () => onReply(displayStatus) : undefined}
                         onQuote={onQuote ? () => onQuote(displayStatus) : undefined}
                         canQuote={
-                            (instanceConfig?.supportsQuotes ?? false) &&
-                            displayStatus.quoteApproval?.currentUser !== 'denied'
+                            supportsQuotes && displayStatus.quoteApproval?.currentUser !== 'denied'
                         }
                         onReblog={handleReblog}
                         onFavourite={handleFavourite}

@@ -9,6 +9,7 @@ import { useAccountsStore } from '../store/accounts';
 import { getClient } from '../api/mastoClient';
 import { formatAccountHandle } from '../utils/accountHandle';
 import { getDisplayStatus } from '../utils/statusView';
+import { useInstanceConfig } from '../hooks/useInstanceConfig';
 import {
     fetchHomeTimeline,
     fetchPublicTimeline,
@@ -73,6 +74,13 @@ export function Column({
     const loadMoreRef = useRef<HTMLDivElement>(null);
 
     const isNotificationColumn = stream.type === 'notifications';
+
+    // Fetch instance config at column level to avoid per-card fetches
+    // Only fetch when onQuote is available (quote functionality is needed)
+    const { instanceConfig } = useInstanceConfig({
+        accountSession: account,
+        enabled: Boolean(onQuote),
+    });
 
     // Stable callback wrappers to prevent React.memo invalidation in card components
     // Using useMemo to memoize conditional expressions that return either a callback or undefined.
@@ -376,6 +384,7 @@ export function Column({
                                 onPollUpdate={updatePollGlobal}
                                 onReply={handleReply}
                                 onQuote={handleQuote}
+                                supportsQuotes={instanceConfig?.supportsQuotes ?? false}
                                 onStatusClick={handleStatusClick}
                                 onImageClick={handleImageClick}
                                 onVideoClick={handleVideoClick}
