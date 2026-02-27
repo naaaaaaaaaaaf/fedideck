@@ -123,6 +123,16 @@ export function ProfileModal({
     // Refs for focus management
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const tabPostsRef = useRef<HTMLButtonElement>(null);
+    const tabFollowersRef = useRef<HTMLButtonElement>(null);
+    const tabFollowingRef = useRef<HTMLButtonElement>(null);
+
+    // Map tab names to refs for focus management
+    const tabRefs = {
+        posts: tabPostsRef,
+        followers: tabFollowersRef,
+        following: tabFollowingRef,
+    } as const;
 
     const { handleKeyDown } = useModalAccessibility({
         isOpen,
@@ -461,6 +471,8 @@ export function ProfileModal({
 
             e.preventDefault();
             handleTabChange(TAB_ORDER[next]);
+            // Move focus to the newly selected tab (ARIA best practice)
+            tabRefs[TAB_ORDER[next]].current?.focus();
         },
         [activeTab, handleTabChange]
     );
@@ -858,6 +870,7 @@ export function ProfileModal({
                                 onKeyDown={handleTabListKeyDown}
                             >
                                 <button
+                                    ref={tabPostsRef}
                                     id="tab-posts"
                                     type="button"
                                     role="tab"
@@ -878,6 +891,7 @@ export function ProfileModal({
                                     <span>投稿</span>
                                 </button>
                                 <button
+                                    ref={tabFollowersRef}
                                     id="tab-followers"
                                     type="button"
                                     role="tab"
@@ -898,6 +912,7 @@ export function ProfileModal({
                                     <span>フォロワー</span>
                                 </button>
                                 <button
+                                    ref={tabFollowingRef}
                                     id="tab-following"
                                     type="button"
                                     role="tab"
