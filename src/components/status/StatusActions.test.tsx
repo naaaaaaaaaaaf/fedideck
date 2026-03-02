@@ -9,11 +9,13 @@ describe('StatusActions', () => {
         favouritesCount: 20,
         favourited: false,
         reblogged: false,
+        bookmarked: false,
         canReblog: true,
-        isLoading: { favourite: false, reblog: false },
+        isLoading: { favourite: false, reblog: false, bookmark: false },
         onReply: vi.fn(),
         onReblog: vi.fn(),
         onFavourite: vi.fn(),
+        onBookmark: vi.fn(),
         statusUrl: 'https://example.com/status/123',
         canDelete: false,
         canEdit: false,
@@ -39,6 +41,12 @@ describe('StatusActions', () => {
         expect(screen.getByLabelText('お気に入り')).toBeInTheDocument();
     });
 
+    it('renders bookmark button', () => {
+        render(<StatusActions {...defaultProps} />);
+
+        expect(screen.getByLabelText('ブックマーク')).toBeInTheDocument();
+    });
+
     it('displays counts in card variant', () => {
         render(<StatusActions {...defaultProps} />);
 
@@ -54,6 +62,7 @@ describe('StatusActions', () => {
         expect(screen.getByText('返信')).toBeInTheDocument();
         expect(screen.getByText('ブースト')).toBeInTheDocument();
         expect(screen.getByText('お気に入り')).toBeInTheDocument();
+        expect(screen.getByText('ブックマーク')).toBeInTheDocument();
     });
 
     it('calls onReply when reply button is clicked', () => {
@@ -80,6 +89,14 @@ describe('StatusActions', () => {
         expect(onFavourite).toHaveBeenCalled();
     });
 
+    it('calls onBookmark when bookmark button is clicked', () => {
+        const onBookmark = vi.fn();
+        render(<StatusActions {...defaultProps} onBookmark={onBookmark} />);
+
+        fireEvent.click(screen.getByLabelText('ブックマーク'));
+        expect(onBookmark).toHaveBeenCalled();
+    });
+
     it('disables reblog button when canReblog is false', () => {
         render(<StatusActions {...defaultProps} canReblog={false} />);
 
@@ -98,18 +115,30 @@ describe('StatusActions', () => {
         expect(screen.getByLabelText('お気に入り解除')).toBeInTheDocument();
     });
 
+    it('shows bookmarked state', () => {
+        render(<StatusActions {...defaultProps} bookmarked={true} />);
+
+        expect(screen.getByLabelText('ブックマーク解除')).toBeInTheDocument();
+    });
+
     it('disables buttons during loading', () => {
-        render(<StatusActions {...defaultProps} isLoading={{ favourite: true, reblog: true }} />);
+        render(
+            <StatusActions
+                {...defaultProps}
+                isLoading={{ favourite: true, reblog: true, bookmark: true }}
+            />
+        );
 
         expect(screen.getByLabelText('ブースト')).toBeDisabled();
         expect(screen.getByLabelText('お気に入り')).toBeDisabled();
+        expect(screen.getByLabelText('ブックマーク')).toBeDisabled();
     });
 
     it('applies card variant styles by default', () => {
         render(<StatusActions {...defaultProps} />);
 
         const container = screen.getByLabelText('返信').closest('div');
-        expect(container).toHaveClass('gap-2', 'mt-1');
+        expect(container).toHaveClass('justify-around', 'mt-1');
     });
 
     it('applies detail variant styles', () => {
@@ -160,40 +189,46 @@ describe('StatusActions', () => {
     });
 
     describe('isAuthenticated', () => {
-        it('disables reblog and favourite buttons when not authenticated in card variant', () => {
+        it('disables reblog, favourite and bookmark buttons when not authenticated in card variant', () => {
             render(<StatusActions {...defaultProps} isAuthenticated={false} />);
 
             const reblogButton = screen.getByLabelText('ブースト');
             const favouriteButton = screen.getByLabelText('お気に入り');
+            const bookmarkButton = screen.getByLabelText('ブックマーク');
 
             expect(reblogButton).toBeDisabled();
             expect(favouriteButton).toBeDisabled();
+            expect(bookmarkButton).toBeDisabled();
         });
 
-        it('disables reblog and favourite buttons when not authenticated in detail variant', () => {
+        it('disables reblog, favourite and bookmark buttons when not authenticated in detail variant', () => {
             render(<StatusActions {...defaultProps} variant="detail" isAuthenticated={false} />);
 
             const reblogButton = screen.getByText('ブースト').closest('button');
             const favouriteButton = screen.getByText('お気に入り').closest('button');
+            const bookmarkButton = screen.getByText('ブックマーク').closest('button');
 
             expect(reblogButton).toBeDisabled();
             expect(favouriteButton).toBeDisabled();
+            expect(bookmarkButton).toBeDisabled();
         });
 
         it('shows authentication required tooltip for reblog button when not authenticated', () => {
             render(<StatusActions {...defaultProps} isAuthenticated={false} />);
 
-            // Both reblog and favourite buttons have the same title
+            // All action buttons have the same title
             const tooltipElements = screen.getAllByTitle('アカウント接続が必要です');
             expect(tooltipElements.length).toBeGreaterThanOrEqual(1);
         });
 
-        it('shows authentication required tooltip for favourite button when not authenticated', () => {
+        it('shows authentication required tooltip for favourite and bookmark buttons when not authenticated', () => {
             render(<StatusActions {...defaultProps} isAuthenticated={false} />);
 
-            // Both buttons have the same title, so we check for existence
+            // All buttons have the same title, so we check for existence
+            // Reblog, favourite, and bookmark buttons have the tooltip
+            // Quote button is hidden when canQuote is false (default)
             const tooltipElements = screen.getAllByTitle('アカウント接続が必要です');
-            expect(tooltipElements.length).toBe(2);
+            expect(tooltipElements.length).toBe(3);
         });
 
         it('enables buttons when authenticated', () => {
@@ -201,9 +236,88 @@ describe('StatusActions', () => {
 
             const reblogButton = screen.getByLabelText('ブースト');
             const favouriteButton = screen.getByLabelText('お気に入り');
+            const bookmarkButton = screen.getByLabelText('ブックマーク');
 
             expect(reblogButton).not.toBeDisabled();
             expect(favouriteButton).not.toBeDisabled();
+            expect(bookmarkButton).not.toBeDisabled();
+        });
+    });
+
+    describe('canQuote', () => {
+        it('hides quote button when canQuote is false (default)', () => {
+            render(<StatusActions {...defaultProps} />);
+
+            expect(screen.queryByLabelText('引用')).not.toBeInTheDocument();
+        });
+
+        it('shows quote button when canQuote is true in card variant', () => {
+            render(<StatusActions {...defaultProps} canQuote={true} onQuote={vi.fn()} />);
+
+            expect(screen.getByLabelText('引用')).toBeInTheDocument();
+        });
+
+        it('shows quote button when canQuote is true in detail variant', () => {
+            render(
+                <StatusActions
+                    {...defaultProps}
+                    variant="detail"
+                    canQuote={true}
+                    onQuote={vi.fn()}
+                />
+            );
+
+            expect(screen.getByText('引用')).toBeInTheDocument();
+        });
+
+        it('calls onQuote when quote button is clicked in card variant', () => {
+            const onQuote = vi.fn();
+            render(<StatusActions {...defaultProps} canQuote={true} onQuote={onQuote} />);
+
+            fireEvent.click(screen.getByLabelText('引用'));
+            expect(onQuote).toHaveBeenCalled();
+        });
+
+        it('calls onQuote when quote button is clicked in detail variant', () => {
+            const onQuote = vi.fn();
+            render(
+                <StatusActions
+                    {...defaultProps}
+                    variant="detail"
+                    canQuote={true}
+                    onQuote={onQuote}
+                />
+            );
+
+            fireEvent.click(screen.getByText('引用'));
+            expect(onQuote).toHaveBeenCalled();
+        });
+
+        it('disables quote button when not authenticated', () => {
+            render(
+                <StatusActions
+                    {...defaultProps}
+                    canQuote={true}
+                    onQuote={vi.fn()}
+                    isAuthenticated={false}
+                />
+            );
+
+            expect(screen.getByLabelText('引用')).toBeDisabled();
+        });
+
+        it('shows authentication required tooltip for quote button when not authenticated', () => {
+            render(
+                <StatusActions
+                    {...defaultProps}
+                    canQuote={true}
+                    onQuote={vi.fn()}
+                    isAuthenticated={false}
+                />
+            );
+
+            const quoteButton = screen.getByLabelText('引用');
+            expect(quoteButton).toHaveAttribute('title', 'アカウント接続が必要です');
         });
     });
 });

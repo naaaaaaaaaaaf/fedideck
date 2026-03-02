@@ -70,7 +70,7 @@ describe('StatusReblogIndicator', () => {
         render(<StatusReblogIndicator reblogger={reblogger} />);
 
         const container = screen.getByText(/がブースト/).parentElement;
-        expect(container).toHaveClass('mb-2', 'ml-12');
+        expect(container).toHaveClass('mb-2');
     });
 
     it('applies detail variant styles', () => {

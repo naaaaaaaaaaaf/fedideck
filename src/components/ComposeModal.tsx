@@ -17,6 +17,7 @@ import { ComposePollForm, type PollOptionDraft } from './compose/ComposePollForm
 import { ComposeAccountSelector } from './compose/ComposeAccountSelector';
 import { ComposeVisibilitySelector } from './compose/ComposeVisibilitySelector';
 import { ComposeReplyIndicator } from './compose/ComposeReplyIndicator';
+import { ComposeQuoteIndicator, type QuoteToStatus } from './compose/ComposeQuoteIndicator';
 import { ComposeOptionButtons } from './compose/ComposeOptionButtons';
 import { EmojiPalette } from './EmojiPalette';
 
@@ -40,11 +41,14 @@ export interface EditTarget {
     accountSessionId: string;
 }
 
+export type { QuoteToStatus };
+
 interface ComposeModalProps {
     isOpen: boolean;
     onClose: () => void;
     replyToStatus?: ReplyToStatus;
-    accountId?: string; // If provided (reply), lock to this account; otherwise allow switching
+    quoteToStatus?: QuoteToStatus;
+    accountId?: string; // If provided (reply/quote), lock to this account; otherwise allow switching
     editTarget?: EditTarget;
     onStatusEdited?: (status: mastodon.v1.Status) => void;
 }
@@ -76,6 +80,7 @@ export function ComposeModal({
     isOpen,
     onClose,
     replyToStatus,
+    quoteToStatus,
     accountId,
     editTarget,
     onStatusEdited,
@@ -108,8 +113,8 @@ export function ComposeModal({
     const accounts = useAccountsStore((state) => state.accounts);
     const activeAccountId = useAccountsStore((state) => state.activeAccountId);
 
-    // Whether account switching is allowed (disabled for replies and edit mode)
-    const isAccountLocked = !!accountId || isEditMode;
+    // Whether account switching is allowed (disabled for replies, quotes, and edit mode)
+    const isAccountLocked = !!replyToStatus || !!quoteToStatus || isEditMode;
 
     // State for selected account (can be changed by user for new posts, but locked for replies)
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
@@ -129,7 +134,7 @@ export function ComposeModal({
         ? (accounts.find((a) => a.id === accountId) ??
           (isEditMode && editTarget
               ? accounts.find((a) => a.id === editTarget.accountSessionId)
-              : undefined))
+              : accounts.find((a) => a.id === activeAccountId)))
         : (accounts.find((a) => a.id === selectedAccountId) ??
           accounts.find((a) => a.id === activeAccountId));
 
@@ -210,6 +215,7 @@ export function ComposeModal({
         isEditMode,
         editTarget,
         replyToStatus,
+        quoteToStatus,
         state: {
             content,
             visibility,
@@ -360,7 +366,7 @@ export function ComposeModal({
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center"
+            className="fixed inset-0 z-[65] flex items-center justify-center"
             onKeyDown={handleModalKeyDown}
             role="dialog"
             aria-modal="true"
@@ -394,7 +400,13 @@ export function ComposeModal({
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
                     <h2 id="compose-modal-title" className="text-lg font-semibold text-slate-100">
-                        {isEditMode ? '投稿を編集' : replyToStatus ? '返信' : '新しい投稿'}
+                        {isEditMode
+                            ? '投稿を編集'
+                            : replyToStatus
+                              ? '返信'
+                              : quoteToStatus
+                                ? '引用'
+                                : '新しい投稿'}
                     </h2>
                     <button
                         ref={closeButtonRef}
@@ -425,6 +437,9 @@ export function ComposeModal({
 
                     {/* Reply indicator */}
                     {replyToStatus && <ComposeReplyIndicator replyToStatus={replyToStatus} />}
+
+                    {/* Quote indicator */}
+                    {quoteToStatus && <ComposeQuoteIndicator quoteToStatus={quoteToStatus} />}
 
                     {/* CW, Media, and Poll buttons */}
                     <ComposeOptionButtons

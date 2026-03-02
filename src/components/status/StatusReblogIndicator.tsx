@@ -22,7 +22,7 @@ export const StatusReblogIndicator = React.memo(function StatusReblogIndicator({
     className = '',
 }: StatusReblogIndicatorProps) {
     const avatarSize = variant === 'detail' ? 'w-5 h-5' : 'w-4 h-4';
-    const marginClass = variant === 'card' ? 'mb-2 ml-12' : 'mb-3';
+    const marginClass = variant === 'card' ? 'mb-2' : 'mb-3';
 
     return (
         <div

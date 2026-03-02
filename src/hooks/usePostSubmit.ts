@@ -11,7 +11,7 @@ import {
     type EditStatusParams,
 } from '../api/mastoClient';
 import type { MediaFile } from './useMediaUpload';
-import type { EditTarget, ReplyToStatus } from '../components/ComposeModal';
+import type { EditTarget, ReplyToStatus, QuoteToStatus } from '../components/ComposeModal';
 import { type Visibility } from '../utils/statusVisibility';
 
 export type { Visibility };
@@ -45,7 +45,8 @@ interface UsePostSubmitOptions {
     isOpen: boolean;
     isEditMode: boolean;
     editTarget: EditTarget | undefined;
-    replyToStatus: ReplyToStatus | undefined;
+    replyToStatus?: ReplyToStatus;
+    quoteToStatus?: QuoteToStatus;
     state: PostSubmitState;
     instanceConfig: { maxCharacters: number } | null;
     isUploading: boolean;
@@ -90,6 +91,7 @@ export function usePostSubmit({
     isEditMode,
     editTarget,
     replyToStatus,
+    quoteToStatus,
     state,
     instanceConfig,
     isUploading,
@@ -136,6 +138,12 @@ export function usePostSubmit({
 
     const handleSubmit = useCallback(async () => {
         if (!canSubmit || !accountSession) return;
+
+        // Guard: reply and quote are mutually exclusive
+        if (replyToStatus && quoteToStatus) {
+            onError('返信と引用は同時に指定できません');
+            return;
+        }
 
         setIsSubmitting(true);
 
@@ -217,6 +225,10 @@ export function usePostSubmit({
                 params.inReplyToId = replyToStatus.id;
             }
 
+            if (quoteToStatus) {
+                params.quotedStatusId = quoteToStatus.id;
+            }
+
             if (hasMedia && allMediaUploaded) {
                 // Wait for media processing to complete (only needed for audio/video)
                 for (const media of mediaFiles) {
@@ -286,6 +298,7 @@ export function usePostSubmit({
         mediaFiles,
         visibility,
         replyToStatus,
+        quoteToStatus,
         showPoll,
         validPollOptions,
         pollExpiresIn,

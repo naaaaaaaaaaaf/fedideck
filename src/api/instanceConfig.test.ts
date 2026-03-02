@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getInstanceConfig, clearInstanceConfigCache, getDefaultConfig } from './instanceConfig';
+import {
+    getInstanceConfig,
+    clearInstanceConfigCache,
+    getDefaultConfig,
+    supportsQuotes,
+} from './instanceConfig';
 import type { MastoClient } from './mastoClient';
 
 // Mock masto client
@@ -48,6 +53,7 @@ describe('instanceConfig', () => {
                 maxCharacters: 5000,
                 maxMediaAttachments: 5,
                 supportedMimeTypes: ['image/jpeg', 'image/png'],
+                supportsQuotes: false, // No version in mock, defaults to false
             });
             expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(1);
         });
@@ -210,6 +216,7 @@ describe('instanceConfig', () => {
             expect(config).toEqual({
                 maxCharacters: 500,
                 maxMediaAttachments: 4,
+                supportsQuotes: false,
                 supportedMimeTypes: [
                     'image/jpeg',
                     'image/png',
@@ -472,6 +479,99 @@ describe('instanceConfig', () => {
                 expect(mockClient.v1.instance.fetch).not.toHaveBeenCalled();
             });
         });
+
+        describe('in-flight request deduplication', () => {
+            it('should dedupe concurrent requests to the same instance', async () => {
+                let resolveFetch: (value: unknown) => void;
+                const fetchPromise = new Promise((resolve) => {
+                    resolveFetch = resolve;
+                });
+
+                const mockClient = {
+                    v1: {
+                        instance: {
+                            fetch: vi.fn().mockReturnValue(fetchPromise),
+                        },
+                    },
+                } as unknown as MastoClient;
+
+                // Start multiple concurrent requests before the first one resolves
+                const request1 = getInstanceConfig(mockClient, 'https://example.com');
+                const request2 = getInstanceConfig(mockClient, 'https://example.com');
+                const request3 = getInstanceConfig(mockClient, 'https://example.com');
+
+                // Resolve the fetch promise
+                resolveFetch!({
+                    configuration: {
+                        statuses: {
+                            maxCharacters: 5000,
+                            maxMediaAttachments: 5,
+                        },
+                        mediaAttachments: {
+                            supportedMimeTypes: ['image/jpeg'],
+                        },
+                    },
+                });
+
+                // Wait for all requests to complete
+                const [result1, result2, result3] = await Promise.all([
+                    request1,
+                    request2,
+                    request3,
+                ]);
+
+                // All requests should return the same config
+                expect(result1.maxCharacters).toBe(5000);
+                expect(result2.maxCharacters).toBe(5000);
+                expect(result3.maxCharacters).toBe(5000);
+
+                // The API should only be called once despite 3 concurrent requests
+                expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(1);
+            });
+
+            it('should not dedupe requests to different instances', async () => {
+                const mockClient1 = createMockClient({
+                    maxCharacters: 5000,
+                    maxMediaAttachments: 5,
+                    supportedMimeTypes: ['image/jpeg'],
+                });
+                const mockClient2 = createMockClient({
+                    maxCharacters: 1000,
+                    maxMediaAttachments: 3,
+                    supportedMimeTypes: ['image/png'],
+                });
+
+                // Concurrent requests to different instances
+                await Promise.all([
+                    getInstanceConfig(mockClient1, 'https://example.com'),
+                    getInstanceConfig(mockClient2, 'https://other.com'),
+                ]);
+
+                // Each instance should have its own fetch call
+                expect(mockClient1.v1.instance.fetch).toHaveBeenCalledTimes(1);
+                expect(mockClient2.v1.instance.fetch).toHaveBeenCalledTimes(1);
+            });
+
+            it('should clear in-flight request after completion', async () => {
+                const mockClient = createMockClient({
+                    maxCharacters: 5000,
+                    maxMediaAttachments: 5,
+                    supportedMimeTypes: ['image/jpeg'],
+                });
+
+                // First request
+                await getInstanceConfig(mockClient, 'https://example.com');
+                expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(1);
+
+                // Clear cache but not in-flight (simulates cache expiry)
+                clearInstanceConfigCache('https://example.com');
+
+                // Second request should use cache if in-flight was cleared
+                // But since cache was cleared, it should fetch again
+                await getInstanceConfig(mockClient, 'https://example.com');
+                expect(mockClient.v1.instance.fetch).toHaveBeenCalledTimes(2);
+            });
+        });
     });
 
     describe('clearInstanceConfigCache', () => {
@@ -558,6 +658,7 @@ describe('instanceConfig', () => {
             expect(defaultConfig).toEqual({
                 maxCharacters: 500,
                 maxMediaAttachments: 4,
+                supportsQuotes: false,
                 supportedMimeTypes: [
                     'image/jpeg',
                     'image/png',
@@ -592,6 +693,80 @@ describe('instanceConfig', () => {
 
             expect(config1).not.toBe(config2);
             expect(config1).toEqual(config2);
+        });
+    });
+
+    describe('supportsQuotes', () => {
+        describe('supported versions', () => {
+            it('should return true for "4.5.0"', () => {
+                expect(supportsQuotes('4.5.0')).toBe(true);
+            });
+
+            it('should return true for "4.5.1"', () => {
+                expect(supportsQuotes('4.5.1')).toBe(true);
+            });
+
+            it('should return true for "4.6.0"', () => {
+                expect(supportsQuotes('4.6.0')).toBe(true);
+            });
+
+            it('should return true for "5.0.0"', () => {
+                expect(supportsQuotes('5.0.0')).toBe(true);
+            });
+        });
+
+        describe('unsupported versions', () => {
+            it('should return false for "4.4.9"', () => {
+                expect(supportsQuotes('4.4.9')).toBe(false);
+            });
+
+            it('should return false for "4.4.0"', () => {
+                expect(supportsQuotes('4.4.0')).toBe(false);
+            });
+
+            it('should return false for "3.5.0"', () => {
+                expect(supportsQuotes('3.5.0')).toBe(false);
+            });
+        });
+
+        describe('special formats', () => {
+            it('should return true for "4.5.0+glitch" (Glitch edition)', () => {
+                expect(supportsQuotes('4.5.0+glitch')).toBe(true);
+            });
+
+            it('should return true for "4.5.0rc1" (release candidate)', () => {
+                expect(supportsQuotes('4.5.0rc1')).toBe(true);
+            });
+
+            it('should return true for "4.6.0+glitch"', () => {
+                expect(supportsQuotes('4.6.0+glitch')).toBe(true);
+            });
+
+            it('should return false for "4.4.9+glitch"', () => {
+                expect(supportsQuotes('4.4.9+glitch')).toBe(false);
+            });
+        });
+
+        describe('edge cases', () => {
+            it('should return false for empty string', () => {
+                expect(supportsQuotes('')).toBe(false);
+            });
+
+            it('should return false for invalid format "abc"', () => {
+                expect(supportsQuotes('abc')).toBe(false);
+            });
+
+            it('should return false for invalid format "version4.5.0"', () => {
+                expect(supportsQuotes('version4.5.0')).toBe(false);
+            });
+
+            it('should return false for partial version "4"', () => {
+                expect(supportsQuotes('4')).toBe(false);
+            });
+
+            it('should return false for "4."', () => {
+                expect(supportsQuotes('4.')).toBe(false);
+            });
         });
     });
 });

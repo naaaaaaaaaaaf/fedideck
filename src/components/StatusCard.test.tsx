@@ -2487,4 +2487,105 @@ describe('StatusCard', () => {
             expect(refreshButton).not.toBeDisabled();
         });
     });
+
+    describe('quote display', () => {
+        const mockAccountSession: AccountSession = {
+            id: 'session-1',
+            instanceUrl: 'https://example.com',
+            accessToken: 'test-token',
+            account: createMockStatus().account,
+        };
+
+        it('should render StatusQuoteCard when full quote is available', () => {
+            const quotedStatus = createMockStatus({
+                id: 'quoted-123',
+                content: '<p>Quoted post content</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'quoted-user',
+                    displayName: 'Quoted Author',
+                },
+            });
+
+            const status = createMockStatus({
+                content: '<p>My post with quote</p>',
+                quote: {
+                    state: 'accepted',
+                    quotedStatus: quotedStatus,
+                } as mastodon.v1.Quote,
+            });
+
+            render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+            // Should show the quoted status content
+            expect(screen.getByText('Quoted post content')).toBeInTheDocument();
+        });
+
+        it('should fetch and render StatusQuoteCard for accepted ShallowQuote', async () => {
+            const quotedStatus = createMockStatus({
+                id: 'shallow-quoted-123',
+                content: '<p>Fetched quoted content</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'quoted-user',
+                    displayName: 'Quoted Author',
+                },
+            });
+
+            const status = createMockStatus({
+                content: '<p>My post with shallow quote</p>',
+                quote: {
+                    state: 'accepted',
+                    quotedStatusId: 'shallow-quoted-123',
+                } as mastodon.v1.ShallowQuote,
+            });
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({} as mastoClient.MastoClient);
+            vi.spyOn(mastoClient, 'fetchStatus').mockResolvedValue(quotedStatus);
+
+            render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+            // Initially shows placeholder/loading state
+            expect(screen.getByText('引用を読み込み中...')).toBeInTheDocument();
+
+            // Wait for the fetch to complete and quote card to render
+            await screen.findByText('Fetched quoted content');
+
+            // fetchStatus should have been called with the quotedStatusId and session
+            expect(mastoClient.fetchStatus).toHaveBeenCalledWith(
+                expect.anything(),
+                'shallow-quoted-123',
+                mockAccountSession
+            );
+        });
+
+        it('should render placeholder for non-accepted quote state', () => {
+            const status = createMockStatus({
+                content: '<p>My post with pending quote</p>',
+                quote: {
+                    state: 'pending',
+                    quotedStatusId: 'pending-123',
+                } as mastodon.v1.ShallowQuote,
+            });
+
+            render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+            // Should show pending message
+            expect(screen.getByText('引用の承認待ち')).toBeInTheDocument();
+        });
+
+        it('should render deleted quote placeholder', () => {
+            const status = createMockStatus({
+                content: '<p>My post with deleted quote</p>',
+                quote: {
+                    state: 'deleted',
+                } as mastodon.v1.Quote,
+            });
+
+            render(<StatusCard status={status} accountSession={mockAccountSession} />);
+
+            // Should show deleted message
+            expect(screen.getByText('引用元の投稿が削除されました')).toBeInTheDocument();
+        });
+    });
 });

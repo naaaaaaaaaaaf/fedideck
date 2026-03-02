@@ -12,6 +12,27 @@ export interface AccountSession {
 // Cache of Mastodon REST clients per account
 const clientCache = new Map<string, MastoClient>();
 
+// Maximum number of statuses to cache (LRU-style eviction)
+export const MAX_STATUS_CACHE_SIZE = 100;
+
+// In-memory cache for fetched statuses (to avoid duplicate fetches for ShallowQuote resolution)
+// Key format: "instanceUrl:sessionId:statusId" for scoped caching
+const statusCache = new Map<string, mastodon.v1.Status>();
+
+// In-flight requests map to deduplicate concurrent fetches for the same status
+const inFlightStatusRequests = new Map<string, Promise<mastodon.v1.Status>>();
+
+/**
+ * Build a scoped cache key for status caching.
+ * Includes instanceUrl and sessionId to prevent ID collisions across instances/accounts.
+ */
+function buildStatusCacheKey(statusId: string, session?: AccountSession): string {
+    if (!session) {
+        return statusId;
+    }
+    return `${session.instanceUrl}:${session.id}:${statusId}`;
+}
+
 /**
  * Create or retrieve a cached Mastodon REST API client for an account
  */
@@ -32,17 +53,33 @@ export function getClient(session: AccountSession): MastoClient {
 
 /**
  * Remove a client from cache (e.g., on logout)
+ * Also clears associated status cache entries for this session.
  */
 export function removeClient(session: AccountSession): void {
     const cacheKey = `${session.instanceUrl}:${session.id}`;
     clientCache.delete(cacheKey);
+
+    // Clear all status cache entries for this session
+    const prefix = `${session.instanceUrl}:${session.id}:`;
+    for (const key of statusCache.keys()) {
+        if (key.startsWith(prefix)) {
+            statusCache.delete(key);
+        }
+    }
+    for (const key of inFlightStatusRequests.keys()) {
+        if (key.startsWith(prefix)) {
+            inFlightStatusRequests.delete(key);
+        }
+    }
 }
 
 /**
- * Clear all cached clients
+ * Clear all cached clients and status caches
  */
 export function clearAllClients(): void {
     clientCache.clear();
+    statusCache.clear();
+    inFlightStatusRequests.clear();
 }
 
 /**
@@ -134,6 +171,11 @@ export interface PollParams {
 }
 
 /**
+ * Quote approval policy for creating quote posts
+ */
+export type QuoteApprovalPolicy = 'public' | 'followers' | 'nobody';
+
+/**
  * Parameters for creating a new status
  */
 export interface CreateStatusParams {
@@ -145,6 +187,8 @@ export interface CreateStatusParams {
     language?: string;
     mediaIds?: string[];
     poll?: PollParams;
+    quotedStatusId?: string;
+    quoteApprovalPolicy?: QuoteApprovalPolicy;
 }
 
 /**
@@ -167,6 +211,8 @@ export async function createStatus(
     if (params.language) createParams.language = params.language;
     if (params.mediaIds && params.mediaIds.length > 0) createParams.mediaIds = params.mediaIds;
     if (params.poll) createParams.poll = params.poll;
+    if (params.quotedStatusId) createParams.quotedStatusId = params.quotedStatusId;
+    if (params.quoteApprovalPolicy) createParams.quoteApprovalPolicy = params.quoteApprovalPolicy;
 
     const status = await client.v1.statuses.create(createParams);
     return status;
@@ -291,6 +337,28 @@ export async function unreblogStatus(
 }
 
 /**
+ * Bookmark a status
+ */
+export async function bookmarkStatus(
+    client: MastoClient,
+    statusId: string
+): Promise<mastodon.v1.Status> {
+    const status = await client.v1.statuses.$select(statusId).bookmark();
+    return status;
+}
+
+/**
+ * Remove bookmark from a status
+ */
+export async function unbookmarkStatus(
+    client: MastoClient,
+    statusId: string
+): Promise<mastodon.v1.Status> {
+    const status = await client.v1.statuses.$select(statusId).unbookmark();
+    return status;
+}
+
+/**
  * Context for a status containing ancestors (parent chain) and descendants (replies)
  */
 export type StatusContext = mastodon.v1.Context;
@@ -306,6 +374,70 @@ export async function getStatusContext(
 ): Promise<StatusContext> {
     const context = await client.v1.statuses.$select(statusId).context.fetch();
     return context;
+}
+
+/**
+ * Fetch a single status by ID with caching and in-flight deduplication.
+ * This prevents duplicate API calls when multiple components request the same status
+ * (e.g., multiple ShallowQuote cards for the same quotedStatusId).
+ *
+ * @param client - Mastodon API client
+ * @param statusId - ID of the status to fetch
+ * @param session - Optional session for scoped caching (prevents ID collisions across instances)
+ * @returns The requested status
+ */
+export async function fetchStatus(
+    client: MastoClient,
+    statusId: string,
+    session?: AccountSession
+): Promise<mastodon.v1.Status> {
+    const cacheKey = buildStatusCacheKey(statusId, session);
+
+    // Check cache first
+    const cached = statusCache.get(cacheKey);
+    if (cached) {
+        // LRU: move to end (most recently used) before returning
+        statusCache.delete(cacheKey);
+        statusCache.set(cacheKey, cached);
+        return cached;
+    }
+
+    // Check if there's an in-flight request for this status
+    const inFlight = inFlightStatusRequests.get(cacheKey);
+    if (inFlight) {
+        return inFlight;
+    }
+
+    // Create new request and store in in-flight map
+    const request = client.v1.statuses.$select(statusId).fetch();
+    inFlightStatusRequests.set(cacheKey, request);
+
+    try {
+        const status = await request;
+
+        // Enforce cache size limit (LRU-style: delete oldest entries)
+        if (statusCache.size >= MAX_STATUS_CACHE_SIZE) {
+            const firstKey = statusCache.keys().next().value;
+            if (firstKey) {
+                statusCache.delete(firstKey);
+            }
+        }
+
+        // Cache the result
+        statusCache.set(cacheKey, status);
+        return status;
+    } finally {
+        // Remove from in-flight map regardless of success/failure
+        inFlightStatusRequests.delete(cacheKey);
+    }
+}
+
+/**
+ * Clear the status cache (e.g., on logout or account switch)
+ */
+export function clearStatusCache(): void {
+    statusCache.clear();
+    inFlightStatusRequests.clear();
 }
 
 /**
@@ -444,4 +576,138 @@ export async function votePoll(
  */
 export async function fetchPoll(client: MastoClient, pollId: string): Promise<mastodon.v1.Poll> {
     return client.v1.polls.$select(pollId).fetch();
+}
+
+/**
+ * Fetch the relationship between the authenticated user and another account
+ * @param client - Mastodon API client
+ * @param accountId - ID of the account to check relationship with
+ * @returns Relationship object containing following, followedBy, requested, etc.
+ */
+export async function fetchRelationship(
+    client: MastoClient,
+    accountId: string
+): Promise<mastodon.v1.Relationship> {
+    const relationships = await client.v1.accounts.relationships.fetch({
+        id: [accountId],
+    });
+    // API returns an array, but we only requested one account
+    if (relationships.length === 0) {
+        throw new Error(`Relationship not found for account ${accountId}`);
+    }
+    return relationships[0];
+}
+
+/**
+ * Follow an account
+ * @param client - Mastodon API client
+ * @param accountId - ID of the account to follow
+ * @returns Updated relationship object
+ */
+export async function followAccount(
+    client: MastoClient,
+    accountId: string
+): Promise<mastodon.v1.Relationship> {
+    const relationship = await client.v1.accounts.$select(accountId).follow();
+    return relationship;
+}
+
+/**
+ * Unfollow an account
+ * @param client - Mastodon API client
+ * @param accountId - ID of the account to unfollow
+ * @returns Updated relationship object
+ */
+export async function unfollowAccount(
+    client: MastoClient,
+    accountId: string
+): Promise<mastodon.v1.Relationship> {
+    const relationship = await client.v1.accounts.$select(accountId).unfollow();
+    return relationship;
+}
+
+/**
+ * Options for fetching account statuses
+ */
+export interface FetchAccountStatusesOptions {
+    maxId?: string;
+    sinceId?: string;
+    limit?: number;
+    excludeReblogs?: boolean;
+    excludeReplies?: boolean;
+    onlyMedia?: boolean;
+    pinned?: boolean;
+}
+
+/**
+ * Fetch statuses posted by an account
+ * @param client - Mastodon API client
+ * @param accountId - ID of the account to fetch statuses for
+ * @param options - Pagination and filter options
+ * @returns Array of statuses
+ */
+export async function fetchAccountStatuses(
+    client: MastoClient,
+    accountId: string,
+    options?: FetchAccountStatusesOptions
+): Promise<mastodon.v1.Status[]> {
+    const statuses = await client.v1.accounts.$select(accountId).statuses.list({
+        maxId: options?.maxId,
+        sinceId: options?.sinceId,
+        limit: options?.limit ?? 20,
+        excludeReblogs: options?.excludeReblogs,
+        excludeReplies: options?.excludeReplies,
+        onlyMedia: options?.onlyMedia,
+        pinned: options?.pinned,
+    });
+    return statuses;
+}
+
+/**
+ * Options for fetching account followers/following
+ */
+export interface FetchAccountFollowsOptions {
+    maxId?: string;
+    sinceId?: string;
+    limit?: number;
+}
+
+/**
+ * Fetch accounts following the given account (followers)
+ * @param client - Mastodon API client
+ * @param accountId - ID of the account to fetch followers for
+ * @param options - Pagination options
+ * @returns Array of accounts
+ */
+export async function fetchAccountFollowers(
+    client: MastoClient,
+    accountId: string,
+    options?: FetchAccountFollowsOptions
+): Promise<mastodon.v1.Account[]> {
+    const accounts = await client.v1.accounts.$select(accountId).followers.list({
+        maxId: options?.maxId,
+        sinceId: options?.sinceId,
+        limit: options?.limit ?? 20,
+    });
+    return accounts;
+}
+
+/**
+ * Fetch accounts followed by the given account (following)
+ * @param client - Mastodon API client
+ * @param accountId - ID of the account to fetch following for
+ * @param options - Pagination options
+ * @returns Array of accounts
+ */
+export async function fetchAccountFollowing(
+    client: MastoClient,
+    accountId: string,
+    options?: FetchAccountFollowsOptions
+): Promise<mastodon.v1.Account[]> {
+    const accounts = await client.v1.accounts.$select(accountId).following.list({
+        maxId: options?.maxId,
+        sinceId: options?.sinceId,
+        limit: options?.limit ?? 20,
+    });
+    return accounts;
 }

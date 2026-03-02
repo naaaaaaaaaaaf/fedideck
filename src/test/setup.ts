@@ -6,6 +6,31 @@ import fakeIndexedDB from 'fake-indexeddb';
 // Polyfill IndexedDB for emoji-picker-element
 globalThis.indexedDB = fakeIndexedDB;
 
+// Provide a base IntersectionObserver mock that can be overridden by vi.stubGlobal
+// This prevents "IntersectionObserver is not defined" errors in jsdom
+const baseIntersectionObserver = class IntersectionObserver {
+    constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) {}
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    readonly root = null;
+    readonly rootMargin = '';
+    readonly thresholds: readonly number[] = [];
+    takeRecords(): IntersectionObserverEntry[] {
+        return [];
+    }
+};
+
+// Set on both globalThis and window to ensure coverage in jsdom
+if (!globalThis.IntersectionObserver) {
+    globalThis.IntersectionObserver =
+        baseIntersectionObserver as unknown as typeof IntersectionObserver;
+}
+if (typeof window !== 'undefined' && !window.IntersectionObserver) {
+    window.IntersectionObserver =
+        baseIntersectionObserver as unknown as typeof IntersectionObserver;
+}
+
 // Mock fetch to prevent emoji-picker-element from accessing CDN
 // This prevents "fetch failed" errors in tests when offline
 const originalFetch = globalThis.fetch;

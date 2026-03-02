@@ -118,4 +118,37 @@ describe('StatusBody', () => {
         const container = document.querySelector('.status-content');
         expect(container).toBeInTheDocument();
     });
+
+    describe('hasQuote prop', () => {
+        it('strips quote-inline elements when hasQuote is true', () => {
+            const content =
+                '<p>Text with quote</p><span class="quote-inline"><a href="https://example.com/status/123">RE: ...</a></span>';
+
+            render(<StatusBody content={content} emojis={[]} hasQuote={true} />);
+
+            // The quote-inline element should be stripped
+            const container = document.querySelector('.status-content');
+            expect(container?.innerHTML).toBe('<p>Text with quote</p>');
+        });
+
+        it('preserves quote-inline elements when hasQuote is false (default)', () => {
+            const content =
+                '<p>Text with quote</p><span class="quote-inline"><a href="https://example.com/status/123">RE: ...</a></span>';
+
+            render(<StatusBody content={content} emojis={[]} hasQuote={false} />);
+
+            // The quote-inline element should be preserved
+            const container = document.querySelector('.status-content');
+            expect(container?.innerHTML).toContain('quote-inline');
+            expect(container?.innerHTML).toContain('RE: ...');
+        });
+
+        it('preserves content without quote-inline when hasQuote is true', () => {
+            const content = '<p>Regular content without quote</p>';
+
+            render(<StatusBody content={content} emojis={[]} hasQuote={true} />);
+
+            expect(screen.getByText('Regular content without quote')).toBeInTheDocument();
+        });
+    });
 });

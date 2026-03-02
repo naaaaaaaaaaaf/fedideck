@@ -7,6 +7,7 @@ export interface InstanceConfig {
     maxCharacters: number;
     maxMediaAttachments: number;
     supportedMimeTypes: string[];
+    supportsQuotes: boolean;
 }
 
 /**
@@ -17,8 +18,29 @@ interface CacheEntry {
     expiresAt: number;
 }
 
+/**
+ * Check if Mastodon version supports quote posts (v4.5.0+)
+ */
+export function supportsQuotes(version: string): boolean {
+    // Mastodon version strings can be:
+    // - "4.5.0" (standard)
+    // - "4.5.0+glitch" (Glitch edition)
+    // - "4.5.0rc1" (release candidate)
+    // We only care about the major.minor part
+    const match = version.match(/^(\d+)\.(\d+)/);
+    if (!match) return false;
+
+    const major = parseInt(match[1], 10);
+    const minor = parseInt(match[2], 10);
+
+    // Mastodon 4.5.0+ supports quotes
+    return major > 4 || (major === 4 && minor >= 5);
+}
+
 // In-memory cache using instance URL as key
 const configCache = new Map<string, CacheEntry>();
+// In-flight requests to dedupe concurrent requests
+const inflightRequests = new Map<string, Promise<InstanceConfig>>();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 /**
@@ -27,6 +49,7 @@ const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 const DEFAULT_CONFIG: InstanceConfig = {
     maxCharacters: 500,
     maxMediaAttachments: 4,
+    supportsQuotes: false,
     supportedMimeTypes: [
         'image/jpeg',
         'image/png',
@@ -94,32 +117,59 @@ export async function getInstanceConfig(
         };
     }
 
-    // Fetch from API
-    const instance = await client.v1.instance.fetch();
+    // Check for in-flight request to dedupe concurrent calls
+    const inflight = inflightRequests.get(instanceKey);
+    if (inflight) {
+        // Wait for the existing request and return a copy of its result
+        const config = await inflight;
+        return {
+            ...config,
+            supportedMimeTypes: [...config.supportedMimeTypes],
+        };
+    }
 
-    // Extract configuration values with defensive fallbacks
-    const apiMimeTypes = instance.configuration?.mediaAttachments?.supportedMimeTypes;
-    const config: InstanceConfig = {
-        maxCharacters:
-            instance.configuration?.statuses?.maxCharacters ?? DEFAULT_CONFIG.maxCharacters,
-        maxMediaAttachments:
-            instance.configuration?.statuses?.maxMediaAttachments ??
-            DEFAULT_CONFIG.maxMediaAttachments,
-        // Create a copy to prevent mutations to the cached value
-        supportedMimeTypes: apiMimeTypes ? [...apiMimeTypes] : DEFAULT_CONFIG.supportedMimeTypes,
-    };
+    // Create the fetch promise
+    const fetchPromise = (async (): Promise<InstanceConfig> => {
+        const instance = await client.v1.instance.fetch();
 
-    // Cache the result
-    configCache.set(instanceKey, {
-        config,
-        expiresAt: Date.now() + CACHE_TTL,
-    });
+        // Extract configuration values with defensive fallbacks
+        const apiMimeTypes = instance.configuration?.mediaAttachments?.supportedMimeTypes;
+        const config: InstanceConfig = {
+            maxCharacters:
+                instance.configuration?.statuses?.maxCharacters ?? DEFAULT_CONFIG.maxCharacters,
+            maxMediaAttachments:
+                instance.configuration?.statuses?.maxMediaAttachments ??
+                DEFAULT_CONFIG.maxMediaAttachments,
+            // Create a copy to prevent mutations to the cached value
+            supportedMimeTypes: apiMimeTypes
+                ? [...apiMimeTypes]
+                : [...DEFAULT_CONFIG.supportedMimeTypes],
+            supportsQuotes: supportsQuotes(instance.version ?? ''),
+        };
 
-    // Return a copy to prevent cache pollution through mutation
-    return {
-        ...config,
-        supportedMimeTypes: [...config.supportedMimeTypes],
-    };
+        // Cache the result
+        configCache.set(instanceKey, {
+            config,
+            expiresAt: Date.now() + CACHE_TTL,
+        });
+
+        return config;
+    })();
+
+    // Register in-flight request
+    inflightRequests.set(instanceKey, fetchPromise);
+
+    try {
+        const config = await fetchPromise;
+        // Return a copy to prevent cache pollution through mutation
+        return {
+            ...config,
+            supportedMimeTypes: [...config.supportedMimeTypes],
+        };
+    } finally {
+        // Clean up in-flight request
+        inflightRequests.delete(instanceKey);
+    }
 }
 
 /**

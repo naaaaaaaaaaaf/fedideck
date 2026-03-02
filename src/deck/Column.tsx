@@ -9,6 +9,7 @@ import { useAccountsStore } from '../store/accounts';
 import { getClient } from '../api/mastoClient';
 import { formatAccountHandle } from '../utils/accountHandle';
 import { getDisplayStatus } from '../utils/statusView';
+import { useInstanceConfig } from '../hooks/useInstanceConfig';
 import {
     fetchHomeTimeline,
     fetchPublicTimeline,
@@ -27,6 +28,7 @@ interface ColumnProps {
     stream: StreamConfig;
     onRemove?: () => void;
     onReply?: (status: mastodon.v1.Status, accountSessionId: string) => void;
+    onQuote?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onStatusClick?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onImageClick?: (images: ImageViewerImage[], index: number) => void;
     onVideoClick?: (videos: VideoViewerVideo[], index: number) => void;
@@ -43,6 +45,7 @@ export function Column({
     stream,
     onRemove,
     onReply,
+    onQuote,
     onStatusClick,
     onImageClick,
     onVideoClick,
@@ -72,6 +75,13 @@ export function Column({
 
     const isNotificationColumn = stream.type === 'notifications';
 
+    // Fetch instance config at column level to avoid per-card fetches
+    // Only fetch when onQuote is available (quote functionality is needed)
+    const { instanceConfig } = useInstanceConfig({
+        accountSession: account,
+        enabled: Boolean(onQuote),
+    });
+
     // Stable callback wrappers to prevent React.memo invalidation in card components
     // Using useMemo to memoize conditional expressions that return either a callback or undefined.
     // useCallback only memoizes the function itself, not conditional values.
@@ -92,6 +102,10 @@ export function Column({
     const handleReply = useMemo(
         () => (onReply ? (status: mastodon.v1.Status) => onReply(status, accountId) : undefined),
         [onReply, accountId]
+    );
+    const handleQuote = useMemo(
+        () => (onQuote ? (status: mastodon.v1.Status) => onQuote(status, accountId) : undefined),
+        [onQuote, accountId]
     );
     const handleStatusDelete = useMemo(
         () =>
@@ -369,6 +383,8 @@ export function Column({
                                 onStatusUpdate={updateStatusGlobal}
                                 onPollUpdate={updatePollGlobal}
                                 onReply={handleReply}
+                                onQuote={handleQuote}
+                                supportsQuotes={instanceConfig?.supportsQuotes ?? false}
                                 onStatusClick={handleStatusClick}
                                 onImageClick={handleImageClick}
                                 onVideoClick={handleVideoClick}

@@ -80,6 +80,7 @@ vi.mock('../api/mastoClient', async (importOriginal) => {
     return {
         ...actual,
         getStatusContext: vi.fn().mockResolvedValue({ ancestors: [], descendants: [] }),
+        fetchStatus: vi.fn(),
         votePoll: vi.fn(),
     };
 });
@@ -90,6 +91,9 @@ describe('StatusDetailModal', () => {
             ancestors: [],
             descendants: [],
         });
+        vi.mocked(mastoClient.fetchStatus).mockImplementation(async (_client, statusId) =>
+            createMockStatus({ id: statusId })
+        );
     });
 
     describe('rendering', () => {
@@ -1417,6 +1421,114 @@ describe('StatusDetailModal', () => {
         });
     });
 
+    describe('bookmark action', () => {
+        it('should call bookmarkStatus API when bookmark button is clicked', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ bookmarked: false });
+            const accountSession = createMockAccountSession();
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
+            const bookmarkSpy = vi
+                .spyOn(mastoClient, 'bookmarkStatus')
+                .mockResolvedValue(createMockStatus({ bookmarked: true }));
+
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
+
+            // In detail variant, button has span text "ブックマーク"
+            const bookmarkButton = screen.getByText('ブックマーク').closest('button');
+            expect(bookmarkButton).not.toBeNull();
+            await user.click(bookmarkButton!);
+
+            await waitFor(() => {
+                expect(bookmarkSpy).toHaveBeenCalledWith({}, '12345');
+            });
+        });
+
+        it('should call unbookmarkStatus API when bookmark button is clicked on bookmarked status', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ bookmarked: true });
+            const accountSession = createMockAccountSession();
+
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue(
+                {} as ReturnType<typeof mastoClient.getClient>
+            );
+            const unbookmarkSpy = vi
+                .spyOn(mastoClient, 'unbookmarkStatus')
+                .mockResolvedValue(createMockStatus({ bookmarked: false }));
+
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
+
+            // In detail variant, button has span text "ブックマーク"
+            const bookmarkButton = screen.getByText('ブックマーク').closest('button');
+            expect(bookmarkButton).not.toBeNull();
+            await user.click(bookmarkButton!);
+
+            await waitFor(() => {
+                expect(unbookmarkSpy).toHaveBeenCalledWith({}, '12345');
+            });
+        });
+
+        it('should not trigger bookmark action when accountSession is not provided', async () => {
+            const user = userEvent.setup();
+            const status = createMockStatus({ bookmarked: false });
+            const bookmarkSpy = vi.spyOn(mastoClient, 'bookmarkStatus');
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={status}
+                    // No accountSession
+                />
+            );
+
+            const bookmarkButton = screen.getByText('ブックマーク').closest('button');
+            expect(bookmarkButton).not.toBeNull();
+            await user.click(bookmarkButton!);
+            expect(bookmarkSpy).not.toHaveBeenCalled();
+        });
+
+        it('should show bookmark button as active when status is bookmarked', async () => {
+            const status = createMockStatus({ bookmarked: true });
+            const accountSession = createMockAccountSession();
+
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={() => {}}
+                        status={status}
+                        accountSession={accountSession}
+                    />
+                );
+            });
+
+            const bookmarkButton = screen.getByText('ブックマーク').closest('button');
+            expect(bookmarkButton).not.toBeNull();
+            expect(bookmarkButton).toHaveClass('text-indigo-400');
+        });
+    });
+
     describe('thread navigation', () => {
         beforeEach(() => {
             vi.clearAllMocks();
@@ -1574,6 +1686,101 @@ describe('StatusDetailModal', () => {
                 // The ancestor content should now be the main display
                 expect(screen.getByText('Ancestor post content')).toBeInTheDocument();
                 expect(screen.getByText('Ancestor User')).toBeInTheDocument();
+            });
+        });
+
+        it('should resolve shallow quote after quote navigation and open the root quoted status', async () => {
+            const user = userEvent.setup();
+            const accountSession = createMockAccountSession();
+
+            const rootStatus = createMockStatus({
+                id: 'root-1',
+                content: '<p>Root quoted post</p>',
+                account: {
+                    ...createMockStatus().account,
+                    id: 'root-user',
+                    displayName: 'Root User',
+                    acct: 'rootuser',
+                },
+            });
+
+            const secondStatus = createMockStatus({
+                id: 'quote-2',
+                content: '<p>Second quoted post</p>',
+                quote: {
+                    state: 'accepted',
+                    quotedStatusId: 'root-1',
+                } as mastodon.v1.ShallowQuote,
+                account: {
+                    ...createMockStatus().account,
+                    id: 'second-user',
+                    displayName: 'Second User',
+                    acct: 'seconduser',
+                },
+            });
+
+            const thirdStatus = createMockStatus({
+                id: 'quote-3',
+                content: '<p>Third quote post</p>',
+                quote: {
+                    state: 'accepted',
+                    quotedStatus: secondStatus,
+                } as mastodon.v1.Quote,
+                account: {
+                    ...createMockStatus().account,
+                    id: 'third-user',
+                    displayName: 'Third User',
+                    acct: 'thirduser',
+                },
+            });
+
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [],
+                descendants: [],
+            });
+            vi.mocked(mastoClient.fetchStatus).mockImplementation(async (_client, statusId) => {
+                if (statusId === 'root-1') return rootStatus;
+                return createMockStatus({ id: statusId });
+            });
+
+            render(
+                <StatusDetailModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    status={thirdStatus}
+                    accountSession={accountSession}
+                />
+            );
+
+            // Navigate to second quoted status from the first quote card
+            const secondQuoteContent = await screen.findByText('Second quoted post');
+            await user.click(secondQuoteContent);
+
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'quote-2'
+                );
+            });
+
+            // ShallowQuote should be resolved and root quote card should appear
+            await waitFor(() => {
+                expect(mastoClient.fetchStatus).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'root-1',
+                    expect.anything()
+                );
+            });
+            const rootQuoteContent = await screen.findByText('Root quoted post');
+            expect(rootQuoteContent).toBeInTheDocument();
+
+            // Root quote card should be clickable and navigable
+            await user.click(rootQuoteContent);
+            await waitFor(() => {
+                expect(mastoClient.getStatusContext).toHaveBeenCalledWith(
+                    expect.anything(),
+                    'root-1'
+                );
             });
         });
 
@@ -3461,6 +3668,88 @@ describe('StatusDetailModal', () => {
             // Refresh button should be enabled
             const refreshButton = screen.getByRole('button', { name: '投票結果を更新' });
             expect(refreshButton).not.toBeDisabled();
+        });
+    });
+
+    describe('quote button behavior', () => {
+        const mockAccountSession = createMockAccountSession();
+
+        it('should call onQuote with displayStatus and close modal when quote button is clicked', async () => {
+            const user = userEvent.setup();
+            const onQuote = vi.fn();
+            const onClose = vi.fn();
+            const status = createMockStatus();
+
+            // Mock getClient to return a client with instance config that supports quotes
+            vi.spyOn(mastoClient, 'getClient').mockReturnValue({
+                v1: {
+                    instance: {
+                        fetch: vi.fn().mockResolvedValue({
+                            version: '4.5.0',
+                            configuration: {
+                                statuses: {
+                                    maxCharacters: 500,
+                                    maxMediaAttachments: 4,
+                                },
+                                mediaAttachments: {
+                                    supportedMimeTypes: ['image/jpeg'],
+                                },
+                            },
+                        }),
+                    },
+                },
+            } as unknown as ReturnType<typeof mastoClient.getClient>);
+
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={onClose}
+                        status={status}
+                        accountSession={mockAccountSession}
+                        onQuote={onQuote}
+                    />
+                );
+            });
+
+            // Quote button should be visible when onQuote is provided
+            // Use findBy to wait for the button to appear (instance config needs to load)
+            const quoteButton = await screen.findByRole('button', { name: '引用' });
+            expect(quoteButton).toBeInTheDocument();
+
+            // Click the quote button
+            await user.click(quoteButton);
+
+            // onQuote should be called with the status
+            expect(onQuote).toHaveBeenCalledTimes(1);
+            expect(onQuote).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '12345',
+                    content: '<p>Test content for detail modal</p>',
+                })
+            );
+
+            // Modal should be closed
+            expect(onClose).toHaveBeenCalledTimes(1);
+        });
+
+        it('should not show quote button when onQuote is not provided', async () => {
+            const status = createMockStatus();
+
+            await act(async () => {
+                render(
+                    <StatusDetailModal
+                        isOpen={true}
+                        onClose={vi.fn()}
+                        status={status}
+                        accountSession={mockAccountSession}
+                        // onQuote not provided
+                    />
+                );
+            });
+
+            // Quote button should not be in the document
+            expect(screen.queryByRole('button', { name: '引用' })).not.toBeInTheDocument();
         });
     });
 });

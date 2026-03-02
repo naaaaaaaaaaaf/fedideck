@@ -5,6 +5,7 @@ import {
     type AccountSession,
     getClient,
     getStatusContext,
+    fetchStatus,
     type StatusContext,
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
@@ -13,6 +14,7 @@ import { useCardInteraction } from '../hooks/useCardInteraction';
 import { useNsfwState } from '../hooks/useNsfwState';
 import { usePollState } from '../hooks/usePollState';
 import { usePollCountdown } from '../hooks/usePollCountdown';
+import { useInstanceConfig } from '../hooks/useInstanceConfig';
 import { formatDate, formatFullDate } from '../utils/dateFormat';
 import { getVisibilityMeta } from '../utils/statusVisibility';
 import { replaceEmojisWithImages } from '../utils/emoji';
@@ -26,7 +28,13 @@ import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
 import { DisplayName } from './DisplayName';
 import { MediaAttachment } from './MediaAttachment';
-import { StatusReblogIndicator, StatusActions } from './status';
+import {
+    StatusReblogIndicator,
+    StatusActions,
+    StatusQuoteCard,
+    StatusQuotePlaceholder,
+} from './status';
+import { hasQuote, getQuotedStatus, isFullQuote, stripQuoteInline } from '../utils/statusView';
 
 interface StatusDetailModalProps {
     isOpen: boolean;
@@ -34,6 +42,7 @@ interface StatusDetailModalProps {
     status: mastodon.v1.Status | null;
     accountSession?: AccountSession;
     onReply?: (status: mastodon.v1.Status) => void;
+    onQuote?: (status: mastodon.v1.Status) => void;
     onStatusUpdate?: (status: mastodon.v1.Status) => void;
     onPollUpdate?: (statusId: string, poll: mastodon.v1.Poll) => void;
     onStatusDelete?: (status: mastodon.v1.Status, accountId: string) => void;
@@ -198,6 +207,7 @@ export function StatusDetailModal({
     status,
     accountSession,
     onReply,
+    onQuote,
     onStatusUpdate,
     onPollUpdate,
     onStatusDelete,
@@ -214,16 +224,18 @@ export function StatusDetailModal({
     // Get the display status (navigated > original reblog > original)
     const displayStatus = navigatedStatus ?? status?.reblog ?? status;
 
-    // Status actions (favourite/reblog) with optimistic UI
+    // Status actions (favourite/reblog/bookmark) with optimistic UI
     const {
         favourited,
         favouritesCount,
         reblogged,
         reblogsCount,
+        bookmarked,
         isLoading,
         canReblog,
         handleFavourite,
         handleReblog,
+        handleBookmark,
     } = useStatusActions({
         status: displayStatus,
         accountSession,
@@ -260,6 +272,59 @@ export function StatusDetailModal({
     // Poll countdown display
     const pollCountdown = usePollCountdown(localPoll?.expiresAt ?? null);
 
+    // Instance config for quote support check
+    // Only fetch when modal is open and quote functionality is needed
+    // Skip fetch if user already denied quote approval for this status
+    const { instanceConfig } = useInstanceConfig({
+        accountSession,
+        isOpen,
+        enabled: Boolean(onQuote) && displayStatus?.quoteApproval?.currentUser !== 'denied',
+    });
+
+    // Resolve ShallowQuote (accepted with quotedStatusId but no quotedStatus)
+    const [resolvedShallowQuoteStatus, setResolvedShallowQuoteStatus] =
+        useState<mastodon.v1.Status | null>(null);
+
+    const shallowQuoteId = useMemo(() => {
+        const quote = displayStatus?.quote;
+        if (!quote) return null;
+        if (quote.state !== 'accepted') return null;
+        if (isFullQuote(quote)) return null;
+        return quote.quotedStatusId ?? null;
+    }, [displayStatus?.quote]);
+
+    useEffect(() => {
+        if (!accountSession || !shallowQuoteId) {
+            setResolvedShallowQuoteStatus(null);
+            return;
+        }
+
+        // Clear previous resolution when ID changes
+        setResolvedShallowQuoteStatus(null);
+
+        let cancelled = false;
+
+        const resolveShallowQuote = async () => {
+            try {
+                const client = getClient(accountSession);
+                const quotedStatus = await fetchStatus(client, shallowQuoteId, accountSession);
+                if (!cancelled) {
+                    setResolvedShallowQuoteStatus(quotedStatus);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error('Failed to fetch shallow quoted status:', error);
+                }
+            }
+        };
+
+        resolveShallowQuote();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [accountSession, shallowQuoteId]);
+
     // Thread context state
     const [context, setContext] = useState<StatusContext | null>(null);
     const [isLoadingContext, setIsLoadingContext] = useState(false);
@@ -287,6 +352,63 @@ export function StatusDetailModal({
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
+    const navigatedStatusId = navigatedStatus?.id ?? null;
+    const navigatedShallowQuoteId = useMemo(() => {
+        if (!navigatedStatus?.quote) return null;
+
+        const quote = navigatedStatus.quote;
+        if (quote.state !== 'accepted') return null;
+        if (isFullQuote(quote)) return null;
+
+        return quote.quotedStatusId ?? null;
+    }, [navigatedStatus]);
+
+    // Resolve ShallowQuote after in-modal navigation so deep quote chains stay navigable
+    useEffect(() => {
+        if (!isOpen || !accountSession || !navigatedStatusId || !navigatedShallowQuoteId) return;
+
+        let cancelled = false;
+
+        const fetchQuotedStatus = async () => {
+            try {
+                const client = getClient(accountSession);
+                const quotedStatus = await fetchStatus(
+                    client,
+                    navigatedShallowQuoteId,
+                    accountSession
+                );
+
+                if (!cancelled) {
+                    setNavigatedStatus((prev) => {
+                        if (!prev || prev.id !== navigatedStatusId) return prev;
+
+                        const currentQuote = prev.quote;
+                        if (!currentQuote || currentQuote.state !== 'accepted') return prev;
+                        if (isFullQuote(currentQuote)) return prev;
+                        if (currentQuote.quotedStatusId !== navigatedShallowQuoteId) return prev;
+
+                        return {
+                            ...prev,
+                            quote: {
+                                state: 'accepted',
+                                quotedStatus,
+                            } as mastodon.v1.Quote,
+                        };
+                    });
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error('Failed to fetch quoted status:', error);
+                }
+            }
+        };
+
+        fetchQuotedStatus();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isOpen, accountSession, navigatedStatusId, navigatedShallowQuoteId]);
 
     // Fetch thread context when modal opens
     useEffect(() => {
@@ -423,9 +545,22 @@ export function StatusDetailModal({
         onClose();
     };
 
+    const handleQuote = () => {
+        onQuote?.(displayStatus);
+        onClose();
+    };
+
+    // Handle quote card click - navigate within modal
+    const handleQuoteNavigate = (quotedStatus: mastodon.v1.Status) => {
+        setContext(null);
+        setContextError(null);
+        setIsLoadingContext(true);
+        setNavigatedStatus(quotedStatus);
+    };
+
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center"
+            className="fixed inset-0 z-[60] flex items-center justify-center"
             onKeyDown={handleKeyDown}
             role="dialog"
             aria-modal="true"
@@ -543,7 +678,9 @@ export function StatusDetailModal({
                                     className="text-slate-200 text-lg leading-relaxed status-content"
                                     dangerouslySetInnerHTML={{
                                         __html: replaceEmojisWithImages(
-                                            displayStatus.content,
+                                            hasQuote(displayStatus)
+                                                ? stripQuoteInline(displayStatus.content)
+                                                : displayStatus.content,
                                             displayStatus.emojis
                                         ),
                                     }}
@@ -557,7 +694,9 @@ export function StatusDetailModal({
                                 className="text-slate-200 text-lg leading-relaxed mb-4 status-content"
                                 dangerouslySetInnerHTML={{
                                     __html: replaceEmojisWithImages(
-                                        displayStatus.content,
+                                        hasQuote(displayStatus)
+                                            ? stripQuoteInline(displayStatus.content)
+                                            : displayStatus.content,
                                         displayStatus.emojis
                                     ),
                                 }}
@@ -778,6 +917,52 @@ export function StatusDetailModal({
                                 );
                             })()}
 
+                        {/* Quote Card */}
+                        {hasQuote(displayStatus) && (
+                            <div className="mb-4">
+                                {(() => {
+                                    const quotedStatus =
+                                        getQuotedStatus(displayStatus) ??
+                                        (shallowQuoteId &&
+                                        resolvedShallowQuoteStatus?.id === shallowQuoteId
+                                            ? resolvedShallowQuoteStatus
+                                            : null);
+                                    const quote = displayStatus.quote;
+
+                                    // If we have the full quoted status, show the card
+                                    if (quotedStatus) {
+                                        return (
+                                            <StatusQuoteCard
+                                                status={quotedStatus}
+                                                variant="detail"
+                                                onClick={handleQuoteNavigate}
+                                                onImageClick={onImageClick}
+                                                onVideoClick={onVideoClick}
+                                                onAudioClick={onAudioClick}
+                                                accountSession={accountSession}
+                                            />
+                                        );
+                                    }
+
+                                    // If quote exists but no quotedStatus, show placeholder
+                                    if (quote) {
+                                        // Check if this is a ShallowQuote (accepted but no status)
+                                        const isShallow =
+                                            quote.state === 'accepted' && !isFullQuote(quote);
+                                        return (
+                                            <StatusQuotePlaceholder
+                                                state={quote.state}
+                                                variant="detail"
+                                                isShallow={isShallow}
+                                            />
+                                        );
+                                    }
+
+                                    return null;
+                                })()}
+                            </div>
+                        )}
+
                         {/* Timestamp and visibility */}
                         <div className="text-slate-400 text-sm mb-4 pb-4 border-b border-slate-700">
                             {(() => {
@@ -837,12 +1022,19 @@ export function StatusDetailModal({
                         favouritesCount={favouritesCount ?? 0}
                         favourited={favourited}
                         reblogged={reblogged}
+                        bookmarked={bookmarked}
                         canReblog={canReblog}
                         isAuthenticated={Boolean(accountSession)}
                         isLoading={isLoading}
                         onReply={handleReply}
+                        onQuote={onQuote ? handleQuote : undefined}
+                        canQuote={
+                            (instanceConfig?.supportsQuotes ?? false) &&
+                            displayStatus.quoteApproval?.currentUser !== 'denied'
+                        }
                         onReblog={handleReblog}
                         onFavourite={handleFavourite}
+                        onBookmark={handleBookmark}
                         variant="detail"
                         statusUrl={displayStatus.url ?? displayStatus.uri}
                         canDelete={canDelete ?? false}
