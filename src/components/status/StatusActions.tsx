@@ -201,7 +201,7 @@ export const StatusActions = React.memo(function StatusActions({
 
     // Card variant: compact buttons with counts
     return (
-        <div className={`flex items-center gap-2 mt-1 text-slate-400 ${className}`}>
+        <div className={`flex items-center justify-around mt-1 text-slate-400 ${className}`}>
             <button
                 type="button"
                 onClick={onReply}
@@ -304,7 +304,6 @@ export const StatusActions = React.memo(function StatusActions({
                 canEdit={canEdit}
                 onDelete={onDelete}
                 onEdit={onEdit}
-                className="ml-auto"
             />
         </div>
     );

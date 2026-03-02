@@ -138,7 +138,7 @@ describe('StatusActions', () => {
         render(<StatusActions {...defaultProps} />);
 
         const container = screen.getByLabelText('返信').closest('div');
-        expect(container).toHaveClass('gap-2', 'mt-1');
+        expect(container).toHaveClass('justify-around', 'mt-1');
     });
 
     it('applies detail variant styles', () => {
