@@ -708,5 +708,21 @@ describe('item limits', () => {
             const stream = useStreamsStore.getState().data['account:notifications'];
             expect(stream.hasMore).toBe(false);
         });
+
+        it('sets hasMore false when API returns empty array', () => {
+            // Start with 50 notifications with hasMore=true
+            const initialNotifications = Array.from({ length: 50 }, (_, i) =>
+                makeNotification(String(i))
+            );
+            useStreamsStore
+                .getState()
+                .setNotifications('account:notifications', initialNotifications, true);
+
+            // Append empty array (end of notifications)
+            useStreamsStore.getState().appendNotifications('account:notifications', []);
+
+            const stream = useStreamsStore.getState().data['account:notifications'];
+            expect(stream.hasMore).toBe(false);
+        });
     });
 });
