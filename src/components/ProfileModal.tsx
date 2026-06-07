@@ -696,7 +696,7 @@ export function ProfileModal({
 
     // Remove deleted status from local list when deletion succeeds
     useEffect(() => {
-        if (!deletedStatusRef || !accountSession) return;
+        if (!isOpen || !deletedStatusRef || !accountSession) return;
         if (deletedStatusRef.accountSessionId !== accountSession.id) return;
 
         setStatuses((prev) => {
@@ -706,7 +706,7 @@ export function ProfileModal({
         });
         // Notify parent that this status ref has been consumed
         onDeletedStatusConsumed?.();
-    }, [deletedStatusRef, accountSession?.id, onDeletedStatusConsumed]);
+    }, [isOpen, deletedStatusRef, accountSession?.id, onDeletedStatusConsumed]);
 
     if (!isOpen || !account) {
         return null;

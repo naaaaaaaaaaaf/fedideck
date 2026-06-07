@@ -353,15 +353,13 @@ function App() {
                     }}
                     onStatusUpdate={(updatedStatus) => {
                         handleStatusUpdateGlobal(updatedStatus);
-                        useModalsStore
-                            .getState()
-                            .updateStackStatus(
-                                {
-                                    statusId: updatedStatus.id,
-                                    accountSessionId: entry.accountSessionId,
-                                },
-                                updatedStatus
-                            );
+                        useModalsStore.getState().updateStackStatus(
+                            {
+                                statusId: updatedStatus.id,
+                                accountSessionId: entry.accountSessionId,
+                            },
+                            updatedStatus
+                        );
                     }}
                     onPollUpdate={(statusId, poll) => {
                         handlePollUpdateGlobal(statusId, poll);
@@ -406,19 +404,19 @@ function App() {
                     nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
                     onStatusUpdate={(updatedStatus) => {
                         handleStatusUpdateGlobal(updatedStatus);
-                        useModalsStore
-                            .getState()
-                            .updateStackStatus(
+                        if (entry.accountSessionId) {
+                            useModalsStore.getState().updateStackStatus(
                                 {
                                     statusId: updatedStatus.id,
                                     accountSessionId: entry.accountSessionId,
                                 },
                                 updatedStatus
                             );
+                        }
                     }}
                     onStatusDelete={handleStatusDeleteRequest}
                     onStatusEdit={handleStatusEditRequest}
-                    deletedStatusRef={deletedStatusRef}
+                    deletedStatusRef={isStackTop ? deletedStatusRef : undefined}
                     onDeletedStatusConsumed={() =>
                         useModalsStore.getState().setDeletedStatusRef(undefined)
                     }
