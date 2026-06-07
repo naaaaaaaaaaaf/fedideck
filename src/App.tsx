@@ -244,16 +244,8 @@ function App() {
             // Notify ProfileModal to remove deleted status from local list
             store.setDeletedStatusId(confirm.status.id);
 
-            // Close detail modal if viewing the deleted status
-            const deletedId = confirm.status.id;
-            const currentStack = useModalsStore.getState().stack;
-            const topEntry = currentStack[currentStack.length - 1];
-            if (
-                topEntry?.type === 'statusDetail' &&
-                (topEntry.status.id === deletedId || topEntry.status.reblog?.id === deletedId)
-            ) {
-                store.goBack();
-            }
+            // Remove all stack entries referencing the deleted status
+            useModalsStore.getState().removeStatusFromStack(confirm.status.id);
         } catch (err) {
             store.setConfirmError((err as Error).message);
         } finally {
@@ -306,7 +298,6 @@ function App() {
                     nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
                     onNsfwReveal={addNsfwRevealedStatusId}
                     zIndex={zIndex}
-                    stackDepth={stack.length}
                 />
             );
         }
@@ -334,7 +325,6 @@ function App() {
                     onStatusEdit={handleStatusEditRequest}
                     deletedStatusId={deletedStatusId}
                     zIndex={zIndex}
-                    stackDepth={stack.length}
                 />
             );
         }

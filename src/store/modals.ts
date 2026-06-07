@@ -89,6 +89,7 @@ interface ModalsState {
     clearStack: () => void;
     updateStackStatus: (statusId: string, status: mastodon.v1.Status) => void;
     updateStackPoll: (statusId: string, poll: mastodon.v1.Poll) => void;
+    removeStatusFromStack: (statusId: string) => void;
 
     // Actions – Overlays
     openCompose: (data: ComposeData) => void;
@@ -173,6 +174,18 @@ export const useModalsStore = create<ModalsState>()((set) => ({
         });
     },
 
+    /** Remove all statusDetail entries referencing the given status id (direct or reblog) */
+    removeStatusFromStack: (statusId: string) => {
+        set((state) => ({
+            stack: state.stack.filter((entry) => {
+                if (entry.type === 'statusDetail') {
+                    return entry.status.id !== statusId && entry.status.reblog?.id !== statusId;
+                }
+                return true;
+            }),
+        }));
+    },
+
     goBack: () => {
         set((state) => {
             const stack = [...state.stack];
@@ -190,9 +203,13 @@ export const useModalsStore = create<ModalsState>()((set) => ({
         set((state) => ({
             stack: state.stack.map((entry) => {
                 if (entry.type === 'statusDetail') {
-                    // Direct match or reblog wrapper match
-                    if (entry.status.id === statusId || entry.status.reblog?.id === statusId) {
+                    // Direct match — replace the entire status
+                    if (entry.status.id === statusId) {
                         return { ...entry, status };
+                    }
+                    // Reblog wrapper match — keep wrapper, update reblog only
+                    if (entry.status.reblog?.id === statusId) {
+                        return { ...entry, status: { ...entry.status, reblog: status } };
                     }
                 }
                 return entry;

@@ -54,7 +54,6 @@ interface StatusDetailModalProps {
     nsfwRevealedStatusIds?: Set<string>;
     onNsfwReveal?: (statusId: string) => void;
     zIndex?: number;
-    stackDepth?: number;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId?: string) => void;
 }
 

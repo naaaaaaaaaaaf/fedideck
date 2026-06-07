@@ -61,7 +61,6 @@ interface ProfileModalProps {
     /** ID of status that was just deleted, used to remove from local list */
     deletedStatusId?: string;
     zIndex?: number;
-    stackDepth?: number;
 }
 
 export function ProfileModal({

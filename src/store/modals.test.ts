@@ -163,8 +163,9 @@ describe('useModalsStore', () => {
 
             const { stack } = useModalsStore.getState();
             if (stack[0].type === 'statusDetail') {
-                // The entire wrapper status is replaced when its reblog matches
-                expect(stack[0].status.content).toBe('edited-reblog');
+                // Wrapper is preserved, only reblog is updated
+                expect(stack[0].status.id).toBe('w1');
+                expect(stack[0].status.reblog).toBe(updated);
             }
         });
 
@@ -196,6 +197,38 @@ describe('useModalsStore', () => {
             if (stack[0].type === 'statusDetail') {
                 expect(stack[0].status.reblog?.poll).toBe(newPoll);
             }
+        });
+
+        it('removeStatusFromStack removes matching direct and reblog entries', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
+            const reblogWrapper = {
+                ...mockStatus('w1'),
+                reblog: mockStatus('s2'),
+            } as mastodon.v1.Status;
+            useModalsStore.getState().pushStatusDetail(reblogWrapper, 'acct-1');
+
+            // Stack: [detail-s1, profile-a1, detail-w1(reblog=s2)]
+            expect(useModalsStore.getState().stack).toHaveLength(3);
+
+            // Remove s1 — only first detail should be removed
+            useModalsStore.getState().removeStatusFromStack('s1');
+            const afterFirst = useModalsStore.getState().stack;
+            expect(afterFirst).toHaveLength(2);
+            expect(afterFirst[0].type).toBe('profile');
+
+            // Remove s2 — reblog wrapper detail should be removed
+            useModalsStore.getState().removeStatusFromStack('s2');
+            expect(useModalsStore.getState().stack).toHaveLength(1);
+            expect(useModalsStore.getState().stack[0].type).toBe('profile');
+        });
+
+        it('removeStatusFromStack keeps unrelated entries', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushStatusDetail(mockStatus('s2'), 'acct-1');
+
+            useModalsStore.getState().removeStatusFromStack('s-nonexistent');
+            expect(useModalsStore.getState().stack).toHaveLength(2);
         });
     });
 
