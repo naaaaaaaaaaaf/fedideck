@@ -59,7 +59,7 @@ export function AddColumnModal({ isOpen, onClose, isActive = true, zIndex }: Add
     const listboxRef = useRef<HTMLDivElement>(null);
 
     const { handleKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,

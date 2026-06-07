@@ -37,7 +37,7 @@ export function LoginModal({
     const addAccount = useAccountsStore((state) => state.addAccount);
 
     const { handleKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,

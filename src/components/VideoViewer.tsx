@@ -52,7 +52,7 @@ export function VideoViewer({
     const videoRef = useRef<HTMLVideoElement>(null);
 
     const { handleKeyDown: baseHandleKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,

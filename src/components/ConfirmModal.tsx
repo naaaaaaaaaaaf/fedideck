@@ -36,7 +36,7 @@ export function ConfirmModal({
     const closeButtonRef = useRef<HTMLButtonElement>(null);
 
     const { handleKeyDown, handleBackdropClick } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,

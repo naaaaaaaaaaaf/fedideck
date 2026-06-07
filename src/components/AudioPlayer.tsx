@@ -40,7 +40,7 @@ export function AudioPlayer({
     const wasPlayingRef = useRef(false);
 
     const { handleKeyDown: baseHandleKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,

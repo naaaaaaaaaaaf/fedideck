@@ -29,7 +29,7 @@ export function ImageViewer({
     const imageContainerRef = useRef<HTMLDivElement>(null);
 
     const { handleKeyDown: baseHandleKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,

@@ -151,7 +151,7 @@ export function ProfileModal({
     } as const;
 
     const { handleKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,

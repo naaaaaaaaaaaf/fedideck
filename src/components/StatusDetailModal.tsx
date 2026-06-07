@@ -343,7 +343,7 @@ export function StatusDetailModal({
     const mainStatusRef = useRef<HTMLDivElement>(null);
 
     const { handleKeyDown, handleBackdropClick } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,

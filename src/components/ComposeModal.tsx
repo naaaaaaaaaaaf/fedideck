@@ -254,7 +254,7 @@ export function ComposeModal({
     const canCloseModal = !isSubmitting && !isUploading && !isLoadingEditSource;
 
     const { handleKeyDown: handleModalKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,
