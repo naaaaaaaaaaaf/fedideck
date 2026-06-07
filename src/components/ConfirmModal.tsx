@@ -57,6 +57,7 @@ export function ConfirmModal({
             onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
             aria-labelledby="confirm-modal-title"
             aria-describedby="confirm-modal-message"
         >

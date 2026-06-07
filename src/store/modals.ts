@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { mastodon } from 'masto';
-import type { ImageViewerImage } from '../components/ImageViewer';
+import type { ImageViewerImage } from '../types/image';
 import type { VideoViewerVideo } from '../types/video';
 import type { AudioViewerTrack } from '../types/audio';
 
@@ -207,9 +207,14 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     pushProfile: (account, accountSessionId) => {
         set((state) => {
             const stack = [...state.stack];
-            // If top entry is a profile for the same account id, replace it
+            // If top entry is a profile for the same account + session, replace it
             const top = stack[stack.length - 1];
-            if (top && top.type === 'profile' && top.account.id === account.id) {
+            if (
+                top &&
+                top.type === 'profile' &&
+                top.account.id === account.id &&
+                top.accountSessionId === accountSessionId
+            ) {
                 stack[stack.length - 1] = {
                     ...top,
                     account,
@@ -286,10 +291,15 @@ export const useModalsStore = create<ModalsState>()((set) => ({
         }));
     },
 
-    // ── Overlays ──────────────────────────────────────────────────────────
+    // ── Overlays (mutually exclusive — opening one closes others) ──────────
 
     openCompose: (data) => {
-        set({ compose: data });
+        set({
+            compose: data,
+            imageViewer: null,
+            videoViewer: null,
+            audioPlayer: null,
+        });
     },
 
     closeCompose: () => {
@@ -297,7 +307,15 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     },
 
     openConfirm: (data) => {
-        set({ confirm: data, confirmLoading: false, confirmError: null });
+        set({
+            confirm: data,
+            confirmLoading: false,
+            confirmError: null,
+            compose: null,
+            imageViewer: null,
+            videoViewer: null,
+            audioPlayer: null,
+        });
     },
 
     closeConfirm: () => {
@@ -308,7 +326,12 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     },
 
     openImageViewer: (images, index) => {
-        set({ imageViewer: { images, initialIndex: index, key: nextViewerKey() } });
+        set({
+            imageViewer: { images, initialIndex: index, key: nextViewerKey() },
+            compose: null,
+            videoViewer: null,
+            audioPlayer: null,
+        });
     },
 
     closeImageViewer: () => {
@@ -316,7 +339,12 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     },
 
     openVideoViewer: (videos, index) => {
-        set({ videoViewer: { videos, initialIndex: index, key: nextViewerKey() } });
+        set({
+            videoViewer: { videos, initialIndex: index, key: nextViewerKey() },
+            compose: null,
+            imageViewer: null,
+            audioPlayer: null,
+        });
     },
 
     closeVideoViewer: () => {
@@ -324,17 +352,22 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     },
 
     openAudioPlayer: (tracks, index) => {
-        set({ audioPlayer: { tracks, initialIndex: index, key: nextViewerKey() } });
+        set({
+            audioPlayer: { tracks, initialIndex: index, key: nextViewerKey() },
+            compose: null,
+            imageViewer: null,
+            videoViewer: null,
+        });
     },
 
     closeAudioPlayer: () => {
         set({ audioPlayer: null });
     },
 
-    // ── Utility ───────────────────────────────────────────────────────────
+    // ── Utility (mutually exclusive with each other) ───────────────────────
 
     openLogin: () => {
-        set({ isLoginOpen: true });
+        set({ isLoginOpen: true, isAddColumnOpen: false });
     },
 
     closeLogin: () => {
@@ -342,7 +375,7 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     },
 
     openAddColumn: () => {
-        set({ isAddColumnOpen: true });
+        set({ isAddColumnOpen: true, isLoginOpen: false });
     },
 
     closeAddColumn: () => {

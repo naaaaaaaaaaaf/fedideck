@@ -481,6 +481,7 @@ export function VideoViewer({
             onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
             aria-label="動画ビューアー"
         >
             {/* Backdrop */}

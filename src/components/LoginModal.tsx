@@ -10,12 +10,20 @@ interface LoginModalProps {
     isOpen: boolean;
     onClose: () => void;
     canClose?: boolean;
+    /** Whether this modal is the active (top-most) overlay */
+    isActive?: boolean;
     zIndex?: number;
 }
 
 type Step = 'instance' | 'authorize' | 'code';
 
-export function LoginModal({ isOpen, onClose, canClose = true, zIndex }: LoginModalProps) {
+export function LoginModal({
+    isOpen,
+    onClose,
+    canClose = true,
+    isActive = true,
+    zIndex,
+}: LoginModalProps) {
     const [step, setStep] = useState<Step>('instance');
     const [instanceUrl, setInstanceUrl] = useState('');
     const [authUrl, setAuthUrl] = useState('');
@@ -110,11 +118,12 @@ export function LoginModal({ isOpen, onClose, canClose = true, zIndex }: LoginMo
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 flex items-center justify-center p-4"
             style={zIndex != null ? { zIndex } : undefined}
-            onKeyDown={handleKeyDown}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
             aria-labelledby="login-modal-title"
         >
             {/* Backdrop */}

@@ -376,6 +376,7 @@ export function ComposeModal({
             onKeyDown={isActive ? handleModalKeyDown : undefined}
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
             aria-labelledby="compose-modal-title"
         >
             {/* Backdrop */}

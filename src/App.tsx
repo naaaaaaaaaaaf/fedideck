@@ -304,13 +304,24 @@ function App() {
         shouldShowLoginModal ||
         isAddColumnOpen;
 
-    // Only the topmost overlay should have aria-modal and focus trap active
-    const isUtilityActive = shouldShowLoginModal || isAddColumnOpen;
-    const isConfirmActive = !!confirm && !isUtilityActive;
-    const isOverlayActive =
-        (!!compose || !!imageViewer || !!videoViewer || !!audioPlayer) &&
-        !confirm &&
-        !isUtilityActive;
+    // Only the topmost overlay should have aria-modal and focus trap active.
+    // Overlay slots are mutually exclusive in the store, so at most one is open.
+    // Priority: utility > confirm > viewers > compose.
+    const activeOverlay = isAddColumnOpen
+        ? 'addColumn'
+        : shouldShowLoginModal
+          ? 'login'
+          : confirm
+            ? 'confirm'
+            : audioPlayer
+              ? 'audio'
+              : videoViewer
+                ? 'video'
+                : imageViewer
+                  ? 'image'
+                  : compose
+                    ? 'compose'
+                    : null;
 
     const renderStackEntry = (entry: StackEntry, index: number) => {
         const zIndex = Z_INDEX.stackBase + index;
@@ -412,7 +423,7 @@ function App() {
             {/* Overlay: Compose */}
             <ComposeModal
                 isOpen={!!compose}
-                isActive={isOverlayActive}
+                isActive={activeOverlay === 'compose'}
                 onClose={() => useModalsStore.getState().closeCompose()}
                 replyToStatus={compose?.mode === 'reply' ? compose.replyToStatus : undefined}
                 quoteToStatus={compose?.mode === 'quote' ? compose.quoteToStatus : undefined}
@@ -425,7 +436,7 @@ function App() {
             {/* Overlay: Confirm */}
             <ConfirmModal
                 isOpen={!!confirm}
-                isActive={isConfirmActive}
+                isActive={activeOverlay === 'confirm'}
                 onClose={() => useModalsStore.getState().closeConfirm()}
                 onConfirm={handleStatusDeleteConfirm}
                 title="投稿を削除"
@@ -442,7 +453,7 @@ function App() {
                 <ImageViewer
                     key={`image-viewer-${imageViewer.key}`}
                     isOpen={true}
-                    isActive={isOverlayActive}
+                    isActive={activeOverlay === 'image'}
                     onClose={() => useModalsStore.getState().closeImageViewer()}
                     images={imageViewer.images}
                     initialIndex={imageViewer.initialIndex}
@@ -453,7 +464,7 @@ function App() {
                 <VideoViewer
                     key={`video-viewer-${videoViewer.key}`}
                     isOpen={true}
-                    isActive={isOverlayActive}
+                    isActive={activeOverlay === 'video'}
                     onClose={() => useModalsStore.getState().closeVideoViewer()}
                     videos={videoViewer.videos}
                     initialIndex={videoViewer.initialIndex}
@@ -464,7 +475,7 @@ function App() {
                 <AudioPlayer
                     key={`audio-player-${audioPlayer.key}`}
                     isOpen={true}
-                    isActive={isOverlayActive}
+                    isActive={activeOverlay === 'audio'}
                     onClose={() => useModalsStore.getState().closeAudioPlayer()}
                     tracks={audioPlayer.tracks}
                     initialIndex={audioPlayer.initialIndex}
@@ -475,6 +486,7 @@ function App() {
             {/* Utility modals */}
             <LoginModal
                 isOpen={shouldShowLoginModal}
+                isActive={activeOverlay === 'login'}
                 onClose={() => useModalsStore.getState().closeLogin()}
                 canClose={accounts.length > 0}
                 zIndex={Z_INDEX.utility}
@@ -482,6 +494,7 @@ function App() {
             <AddColumnModal
                 key={isAddColumnOpen ? 'open' : 'closed'}
                 isOpen={isAddColumnOpen}
+                isActive={activeOverlay === 'addColumn'}
                 onClose={() => useModalsStore.getState().closeAddColumn()}
                 zIndex={Z_INDEX.utility}
             />

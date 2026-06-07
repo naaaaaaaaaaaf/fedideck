@@ -56,13 +56,13 @@ describe('useModalsStore', () => {
             }
         });
 
-        it('replaces top profile when same account id', () => {
+        it('replaces top profile when same account id and session', () => {
             useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
             // Push another profile on top
             useModalsStore.getState().pushProfile(mockAccount('a2'), 'acct-2');
-            // Now push a2 again - should replace top
+            // Now push a2 again with same session - should replace top
             const a2Updated = mockAccount('a2');
-            useModalsStore.getState().pushProfile(a2Updated, 'acct-3');
+            useModalsStore.getState().pushProfile(a2Updated, 'acct-2');
 
             const { stack } = useModalsStore.getState();
             expect(stack).toHaveLength(2);
@@ -70,7 +70,7 @@ describe('useModalsStore', () => {
             expect(top.type).toBe('profile');
             if (top.type === 'profile') {
                 expect(top.account).toBe(a2Updated);
-                expect(top.accountSessionId).toBe('acct-3');
+                expect(top.accountSessionId).toBe('acct-2');
             }
         });
 
@@ -81,6 +81,15 @@ describe('useModalsStore', () => {
             // pushProfile with different account should just push, not replace
             const account = mockAccount('a1');
             useModalsStore.getState().pushProfile(account, undefined);
+
+            const { stack } = useModalsStore.getState();
+            expect(stack).toHaveLength(2);
+        });
+
+        it('does not replace top profile when same account id but different session', () => {
+            useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
+            // Same account id, different session — should push, not replace
+            useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-2');
 
             const { stack } = useModalsStore.getState();
             expect(stack).toHaveLength(2);
@@ -236,6 +245,23 @@ describe('useModalsStore', () => {
                 accountSessionId: 'acct-1',
             });
             expect(useModalsStore.getState().stack).toHaveLength(2);
+        });
+
+        it('removeStatusFromStack only removes entries for matching accountSessionId', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-2');
+
+            useModalsStore.getState().removeStatusFromStack({
+                statusId: 's1',
+                accountSessionId: 'acct-1',
+            });
+
+            const stack = useModalsStore.getState().stack;
+            expect(stack).toHaveLength(1);
+            expect(stack[0].type).toBe('statusDetail');
+            if (stack[0].type === 'statusDetail') {
+                expect(stack[0].accountSessionId).toBe('acct-2');
+            }
         });
     });
 

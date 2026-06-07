@@ -2,11 +2,8 @@ import { useState, useRef, useCallback } from 'react';
 import { LuX, LuChevronLeft, LuChevronRight } from 'react-icons/lu';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 
-export interface ImageViewerImage {
-    url: string;
-    previewUrl?: string;
-    description?: string;
-}
+export type { ImageViewerImage } from '../types/image';
+import type { ImageViewerImage } from '../types/image';
 
 export interface ImageViewerProps {
     isOpen: boolean;
@@ -109,6 +106,7 @@ export function ImageViewer({
             onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
             aria-label="画像ビューアー"
         >
             {/* Backdrop */}
