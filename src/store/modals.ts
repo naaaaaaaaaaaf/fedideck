@@ -117,8 +117,8 @@ interface ModalsState {
     pushProfile: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
     goBack: () => void;
     clearStack: () => void;
-    updateStackStatus: (statusId: string, status: mastodon.v1.Status) => void;
-    updateStackPoll: (statusId: string, poll: mastodon.v1.Poll) => void;
+    updateStackStatus: (ref: StatusRef, status: mastodon.v1.Status) => void;
+    updateStackPoll: (ref: StatusRef, poll: mastodon.v1.Poll) => void;
     removeStatusFromStack: (ref: StatusRef) => void;
 
     // Actions – Overlays
@@ -249,42 +249,50 @@ export const useModalsStore = create<ModalsState>()((set) => ({
         set({ stack: [] });
     },
 
-    /** Update a status inside stack entries (used after edit/favorite/reblog) */
-    updateStackStatus: (statusId, status) => {
+    /** Update a status inside stack entries (scoped by account to prevent cross-account leaks) */
+    updateStackStatus: (ref, status) => {
         set((state) => ({
             stack: state.stack.map((entry) => {
-                if (entry.type === 'statusDetail') {
-                    // Direct match — replace the entire status
-                    if (entry.status.id === statusId) {
-                        return { ...entry, status };
-                    }
-                    // Reblog wrapper match — keep wrapper, update reblog only
-                    if (entry.status.reblog?.id === statusId) {
-                        return { ...entry, status: { ...entry.status, reblog: status } };
-                    }
+                if (
+                    entry.type !== 'statusDetail' ||
+                    entry.accountSessionId !== ref.accountSessionId
+                ) {
+                    return entry;
+                }
+                // Direct match — replace the entire status
+                if (entry.status.id === ref.statusId) {
+                    return { ...entry, status };
+                }
+                // Reblog wrapper match — keep wrapper, update reblog only
+                if (entry.status.reblog?.id === ref.statusId) {
+                    return { ...entry, status: { ...entry.status, reblog: status } };
                 }
                 return entry;
             }),
         }));
     },
 
-    /** Update only the poll field in a stack entry status (preserves concurrent edits) */
-    updateStackPoll: (statusId: string, poll: mastodon.v1.Poll) => {
+    /** Update only the poll field in a stack entry status (scoped by account) */
+    updateStackPoll: (ref: StatusRef, poll: mastodon.v1.Poll) => {
         set((state) => ({
             stack: state.stack.map((entry) => {
-                if (entry.type === 'statusDetail') {
-                    if (entry.status.id === statusId) {
-                        return { ...entry, status: { ...entry.status, poll } };
-                    }
-                    if (entry.status.reblog?.id === statusId) {
-                        return {
-                            ...entry,
-                            status: {
-                                ...entry.status,
-                                reblog: { ...entry.status.reblog, poll },
-                            },
-                        };
-                    }
+                if (
+                    entry.type !== 'statusDetail' ||
+                    entry.accountSessionId !== ref.accountSessionId
+                ) {
+                    return entry;
+                }
+                if (entry.status.id === ref.statusId) {
+                    return { ...entry, status: { ...entry.status, poll } };
+                }
+                if (entry.status.reblog?.id === ref.statusId) {
+                    return {
+                        ...entry,
+                        status: {
+                            ...entry.status,
+                            reblog: { ...entry.status.reblog, poll },
+                        },
+                    };
                 }
                 return entry;
             }),

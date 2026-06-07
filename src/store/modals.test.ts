@@ -139,7 +139,9 @@ describe('useModalsStore', () => {
             const updated = mockStatus('s1');
             (updated as { content: string }).content = 'edited';
 
-            useModalsStore.getState().updateStackStatus('s1', updated);
+            useModalsStore
+                .getState()
+                .updateStackStatus({ statusId: 's1', accountSessionId: 'acct-1' }, updated);
 
             const { stack } = useModalsStore.getState();
             expect(stack).toHaveLength(1);
@@ -151,7 +153,12 @@ describe('useModalsStore', () => {
         it('updateStackStatus does not affect profile entries', () => {
             useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
 
-            useModalsStore.getState().updateStackStatus('s1', mockStatus('s1'));
+            useModalsStore
+                .getState()
+                .updateStackStatus(
+                    { statusId: 's1', accountSessionId: 'acct-1' },
+                    mockStatus('s1')
+                );
 
             const { stack } = useModalsStore.getState();
             expect(stack).toHaveLength(1);
@@ -168,7 +175,9 @@ describe('useModalsStore', () => {
 
             const updated = mockStatus('s1');
             (updated as { content: string }).content = 'edited-reblog';
-            useModalsStore.getState().updateStackStatus('s1', updated);
+            useModalsStore
+                .getState()
+                .updateStackStatus({ statusId: 's1', accountSessionId: 'acct-1' }, updated);
 
             const { stack } = useModalsStore.getState();
             if (stack[0].type === 'statusDetail') {
@@ -183,7 +192,9 @@ describe('useModalsStore', () => {
             useModalsStore.getState().pushStatusDetail(status, 'acct-1');
 
             const newPoll = { id: 'p1', voted: true } as mastodon.v1.Poll;
-            useModalsStore.getState().updateStackPoll('s1', newPoll);
+            useModalsStore
+                .getState()
+                .updateStackPoll({ statusId: 's1', accountSessionId: 'acct-1' }, newPoll);
 
             const { stack } = useModalsStore.getState();
             if (stack[0].type === 'statusDetail') {
@@ -200,11 +211,66 @@ describe('useModalsStore', () => {
             useModalsStore.getState().pushStatusDetail(wrapper, 'acct-1');
 
             const newPoll = { id: 'p1', voted: true } as mastodon.v1.Poll;
-            useModalsStore.getState().updateStackPoll('s1', newPoll);
+            useModalsStore
+                .getState()
+                .updateStackPoll({ statusId: 's1', accountSessionId: 'acct-1' }, newPoll);
 
             const { stack } = useModalsStore.getState();
             if (stack[0].type === 'statusDetail') {
                 expect(stack[0].status.reblog?.poll).toBe(newPoll);
+            }
+        });
+
+        it('updateStackStatus does not leak across accounts', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-2');
+
+            const updated = mockStatus('s1');
+            (updated as { content: string }).content = 'edited-acct1';
+            useModalsStore
+                .getState()
+                .updateStackStatus({ statusId: 's1', accountSessionId: 'acct-1' }, updated);
+
+            const { stack } = useModalsStore.getState();
+            // acct-1 entry should be updated
+            const acct1Entry = stack.find(
+                (e) => e.type === 'statusDetail' && e.accountSessionId === 'acct-1'
+            );
+            if (acct1Entry?.type === 'statusDetail') {
+                expect(acct1Entry.status.content).toBe('edited-acct1');
+            }
+            // acct-2 entry should remain unchanged
+            const acct2Entry = stack.find(
+                (e) => e.type === 'statusDetail' && e.accountSessionId === 'acct-2'
+            );
+            if (acct2Entry?.type === 'statusDetail') {
+                expect(acct2Entry.status.content).not.toBe('edited-acct1');
+            }
+        });
+
+        it('updateStackPoll does not leak across accounts', () => {
+            const status1 = { ...mockStatus('s1'), poll: { id: 'p1' } } as mastodon.v1.Status;
+            const status2 = { ...mockStatus('s1'), poll: { id: 'p1' } } as mastodon.v1.Status;
+            useModalsStore.getState().pushStatusDetail(status1, 'acct-1');
+            useModalsStore.getState().pushStatusDetail(status2, 'acct-2');
+
+            const newPoll = { id: 'p1', voted: true } as mastodon.v1.Poll;
+            useModalsStore
+                .getState()
+                .updateStackPoll({ statusId: 's1', accountSessionId: 'acct-1' }, newPoll);
+
+            const { stack } = useModalsStore.getState();
+            const acct1Entry = stack.find(
+                (e) => e.type === 'statusDetail' && e.accountSessionId === 'acct-1'
+            );
+            if (acct1Entry?.type === 'statusDetail') {
+                expect(acct1Entry.status.poll).toBe(newPoll);
+            }
+            const acct2Entry = stack.find(
+                (e) => e.type === 'statusDetail' && e.accountSessionId === 'acct-2'
+            );
+            if (acct2Entry?.type === 'statusDetail') {
+                expect(acct2Entry.status.poll).not.toBe(newPoll);
             }
         });
 

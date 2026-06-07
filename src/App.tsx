@@ -202,9 +202,16 @@ function App() {
 
     // Handle successful status edit
     const handleStatusEdited = useCallback(
-        (updatedStatus: mastodon.v1.Status) => {
+        (updatedStatus: mastodon.v1.Status, accountSessionId?: string) => {
             updateStatusGlobal(updatedStatus);
-            useModalsStore.getState().updateStackStatus(updatedStatus.id, updatedStatus);
+            if (accountSessionId) {
+                useModalsStore
+                    .getState()
+                    .updateStackStatus(
+                        { statusId: updatedStatus.id, accountSessionId },
+                        updatedStatus
+                    );
+            }
         },
         [updateStatusGlobal]
     );
@@ -274,20 +281,20 @@ function App() {
         }
     };
 
-    // Unified status update handler — updates both global streams and navigation stack
-    const handleStatusUpdate = useCallback(
+    // Unified status update handler — updates global streams only.
+    // Stack updates are scoped by account and done inline in renderStackEntry.
+    const handleStatusUpdateGlobal = useCallback(
         (updatedStatus: mastodon.v1.Status) => {
             updateStatusGlobal(updatedStatus);
-            useModalsStore.getState().updateStackStatus(updatedStatus.id, updatedStatus);
         },
         [updateStatusGlobal]
     );
 
-    // Handle poll updates - update global store and stack entries
-    const handlePollUpdate = useCallback(
+    // Handle poll updates - update global store only.
+    // Stack updates are scoped by account and done inline in renderStackEntry.
+    const handlePollUpdateGlobal = useCallback(
         (statusId: string, poll: mastodon.v1.Poll) => {
             updatePollGlobal(statusId, poll);
-            useModalsStore.getState().updateStackPoll(statusId, poll);
         },
         [updatePollGlobal]
     );
@@ -344,8 +351,27 @@ function App() {
                     onQuote={(status) => {
                         if (accountSession) handleQuote(status, accountSession.id);
                     }}
-                    onStatusUpdate={handleStatusUpdate}
-                    onPollUpdate={handlePollUpdate}
+                    onStatusUpdate={(updatedStatus) => {
+                        handleStatusUpdateGlobal(updatedStatus);
+                        useModalsStore
+                            .getState()
+                            .updateStackStatus(
+                                {
+                                    statusId: updatedStatus.id,
+                                    accountSessionId: entry.accountSessionId,
+                                },
+                                updatedStatus
+                            );
+                    }}
+                    onPollUpdate={(statusId, poll) => {
+                        handlePollUpdateGlobal(statusId, poll);
+                        useModalsStore
+                            .getState()
+                            .updateStackPoll(
+                                { statusId, accountSessionId: entry.accountSessionId },
+                                poll
+                            );
+                    }}
                     onStatusDelete={handleStatusDeleteRequest}
                     onStatusEdit={handleStatusEditRequest}
                     onImageClick={handleImageClick}
@@ -378,7 +404,18 @@ function App() {
                     onAccountClick={handleAccountClick}
                     onNsfwReveal={addNsfwRevealedStatusId}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
-                    onStatusUpdate={handleStatusUpdate}
+                    onStatusUpdate={(updatedStatus) => {
+                        handleStatusUpdateGlobal(updatedStatus);
+                        useModalsStore
+                            .getState()
+                            .updateStackStatus(
+                                {
+                                    statusId: updatedStatus.id,
+                                    accountSessionId: entry.accountSessionId,
+                                },
+                                updatedStatus
+                            );
+                    }}
                     onStatusDelete={handleStatusDeleteRequest}
                     onStatusEdit={handleStatusEditRequest}
                     deletedStatusRef={deletedStatusRef}
@@ -429,7 +466,9 @@ function App() {
                 quoteToStatus={compose?.mode === 'quote' ? compose.quoteToStatus : undefined}
                 accountId={compose?.accountId}
                 editTarget={compose?.mode === 'edit' ? compose.editTarget : undefined}
-                onStatusEdited={handleStatusEdited}
+                onStatusEdited={(updatedStatus) =>
+                    handleStatusEdited(updatedStatus, compose?.accountId)
+                }
                 zIndex={Z_INDEX.overlay}
             />
 
