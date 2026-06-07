@@ -9,8 +9,27 @@ import type { AudioViewerTrack } from '../types/audio';
 // ---------------------------------------------------------------------------
 
 export type StackEntry =
-    | { type: 'statusDetail'; status: mastodon.v1.Status; accountSessionId: string }
-    | { type: 'profile'; account: mastodon.v1.Account; accountSessionId: string | undefined };
+    | {
+          id: string;
+          type: 'statusDetail';
+          status: mastodon.v1.Status;
+          accountSessionId: string;
+      }
+    | {
+          id: string;
+          type: 'profile';
+          account: mastodon.v1.Account;
+          accountSessionId: string | undefined;
+      };
+
+// ---------------------------------------------------------------------------
+// Status Reference (scoped by accountSessionId)
+// ---------------------------------------------------------------------------
+
+export interface StatusRef {
+    statusId: string;
+    accountSessionId: string;
+}
 
 // ---------------------------------------------------------------------------
 // Overlay / Viewer Data Types
@@ -91,7 +110,7 @@ interface ModalsState {
     // Delete confirmation sub-state (moved from App.tsx)
     confirmLoading: boolean;
     confirmError: string | null;
-    deletedStatusId: string | undefined;
+    deletedStatusRef: StatusRef | undefined;
 
     // Actions – Navigation stack
     pushStatusDetail: (status: mastodon.v1.Status, accountSessionId: string) => void;
@@ -100,7 +119,7 @@ interface ModalsState {
     clearStack: () => void;
     updateStackStatus: (statusId: string, status: mastodon.v1.Status) => void;
     updateStackPoll: (statusId: string, poll: mastodon.v1.Poll) => void;
-    removeStatusFromStack: (statusId: string) => void;
+    removeStatusFromStack: (ref: StatusRef) => void;
 
     // Actions – Overlays
     openCompose: (data: ComposeData) => void;
@@ -123,10 +142,15 @@ interface ModalsState {
     // Actions – Confirm sub-state
     setConfirmLoading: (loading: boolean) => void;
     setConfirmError: (error: string | null) => void;
-    setDeletedStatusId: (id: string | undefined) => void;
+    setDeletedStatusRef: (ref: StatusRef | undefined) => void;
 }
 
-/** Auto-incrementing key counter for viewer remounts */
+/** Auto-incrementing counters for stable ids and viewer keys */
+let stackIdCounter = 0;
+function nextStackId(): string {
+    return `stack-${++stackIdCounter}`;
+}
+
 let viewerKeyCounter = 0;
 function nextViewerKey(): number {
     return ++viewerKeyCounter;
@@ -134,6 +158,18 @@ function nextViewerKey(): number {
 
 /** Maximum navigation stack depth */
 const MAX_STACK_DEPTH = 6;
+
+/** Check if a statusDetail entry matches a StatusRef (direct or reblog) */
+function statusDetailMatches(
+    entry: StackEntry,
+    ref: StatusRef
+): entry is StackEntry & { type: 'statusDetail' } {
+    return (
+        entry.type === 'statusDetail' &&
+        entry.accountSessionId === ref.accountSessionId &&
+        (entry.status.id === ref.statusId || entry.status.reblog?.id === ref.statusId)
+    );
+}
 
 export const useModalsStore = create<ModalsState>()((set) => ({
     // Navigation stack
@@ -153,7 +189,7 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     // Confirm sub-state
     confirmLoading: false,
     confirmError: null,
-    deletedStatusId: undefined,
+    deletedStatusRef: undefined,
 
     // ── Navigation stack ──────────────────────────────────────────────────
 
@@ -163,7 +199,7 @@ export const useModalsStore = create<ModalsState>()((set) => ({
             if (stack.length >= MAX_STACK_DEPTH) {
                 stack.shift(); // drop oldest
             }
-            stack.push({ type: 'statusDetail', status, accountSessionId });
+            stack.push({ id: nextStackId(), type: 'statusDetail', status, accountSessionId });
             return { stack };
         });
     },
@@ -174,26 +210,25 @@ export const useModalsStore = create<ModalsState>()((set) => ({
             // If top entry is a profile for the same account id, replace it
             const top = stack[stack.length - 1];
             if (top && top.type === 'profile' && top.account.id === account.id) {
-                stack[stack.length - 1] = { type: 'profile', account, accountSessionId };
+                stack[stack.length - 1] = {
+                    ...top,
+                    account,
+                    accountSessionId,
+                };
             } else {
                 if (stack.length >= MAX_STACK_DEPTH) {
                     stack.shift();
                 }
-                stack.push({ type: 'profile', account, accountSessionId });
+                stack.push({ id: nextStackId(), type: 'profile', account, accountSessionId });
             }
             return { stack };
         });
     },
 
-    /** Remove all statusDetail entries referencing the given status id (direct or reblog) */
-    removeStatusFromStack: (statusId: string) => {
+    /** Remove all statusDetail entries matching the given StatusRef (direct or reblog) */
+    removeStatusFromStack: (ref: StatusRef) => {
         set((state) => ({
-            stack: state.stack.filter((entry) => {
-                if (entry.type === 'statusDetail') {
-                    return entry.status.id !== statusId && entry.status.reblog?.id !== statusId;
-                }
-                return true;
-            }),
+            stack: state.stack.filter((entry) => !statusDetailMatches(entry, ref)),
         }));
     },
 
@@ -209,7 +244,7 @@ export const useModalsStore = create<ModalsState>()((set) => ({
         set({ stack: [] });
     },
 
-    /** Update a status inside stack entries (used after edit) */
+    /** Update a status inside stack entries (used after edit/favorite/reblog) */
     updateStackStatus: (statusId, status) => {
         set((state) => ({
             stack: state.stack.map((entry) => {
@@ -324,7 +359,7 @@ export const useModalsStore = create<ModalsState>()((set) => ({
         set({ confirmError: error });
     },
 
-    setDeletedStatusId: (id) => {
-        set({ deletedStatusId: id });
+    setDeletedStatusRef: (ref) => {
+        set({ deletedStatusRef: ref });
     },
 }));

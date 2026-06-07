@@ -8,6 +8,8 @@ export interface AudioPlayerProps {
     onClose: () => void;
     tracks: AudioViewerTrack[];
     initialIndex?: number;
+    /** Whether this modal is the active (top-most) overlay */
+    isActive?: boolean;
     zIndex?: number;
 }
 
@@ -20,6 +22,7 @@ export function AudioPlayer({
     onClose,
     tracks,
     initialIndex = 0,
+    isActive = true,
     zIndex,
 }: AudioPlayerProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -332,9 +335,9 @@ export function AudioPlayer({
         <div
             className="fixed inset-0 flex items-center justify-center"
             style={zIndex != null ? { zIndex } : undefined}
-            onKeyDown={handleKeyDown}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
             aria-label="オーディオプレーヤー"
         >
             {/* Backdrop */}

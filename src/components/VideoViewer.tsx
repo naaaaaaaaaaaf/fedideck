@@ -18,6 +18,8 @@ export interface VideoViewerProps {
     onClose: () => void;
     videos: VideoViewerVideo[];
     initialIndex?: number;
+    /** Whether this modal is the active (top-most) overlay */
+    isActive?: boolean;
     zIndex?: number;
 }
 
@@ -26,6 +28,7 @@ export function VideoViewer({
     onClose,
     videos,
     initialIndex = 0,
+    isActive = true,
     zIndex,
 }: VideoViewerProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -475,9 +478,9 @@ export function VideoViewer({
         <div
             className="fixed inset-0 flex items-center justify-center"
             style={zIndex != null ? { zIndex } : undefined}
-            onKeyDown={handleKeyDown}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
             aria-label="動画ビューアー"
         >
             {/* Backdrop */}

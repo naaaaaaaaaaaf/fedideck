@@ -13,6 +13,8 @@ export interface ImageViewerProps {
     onClose: () => void;
     images: ImageViewerImage[];
     initialIndex?: number;
+    /** Whether this modal is the active (top-most) overlay */
+    isActive?: boolean;
     zIndex?: number;
 }
 
@@ -21,6 +23,7 @@ export function ImageViewer({
     onClose,
     images,
     initialIndex = 0,
+    isActive = true,
     zIndex,
 }: ImageViewerProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -103,9 +106,9 @@ export function ImageViewer({
         <div
             className="fixed inset-0 flex items-center justify-center"
             style={zIndex != null ? { zIndex } : undefined}
-            onKeyDown={handleKeyDown}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
             aria-label="画像ビューアー"
         >
             {/* Backdrop */}

@@ -569,6 +569,7 @@ export function StatusDetailModal({
             onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
             aria-labelledby="status-detail-title"
         >
             {/* Backdrop */}

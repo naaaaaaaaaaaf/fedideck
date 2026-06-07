@@ -57,9 +57,9 @@ interface ProfileModalProps {
     onStatusDelete?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onStatusEdit?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     supportsQuotes?: boolean;
-    /** ID of status that was just deleted, used to remove from local list */
-    deletedStatusId?: string;
-    /** Called when deletedStatusId has been consumed by this modal */
+    /** Reference to a deleted status (scoped by account) to remove from local list */
+    deletedStatusRef?: { statusId: string; accountSessionId: string };
+    /** Called when this modal has consumed the deleted status ref */
     onDeletedStatusConsumed?: () => void;
     /** Whether this modal is the active (top-most) modal that should capture focus and handle Escape */
     isActive?: boolean;
@@ -84,7 +84,7 @@ export function ProfileModal({
     onStatusDelete,
     onStatusEdit,
     supportsQuotes = false,
-    deletedStatusId,
+    deletedStatusRef,
     onDeletedStatusConsumed,
     isActive = true,
     zIndex,
@@ -696,16 +696,16 @@ export function ProfileModal({
 
     // Remove deleted status from local list when deletion succeeds
     useEffect(() => {
-        if (deletedStatusId) {
+        if (deletedStatusRef) {
             setStatuses((prev) => {
-                const newStatuses = prev.filter((s) => s.id !== deletedStatusId);
+                const newStatuses = prev.filter((s) => s.id !== deletedStatusRef.statusId);
                 statusesRef.current = newStatuses;
                 return newStatuses;
             });
-            // Notify parent that this status ID has been consumed
+            // Notify parent that this status ref has been consumed
             onDeletedStatusConsumed?.();
         }
-    }, [deletedStatusId, onDeletedStatusConsumed]);
+    }, [deletedStatusRef, onDeletedStatusConsumed]);
 
     if (!isOpen || !account) {
         return null;
@@ -720,6 +720,7 @@ export function ProfileModal({
             onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
             aria-labelledby="profile-modal-title"
         >
             {/* Backdrop */}

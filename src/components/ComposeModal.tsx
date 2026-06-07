@@ -51,6 +51,8 @@ interface ComposeModalProps {
     accountId?: string; // If provided (reply/quote), lock to this account; otherwise allow switching
     editTarget?: EditTarget;
     onStatusEdited?: (status: mastodon.v1.Status) => void;
+    /** Whether this modal is the active (top-most) overlay */
+    isActive?: boolean;
     zIndex?: number;
 }
 
@@ -85,6 +87,7 @@ export function ComposeModal({
     accountId,
     editTarget,
     onStatusEdited,
+    isActive = true,
     zIndex,
 }: ComposeModalProps) {
     const [content, setContent] = useState('');
@@ -370,9 +373,9 @@ export function ComposeModal({
         <div
             className="fixed inset-0 flex items-center justify-center"
             style={zIndex != null ? { zIndex } : undefined}
-            onKeyDown={handleModalKeyDown}
+            onKeyDown={isActive ? handleModalKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
             aria-labelledby="compose-modal-title"
         >
             {/* Backdrop */}

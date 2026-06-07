@@ -13,6 +13,8 @@ interface ConfirmModalProps {
     variant?: 'danger' | 'default';
     isLoading?: boolean;
     error?: string | null;
+    /** Whether this modal is the active (top-most) overlay */
+    isActive?: boolean;
     zIndex?: number;
 }
 
@@ -27,6 +29,7 @@ export function ConfirmModal({
     variant = 'default',
     isLoading = false,
     error = null,
+    isActive = true,
     zIndex,
 }: ConfirmModalProps) {
     const modalRef = useRef<HTMLDivElement>(null);
@@ -51,9 +54,9 @@ export function ConfirmModal({
         <div
             className="fixed inset-0 flex items-center justify-center"
             style={zIndex != null ? { zIndex } : undefined}
-            onKeyDown={handleKeyDown}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
             aria-labelledby="confirm-modal-title"
             aria-describedby="confirm-modal-message"
         >

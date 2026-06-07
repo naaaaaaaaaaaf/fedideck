@@ -25,6 +25,14 @@ import { initStreamManager } from './streaming/streamManager';
 // NSFW cache size limit for LRU eviction
 const MAX_NSFW_CACHE_SIZE = 100;
 
+// Z-index constants for modal layers
+const Z_INDEX = {
+    stackBase: 50,
+    overlay: 70,
+    confirm: 75,
+    utility: 80,
+} as const;
+
 function App() {
     // NSFW revealed status IDs (for syncing between StatusCard and StatusDetailModal)
     // Use array for LRU cache - most recently revealed at the end
@@ -75,7 +83,7 @@ function App() {
     const isAddColumnOpen = useModalsStore((s) => s.isAddColumnOpen);
     const confirmLoading = useModalsStore((s) => s.confirmLoading);
     const confirmError = useModalsStore((s) => s.confirmError);
-    const deletedStatusId = useModalsStore((s) => s.deletedStatusId);
+    const deletedStatusRef = useModalsStore((s) => s.deletedStatusRef);
 
     // Ref to track if default columns have been added
     const hasAddedDefaultColumns = useRef(false);
@@ -245,10 +253,16 @@ function App() {
             removeStatusForAccountStreams(confirm.accountId, confirm.status.id);
 
             // Notify ProfileModal to remove deleted status from local list
-            store.setDeletedStatusId(confirm.status.id);
+            store.setDeletedStatusRef({
+                statusId: confirm.status.id,
+                accountSessionId: confirm.accountId,
+            });
 
-            // Remove all stack entries referencing the deleted status
-            useModalsStore.getState().removeStatusFromStack(confirm.status.id);
+            // Remove all stack entries referencing the deleted status (scoped by account)
+            useModalsStore.getState().removeStatusFromStack({
+                statusId: confirm.status.id,
+                accountSessionId: confirm.accountId,
+            });
         } catch (err) {
             store.setConfirmError((err as Error).message);
         } finally {
@@ -290,8 +304,16 @@ function App() {
         shouldShowLoginModal ||
         isAddColumnOpen;
 
+    // Only the topmost overlay should have aria-modal and focus trap active
+    const isUtilityActive = shouldShowLoginModal || isAddColumnOpen;
+    const isConfirmActive = !!confirm && !isUtilityActive;
+    const isOverlayActive =
+        (!!compose || !!imageViewer || !!videoViewer || !!audioPlayer) &&
+        !confirm &&
+        !isUtilityActive;
+
     const renderStackEntry = (entry: StackEntry, index: number) => {
-        const zIndex = 50 + index;
+        const zIndex = Z_INDEX.stackBase + index;
         const isStackTop = index === stack.length - 1;
         const isActive = isStackTop && !hasBlockingOverlay;
 
@@ -299,7 +321,7 @@ function App() {
             const accountSession = accounts.find((a) => a.id === entry.accountSessionId);
             return (
                 <StatusDetailModal
-                    key={`stack-${index}-detail-${entry.status.id}`}
+                    key={entry.id}
                     isOpen={isStackTop}
                     isActive={isActive}
                     onClose={useModalsStore.getState().goBack}
@@ -330,7 +352,7 @@ function App() {
             const accountSession = accounts.find((a) => a.id === entry.accountSessionId);
             return (
                 <ProfileModal
-                    key={`stack-${index}-profile-${entry.account.id}`}
+                    key={entry.id}
                     isOpen={isStackTop}
                     isActive={isActive}
                     onClose={useModalsStore.getState().goBack}
@@ -348,9 +370,9 @@ function App() {
                     onStatusUpdate={handleStatusUpdate}
                     onStatusDelete={handleStatusDeleteRequest}
                     onStatusEdit={handleStatusEditRequest}
-                    deletedStatusId={deletedStatusId}
+                    deletedStatusRef={deletedStatusRef}
                     onDeletedStatusConsumed={() =>
-                        useModalsStore.getState().setDeletedStatusId(undefined)
+                        useModalsStore.getState().setDeletedStatusRef(undefined)
                     }
                     zIndex={zIndex}
                 />
@@ -390,18 +412,20 @@ function App() {
             {/* Overlay: Compose */}
             <ComposeModal
                 isOpen={!!compose}
+                isActive={isOverlayActive}
                 onClose={() => useModalsStore.getState().closeCompose()}
                 replyToStatus={compose?.mode === 'reply' ? compose.replyToStatus : undefined}
                 quoteToStatus={compose?.mode === 'quote' ? compose.quoteToStatus : undefined}
                 accountId={compose?.accountId}
                 editTarget={compose?.mode === 'edit' ? compose.editTarget : undefined}
                 onStatusEdited={handleStatusEdited}
-                zIndex={70}
+                zIndex={Z_INDEX.overlay}
             />
 
             {/* Overlay: Confirm */}
             <ConfirmModal
                 isOpen={!!confirm}
+                isActive={isConfirmActive}
                 onClose={() => useModalsStore.getState().closeConfirm()}
                 onConfirm={handleStatusDeleteConfirm}
                 title="投稿を削除"
@@ -410,7 +434,7 @@ function App() {
                 variant="danger"
                 isLoading={confirmLoading}
                 error={confirmError}
-                zIndex={75}
+                zIndex={Z_INDEX.confirm}
             />
 
             {/* Viewers */}
@@ -418,30 +442,33 @@ function App() {
                 <ImageViewer
                     key={`image-viewer-${imageViewer.key}`}
                     isOpen={true}
+                    isActive={isOverlayActive}
                     onClose={() => useModalsStore.getState().closeImageViewer()}
                     images={imageViewer.images}
                     initialIndex={imageViewer.initialIndex}
-                    zIndex={70}
+                    zIndex={Z_INDEX.overlay}
                 />
             )}
             {videoViewer && (
                 <VideoViewer
                     key={`video-viewer-${videoViewer.key}`}
                     isOpen={true}
+                    isActive={isOverlayActive}
                     onClose={() => useModalsStore.getState().closeVideoViewer()}
                     videos={videoViewer.videos}
                     initialIndex={videoViewer.initialIndex}
-                    zIndex={70}
+                    zIndex={Z_INDEX.overlay}
                 />
             )}
             {audioPlayer && (
                 <AudioPlayer
                     key={`audio-player-${audioPlayer.key}`}
                     isOpen={true}
+                    isActive={isOverlayActive}
                     onClose={() => useModalsStore.getState().closeAudioPlayer()}
                     tracks={audioPlayer.tracks}
                     initialIndex={audioPlayer.initialIndex}
-                    zIndex={70}
+                    zIndex={Z_INDEX.overlay}
                 />
             )}
 
@@ -450,13 +477,13 @@ function App() {
                 isOpen={shouldShowLoginModal}
                 onClose={() => useModalsStore.getState().closeLogin()}
                 canClose={accounts.length > 0}
-                zIndex={80}
+                zIndex={Z_INDEX.utility}
             />
             <AddColumnModal
                 key={isAddColumnOpen ? 'open' : 'closed'}
                 isOpen={isAddColumnOpen}
                 onClose={() => useModalsStore.getState().closeAddColumn()}
-                zIndex={80}
+                zIndex={Z_INDEX.utility}
             />
         </div>
     );

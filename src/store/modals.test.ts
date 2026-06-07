@@ -23,7 +23,7 @@ describe('useModalsStore', () => {
             isAddColumnOpen: false,
             confirmLoading: false,
             confirmError: null,
-            deletedStatusId: undefined,
+            deletedStatusRef: undefined,
         });
     });
 
@@ -212,13 +212,17 @@ describe('useModalsStore', () => {
             expect(useModalsStore.getState().stack).toHaveLength(3);
 
             // Remove s1 — only first detail should be removed
-            useModalsStore.getState().removeStatusFromStack('s1');
+            useModalsStore
+                .getState()
+                .removeStatusFromStack({ statusId: 's1', accountSessionId: 'acct-1' });
             const afterFirst = useModalsStore.getState().stack;
             expect(afterFirst).toHaveLength(2);
             expect(afterFirst[0].type).toBe('profile');
 
             // Remove s2 — reblog wrapper detail should be removed
-            useModalsStore.getState().removeStatusFromStack('s2');
+            useModalsStore
+                .getState()
+                .removeStatusFromStack({ statusId: 's2', accountSessionId: 'acct-1' });
             expect(useModalsStore.getState().stack).toHaveLength(1);
             expect(useModalsStore.getState().stack[0].type).toBe('profile');
         });
@@ -227,7 +231,10 @@ describe('useModalsStore', () => {
             useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
             useModalsStore.getState().pushStatusDetail(mockStatus('s2'), 'acct-1');
 
-            useModalsStore.getState().removeStatusFromStack('s-nonexistent');
+            useModalsStore.getState().removeStatusFromStack({
+                statusId: 's-nonexistent',
+                accountSessionId: 'acct-1',
+            });
             expect(useModalsStore.getState().stack).toHaveLength(2);
         });
     });
@@ -341,12 +348,17 @@ describe('useModalsStore', () => {
     // ── Confirm sub-state ─────────────────────────────────────────────────
 
     describe('confirm sub-state', () => {
-        it('manages deletedStatusId', () => {
-            useModalsStore.getState().setDeletedStatusId('s1');
-            expect(useModalsStore.getState().deletedStatusId).toBe('s1');
+        it('manages deletedStatusRef', () => {
+            useModalsStore
+                .getState()
+                .setDeletedStatusRef({ statusId: 's1', accountSessionId: 'acct-1' });
+            expect(useModalsStore.getState().deletedStatusRef).toEqual({
+                statusId: 's1',
+                accountSessionId: 'acct-1',
+            });
 
-            useModalsStore.getState().setDeletedStatusId(undefined);
-            expect(useModalsStore.getState().deletedStatusId).toBeUndefined();
+            useModalsStore.getState().setDeletedStatusRef(undefined);
+            expect(useModalsStore.getState().deletedStatusRef).toBeUndefined();
         });
     });
 });
