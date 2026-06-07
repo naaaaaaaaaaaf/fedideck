@@ -141,12 +141,9 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                     [key]: {
                         ...current,
                         statuses: merged,
-                        // Preserve hasMore when no new items are added, but stop when client cap is reached
-                        hasMore: reachedCap
-                            ? false
-                            : incoming.length === 0
-                              ? current.hasMore
-                              : true,
+                        // Stop loading when no new items arrive (end of timeline or all duplicates)
+                        // to prevent infinite fetch loops
+                        hasMore: reachedCap ? false : incoming.length === 0 ? false : true,
                         isLoading: false,
                     },
                 },
@@ -387,12 +384,9 @@ export const useStreamsStore = create<StreamsState>()((set, get) => ({
                     [key]: {
                         ...current,
                         notifications: merged,
-                        // Preserve hasMore when no new items are added, but stop when client cap is reached
-                        hasMore: reachedCap
-                            ? false
-                            : incoming.length === 0
-                              ? current.hasMore
-                              : true,
+                        // Stop loading when no new items arrive (end of timeline or all duplicates)
+                        // to prevent infinite fetch loops
+                        hasMore: reachedCap ? false : incoming.length === 0 ? false : true,
                         isLoading: false,
                     },
                 },
