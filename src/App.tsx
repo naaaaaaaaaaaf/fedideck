@@ -64,7 +64,7 @@ function App() {
     const updatePollGlobal = useStreamsStore((s) => s.updatePollGlobal);
     const prependNotification = useStreamsStore((s) => s.prependNotification);
 
-    // Modal store selectors
+    // Modal store — data selectors only (actions via getState() to avoid full-store subscription)
     const stack = useModalsStore((s) => s.stack);
     const compose = useModalsStore((s) => s.compose);
     const confirm = useModalsStore((s) => s.confirm);
@@ -76,9 +76,6 @@ function App() {
     const confirmLoading = useModalsStore((s) => s.confirmLoading);
     const confirmError = useModalsStore((s) => s.confirmError);
     const deletedStatusId = useModalsStore((s) => s.deletedStatusId);
-
-    // Modal store actions
-    const modals = useModalsStore();
 
     // Ref to track if default columns have been added
     const hasAddedDefaultColumns = useRef(false);
@@ -142,101 +139,83 @@ function App() {
 
     // ── Handlers ──────────────────────────────────────────────────────────
 
-    const handleReply = useCallback(
-        (status: mastodon.v1.Status, accountId: string) => {
-            const account = status.account;
-            modals.openCompose({
-                replyToStatus: {
-                    id: status.id,
-                    acct: account.acct,
-                    displayName: account.displayName || account.username,
-                    content: status.content,
-                    avatar: account.avatar,
-                },
-                accountId,
-            });
-        },
-        [modals]
-    );
+    const handleReply = useCallback((status: mastodon.v1.Status, accountId: string) => {
+        const account = status.account;
+        useModalsStore.getState().openCompose({
+            replyToStatus: {
+                id: status.id,
+                acct: account.acct,
+                displayName: account.displayName || account.username,
+                content: status.content,
+                avatar: account.avatar,
+            },
+            accountId,
+        });
+    }, []);
 
-    const handleQuote = useCallback(
-        (status: mastodon.v1.Status, accountId: string) => {
-            const account = status.account;
-            modals.openCompose({
-                quoteToStatus: {
-                    id: status.id,
-                    acct: account.acct,
-                    displayName: account.displayName || account.username,
-                    content: status.content,
-                    avatar: account.avatar,
-                },
-                accountId,
-            });
-        },
-        [modals]
-    );
+    const handleQuote = useCallback((status: mastodon.v1.Status, accountId: string) => {
+        const account = status.account;
+        useModalsStore.getState().openCompose({
+            quoteToStatus: {
+                id: status.id,
+                acct: account.acct,
+                displayName: account.displayName || account.username,
+                content: status.content,
+                avatar: account.avatar,
+            },
+            accountId,
+        });
+    }, []);
 
-    const handleStatusClick = useCallback(
-        (status: mastodon.v1.Status, accountId: string) => {
-            modals.pushStatusDetail(status, accountId);
-        },
-        [modals]
-    );
+    const handleStatusClick = useCallback((status: mastodon.v1.Status, accountId: string) => {
+        useModalsStore.getState().pushStatusDetail(status, accountId);
+    }, []);
 
     const handleAccountClick = useCallback(
         (account: mastodon.v1.Account, accountSessionId: string | undefined) => {
-            modals.pushProfile(account, accountSessionId);
+            useModalsStore.getState().pushProfile(account, accountSessionId);
         },
-        [modals]
+        []
     );
 
     // Handle edit request from StatusCard/StatusDetailModal
     const handleStatusEditRequest = useCallback(
         (status: mastodon.v1.Status, accountSessionId: string) => {
-            modals.openCompose({
+            useModalsStore.getState().openCompose({
                 editTarget: { status, accountSessionId },
                 accountId: accountSessionId,
             });
         },
-        [modals]
+        []
     );
 
     // Handle successful status edit
     const handleStatusEdited = useCallback(
         (updatedStatus: mastodon.v1.Status) => {
             updateStatusGlobal(updatedStatus);
-            modals.updateStackStatus(updatedStatus.id, updatedStatus);
+            useModalsStore.getState().updateStackStatus(updatedStatus.id, updatedStatus);
         },
-        [updateStatusGlobal, modals]
+        [updateStatusGlobal]
     );
 
-    const handleImageClick = useCallback(
-        (images: ImageViewerImage[], index: number) => {
-            modals.openImageViewer(images, index);
-        },
-        [modals]
-    );
+    const handleImageClick = useCallback((images: ImageViewerImage[], index: number) => {
+        useModalsStore.getState().openImageViewer(images, index);
+    }, []);
 
-    const handleVideoClick = useCallback(
-        (videos: VideoViewerVideo[], index: number) => {
-            modals.openVideoViewer(videos, index);
-        },
-        [modals]
-    );
+    const handleVideoClick = useCallback((videos: VideoViewerVideo[], index: number) => {
+        useModalsStore.getState().openVideoViewer(videos, index);
+    }, []);
 
-    const handleAudioClick = useCallback(
-        (tracks: AudioViewerTrack[], index: number) => {
-            modals.openAudioPlayer(tracks, index);
-        },
-        [modals]
-    );
+    const handleAudioClick = useCallback((tracks: AudioViewerTrack[], index: number) => {
+        useModalsStore.getState().openAudioPlayer(tracks, index);
+    }, []);
 
     // Handle delete request from StatusCard - show confirmation modal
     const handleStatusDeleteRequest = useCallback(
         (status: mastodon.v1.Status, accountId: string) => {
-            modals.openConfirm({ status, accountId });
+            useModalsStore.getState().openConfirm({ status, accountId });
         },
-        [modals]
+        []
     );
 
     // Handle confirmed delete
@@ -245,14 +224,17 @@ function App() {
 
         const session = accounts.find((a) => a.id === confirm.accountId);
         if (!session) {
-            modals.setConfirmError(
-                'アカウントセッションが見つかりません。再度ログインしてください。'
-            );
+            useModalsStore
+                .getState()
+                .setConfirmError(
+                    'アカウントセッションが見つかりません。再度ログインしてください。'
+                );
             return;
         }
 
-        modals.setConfirmLoading(true);
-        modals.setConfirmError(null);
+        const store = useModalsStore.getState();
+        store.setConfirmLoading(true);
+        store.setConfirmError(null);
 
         try {
             const client = getClient(session);
@@ -260,24 +242,25 @@ function App() {
             removeStatusForAccountStreams(confirm.accountId, confirm.status.id);
 
             // Notify ProfileModal to remove deleted status from local list
-            modals.setDeletedStatusId(confirm.status.id);
+            store.setDeletedStatusId(confirm.status.id);
 
             // Close detail modal if viewing the deleted status
             const deletedId = confirm.status.id;
-            const topEntry = stack[stack.length - 1];
+            const currentStack = useModalsStore.getState().stack;
+            const topEntry = currentStack[currentStack.length - 1];
             if (
                 topEntry?.type === 'statusDetail' &&
                 (topEntry.status.id === deletedId || topEntry.status.reblog?.id === deletedId)
             ) {
-                modals.goBack();
+                store.goBack();
             }
         } catch (err) {
-            modals.setConfirmError((err as Error).message);
+            store.setConfirmError((err as Error).message);
         } finally {
             // Must reset loading BEFORE closing — closeConfirm is a no-op while loading
-            modals.setConfirmLoading(false);
+            useModalsStore.getState().setConfirmLoading(false);
             if (!useModalsStore.getState().confirmError) {
-                modals.closeConfirm();
+                useModalsStore.getState().closeConfirm();
             }
         }
     };
@@ -286,6 +269,7 @@ function App() {
     const handlePollUpdate = useCallback(
         (statusId: string, poll: mastodon.v1.Poll) => {
             updatePollGlobal(statusId, poll);
+            useModalsStore.getState().updateStackPoll(statusId, poll);
         },
         [updatePollGlobal]
     );
@@ -294,14 +278,15 @@ function App() {
 
     const renderStackEntry = (entry: StackEntry, index: number) => {
         const zIndex = 50 + index;
+        const isStackTop = index === stack.length - 1;
 
         if (entry.type === 'statusDetail') {
             const accountSession = accounts.find((a) => a.id === entry.accountSessionId);
             return (
                 <StatusDetailModal
-                    key={`detail-${entry.status.id}`}
-                    isOpen={true}
-                    onClose={modals.goBack}
+                    key={`stack-${index}-detail-${entry.status.id}`}
+                    isOpen={isStackTop}
+                    onClose={useModalsStore.getState().goBack}
                     status={entry.status}
                     accountSession={accountSession}
                     onReply={(status) => {
@@ -330,9 +315,9 @@ function App() {
             const accountSession = accounts.find((a) => a.id === entry.accountSessionId);
             return (
                 <ProfileModal
-                    key={`profile-${entry.account.id}`}
-                    isOpen={true}
-                    onClose={modals.goBack}
+                    key={`stack-${index}-profile-${entry.account.id}`}
+                    isOpen={isStackTop}
+                    onClose={useModalsStore.getState().goBack}
                     account={entry.account}
                     accountSession={accountSession}
                     onReply={handleReply}
@@ -359,11 +344,14 @@ function App() {
 
     return (
         <div className="h-screen flex overflow-hidden">
-            <Sidebar onAddAccount={modals.openLogin} onCompose={() => modals.openCompose({})} />
+            <Sidebar
+                onAddAccount={() => useModalsStore.getState().openLogin()}
+                onCompose={() => useModalsStore.getState().openCompose({})}
+            />
 
             <main className="flex-1 flex overflow-hidden">
                 <ColumnContainer
-                    onAddColumn={modals.openAddColumn}
+                    onAddColumn={() => useModalsStore.getState().openAddColumn()}
                     onReply={handleReply}
                     onQuote={handleQuote}
                     onStatusClick={handleStatusClick}
@@ -384,7 +372,7 @@ function App() {
             {/* Overlay: Compose */}
             <ComposeModal
                 isOpen={!!compose}
-                onClose={modals.closeCompose}
+                onClose={() => useModalsStore.getState().closeCompose()}
                 replyToStatus={compose?.replyToStatus}
                 quoteToStatus={compose?.quoteToStatus}
                 accountId={compose?.accountId}
@@ -396,7 +384,7 @@ function App() {
             {/* Overlay: Confirm */}
             <ConfirmModal
                 isOpen={!!confirm}
-                onClose={modals.closeConfirm}
+                onClose={() => useModalsStore.getState().closeConfirm()}
                 onConfirm={handleStatusDeleteConfirm}
                 title="投稿を削除"
                 message="この投稿を削除してもよろしいですか？この操作は取り消せません。"
@@ -412,7 +400,7 @@ function App() {
                 <ImageViewer
                     key={`image-viewer-${imageViewer.key}`}
                     isOpen={true}
-                    onClose={modals.closeImageViewer}
+                    onClose={() => useModalsStore.getState().closeImageViewer()}
                     images={imageViewer.images}
                     initialIndex={imageViewer.initialIndex}
                     zIndex={70}
@@ -422,7 +410,7 @@ function App() {
                 <VideoViewer
                     key={`video-viewer-${videoViewer.key}`}
                     isOpen={true}
-                    onClose={modals.closeVideoViewer}
+                    onClose={() => useModalsStore.getState().closeVideoViewer()}
                     videos={videoViewer.videos}
                     initialIndex={videoViewer.initialIndex}
                     zIndex={70}
@@ -432,7 +420,7 @@ function App() {
                 <AudioPlayer
                     key={`audio-player-${audioPlayer.key}`}
                     isOpen={true}
-                    onClose={modals.closeAudioPlayer}
+                    onClose={() => useModalsStore.getState().closeAudioPlayer()}
                     tracks={audioPlayer.tracks}
                     initialIndex={audioPlayer.initialIndex}
                     zIndex={70}
@@ -442,14 +430,14 @@ function App() {
             {/* Utility modals */}
             <LoginModal
                 isOpen={shouldShowLoginModal}
-                onClose={modals.closeLogin}
+                onClose={() => useModalsStore.getState().closeLogin()}
                 canClose={accounts.length > 0}
                 zIndex={80}
             />
             <AddColumnModal
                 key={isAddColumnOpen ? 'open' : 'closed'}
                 isOpen={isAddColumnOpen}
-                onClose={modals.closeAddColumn}
+                onClose={() => useModalsStore.getState().closeAddColumn()}
                 zIndex={80}
             />
         </div>

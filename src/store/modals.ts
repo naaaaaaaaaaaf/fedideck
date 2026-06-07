@@ -88,6 +88,7 @@ interface ModalsState {
     goBack: () => void;
     clearStack: () => void;
     updateStackStatus: (statusId: string, status: mastodon.v1.Status) => void;
+    updateStackPoll: (statusId: string, poll: mastodon.v1.Poll) => void;
 
     // Actions – Overlays
     openCompose: (data: ComposeData) => void;
@@ -184,12 +185,38 @@ export const useModalsStore = create<ModalsState>()((set) => ({
         set({ stack: [] });
     },
 
-    /** Update a status inside stack entries (used after edit / poll update) */
+    /** Update a status inside stack entries (used after edit) */
     updateStackStatus: (statusId, status) => {
         set((state) => ({
             stack: state.stack.map((entry) => {
-                if (entry.type === 'statusDetail' && entry.status.id === statusId) {
-                    return { ...entry, status };
+                if (entry.type === 'statusDetail') {
+                    // Direct match or reblog wrapper match
+                    if (entry.status.id === statusId || entry.status.reblog?.id === statusId) {
+                        return { ...entry, status };
+                    }
+                }
+                return entry;
+            }),
+        }));
+    },
+
+    /** Update only the poll field in a stack entry status (preserves concurrent edits) */
+    updateStackPoll: (statusId: string, poll: mastodon.v1.Poll) => {
+        set((state) => ({
+            stack: state.stack.map((entry) => {
+                if (entry.type === 'statusDetail') {
+                    if (entry.status.id === statusId) {
+                        return { ...entry, status: { ...entry.status, poll } };
+                    }
+                    if (entry.status.reblog?.id === statusId) {
+                        return {
+                            ...entry,
+                            status: {
+                                ...entry.status,
+                                reblog: { ...entry.status.reblog, poll },
+                            },
+                        };
+                    }
                 }
                 return entry;
             }),

@@ -148,6 +148,55 @@ describe('useModalsStore', () => {
             expect(stack).toHaveLength(1);
             expect(stack[0].type).toBe('profile');
         });
+
+        it('updateStackStatus matches reblog wrapper', () => {
+            const reblogStatus = mockStatus('s1');
+            const wrapper = {
+                ...mockStatus('w1'),
+                reblog: reblogStatus,
+            } as mastodon.v1.Status;
+            useModalsStore.getState().pushStatusDetail(wrapper, 'acct-1');
+
+            const updated = mockStatus('s1');
+            (updated as { content: string }).content = 'edited-reblog';
+            useModalsStore.getState().updateStackStatus('s1', updated);
+
+            const { stack } = useModalsStore.getState();
+            if (stack[0].type === 'statusDetail') {
+                // The entire wrapper status is replaced when its reblog matches
+                expect(stack[0].status.content).toBe('edited-reblog');
+            }
+        });
+
+        it('updateStackPoll updates direct match', () => {
+            const status = { ...mockStatus('s1'), poll: { id: 'p1' } } as mastodon.v1.Status;
+            useModalsStore.getState().pushStatusDetail(status, 'acct-1');
+
+            const newPoll = { id: 'p1', voted: true } as mastodon.v1.Poll;
+            useModalsStore.getState().updateStackPoll('s1', newPoll);
+
+            const { stack } = useModalsStore.getState();
+            if (stack[0].type === 'statusDetail') {
+                expect(stack[0].status.poll).toBe(newPoll);
+            }
+        });
+
+        it('updateStackPoll updates reblog match', () => {
+            const inner = { ...mockStatus('s1'), poll: { id: 'p1' } } as mastodon.v1.Status;
+            const wrapper = {
+                ...mockStatus('w1'),
+                reblog: inner,
+            } as mastodon.v1.Status;
+            useModalsStore.getState().pushStatusDetail(wrapper, 'acct-1');
+
+            const newPoll = { id: 'p1', voted: true } as mastodon.v1.Poll;
+            useModalsStore.getState().updateStackPoll('s1', newPoll);
+
+            const { stack } = useModalsStore.getState();
+            if (stack[0].type === 'statusDetail') {
+                expect(stack[0].status.reblog?.poll).toBe(newPoll);
+            }
+        });
     });
 
     // ── Overlays ──────────────────────────────────────────────────────────
