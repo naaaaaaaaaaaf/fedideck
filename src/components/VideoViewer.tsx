@@ -18,9 +18,16 @@ export interface VideoViewerProps {
     onClose: () => void;
     videos: VideoViewerVideo[];
     initialIndex?: number;
+    zIndex?: number;
 }
 
-export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: VideoViewerProps) {
+export function VideoViewer({
+    isOpen,
+    onClose,
+    videos,
+    initialIndex = 0,
+    zIndex,
+}: VideoViewerProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -467,6 +474,7 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
     return (
         <div
             className="fixed inset-0 z-[60] flex items-center justify-center"
+            style={zIndex != null ? { zIndex } : undefined}
             onKeyDown={handleKeyDown}
             role="dialog"
             aria-modal="true"

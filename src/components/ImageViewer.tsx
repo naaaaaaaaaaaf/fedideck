@@ -13,9 +13,16 @@ export interface ImageViewerProps {
     onClose: () => void;
     images: ImageViewerImage[];
     initialIndex?: number;
+    zIndex?: number;
 }
 
-export function ImageViewer({ isOpen, onClose, images, initialIndex = 0 }: ImageViewerProps) {
+export function ImageViewer({
+    isOpen,
+    onClose,
+    images,
+    initialIndex = 0,
+    zIndex,
+}: ImageViewerProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -95,6 +102,7 @@ export function ImageViewer({ isOpen, onClose, images, initialIndex = 0 }: Image
     return (
         <div
             className="fixed inset-0 z-[60] flex items-center justify-center"
+            style={zIndex != null ? { zIndex } : undefined}
             onKeyDown={handleKeyDown}
             role="dialog"
             aria-modal="true"

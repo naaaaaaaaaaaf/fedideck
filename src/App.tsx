@@ -5,44 +5,27 @@ import { Sidebar } from './components/Sidebar';
 import { ColumnContainer } from './deck/ColumnContainer';
 import { LoginModal } from './components/LoginModal';
 import { AddColumnModal } from './components/AddColumnModal';
-import {
-    ComposeModal,
-    type ReplyToStatus,
-    type EditTarget,
-    type QuoteToStatus,
-} from './components/ComposeModal';
+import { ComposeModal } from './components/ComposeModal';
 import { StatusDetailModal } from './components/StatusDetailModal';
 import { ProfileModal } from './components/ProfileModal';
-import { ImageViewer, type ImageViewerImage } from './components/ImageViewer';
+import { ImageViewer } from './components/ImageViewer';
 import { VideoViewer } from './components/VideoViewer';
 import { AudioPlayer } from './components/AudioPlayer';
 import { ConfirmModal } from './components/ConfirmModal';
+import type { ImageViewerImage } from './components/ImageViewer';
 import type { VideoViewerVideo } from './types/video';
 import type { AudioViewerTrack } from './types/audio';
 import { useAccountsStore } from './store/accounts';
-import type { AccountSession } from './api/mastoClient';
 import { getClient, deleteStatus } from './api/mastoClient';
 import { useColumnsStore } from './store/columns';
 import { useStreamsStore, getStreamKey } from './store/streams';
+import { useModalsStore, type StackEntry } from './store/modals';
 import { initStreamManager } from './streaming/streamManager';
-import { useInstanceConfig } from './hooks/useInstanceConfig';
 
 // NSFW cache size limit for LRU eviction
 const MAX_NSFW_CACHE_SIZE = 100;
 
 function App() {
-    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-    const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
-    const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
-    const [replyToStatus, setReplyToStatus] = useState<ReplyToStatus | undefined>(undefined);
-    const [replyAccountId, setReplyAccountId] = useState<string | undefined>(undefined);
-    const [quoteToStatus, setQuoteToStatus] = useState<QuoteToStatus | undefined>(undefined);
-    const [quoteAccountId, setQuoteAccountId] = useState<string | undefined>(undefined);
-    const [editTarget, setEditTarget] = useState<EditTarget | undefined>(undefined);
-    const [isStatusDetailOpen, setIsStatusDetailOpen] = useState(false);
-    const [detailStatus, setDetailStatus] = useState<mastodon.v1.Status | null>(null);
-    const [detailAccountSession, setDetailAccountSession] = useState<AccountSession | undefined>();
-
     // NSFW revealed status IDs (for syncing between StatusCard and StatusDetailModal)
     // Use array for LRU cache - most recently revealed at the end
     const [nsfwRevealedStatusIds, setNsfwRevealedStatusIds] = useState<string[]>([]);
@@ -69,46 +52,6 @@ function App() {
         });
     }, []);
 
-    // Profile modal state
-    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-    const [profileAccount, setProfileAccount] = useState<mastodon.v1.Account | null>(null);
-    const [profileAccountSession, setProfileAccountSession] = useState<
-        AccountSession | undefined
-    >();
-
-    // Instance config for ProfileModal (to determine supportsQuotes)
-    const { instanceConfig: profileInstanceConfig } = useInstanceConfig({
-        accountSession: profileAccountSession,
-        isOpen: isProfileModalOpen,
-    });
-
-    // ImageViewer state
-    const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
-    const [viewerImages, setViewerImages] = useState<ImageViewerImage[]>([]);
-    const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
-    const [imageViewerKey, setImageViewerKey] = useState(0);
-
-    // VideoViewer state
-    const [isVideoViewerOpen, setIsVideoViewerOpen] = useState(false);
-    const [viewerVideos, setViewerVideos] = useState<VideoViewerVideo[]>([]);
-    const [viewerInitialVideoIndex, setViewerInitialVideoIndex] = useState(0);
-    const [videoViewerKey, setVideoViewerKey] = useState(0);
-
-    // AudioPlayer state
-    const [isAudioPlayerOpen, setIsAudioPlayerOpen] = useState(false);
-    const [audioTracks, setAudioTracks] = useState<AudioViewerTrack[]>([]);
-    const [audioInitialIndex, setAudioInitialIndex] = useState(0);
-    const [audioPlayerKey, setAudioPlayerKey] = useState(0);
-
-    // Delete confirmation modal state
-    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-    const [deleteTargetStatus, setDeleteTargetStatus] = useState<mastodon.v1.Status | null>(null);
-    const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
-    const [isDeleteLoading, setIsDeleteLoading] = useState(false);
-    const [deleteError, setDeleteError] = useState<string | null>(null);
-    // Track deleted status ID to notify ProfileModal
-    const [deletedStatusId, setDeletedStatusId] = useState<string | undefined>(undefined);
-
     const loadFromStorage = useAccountsStore((state) => state.loadFromStorage);
     const accounts = useAccountsStore((state) => state.accounts);
     const columns = useColumnsStore((state) => state.columns);
@@ -120,6 +63,22 @@ function App() {
     const updateStatusGlobal = useStreamsStore((s) => s.updateStatusGlobal);
     const updatePollGlobal = useStreamsStore((s) => s.updatePollGlobal);
     const prependNotification = useStreamsStore((s) => s.prependNotification);
+
+    // Modal store selectors
+    const stack = useModalsStore((s) => s.stack);
+    const compose = useModalsStore((s) => s.compose);
+    const confirm = useModalsStore((s) => s.confirm);
+    const imageViewer = useModalsStore((s) => s.imageViewer);
+    const videoViewer = useModalsStore((s) => s.videoViewer);
+    const audioPlayer = useModalsStore((s) => s.audioPlayer);
+    const isLoginOpen = useModalsStore((s) => s.isLoginOpen);
+    const isAddColumnOpen = useModalsStore((s) => s.isAddColumnOpen);
+    const confirmLoading = useModalsStore((s) => s.confirmLoading);
+    const confirmError = useModalsStore((s) => s.confirmError);
+    const deletedStatusId = useModalsStore((s) => s.deletedStatusId);
+
+    // Modal store actions
+    const modals = useModalsStore();
 
     // Ref to track if default columns have been added
     const hasAddedDefaultColumns = useRef(false);
@@ -179,234 +138,230 @@ function App() {
     }, [accounts, columns.length, addColumn]);
 
     // Derive login modal open state - show when no accounts exist or user explicitly opens it
-    const shouldShowLoginModal = isLoginModalOpen || accounts.length === 0;
+    const shouldShowLoginModal = isLoginOpen || accounts.length === 0;
 
-    const handleReply = (status: mastodon.v1.Status, accountId: string) => {
-        const account = status.account;
-        // Clear quote state to ensure mutual exclusion
-        setQuoteToStatus(undefined);
-        setQuoteAccountId(undefined);
-        setReplyToStatus({
-            id: status.id,
-            acct: account.acct,
-            displayName: account.displayName || account.username,
-            content: status.content,
-            avatar: account.avatar,
-        });
-        setReplyAccountId(accountId);
-        setIsComposeModalOpen(true);
-    };
+    // ── Handlers ──────────────────────────────────────────────────────────
 
-    const handleQuote = (status: mastodon.v1.Status, accountId: string) => {
-        const account = status.account;
-        // Clear reply state to ensure mutual exclusion
-        setReplyToStatus(undefined);
-        setReplyAccountId(undefined);
-        setQuoteToStatus({
-            id: status.id,
-            acct: account.acct,
-            displayName: account.displayName || account.username,
-            content: status.content,
-            avatar: account.avatar,
-        });
-        setQuoteAccountId(accountId);
-        setIsComposeModalOpen(true);
-    };
+    const handleReply = useCallback(
+        (status: mastodon.v1.Status, accountId: string) => {
+            const account = status.account;
+            modals.openCompose({
+                replyToStatus: {
+                    id: status.id,
+                    acct: account.acct,
+                    displayName: account.displayName || account.username,
+                    content: status.content,
+                    avatar: account.avatar,
+                },
+                accountId,
+            });
+        },
+        [modals]
+    );
 
-    const handleStatusClick = (status: mastodon.v1.Status, accountId: string) => {
-        const accountSession = accounts.find((a) => a.id === accountId);
-        setDetailStatus(status);
-        setDetailAccountSession(accountSession);
-        setIsStatusDetailOpen(true);
-    };
+    const handleQuote = useCallback(
+        (status: mastodon.v1.Status, accountId: string) => {
+            const account = status.account;
+            modals.openCompose({
+                quoteToStatus: {
+                    id: status.id,
+                    acct: account.acct,
+                    displayName: account.displayName || account.username,
+                    content: status.content,
+                    avatar: account.avatar,
+                },
+                accountId,
+            });
+        },
+        [modals]
+    );
 
-    const handleAccountClick = (
-        account: mastodon.v1.Account,
-        accountSessionId: string | undefined
-    ) => {
-        const accountSession = accounts.find((a) => a.id === accountSessionId);
-        setProfileAccount(account);
-        setProfileAccountSession(accountSession);
-        setIsProfileModalOpen(true);
-    };
+    const handleStatusClick = useCallback(
+        (status: mastodon.v1.Status, accountId: string) => {
+            modals.pushStatusDetail(status, accountId);
+        },
+        [modals]
+    );
 
-    const handleStatusDetailReply = (status: mastodon.v1.Status) => {
-        if (detailAccountSession) {
-            handleReply(status, detailAccountSession.id);
-        }
-    };
-
-    const handleStatusDetailQuote = (status: mastodon.v1.Status) => {
-        if (detailAccountSession) {
-            handleQuote(status, detailAccountSession.id);
-        }
-    };
-
-    const handleDetailModalClose = () => {
-        setIsStatusDetailOpen(false);
-        setDetailStatus(null);
-        setDetailAccountSession(undefined);
-    };
-
-    const handleProfileModalClose = () => {
-        setIsProfileModalOpen(false);
-        setProfileAccount(null);
-        setProfileAccountSession(undefined);
-        setDeletedStatusId(undefined);
-    };
-
-    const handleComposeClose = () => {
-        setIsComposeModalOpen(false);
-        setReplyToStatus(undefined);
-        setReplyAccountId(undefined);
-        setQuoteToStatus(undefined);
-        setQuoteAccountId(undefined);
-        setEditTarget(undefined);
-    };
+    const handleAccountClick = useCallback(
+        (account: mastodon.v1.Account, accountSessionId: string | undefined) => {
+            modals.pushProfile(account, accountSessionId);
+        },
+        [modals]
+    );
 
     // Handle edit request from StatusCard/StatusDetailModal
     const handleStatusEditRequest = useCallback(
         (status: mastodon.v1.Status, accountSessionId: string) => {
-            // Clear reply state when entering edit mode
-            setReplyToStatus(undefined);
-            setReplyAccountId(undefined);
-            setEditTarget({ status, accountSessionId });
-            setIsComposeModalOpen(true);
+            modals.openCompose({
+                editTarget: { status, accountSessionId },
+                accountId: accountSessionId,
+            });
         },
-        []
+        [modals]
     );
 
     // Handle successful status edit
     const handleStatusEdited = useCallback(
         (updatedStatus: mastodon.v1.Status) => {
-            // Update the status in all streams
             updateStatusGlobal(updatedStatus);
-            // Update detail modal if viewing the edited status
-            if (detailStatus?.id === updatedStatus.id) {
-                setDetailStatus(updatedStatus);
-            }
+            modals.updateStackStatus(updatedStatus.id, updatedStatus);
         },
-        [updateStatusGlobal, detailStatus]
+        [updateStatusGlobal, modals]
     );
 
-    const handleImageClick = useCallback((images: ImageViewerImage[], index: number) => {
-        setViewerImages(images);
-        setViewerInitialIndex(index);
-        setImageViewerKey((k) => k + 1); // Force remount to reset index
-        setIsImageViewerOpen(true);
-    }, []);
+    const handleImageClick = useCallback(
+        (images: ImageViewerImage[], index: number) => {
+            modals.openImageViewer(images, index);
+        },
+        [modals]
+    );
 
-    const handleImageViewerClose = useCallback(() => {
-        setIsImageViewerOpen(false);
-    }, []);
+    const handleVideoClick = useCallback(
+        (videos: VideoViewerVideo[], index: number) => {
+            modals.openVideoViewer(videos, index);
+        },
+        [modals]
+    );
 
-    const handleVideoClick = useCallback((videos: VideoViewerVideo[], index: number) => {
-        setViewerVideos(videos);
-        setViewerInitialVideoIndex(index);
-        setVideoViewerKey((k) => k + 1); // Force remount to reset index
-        setIsVideoViewerOpen(true);
-    }, []);
-
-    const handleVideoViewerClose = useCallback(() => {
-        setIsVideoViewerOpen(false);
-    }, []);
-
-    const handleAudioClick = useCallback((tracks: AudioViewerTrack[], index: number) => {
-        setAudioTracks(tracks);
-        setAudioInitialIndex(index);
-        setAudioPlayerKey((k) => k + 1); // Force remount to reset index
-        setIsAudioPlayerOpen(true);
-    }, []);
-
-    const handleAudioPlayerClose = useCallback(() => {
-        setIsAudioPlayerOpen(false);
-    }, []);
+    const handleAudioClick = useCallback(
+        (tracks: AudioViewerTrack[], index: number) => {
+            modals.openAudioPlayer(tracks, index);
+        },
+        [modals]
+    );
 
     // Handle delete request from StatusCard - show confirmation modal
     const handleStatusDeleteRequest = useCallback(
         (status: mastodon.v1.Status, accountId: string) => {
-            setDeleteTargetStatus(status);
-            setDeleteAccountId(accountId);
-            setDeleteError(null);
-            setIsDeleteConfirmOpen(true);
+            modals.openConfirm({ status, accountId });
         },
-        []
+        [modals]
     );
 
     // Handle confirmed delete
     const handleStatusDeleteConfirm = async () => {
-        if (!deleteTargetStatus || !deleteAccountId) return;
+        if (!confirm) return;
 
-        const session = accounts.find((a) => a.id === deleteAccountId);
+        const session = accounts.find((a) => a.id === confirm.accountId);
         if (!session) {
-            setDeleteError('アカウントセッションが見つかりません。再度ログインしてください。');
+            modals.setConfirmError(
+                'アカウントセッションが見つかりません。再度ログインしてください。'
+            );
             return;
         }
 
-        setIsDeleteLoading(true);
-        setDeleteError(null);
+        modals.setConfirmLoading(true);
+        modals.setConfirmError(null);
 
         try {
             const client = getClient(session);
-            await deleteStatus(client, deleteTargetStatus.id);
-            removeStatusForAccountStreams(deleteAccountId, deleteTargetStatus.id);
+            await deleteStatus(client, confirm.status.id);
+            removeStatusForAccountStreams(confirm.accountId, confirm.status.id);
 
             // Notify ProfileModal to remove deleted status from local list
-            setDeletedStatusId(deleteTargetStatus.id);
+            modals.setDeletedStatusId(confirm.status.id);
 
             // Close detail modal if viewing the deleted status
+            const deletedId = confirm.status.id;
+            const topEntry = stack[stack.length - 1];
             if (
-                detailStatus?.id === deleteTargetStatus.id ||
-                detailStatus?.reblog?.id === deleteTargetStatus.id
+                topEntry?.type === 'statusDetail' &&
+                (topEntry.status.id === deletedId || topEntry.status.reblog?.id === deletedId)
             ) {
-                handleDetailModalClose();
+                modals.goBack();
             }
 
-            setIsDeleteConfirmOpen(false);
-            setDeleteTargetStatus(null);
-            setDeleteAccountId(null);
+            modals.closeConfirm();
         } catch (err) {
-            setDeleteError((err as Error).message);
+            modals.setConfirmError((err as Error).message);
         } finally {
-            setIsDeleteLoading(false);
+            modals.setConfirmLoading(false);
         }
     };
 
-    const handleDeleteConfirmClose = () => {
-        if (!isDeleteLoading) {
-            setIsDeleteConfirmOpen(false);
-            setDeleteTargetStatus(null);
-            setDeleteAccountId(null);
-            setDeleteError(null);
-        }
-    };
-
-    // Handle poll updates - update global store and modal state
+    // Handle poll updates - update global store and stack entries
     const handlePollUpdate = useCallback(
         (statusId: string, poll: mastodon.v1.Poll) => {
             updatePollGlobal(statusId, poll);
-            // Also update detail modal state if the status is currently displayed
-            setDetailStatus((prev) => {
-                if (!prev) return prev;
-                if (prev.id === statusId) return { ...prev, poll };
-                if (prev.reblog?.id === statusId)
-                    return { ...prev, reblog: { ...prev.reblog, poll } };
-                return prev;
-            });
         },
         [updatePollGlobal]
     );
 
+    // ── Render helpers ────────────────────────────────────────────────────
+
+    const renderStackEntry = (entry: StackEntry, index: number) => {
+        const zIndex = 50 + index;
+
+        if (entry.type === 'statusDetail') {
+            const accountSession = accounts.find((a) => a.id === entry.accountSessionId);
+            return (
+                <StatusDetailModal
+                    key={`stack-${index}-detail`}
+                    isOpen={true}
+                    onClose={modals.goBack}
+                    status={entry.status}
+                    accountSession={accountSession}
+                    onReply={(status) => {
+                        if (accountSession) handleReply(status, accountSession.id);
+                    }}
+                    onQuote={(status) => {
+                        if (accountSession) handleQuote(status, accountSession.id);
+                    }}
+                    onStatusUpdate={updateStatusGlobal}
+                    onPollUpdate={handlePollUpdate}
+                    onStatusDelete={handleStatusDeleteRequest}
+                    onStatusEdit={handleStatusEditRequest}
+                    onImageClick={handleImageClick}
+                    onVideoClick={handleVideoClick}
+                    onAudioClick={handleAudioClick}
+                    onAccountClick={handleAccountClick}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
+                    onNsfwReveal={addNsfwRevealedStatusId}
+                    zIndex={zIndex}
+                    stackDepth={stack.length}
+                />
+            );
+        }
+
+        if (entry.type === 'profile') {
+            const accountSession = accounts.find((a) => a.id === entry.accountSessionId);
+            return (
+                <ProfileModal
+                    key={`stack-${index}-profile`}
+                    isOpen={true}
+                    onClose={modals.goBack}
+                    account={entry.account}
+                    accountSession={accountSession}
+                    onReply={handleReply}
+                    onQuote={handleQuote}
+                    onStatusClick={handleStatusClick}
+                    onImageClick={handleImageClick}
+                    onVideoClick={handleVideoClick}
+                    onAudioClick={handleAudioClick}
+                    onAccountClick={handleAccountClick}
+                    onNsfwReveal={addNsfwRevealedStatusId}
+                    nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
+                    onStatusUpdate={updateStatusGlobal}
+                    onStatusDelete={handleStatusDeleteRequest}
+                    onStatusEdit={handleStatusEditRequest}
+                    deletedStatusId={deletedStatusId}
+                    zIndex={zIndex}
+                    stackDepth={stack.length}
+                />
+            );
+        }
+
+        return null;
+    };
+
     return (
         <div className="h-screen flex overflow-hidden">
-            <Sidebar
-                onAddAccount={() => setIsLoginModalOpen(true)}
-                onCompose={() => setIsComposeModalOpen(true)}
-            />
+            <Sidebar onAddAccount={modals.openLogin} onCompose={() => modals.openCompose({})} />
 
             <main className="flex-1 flex overflow-hidden">
                 <ColumnContainer
-                    onAddColumn={() => setIsAddColumnModalOpen(true)}
+                    onAddColumn={modals.openAddColumn}
                     onReply={handleReply}
                     onQuote={handleQuote}
                     onStatusClick={handleStatusClick}
@@ -421,93 +376,79 @@ function App() {
                 />
             </main>
 
-            <LoginModal
-                isOpen={shouldShowLoginModal}
-                onClose={() => setIsLoginModalOpen(false)}
-                canClose={accounts.length > 0}
-            />
-            <AddColumnModal
-                key={isAddColumnModalOpen ? 'open' : 'closed'}
-                isOpen={isAddColumnModalOpen}
-                onClose={() => setIsAddColumnModalOpen(false)}
-            />
+            {/* Navigation stack */}
+            {stack.map(renderStackEntry)}
+
+            {/* Overlay: Compose */}
             <ComposeModal
-                isOpen={isComposeModalOpen}
-                onClose={handleComposeClose}
-                replyToStatus={replyToStatus}
-                quoteToStatus={quoteToStatus}
-                accountId={replyAccountId ?? quoteAccountId}
-                editTarget={editTarget}
+                isOpen={!!compose}
+                onClose={modals.closeCompose}
+                replyToStatus={compose?.replyToStatus}
+                quoteToStatus={compose?.quoteToStatus}
+                accountId={compose?.accountId}
+                editTarget={compose?.editTarget}
                 onStatusEdited={handleStatusEdited}
+                zIndex={70}
             />
-            <StatusDetailModal
-                isOpen={isStatusDetailOpen}
-                onClose={handleDetailModalClose}
-                status={detailStatus}
-                accountSession={detailAccountSession}
-                onReply={handleStatusDetailReply}
-                onQuote={handleStatusDetailQuote}
-                onStatusUpdate={updateStatusGlobal}
-                onPollUpdate={handlePollUpdate}
-                onStatusDelete={handleStatusDeleteRequest}
-                onStatusEdit={handleStatusEditRequest}
-                onImageClick={handleImageClick}
-                onVideoClick={handleVideoClick}
-                onAudioClick={handleAudioClick}
-                nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
-                onNsfwReveal={addNsfwRevealedStatusId}
-            />
-            <ProfileModal
-                isOpen={isProfileModalOpen}
-                onClose={handleProfileModalClose}
-                account={profileAccount}
-                accountSession={profileAccountSession}
-                onReply={handleReply}
-                onQuote={handleQuote}
-                onStatusClick={handleStatusClick}
-                onImageClick={handleImageClick}
-                onVideoClick={handleVideoClick}
-                onAudioClick={handleAudioClick}
-                onAccountClick={handleAccountClick}
-                onNsfwReveal={addNsfwRevealedStatusId}
-                nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
-                onStatusUpdate={updateStatusGlobal}
-                onStatusDelete={handleStatusDeleteRequest}
-                onStatusEdit={handleStatusEditRequest}
-                supportsQuotes={profileInstanceConfig?.supportsQuotes ?? false}
-                deletedStatusId={deletedStatusId}
-            />
-            <ImageViewer
-                key={`image-viewer-${imageViewerKey}`}
-                isOpen={isImageViewerOpen}
-                onClose={handleImageViewerClose}
-                images={viewerImages}
-                initialIndex={viewerInitialIndex}
-            />
-            <VideoViewer
-                key={`video-viewer-${videoViewerKey}`}
-                isOpen={isVideoViewerOpen}
-                onClose={handleVideoViewerClose}
-                videos={viewerVideos}
-                initialIndex={viewerInitialVideoIndex}
-            />
-            <AudioPlayer
-                key={`audio-player-${audioPlayerKey}`}
-                isOpen={isAudioPlayerOpen}
-                onClose={handleAudioPlayerClose}
-                tracks={audioTracks}
-                initialIndex={audioInitialIndex}
-            />
+
+            {/* Overlay: Confirm */}
             <ConfirmModal
-                isOpen={isDeleteConfirmOpen}
-                onClose={handleDeleteConfirmClose}
+                isOpen={!!confirm}
+                onClose={modals.closeConfirm}
                 onConfirm={handleStatusDeleteConfirm}
                 title="投稿を削除"
                 message="この投稿を削除してもよろしいですか？この操作は取り消せません。"
                 confirmLabel="削除"
                 variant="danger"
-                isLoading={isDeleteLoading}
-                error={deleteError}
+                isLoading={confirmLoading}
+                error={confirmError}
+                zIndex={75}
+            />
+
+            {/* Viewers */}
+            {imageViewer && (
+                <ImageViewer
+                    key={`image-viewer-${imageViewer.key}`}
+                    isOpen={true}
+                    onClose={modals.closeImageViewer}
+                    images={imageViewer.images}
+                    initialIndex={imageViewer.initialIndex}
+                    zIndex={70}
+                />
+            )}
+            {videoViewer && (
+                <VideoViewer
+                    key={`video-viewer-${videoViewer.key}`}
+                    isOpen={true}
+                    onClose={modals.closeVideoViewer}
+                    videos={videoViewer.videos}
+                    initialIndex={videoViewer.initialIndex}
+                    zIndex={70}
+                />
+            )}
+            {audioPlayer && (
+                <AudioPlayer
+                    key={`audio-player-${audioPlayer.key}`}
+                    isOpen={true}
+                    onClose={modals.closeAudioPlayer}
+                    tracks={audioPlayer.tracks}
+                    initialIndex={audioPlayer.initialIndex}
+                    zIndex={70}
+                />
+            )}
+
+            {/* Utility modals */}
+            <LoginModal
+                isOpen={shouldShowLoginModal}
+                onClose={modals.closeLogin}
+                canClose={accounts.length > 0}
+                zIndex={80}
+            />
+            <AddColumnModal
+                key={isAddColumnOpen ? 'open' : 'closed'}
+                isOpen={isAddColumnOpen}
+                onClose={modals.closeAddColumn}
+                zIndex={80}
             />
         </div>
     );

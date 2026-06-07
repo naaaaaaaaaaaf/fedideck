@@ -202,7 +202,7 @@ describe('StatusDetailModal', () => {
             expect(onClose).toHaveBeenCalledTimes(1);
         });
 
-        it('should call onReply and onClose when reply button is clicked', async () => {
+        it('should call onReply when reply button is clicked', async () => {
             const user = userEvent.setup();
             const onClose = vi.fn();
             const onReply = vi.fn();
@@ -222,7 +222,8 @@ describe('StatusDetailModal', () => {
 
             expect(onReply).toHaveBeenCalledTimes(1);
             expect(onReply).toHaveBeenCalledWith(expect.objectContaining({ id: '12345' }));
-            expect(onClose).toHaveBeenCalledTimes(1);
+            // Reply no longer closes the modal - compose overlays on top
+            expect(onClose).not.toHaveBeenCalled();
         });
     });
 
@@ -3729,8 +3730,8 @@ describe('StatusDetailModal', () => {
                 })
             );
 
-            // Modal should be closed
-            expect(onClose).toHaveBeenCalledTimes(1);
+            // Quote no longer closes the modal - compose overlays on top
+            expect(onClose).not.toHaveBeenCalled();
         });
 
         it('should not show quote button when onQuote is not provided', async () => {

@@ -10,11 +10,12 @@ interface LoginModalProps {
     isOpen: boolean;
     onClose: () => void;
     canClose?: boolean;
+    zIndex?: number;
 }
 
 type Step = 'instance' | 'authorize' | 'code';
 
-export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps) {
+export function LoginModal({ isOpen, onClose, canClose = true, zIndex }: LoginModalProps) {
     const [step, setStep] = useState<Step>('instance');
     const [instanceUrl, setInstanceUrl] = useState('');
     const [authUrl, setAuthUrl] = useState('');
@@ -110,6 +111,7 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={zIndex != null ? { zIndex } : undefined}
             onKeyDown={handleKeyDown}
             role="dialog"
             aria-modal="true"

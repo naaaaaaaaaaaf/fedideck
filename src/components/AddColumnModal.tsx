@@ -9,6 +9,7 @@ import { formatAccountHandle } from '../utils/accountHandle';
 interface AddColumnModalProps {
     isOpen: boolean;
     onClose: () => void;
+    zIndex?: number;
 }
 
 const COLUMN_TYPES: { type: StreamType; icon: ReactNode; label: string; description: string }[] = [
@@ -38,7 +39,7 @@ const COLUMN_TYPES: { type: StreamType; icon: ReactNode; label: string; descript
     },
 ];
 
-export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
+export function AddColumnModal({ isOpen, onClose, zIndex }: AddColumnModalProps) {
     const accounts = useAccountsStore((state) => state.accounts);
     const activeAccountId = useAccountsStore((state) => state.activeAccountId);
     const addColumn = useColumnsStore((state) => state.addColumn);
@@ -87,6 +88,7 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={zIndex != null ? { zIndex } : undefined}
             onKeyDown={handleKeyDown}
             role="dialog"
             aria-modal="true"

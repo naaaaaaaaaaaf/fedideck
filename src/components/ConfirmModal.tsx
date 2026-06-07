@@ -13,6 +13,7 @@ interface ConfirmModalProps {
     variant?: 'danger' | 'default';
     isLoading?: boolean;
     error?: string | null;
+    zIndex?: number;
 }
 
 export function ConfirmModal({
@@ -26,6 +27,7 @@ export function ConfirmModal({
     variant = 'default',
     isLoading = false,
     error = null,
+    zIndex,
 }: ConfirmModalProps) {
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -48,6 +50,7 @@ export function ConfirmModal({
     return (
         <div
             className="fixed inset-0 z-[70] flex items-center justify-center"
+            style={zIndex != null ? { zIndex } : undefined}
             onKeyDown={handleKeyDown}
             role="dialog"
             aria-modal="true"

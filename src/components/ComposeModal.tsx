@@ -51,6 +51,7 @@ interface ComposeModalProps {
     accountId?: string; // If provided (reply/quote), lock to this account; otherwise allow switching
     editTarget?: EditTarget;
     onStatusEdited?: (status: mastodon.v1.Status) => void;
+    zIndex?: number;
 }
 
 const MAX_POLL_OPTIONS = 4;
@@ -84,6 +85,7 @@ export function ComposeModal({
     accountId,
     editTarget,
     onStatusEdited,
+    zIndex,
 }: ComposeModalProps) {
     const [content, setContent] = useState('');
     const [visibility, setVisibility] = useState<Visibility>('public');
@@ -367,6 +369,7 @@ export function ComposeModal({
     return (
         <div
             className="fixed inset-0 z-[65] flex items-center justify-center"
+            style={zIndex != null ? { zIndex } : undefined}
             onKeyDown={handleModalKeyDown}
             role="dialog"
             aria-modal="true"

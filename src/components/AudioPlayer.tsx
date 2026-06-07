@@ -8,13 +8,20 @@ export interface AudioPlayerProps {
     onClose: () => void;
     tracks: AudioViewerTrack[];
     initialIndex?: number;
+    zIndex?: number;
 }
 
 /**
  * Audio player modal component for audio attachments.
  * Provides playback controls, artwork display, and multi-track navigation.
  */
-export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: AudioPlayerProps) {
+export function AudioPlayer({
+    isOpen,
+    onClose,
+    tracks,
+    initialIndex = 0,
+    zIndex,
+}: AudioPlayerProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -324,6 +331,7 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
     return (
         <div
             className="fixed inset-0 z-[60] flex items-center justify-center"
+            style={zIndex != null ? { zIndex } : undefined}
             onKeyDown={handleKeyDown}
             role="dialog"
             aria-modal="true"

@@ -58,6 +58,8 @@ interface ProfileModalProps {
     supportsQuotes?: boolean;
     /** ID of status that was just deleted, used to remove from local list */
     deletedStatusId?: string;
+    zIndex?: number;
+    stackDepth?: number;
 }
 
 export function ProfileModal({
@@ -79,6 +81,7 @@ export function ProfileModal({
     onStatusEdit,
     supportsQuotes = false,
     deletedStatusId,
+    zIndex,
 }: ProfileModalProps) {
     const [fullAccount, setFullAccount] = useState<mastodon.v1.Account | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -697,6 +700,7 @@ export function ProfileModal({
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center"
+            style={zIndex != null ? { zIndex } : undefined}
             onKeyDown={handleKeyDown}
             role="dialog"
             aria-modal="true"

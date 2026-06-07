@@ -53,6 +53,9 @@ interface StatusDetailModalProps {
     // NSFW blur state from parent (optional - for syncing with StatusCard)
     nsfwRevealedStatusIds?: Set<string>;
     onNsfwReveal?: (statusId: string) => void;
+    zIndex?: number;
+    stackDepth?: number;
+    onAccountClick?: (account: mastodon.v1.Account, accountSessionId?: string) => void;
 }
 
 // Compact status display for thread ancestors/descendants
@@ -217,6 +220,8 @@ export function StatusDetailModal({
     onAudioClick,
     nsfwRevealedStatusIds,
     onNsfwReveal,
+    zIndex,
+    onAccountClick,
 }: StatusDetailModalProps) {
     // Thread navigation state
     const [navigatedStatus, setNavigatedStatus] = useState<mastodon.v1.Status | null>(null);
@@ -514,15 +519,13 @@ export function StatusDetailModal({
     const handleStatusDelete = useCallback(() => {
         if (!displayStatus || !accountSession || !canDelete) return;
         onStatusDelete?.(displayStatus, accountSession.id);
-        onClose();
-    }, [displayStatus, accountSession, canDelete, onStatusDelete, onClose]);
+    }, [displayStatus, accountSession, canDelete, onStatusDelete]);
 
     // Handle status edit (must be before early return due to useCallback)
     const handleStatusEdit = useCallback(() => {
         if (!displayStatus || !accountSession || !canEdit) return;
         onStatusEdit?.(displayStatus, accountSession.id);
-        onClose();
-    }, [displayStatus, accountSession, canEdit, onStatusEdit, onClose]);
+    }, [displayStatus, accountSession, canEdit, onStatusEdit]);
 
     if (!isOpen || !status || !displayStatus) return null;
 
@@ -542,12 +545,10 @@ export function StatusDetailModal({
 
     const handleReply = () => {
         onReply?.(displayStatus);
-        onClose();
     };
 
     const handleQuote = () => {
         onQuote?.(displayStatus);
-        onClose();
     };
 
     // Handle quote card click - navigate within modal
@@ -561,6 +562,7 @@ export function StatusDetailModal({
     return (
         <div
             className="fixed inset-0 z-[60] flex items-center justify-center"
+            style={zIndex != null ? { zIndex } : undefined}
             onKeyDown={handleKeyDown}
             role="dialog"
             aria-modal="true"
@@ -639,31 +641,63 @@ export function StatusDetailModal({
 
                         {/* Author info */}
                         <div className="flex items-start gap-3 mb-4">
-                            <a
-                                href={account.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="shrink-0"
-                            >
-                                <img
-                                    src={account.avatar}
-                                    alt={account.displayName || account.username}
-                                    className="w-14 h-14 rounded-xl hover:opacity-80 transition-opacity"
-                                />
-                            </a>
-                            <div className="min-w-0 flex-1">
+                            {onAccountClick ? (
+                                <button
+                                    type="button"
+                                    onClick={() => onAccountClick(account, accountSession?.id)}
+                                    className="shrink-0"
+                                >
+                                    <img
+                                        src={account.avatar}
+                                        alt={account.displayName || account.username}
+                                        className="w-14 h-14 rounded-xl hover:opacity-80 transition-opacity"
+                                    />
+                                </button>
+                            ) : (
                                 <a
                                     href={account.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="hover:underline"
+                                    className="shrink-0"
                                 >
-                                    <DisplayName
-                                        account={account}
-                                        className="font-semibold text-lg text-slate-100 block"
+                                    <img
+                                        src={account.avatar}
+                                        alt={account.displayName || account.username}
+                                        className="w-14 h-14 rounded-xl hover:opacity-80 transition-opacity"
                                     />
-                                    <span className="text-slate-400 block">@{account.acct}</span>
                                 </a>
+                            )}
+                            <div className="min-w-0 flex-1">
+                                {onAccountClick ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => onAccountClick(account, accountSession?.id)}
+                                        className="text-left hover:underline"
+                                    >
+                                        <DisplayName
+                                            account={account}
+                                            className="font-semibold text-lg text-slate-100 block"
+                                        />
+                                        <span className="text-slate-400 block">
+                                            @{account.acct}
+                                        </span>
+                                    </button>
+                                ) : (
+                                    <a
+                                        href={account.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:underline"
+                                    >
+                                        <DisplayName
+                                            account={account}
+                                            className="font-semibold text-lg text-slate-100 block"
+                                        />
+                                        <span className="text-slate-400 block">
+                                            @{account.acct}
+                                        </span>
+                                    </a>
+                                )}
                             </div>
                         </div>
 
