@@ -695,8 +695,11 @@ export function ProfileModal({
     ]);
 
     // Remove deleted status from local list when deletion succeeds
+    // All modals in the stack update their local state, but only the open
+    // (top) modal consumes the ref to prevent hidden modals from clearing
+    // it before the visible one processes it.
     useEffect(() => {
-        if (!isOpen || !deletedStatusRef || !accountSession) return;
+        if (!deletedStatusRef || !accountSession) return;
         if (deletedStatusRef.accountSessionId !== accountSession.id) return;
 
         setStatuses((prev) => {
@@ -704,8 +707,10 @@ export function ProfileModal({
             statusesRef.current = newStatuses;
             return newStatuses;
         });
-        // Notify parent that this status ref has been consumed
-        onDeletedStatusConsumed?.();
+        // Only the open modal clears the ref so lower-stack modals can also apply
+        if (isOpen) {
+            onDeletedStatusConsumed?.();
+        }
     }, [isOpen, deletedStatusRef, accountSession?.id, onDeletedStatusConsumed]);
 
     if (!isOpen || !account) {

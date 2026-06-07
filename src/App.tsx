@@ -416,7 +416,7 @@ function App() {
                     }}
                     onStatusDelete={handleStatusDeleteRequest}
                     onStatusEdit={handleStatusEditRequest}
-                    deletedStatusRef={isStackTop ? deletedStatusRef : undefined}
+                    deletedStatusRef={deletedStatusRef}
                     onDeletedStatusConsumed={() =>
                         useModalsStore.getState().setDeletedStatusRef(undefined)
                     }
