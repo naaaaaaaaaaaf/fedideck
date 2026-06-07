@@ -572,18 +572,30 @@ describe('item limits', () => {
             expect(stream.hasMore).toBe(true);
         });
 
-        it('preserves hasMore when all appended items are duplicates', () => {
+        it('sets hasMore false when all appended items are duplicates', () => {
             // Start with 100 statuses with hasMore=true
             const initialStatuses = Array.from({ length: 100 }, (_, i) => makeStatus(String(i)));
             useStreamsStore.getState().setStatuses('account:home', initialStatuses, true);
 
-            // Append only duplicates - hasMore should be preserved
+            // Append only duplicates - hasMore should be false to prevent infinite loops
             useStreamsStore
                 .getState()
                 .appendStatuses('account:home', [makeStatus('0'), makeStatus('1')]);
 
             const stream = useStreamsStore.getState().data['account:home'];
-            expect(stream.hasMore).toBe(true);
+            expect(stream.hasMore).toBe(false);
+        });
+
+        it('sets hasMore false when API returns empty array', () => {
+            // Start with 100 statuses with hasMore=true
+            const initialStatuses = Array.from({ length: 100 }, (_, i) => makeStatus(String(i)));
+            useStreamsStore.getState().setStatuses('account:home', initialStatuses, true);
+
+            // Append empty array (end of timeline)
+            useStreamsStore.getState().appendStatuses('account:home', []);
+
+            const stream = useStreamsStore.getState().data['account:home'];
+            expect(stream.hasMore).toBe(false);
         });
     });
 
@@ -676,7 +688,7 @@ describe('item limits', () => {
             expect(stream.hasMore).toBe(false);
         });
 
-        it('preserves hasMore when all appended notifications are duplicates', () => {
+        it('sets hasMore false when all appended notifications are duplicates', () => {
             // Start with 50 notifications with hasMore=true
             const initialNotifications = Array.from({ length: 50 }, (_, i) =>
                 makeNotification(String(i))
@@ -685,7 +697,7 @@ describe('item limits', () => {
                 .getState()
                 .setNotifications('account:notifications', initialNotifications, true);
 
-            // Append only duplicates - hasMore should be preserved
+            // Append only duplicates - hasMore should be false to prevent infinite loops
             useStreamsStore
                 .getState()
                 .appendNotifications('account:notifications', [
@@ -694,7 +706,23 @@ describe('item limits', () => {
                 ]);
 
             const stream = useStreamsStore.getState().data['account:notifications'];
-            expect(stream.hasMore).toBe(true);
+            expect(stream.hasMore).toBe(false);
+        });
+
+        it('sets hasMore false when API returns empty array', () => {
+            // Start with 50 notifications with hasMore=true
+            const initialNotifications = Array.from({ length: 50 }, (_, i) =>
+                makeNotification(String(i))
+            );
+            useStreamsStore
+                .getState()
+                .setNotifications('account:notifications', initialNotifications, true);
+
+            // Append empty array (end of notifications)
+            useStreamsStore.getState().appendNotifications('account:notifications', []);
+
+            const stream = useStreamsStore.getState().data['account:notifications'];
+            expect(stream.hasMore).toBe(false);
         });
     });
 });
