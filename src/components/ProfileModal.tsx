@@ -22,6 +22,8 @@ import {
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { useRelationshipActions } from '../hooks/useRelationshipActions';
+import { useInstanceConfig } from '../hooks/useInstanceConfig';
+import { useModalsStore } from '../store/modals';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { DisplayName } from './DisplayName';
 import { StatusCard } from './StatusCard';
@@ -83,6 +85,13 @@ export function ProfileModal({
     deletedStatusId,
     zIndex,
 }: ProfileModalProps) {
+    // Instance config for supportsQuotes — resolves internally instead of requiring prop
+    const { instanceConfig: profileInstanceConfig } = useInstanceConfig({
+        accountSession,
+        isOpen,
+    });
+    const resolvedSupportsQuotes = supportsQuotes || profileInstanceConfig?.supportsQuotes === true;
+
     const [fullAccount, setFullAccount] = useState<mastodon.v1.Account | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [hasError, setHasError] = useState(false);
@@ -688,6 +697,8 @@ export function ProfileModal({
                 statusesRef.current = newStatuses;
                 return newStatuses;
             });
+            // Clear after consumption to prevent stale ID filtering other profiles
+            useModalsStore.getState().setDeletedStatusId(undefined);
         }
     }, [deletedStatusId]);
 
@@ -994,7 +1005,7 @@ export function ProfileModal({
                                             onStatusUpdate={handleStatusUpdate}
                                             onReply={handleReply}
                                             onQuote={handleQuote}
-                                            supportsQuotes={supportsQuotes}
+                                            supportsQuotes={resolvedSupportsQuotes}
                                             onStatusClick={handleStatusClick}
                                             onImageClick={onImageClick}
                                             onVideoClick={onVideoClick}

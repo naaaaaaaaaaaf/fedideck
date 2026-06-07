@@ -271,12 +271,14 @@ function App() {
             ) {
                 modals.goBack();
             }
-
-            modals.closeConfirm();
         } catch (err) {
             modals.setConfirmError((err as Error).message);
         } finally {
+            // Must reset loading BEFORE closing — closeConfirm is a no-op while loading
             modals.setConfirmLoading(false);
+            if (!useModalsStore.getState().confirmError) {
+                modals.closeConfirm();
+            }
         }
     };
 
@@ -297,7 +299,7 @@ function App() {
             const accountSession = accounts.find((a) => a.id === entry.accountSessionId);
             return (
                 <StatusDetailModal
-                    key={`stack-${index}-detail`}
+                    key={`detail-${entry.status.id}`}
                     isOpen={true}
                     onClose={modals.goBack}
                     status={entry.status}
@@ -328,7 +330,7 @@ function App() {
             const accountSession = accounts.find((a) => a.id === entry.accountSessionId);
             return (
                 <ProfileModal
-                    key={`stack-${index}-profile`}
+                    key={`profile-${entry.account.id}`}
                     isOpen={true}
                     onClose={modals.goBack}
                     account={entry.account}
