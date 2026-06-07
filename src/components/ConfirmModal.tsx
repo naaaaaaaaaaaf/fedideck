@@ -49,7 +49,7 @@ export function ConfirmModal({
 
     return (
         <div
-            className="fixed inset-0 z-[70] flex items-center justify-center"
+            className="fixed inset-0 flex items-center justify-center"
             style={zIndex != null ? { zIndex } : undefined}
             onKeyDown={handleKeyDown}
             role="dialog"

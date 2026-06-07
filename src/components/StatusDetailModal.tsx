@@ -53,6 +53,8 @@ interface StatusDetailModalProps {
     // NSFW blur state from parent (optional - for syncing with StatusCard)
     nsfwRevealedStatusIds?: Set<string>;
     onNsfwReveal?: (statusId: string) => void;
+    /** Whether this modal is the active (top-most) modal that should capture focus and handle Escape */
+    isActive?: boolean;
     zIndex?: number;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId?: string) => void;
 }
@@ -219,6 +221,7 @@ export function StatusDetailModal({
     onAudioClick,
     nsfwRevealedStatusIds,
     onNsfwReveal,
+    isActive = true,
     zIndex,
     onAccountClick,
 }: StatusDetailModalProps) {
@@ -344,6 +347,7 @@ export function StatusDetailModal({
         onClose,
         closeButtonRef,
         modalRef,
+        canClose: isActive,
     });
 
     // Reset navigation and context state when modal closes or the base status changes
@@ -560,11 +564,11 @@ export function StatusDetailModal({
 
     return (
         <div
-            className="fixed inset-0 z-[60] flex items-center justify-center"
+            className="fixed inset-0 flex items-center justify-center"
             style={zIndex != null ? { zIndex } : undefined}
-            onKeyDown={handleKeyDown}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
             aria-labelledby="status-detail-title"
         >
             {/* Backdrop */}

@@ -236,8 +236,8 @@ describe('useModalsStore', () => {
 
     describe('compose overlay', () => {
         it('opens and closes', () => {
-            useModalsStore.getState().openCompose({ accountId: 'acct-1' });
-            expect(useModalsStore.getState().compose).toEqual({ accountId: 'acct-1' });
+            useModalsStore.getState().openCompose({ mode: 'new', accountId: 'acct-1' });
+            expect(useModalsStore.getState().compose).toEqual({ mode: 'new', accountId: 'acct-1' });
 
             useModalsStore.getState().closeCompose();
             expect(useModalsStore.getState().compose).toBeNull();

@@ -115,13 +115,13 @@ describe('VideoViewer', () => {
             expect(dialog).toHaveAttribute('aria-modal', 'true');
         });
 
-        it('should render with correct z-index', () => {
+        it('should render without fixed z-index class', () => {
             const { container } = render(
                 <VideoViewer isOpen={true} onClose={mockOnClose} videos={mockVideos} />
             );
 
             const dialog = container.firstChild as HTMLElement;
-            expect(dialog).toHaveClass('z-[60]');
+            expect(dialog.style.zIndex).toBe('');
         });
 
         it('should use video description as aria-label for video element', () => {

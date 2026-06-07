@@ -142,6 +142,7 @@ function App() {
     const handleReply = useCallback((status: mastodon.v1.Status, accountId: string) => {
         const account = status.account;
         useModalsStore.getState().openCompose({
+            mode: 'reply',
             replyToStatus: {
                 id: status.id,
                 acct: account.acct,
@@ -156,6 +157,7 @@ function App() {
     const handleQuote = useCallback((status: mastodon.v1.Status, accountId: string) => {
         const account = status.account;
         useModalsStore.getState().openCompose({
+            mode: 'quote',
             quoteToStatus: {
                 id: status.id,
                 acct: account.acct,
@@ -182,6 +184,7 @@ function App() {
     const handleStatusEditRequest = useCallback(
         (status: mastodon.v1.Status, accountSessionId: string) => {
             useModalsStore.getState().openCompose({
+                mode: 'edit',
                 editTarget: { status, accountSessionId },
                 accountId: accountSessionId,
             });
@@ -257,6 +260,15 @@ function App() {
         }
     };
 
+    // Unified status update handler — updates both global streams and navigation stack
+    const handleStatusUpdate = useCallback(
+        (updatedStatus: mastodon.v1.Status) => {
+            updateStatusGlobal(updatedStatus);
+            useModalsStore.getState().updateStackStatus(updatedStatus.id, updatedStatus);
+        },
+        [updateStatusGlobal]
+    );
+
     // Handle poll updates - update global store and stack entries
     const handlePollUpdate = useCallback(
         (statusId: string, poll: mastodon.v1.Poll) => {
@@ -268,9 +280,20 @@ function App() {
 
     // ── Render helpers ────────────────────────────────────────────────────
 
+    // Whether any overlay is blocking the navigation stack
+    const hasBlockingOverlay =
+        !!compose ||
+        !!confirm ||
+        !!imageViewer ||
+        !!videoViewer ||
+        !!audioPlayer ||
+        shouldShowLoginModal ||
+        isAddColumnOpen;
+
     const renderStackEntry = (entry: StackEntry, index: number) => {
         const zIndex = 50 + index;
         const isStackTop = index === stack.length - 1;
+        const isActive = isStackTop && !hasBlockingOverlay;
 
         if (entry.type === 'statusDetail') {
             const accountSession = accounts.find((a) => a.id === entry.accountSessionId);
@@ -278,6 +301,7 @@ function App() {
                 <StatusDetailModal
                     key={`stack-${index}-detail-${entry.status.id}`}
                     isOpen={isStackTop}
+                    isActive={isActive}
                     onClose={useModalsStore.getState().goBack}
                     status={entry.status}
                     accountSession={accountSession}
@@ -287,7 +311,7 @@ function App() {
                     onQuote={(status) => {
                         if (accountSession) handleQuote(status, accountSession.id);
                     }}
-                    onStatusUpdate={updateStatusGlobal}
+                    onStatusUpdate={handleStatusUpdate}
                     onPollUpdate={handlePollUpdate}
                     onStatusDelete={handleStatusDeleteRequest}
                     onStatusEdit={handleStatusEditRequest}
@@ -308,6 +332,7 @@ function App() {
                 <ProfileModal
                     key={`stack-${index}-profile-${entry.account.id}`}
                     isOpen={isStackTop}
+                    isActive={isActive}
                     onClose={useModalsStore.getState().goBack}
                     account={entry.account}
                     accountSession={accountSession}
@@ -320,10 +345,13 @@ function App() {
                     onAccountClick={handleAccountClick}
                     onNsfwReveal={addNsfwRevealedStatusId}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
-                    onStatusUpdate={updateStatusGlobal}
+                    onStatusUpdate={handleStatusUpdate}
                     onStatusDelete={handleStatusDeleteRequest}
                     onStatusEdit={handleStatusEditRequest}
                     deletedStatusId={deletedStatusId}
+                    onDeletedStatusConsumed={() =>
+                        useModalsStore.getState().setDeletedStatusId(undefined)
+                    }
                     zIndex={zIndex}
                 />
             );
@@ -336,7 +364,7 @@ function App() {
         <div className="h-screen flex overflow-hidden">
             <Sidebar
                 onAddAccount={() => useModalsStore.getState().openLogin()}
-                onCompose={() => useModalsStore.getState().openCompose({})}
+                onCompose={() => useModalsStore.getState().openCompose({ mode: 'new' })}
             />
 
             <main className="flex-1 flex overflow-hidden">
@@ -363,10 +391,10 @@ function App() {
             <ComposeModal
                 isOpen={!!compose}
                 onClose={() => useModalsStore.getState().closeCompose()}
-                replyToStatus={compose?.replyToStatus}
-                quoteToStatus={compose?.quoteToStatus}
+                replyToStatus={compose?.mode === 'reply' ? compose.replyToStatus : undefined}
+                quoteToStatus={compose?.mode === 'quote' ? compose.quoteToStatus : undefined}
                 accountId={compose?.accountId}
-                editTarget={compose?.editTarget}
+                editTarget={compose?.mode === 'edit' ? compose.editTarget : undefined}
                 onStatusEdited={handleStatusEdited}
                 zIndex={70}
             />

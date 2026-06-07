@@ -16,24 +16,35 @@ export type StackEntry =
 // Overlay / Viewer Data Types
 // ---------------------------------------------------------------------------
 
-export interface ComposeData {
-    replyToStatus?: {
-        id: string;
-        acct: string;
-        displayName: string;
-        content: string;
-        avatar: string;
-    };
-    quoteToStatus?: {
-        id: string;
-        acct: string;
-        displayName: string;
-        content: string;
-        avatar: string;
-    };
-    editTarget?: { status: mastodon.v1.Status; accountSessionId: string };
-    accountId?: string;
-}
+export type ComposeData =
+    | { mode: 'new'; accountId?: string }
+    | {
+          mode: 'reply';
+          replyToStatus: {
+              id: string;
+              acct: string;
+              displayName: string;
+              content: string;
+              avatar: string;
+          };
+          accountId: string;
+      }
+    | {
+          mode: 'quote';
+          quoteToStatus: {
+              id: string;
+              acct: string;
+              displayName: string;
+              content: string;
+              avatar: string;
+          };
+          accountId: string;
+      }
+    | {
+          mode: 'edit';
+          editTarget: { status: mastodon.v1.Status; accountSessionId: string };
+          accountId: string;
+      };
 
 export interface ConfirmData {
     status: mastodon.v1.Status;

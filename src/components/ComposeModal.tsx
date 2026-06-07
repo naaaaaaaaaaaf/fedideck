@@ -368,7 +368,7 @@ export function ComposeModal({
 
     return (
         <div
-            className="fixed inset-0 z-[65] flex items-center justify-center"
+            className="fixed inset-0 flex items-center justify-center"
             style={zIndex != null ? { zIndex } : undefined}
             onKeyDown={handleModalKeyDown}
             role="dialog"

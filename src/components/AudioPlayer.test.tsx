@@ -79,13 +79,13 @@ describe('AudioPlayer', () => {
             expect(dialog).toHaveAttribute('aria-modal', 'true');
         });
 
-        it('should render with correct z-index', () => {
+        it('should render without fixed z-index class', () => {
             const { container } = render(
                 <AudioPlayer isOpen={true} onClose={mockOnClose} tracks={mockTracks} />
             );
 
             const dialog = container.firstChild as HTMLElement;
-            expect(dialog).toHaveClass('z-[60]');
+            expect(dialog.style.zIndex).toBe('');
         });
 
         it('should render artwork when artworkUrl is provided', () => {

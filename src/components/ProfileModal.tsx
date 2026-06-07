@@ -23,7 +23,6 @@ import {
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { useRelationshipActions } from '../hooks/useRelationshipActions';
 import { useInstanceConfig } from '../hooks/useInstanceConfig';
-import { useModalsStore } from '../store/modals';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { DisplayName } from './DisplayName';
 import { StatusCard } from './StatusCard';
@@ -60,6 +59,10 @@ interface ProfileModalProps {
     supportsQuotes?: boolean;
     /** ID of status that was just deleted, used to remove from local list */
     deletedStatusId?: string;
+    /** Called when deletedStatusId has been consumed by this modal */
+    onDeletedStatusConsumed?: () => void;
+    /** Whether this modal is the active (top-most) modal that should capture focus and handle Escape */
+    isActive?: boolean;
     zIndex?: number;
 }
 
@@ -82,6 +85,8 @@ export function ProfileModal({
     onStatusEdit,
     supportsQuotes = false,
     deletedStatusId,
+    onDeletedStatusConsumed,
+    isActive = true,
     zIndex,
 }: ProfileModalProps) {
     // Instance config for supportsQuotes — resolves internally instead of requiring prop
@@ -150,6 +155,7 @@ export function ProfileModal({
         onClose,
         closeButtonRef,
         modalRef,
+        canClose: isActive,
     });
 
     // Extract stable ID for useEffect dependencies
@@ -696,10 +702,10 @@ export function ProfileModal({
                 statusesRef.current = newStatuses;
                 return newStatuses;
             });
-            // Clear after consumption to prevent stale ID filtering other profiles
-            useModalsStore.getState().setDeletedStatusId(undefined);
+            // Notify parent that this status ID has been consumed
+            onDeletedStatusConsumed?.();
         }
-    }, [deletedStatusId]);
+    }, [deletedStatusId, onDeletedStatusConsumed]);
 
     if (!isOpen || !account) {
         return null;
@@ -709,11 +715,11 @@ export function ProfileModal({
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center"
+            className="fixed inset-0 flex items-center justify-center"
             style={zIndex != null ? { zIndex } : undefined}
-            onKeyDown={handleKeyDown}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
             aria-labelledby="profile-modal-title"
         >
             {/* Backdrop */}
