@@ -58,6 +58,7 @@ export function ConfirmModal({
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}
             aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
             aria-labelledby="confirm-modal-title"
             aria-describedby="confirm-modal-message"
         >

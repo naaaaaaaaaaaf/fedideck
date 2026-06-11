@@ -482,6 +482,7 @@ export function VideoViewer({
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}
             aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
             aria-label="動画ビューアー"
         >
             {/* Backdrop */}

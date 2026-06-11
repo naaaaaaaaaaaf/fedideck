@@ -6,13 +6,18 @@ import { useModalsStore } from '../store/modals';
 
 // Mock all child modal components to just render a data-testid div
 vi.mock('./StatusDetailModal', () => ({
-    StatusDetailModal: ({ isOpen, isActive, zIndex }: any) =>
+    StatusDetailModal: ({ isOpen, isActive, zIndex, onStatusDelete }: any) =>
         isOpen ? (
             <div
                 data-testid="status-detail-modal"
                 data-active={String(isActive)}
                 data-zindex={zIndex}
-            />
+            >
+                <button
+                    data-testid="delete-btn"
+                    onClick={() => onStatusDelete?.({ id: 's1' }, 'acct-1')}
+                />
+            </div>
         ) : (
             <div
                 data-testid="status-detail-modal"
@@ -227,5 +232,21 @@ describe('ModalHost', () => {
 
         const loginModal = screen.getByTestId('login-modal');
         expect(loginModal).toHaveAttribute('data-active', 'true');
+    });
+
+    it('passes entry.id as originStackEntryId when onStatusDelete is called from stack entry', () => {
+        useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+
+        render(<ModalHost {...defaultProps} />);
+
+        const deleteBtn = screen.getByTestId('delete-btn');
+        deleteBtn.click();
+
+        // onStatusDeleteRequest should be called with (status, accountId, entry.id)
+        expect(defaultProps.onStatusDeleteRequest).toHaveBeenCalledTimes(1);
+        const callArgs = defaultProps.onStatusDeleteRequest.mock.calls[0];
+        expect(callArgs[0]).toEqual({ id: 's1' }); // status
+        expect(callArgs[1]).toBe('acct-1'); // accountId
+        expect(callArgs[2]).toMatch(/^stack-\d+$/); // originStackEntryId
     });
 });

@@ -124,6 +124,7 @@ export function LoginModal({
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}
             aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
             aria-labelledby="login-modal-title"
         >
             {/* Backdrop */}

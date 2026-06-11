@@ -72,6 +72,8 @@ export type ComposeData =
 export interface ConfirmData {
     status: mastodon.v1.Status;
     accountId: string;
+    /** When set, delete confirmation targets this specific stack entry by id */
+    originStackEntryId?: string;
 }
 
 export interface ImageViewerData {
@@ -124,6 +126,7 @@ interface ModalsState {
     updateStackStatus: (ref: StatusRef, status: mastodon.v1.Status) => void;
     updateStackPoll: (ref: StatusRef, poll: mastodon.v1.Poll) => void;
     removeStatusFromStack: (ref: StatusRef) => void;
+    removeStackEntryById: (entryId: string) => void;
 
     // Actions – Overlays
     openCompose: (data: ComposeData) => void;
@@ -175,6 +178,19 @@ function statusDetailMatches(
         (entry.status.id === ref.statusId || entry.status.reblog?.id === ref.statusId)
     );
 }
+
+/** Shared reset object for overlay mutual exclusion — applied by every open* action. */
+const CLEAR_OVERLAYS = {
+    compose: null as ComposeData | null,
+    confirm: null as ConfirmData | null,
+    confirmLoading: false,
+    confirmError: null as string | null,
+    imageViewer: null as ImageViewerData | null,
+    videoViewer: null as VideoViewerData | null,
+    audioPlayer: null as AudioPlayerData | null,
+    isLoginOpen: false,
+    isAddColumnOpen: false,
+};
 
 export const useModalsStore = create<ModalsState>()((set) => ({
     // Navigation stack
@@ -239,6 +255,13 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     removeStatusFromStack: (ref: StatusRef) => {
         set((state) => ({
             stack: state.stack.filter((entry) => !statusDetailMatches(entry, ref)),
+        }));
+    },
+
+    /** Remove a specific stack entry by its id */
+    removeStackEntryById: (entryId: string) => {
+        set((state) => ({
+            stack: state.stack.filter((entry) => entry.id !== entryId),
         }));
     },
 
@@ -311,12 +334,7 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     // ── Overlays (mutually exclusive — opening one closes others) ──────────
 
     openCompose: (data) => {
-        set({
-            compose: data,
-            imageViewer: null,
-            videoViewer: null,
-            audioPlayer: null,
-        });
+        set({ ...CLEAR_OVERLAYS, compose: data });
     },
 
     closeCompose: () => {
@@ -326,15 +344,7 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     openConfirm: (data) => {
         set((state) => {
             if (state.confirmLoading) return state; // don't interrupt in-flight confirm
-            return {
-                confirm: data,
-                confirmLoading: false,
-                confirmError: null,
-                compose: null,
-                imageViewer: null,
-                videoViewer: null,
-                audioPlayer: null,
-            };
+            return { ...CLEAR_OVERLAYS, confirm: data };
         });
     },
 
@@ -348,14 +358,12 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     openImageViewer: (images, index) => {
         if (images.length === 0) return;
         set({
+            ...CLEAR_OVERLAYS,
             imageViewer: {
                 images,
                 initialIndex: Math.max(0, Math.min(index, images.length - 1)),
                 key: nextViewerKey(),
             },
-            compose: null,
-            videoViewer: null,
-            audioPlayer: null,
         });
     },
 
@@ -366,14 +374,12 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     openVideoViewer: (videos, index) => {
         if (videos.length === 0) return;
         set({
+            ...CLEAR_OVERLAYS,
             videoViewer: {
                 videos,
                 initialIndex: Math.max(0, Math.min(index, videos.length - 1)),
                 key: nextViewerKey(),
             },
-            compose: null,
-            imageViewer: null,
-            audioPlayer: null,
         });
     },
 
@@ -384,14 +390,12 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     openAudioPlayer: (tracks, index) => {
         if (tracks.length === 0) return;
         set({
+            ...CLEAR_OVERLAYS,
             audioPlayer: {
                 tracks,
                 initialIndex: Math.max(0, Math.min(index, tracks.length - 1)),
                 key: nextViewerKey(),
             },
-            compose: null,
-            imageViewer: null,
-            videoViewer: null,
         });
     },
 
@@ -402,17 +406,7 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     // ── Utility (mutually exclusive with each other) ───────────────────────
 
     openLogin: () => {
-        set({
-            isLoginOpen: true,
-            isAddColumnOpen: false,
-            compose: null,
-            confirm: null,
-            confirmLoading: false,
-            confirmError: null,
-            imageViewer: null,
-            videoViewer: null,
-            audioPlayer: null,
-        });
+        set({ ...CLEAR_OVERLAYS, isLoginOpen: true });
     },
 
     closeLogin: () => {
@@ -420,17 +414,7 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     },
 
     openAddColumn: () => {
-        set({
-            isAddColumnOpen: true,
-            isLoginOpen: false,
-            compose: null,
-            confirm: null,
-            confirmLoading: false,
-            confirmError: null,
-            imageViewer: null,
-            videoViewer: null,
-            audioPlayer: null,
-        });
+        set({ ...CLEAR_OVERLAYS, isAddColumnOpen: true });
     },
 
     closeAddColumn: () => {

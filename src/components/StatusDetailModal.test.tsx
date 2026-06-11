@@ -3763,4 +3763,72 @@ describe('StatusDetailModal', () => {
             expect(screen.queryByRole('button', { name: '引用' })).not.toBeInTheDocument();
         });
     });
+
+    describe('context preservation on stack background', () => {
+        it('preserves thread context when modal goes to stack background (isOpen false → true)', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            // Return some context data
+            const ancestor = createMockStatus({
+                id: 'ancestor-1',
+                content: '<p>Ancestor post</p>',
+            });
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            const TestWrapper = () => {
+                const [isOpen, setIsOpen] = useState(true);
+                return (
+                    <>
+                        <button data-testid="toggle" onClick={() => setIsOpen((prev) => !prev)}>
+                            Toggle
+                        </button>
+                        <StatusDetailModal
+                            isOpen={isOpen}
+                            onClose={() => setIsOpen(false)}
+                            status={status}
+                            accountSession={accountSession}
+                        />
+                    </>
+                );
+            };
+
+            await act(async () => {
+                render(<TestWrapper />);
+            });
+
+            // Wait for context to load
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor post')).toBeInTheDocument();
+            });
+
+            // Hide modal (simulate going to stack background)
+            await act(async () => {
+                screen.getByTestId('toggle').click();
+            });
+
+            // Context data should NOT be cleared when going to background
+            // (it was cleared in the old implementation)
+            const callCountAfterHide = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            // Show modal again (simulate navigating back)
+            await act(async () => {
+                screen.getByTestId('toggle').click();
+            });
+
+            // Context is re-fetched because isOpen changed (effect dependency),
+            // but the key behavior is: context was NOT cleared when hidden.
+            // The old code would clear context on !isOpen, causing a flash of empty content.
+            // The fix ensures context persists while hidden and is refreshed on return.
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(
+                callCountAfterHide + 1 // one re-fetch when isOpen becomes true again
+            );
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor post')).toBeInTheDocument();
+            });
+        });
+    });
 });

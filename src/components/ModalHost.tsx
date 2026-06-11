@@ -34,7 +34,11 @@ export interface ModalHostProps {
     onVideoClick: (videos: VideoViewerVideo[], index: number) => void;
     onAudioClick: (tracks: AudioViewerTrack[], index: number) => void;
     onAccountClick: (account: mastodon.v1.Account, accountSessionId: string | undefined) => void;
-    onStatusDeleteRequest: (status: mastodon.v1.Status, accountId: string) => void;
+    onStatusDeleteRequest: (
+        status: mastodon.v1.Status,
+        accountId: string,
+        originStackEntryId?: string
+    ) => void;
     onStatusEditRequest: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onStatusUpdateGlobal: (updatedStatus: mastodon.v1.Status) => void;
     onPollUpdateGlobal: (statusId: string, poll: mastodon.v1.Poll) => void;
@@ -110,11 +114,15 @@ export function ModalHost({
                 accountSessionId: confirmData.accountId,
             });
 
-            // Remove all stack entries referencing the deleted status (scoped by account)
-            useModalsStore.getState().removeStatusFromStack({
-                statusId: confirmData.status.id,
-                accountSessionId: confirmData.accountId,
-            });
+            // Remove stack entry — prefer direct entry id when available for navigated status accuracy
+            if (confirmData.originStackEntryId) {
+                useModalsStore.getState().removeStackEntryById(confirmData.originStackEntryId);
+            } else {
+                useModalsStore.getState().removeStatusFromStack({
+                    statusId: confirmData.status.id,
+                    accountSessionId: confirmData.accountId,
+                });
+            }
         } catch (err) {
             store.setConfirmError((err as Error).message);
         } finally {
@@ -196,7 +204,9 @@ export function ModalHost({
                                 poll
                             );
                     }}
-                    onStatusDelete={onStatusDeleteRequest}
+                    onStatusDelete={(status, accountId) =>
+                        onStatusDeleteRequest(status, accountId, entry.id)
+                    }
                     onStatusEdit={onStatusEditRequest}
                     onImageClick={onImageClick}
                     onVideoClick={onVideoClick}
@@ -240,7 +250,9 @@ export function ModalHost({
                             );
                         }
                     }}
-                    onStatusDelete={onStatusDeleteRequest}
+                    onStatusDelete={(status, accountId) =>
+                        onStatusDeleteRequest(status, accountId, entry.id)
+                    }
                     onStatusEdit={onStatusEditRequest}
                     deletedStatusEvents={deletedStatusEvents}
                     onDeletedStatusConsumed={(ids) =>

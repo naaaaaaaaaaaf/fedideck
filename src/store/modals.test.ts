@@ -361,6 +361,30 @@ describe('useModalsStore', () => {
                 expect(stack[0].accountSessionId).toBe('acct-2');
             }
         });
+
+        it('removeStackEntryById removes a specific entry by its id', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
+            useModalsStore.getState().pushStatusDetail(mockStatus('s2'), 'acct-1');
+
+            const stack = useModalsStore.getState().stack;
+            expect(stack).toHaveLength(3);
+            const targetId = stack[1].id; // profile entry
+
+            useModalsStore.getState().removeStackEntryById(targetId);
+
+            const updated = useModalsStore.getState().stack;
+            expect(updated).toHaveLength(2);
+            expect(updated[0].type).toBe('statusDetail');
+            expect(updated[1].type).toBe('statusDetail');
+        });
+
+        it('removeStackEntryById is a no-op for nonexistent id', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+
+            useModalsStore.getState().removeStackEntryById('nonexistent');
+            expect(useModalsStore.getState().stack).toHaveLength(1);
+        });
     });
 
     // ── Overlays ──────────────────────────────────────────────────────────
@@ -536,6 +560,78 @@ describe('useModalsStore', () => {
             expect(state.confirm).toBeNull();
             expect(state.imageViewer).toBeNull();
         });
+
+        it('openCompose clears all overlay slots', () => {
+            const status = mockStatus('s1');
+            useModalsStore.getState().openConfirm({ status, accountId: 'acct-1' });
+            useModalsStore.getState().openImageViewer([{ url: 'http://example.com/img.png' }], 0);
+            useModalsStore
+                .getState()
+                .openVideoViewer([{ url: 'http://example.com/vid.mp4', type: 'video' }], 0);
+            useModalsStore.getState().openAudioPlayer([{ url: 'http://example.com/audio.mp3' }], 0);
+
+            useModalsStore.getState().openCompose({ mode: 'new', accountId: 'acct-1' });
+
+            const state = useModalsStore.getState();
+            expect(state.compose).not.toBeNull();
+            expect(state.confirm).toBeNull();
+            expect(state.imageViewer).toBeNull();
+            expect(state.videoViewer).toBeNull();
+            expect(state.audioPlayer).toBeNull();
+            expect(state.confirmLoading).toBe(false);
+            expect(state.confirmError).toBeNull();
+        });
+
+        it('openImageViewer clears all overlay slots', () => {
+            const status = mockStatus('s1');
+            useModalsStore.getState().openCompose({ mode: 'new', accountId: 'acct-1' });
+            useModalsStore.getState().openConfirm({ status, accountId: 'acct-1' });
+            useModalsStore
+                .getState()
+                .openVideoViewer([{ url: 'http://example.com/vid.mp4', type: 'video' }], 0);
+            useModalsStore.getState().openAudioPlayer([{ url: 'http://example.com/audio.mp3' }], 0);
+
+            useModalsStore.getState().openImageViewer([{ url: 'http://example.com/img.png' }], 0);
+
+            const state = useModalsStore.getState();
+            expect(state.imageViewer).not.toBeNull();
+            expect(state.compose).toBeNull();
+            expect(state.confirm).toBeNull();
+            expect(state.videoViewer).toBeNull();
+            expect(state.audioPlayer).toBeNull();
+        });
+
+        it('openVideoViewer clears all overlay slots', () => {
+            const status = mockStatus('s1');
+            useModalsStore.getState().openCompose({ mode: 'new', accountId: 'acct-1' });
+            useModalsStore.getState().openConfirm({ status, accountId: 'acct-1' });
+            useModalsStore.getState().openImageViewer([{ url: 'http://example.com/img.png' }], 0);
+
+            useModalsStore
+                .getState()
+                .openVideoViewer([{ url: 'http://example.com/vid.mp4', type: 'video' }], 0);
+
+            const state = useModalsStore.getState();
+            expect(state.videoViewer).not.toBeNull();
+            expect(state.compose).toBeNull();
+            expect(state.confirm).toBeNull();
+            expect(state.imageViewer).toBeNull();
+        });
+
+        it('openAudioPlayer clears all overlay slots', () => {
+            const status = mockStatus('s1');
+            useModalsStore.getState().openCompose({ mode: 'new', accountId: 'acct-1' });
+            useModalsStore.getState().openConfirm({ status, accountId: 'acct-1' });
+            useModalsStore.getState().openImageViewer([{ url: 'http://example.com/img.png' }], 0);
+
+            useModalsStore.getState().openAudioPlayer([{ url: 'http://example.com/audio.mp3' }], 0);
+
+            const state = useModalsStore.getState();
+            expect(state.audioPlayer).not.toBeNull();
+            expect(state.compose).toBeNull();
+            expect(state.confirm).toBeNull();
+            expect(state.imageViewer).toBeNull();
+        });
     });
 
     // ── Confirm sub-state ─────────────────────────────────────────────────
@@ -633,6 +729,17 @@ describe('useModalsStore', () => {
             expect(useModalsStore.getState().confirm!.status.id).toBe('s1');
             expect(useModalsStore.getState().confirmLoading).toBe(true);
             expect(useModalsStore.getState().confirmError).toBe('some error');
+        });
+
+        it('preserves originStackEntryId through openConfirm', () => {
+            const status = mockStatus('s1');
+            useModalsStore
+                .getState()
+                .openConfirm({ status, accountId: 'acct-1', originStackEntryId: 'stack-42' });
+
+            const confirm = useModalsStore.getState().confirm;
+            expect(confirm).not.toBeNull();
+            expect(confirm!.originStackEntryId).toBe('stack-42');
         });
     });
 

@@ -107,6 +107,7 @@ export function ImageViewer({
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}
             aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
             aria-label="画像ビューアー"
         >
             {/* Backdrop */}

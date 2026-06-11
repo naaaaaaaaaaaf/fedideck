@@ -201,8 +201,8 @@ function App() {
 
     // Handle delete request from StatusCard - show confirmation modal
     const handleStatusDeleteRequest = useCallback(
-        (status: mastodon.v1.Status, accountId: string) => {
-            useModalsStore.getState().openConfirm({ status, accountId });
+        (status: mastodon.v1.Status, accountId: string, originStackEntryId?: string) => {
+            useModalsStore.getState().openConfirm({ status, accountId, originStackEntryId });
         },
         []
     );

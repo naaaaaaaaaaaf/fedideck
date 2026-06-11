@@ -95,6 +95,7 @@ export function AddColumnModal({ isOpen, onClose, isActive = true, zIndex }: Add
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}
             aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
             aria-labelledby="add-column-modal-title"
         >
             {/* Backdrop */}

@@ -419,14 +419,16 @@ export function StatusDetailModal({
         };
     }, [isOpen, accountSession, navigatedStatusId, navigatedShallowQuoteId]);
 
-    // Fetch thread context when modal opens
+    // Fetch thread context when modal is active
     useEffect(() => {
-        if (!isOpen || !statusId || !accountSession) {
+        if (!statusId || !accountSession) {
             setContext(null);
             setContextError(null);
             setIsLoadingContext(false);
             return;
         }
+
+        if (!isOpen) return; // hidden stack entry: keep cached context
 
         let cancelled = false;
 
@@ -574,6 +576,7 @@ export function StatusDetailModal({
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}
             aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
             aria-labelledby="status-detail-title"
         >
             {/* Backdrop */}
