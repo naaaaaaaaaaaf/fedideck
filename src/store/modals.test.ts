@@ -376,12 +376,12 @@ describe('useModalsStore', () => {
 
     describe('imageViewer', () => {
         it('opens with auto-incremented key and closes', () => {
-            useModalsStore.getState().openImageViewer([{ url: 'http://example.com/img.png' }], 2);
+            useModalsStore.getState().openImageViewer([{ url: 'http://example.com/img.png' }], 0);
 
             const data = useModalsStore.getState().imageViewer;
             expect(data).not.toBeNull();
             expect(data!.images).toHaveLength(1);
-            expect(data!.initialIndex).toBe(2);
+            expect(data!.initialIndex).toBe(0);
             expect(data!.key).toBeGreaterThan(0);
 
             const key1 = data!.key;
@@ -392,6 +392,18 @@ describe('useModalsStore', () => {
             // Reopen should get a new key
             useModalsStore.getState().openImageViewer([{ url: 'http://example.com/img2.png' }], 0);
             expect(useModalsStore.getState().imageViewer!.key).toBeGreaterThan(key1);
+        });
+
+        it('is a no-op when called with an empty array', () => {
+            useModalsStore.getState().openImageViewer([], 0);
+            expect(useModalsStore.getState().imageViewer).toBeNull();
+        });
+
+        it('clamps out-of-range index to valid bounds', () => {
+            useModalsStore.getState().openImageViewer([{ url: 'http://example.com/img.png' }], 5);
+            const data = useModalsStore.getState().imageViewer;
+            expect(data).not.toBeNull();
+            expect(data!.initialIndex).toBe(0);
         });
     });
 
@@ -405,6 +417,20 @@ describe('useModalsStore', () => {
             useModalsStore.getState().closeVideoViewer();
             expect(useModalsStore.getState().videoViewer).toBeNull();
         });
+
+        it('is a no-op when called with an empty array', () => {
+            useModalsStore.getState().openVideoViewer([], 0);
+            expect(useModalsStore.getState().videoViewer).toBeNull();
+        });
+
+        it('clamps out-of-range index to valid bounds', () => {
+            useModalsStore
+                .getState()
+                .openVideoViewer([{ url: 'http://example.com/vid.mp4', type: 'video' }], 10);
+            const data = useModalsStore.getState().videoViewer;
+            expect(data).not.toBeNull();
+            expect(data!.initialIndex).toBe(0);
+        });
     });
 
     describe('audioPlayer', () => {
@@ -414,6 +440,20 @@ describe('useModalsStore', () => {
             expect(useModalsStore.getState().audioPlayer).not.toBeNull();
             useModalsStore.getState().closeAudioPlayer();
             expect(useModalsStore.getState().audioPlayer).toBeNull();
+        });
+
+        it('is a no-op when called with an empty array', () => {
+            useModalsStore.getState().openAudioPlayer([], 0);
+            expect(useModalsStore.getState().audioPlayer).toBeNull();
+        });
+
+        it('clamps out-of-range index to valid bounds', () => {
+            useModalsStore
+                .getState()
+                .openAudioPlayer([{ url: 'http://example.com/audio.mp3' }], 99);
+            const data = useModalsStore.getState().audioPlayer;
+            expect(data).not.toBeNull();
+            expect(data!.initialIndex).toBe(0);
         });
     });
 
@@ -451,6 +491,47 @@ describe('useModalsStore', () => {
 
             useModalsStore.getState().setDeletedStatusRef(undefined);
             expect(useModalsStore.getState().deletedStatusRef).toBeUndefined();
+        });
+
+        it('overwrites previous deletedStatusRef', () => {
+            useModalsStore
+                .getState()
+                .setDeletedStatusRef({ statusId: 's1', accountSessionId: 'acct-1' });
+            useModalsStore
+                .getState()
+                .setDeletedStatusRef({ statusId: 's2', accountSessionId: 'acct-2' });
+            expect(useModalsStore.getState().deletedStatusRef).toEqual({
+                statusId: 's2',
+                accountSessionId: 'acct-2',
+            });
+        });
+
+        it('allows confirmLoading to block closeConfirm', () => {
+            const status = mockStatus('s1');
+            useModalsStore.getState().openConfirm({ status, accountId: 'acct-1' });
+            useModalsStore.getState().setConfirmLoading(true);
+
+            // closeConfirm is a no-op while loading
+            useModalsStore.getState().closeConfirm();
+            expect(useModalsStore.getState().confirm).not.toBeNull();
+
+            // After resetting loading, closeConfirm works
+            useModalsStore.getState().setConfirmLoading(false);
+            useModalsStore.getState().closeConfirm();
+            expect(useModalsStore.getState().confirm).toBeNull();
+        });
+
+        it('resets confirmLoading and confirmError on openConfirm', () => {
+            const status1 = mockStatus('s1');
+            useModalsStore.getState().openConfirm({ status: status1, accountId: 'acct-1' });
+            useModalsStore.getState().setConfirmLoading(true);
+            useModalsStore.getState().setConfirmError('some error');
+
+            const status2 = mockStatus('s2');
+            useModalsStore.getState().openConfirm({ status: status2, accountId: 'acct-2' });
+            expect(useModalsStore.getState().confirmLoading).toBe(false);
+            expect(useModalsStore.getState().confirmError).toBeNull();
+            expect(useModalsStore.getState().confirm!.status.id).toBe('s2');
         });
     });
 });

@@ -334,8 +334,13 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     },
 
     openImageViewer: (images, index) => {
+        if (images.length === 0) return;
         set({
-            imageViewer: { images, initialIndex: index, key: nextViewerKey() },
+            imageViewer: {
+                images,
+                initialIndex: Math.max(0, Math.min(index, images.length - 1)),
+                key: nextViewerKey(),
+            },
             compose: null,
             videoViewer: null,
             audioPlayer: null,
@@ -347,8 +352,13 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     },
 
     openVideoViewer: (videos, index) => {
+        if (videos.length === 0) return;
         set({
-            videoViewer: { videos, initialIndex: index, key: nextViewerKey() },
+            videoViewer: {
+                videos,
+                initialIndex: Math.max(0, Math.min(index, videos.length - 1)),
+                key: nextViewerKey(),
+            },
             compose: null,
             imageViewer: null,
             audioPlayer: null,
@@ -360,8 +370,13 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     },
 
     openAudioPlayer: (tracks, index) => {
+        if (tracks.length === 0) return;
         set({
-            audioPlayer: { tracks, initialIndex: index, key: nextViewerKey() },
+            audioPlayer: {
+                tracks,
+                initialIndex: Math.max(0, Math.min(index, tracks.length - 1)),
+                key: nextViewerKey(),
+            },
             compose: null,
             imageViewer: null,
             videoViewer: null,

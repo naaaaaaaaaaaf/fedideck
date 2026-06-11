@@ -238,9 +238,11 @@ function App() {
 
     // Handle confirmed delete
     const handleStatusDeleteConfirm = async () => {
-        if (!confirm) return;
+        const state = useModalsStore.getState();
+        if (!state.confirm || state.confirmLoading) return;
+        const { confirm: confirmData } = state;
 
-        const session = accounts.find((a) => a.id === confirm.accountId);
+        const session = accounts.find((a) => a.id === confirmData.accountId);
         if (!session) {
             useModalsStore
                 .getState()
@@ -256,19 +258,25 @@ function App() {
 
         try {
             const client = getClient(session);
-            await deleteStatus(client, confirm.status.id);
-            removeStatusForAccountStreams(confirm.accountId, confirm.status.id);
+            await deleteStatus(client, confirmData.status.id);
+            removeStatusForAccountStreams(confirmData.accountId, confirmData.status.id);
 
             // Notify ProfileModal to remove deleted status from local list
             store.setDeletedStatusRef({
-                statusId: confirm.status.id,
-                accountSessionId: confirm.accountId,
+                statusId: confirmData.status.id,
+                accountSessionId: confirmData.accountId,
+            });
+
+            // Safety-clear the ref after a render tick so it never persists
+            // indefinitely if no open ProfileModal consumes it
+            queueMicrotask(() => {
+                useModalsStore.getState().setDeletedStatusRef(undefined);
             });
 
             // Remove all stack entries referencing the deleted status (scoped by account)
             useModalsStore.getState().removeStatusFromStack({
-                statusId: confirm.status.id,
-                accountSessionId: confirm.accountId,
+                statusId: confirmData.status.id,
+                accountSessionId: confirmData.accountId,
             });
         } catch (err) {
             store.setConfirmError((err as Error).message);
