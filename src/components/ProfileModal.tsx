@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react';
 import type { mastodon } from 'masto';
 import {
     LuX,
@@ -163,6 +163,9 @@ export function ProfileModal({
 
     // Stable account session ID for callbacks
     const accountSessionId = accountSession?.id;
+
+    // Unique IDs for stacked modal instances
+    const titleId = useId();
 
     // Relationship actions hook for follow/unfollow functionality
     const {
@@ -711,7 +714,7 @@ export function ProfileModal({
             aria-modal={isActive ? 'true' : undefined}
             aria-hidden={!isActive ? true : undefined}
             inert={!isActive ? true : undefined}
-            aria-labelledby="profile-modal-title"
+            aria-labelledby={titleId}
         >
             {/* Backdrop */}
             <div
@@ -727,7 +730,7 @@ export function ProfileModal({
             >
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
-                    <h2 id="profile-modal-title" className="text-lg font-semibold text-slate-100">
+                    <h2 id={titleId} className="text-lg font-semibold text-slate-100">
                         プロフィール
                     </h2>
                     <button

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, useId } from 'react';
 import type { mastodon } from 'masto';
 import { LuX, LuTriangleAlert, LuLoader, LuRefreshCw } from 'react-icons/lu';
 import {
@@ -227,6 +227,9 @@ export function StatusDetailModal({
 }: StatusDetailModalProps) {
     // Thread navigation state
     const [navigatedStatus, setNavigatedStatus] = useState<mastodon.v1.Status | null>(null);
+
+    // Unique IDs for stacked modal instances
+    const titleId = useId();
 
     // Get the display status (navigated > original reblog > original)
     const displayStatus = navigatedStatus ?? status?.reblog ?? status;
@@ -641,7 +644,7 @@ export function StatusDetailModal({
             aria-modal={isActive ? 'true' : undefined}
             aria-hidden={!isActive ? true : undefined}
             inert={!isActive ? true : undefined}
-            aria-labelledby="status-detail-title"
+            aria-labelledby={titleId}
         >
             {/* Backdrop */}
             <div
@@ -657,7 +660,7 @@ export function StatusDetailModal({
             >
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
-                    <h2 id="status-detail-title" className="text-lg font-semibold text-slate-100">
+                    <h2 id={titleId} className="text-lg font-semibold text-slate-100">
                         投稿の詳細
                     </h2>
                     <button

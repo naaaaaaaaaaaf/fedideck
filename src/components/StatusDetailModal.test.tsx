@@ -776,7 +776,10 @@ describe('StatusDetailModal', () => {
 
             const dialog = screen.getByRole('dialog');
             expect(dialog).toHaveAttribute('aria-modal', 'true');
-            expect(dialog).toHaveAttribute('aria-labelledby', 'status-detail-title');
+            expect(dialog).toHaveAttribute('aria-labelledby');
+            // Verify the labelledby target exists and has the expected text
+            const labelledBy = dialog.getAttribute('aria-labelledby');
+            expect(document.getElementById(labelledBy!)).toHaveTextContent('投稿の詳細');
         });
 
         it('should focus close button when modal opens', () => {

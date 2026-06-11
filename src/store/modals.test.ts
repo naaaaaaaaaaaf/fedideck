@@ -867,6 +867,40 @@ describe('useModalsStore', () => {
             // Profile is for acct-2, not acct-1, so no consumer → no event
             expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(0);
         });
+
+        it('with originStackEntryId: removes specific entry and pushes event if consumer exists', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
+
+            const stack = useModalsStore.getState().stack;
+            const detailEntryId = stack[0].id;
+
+            useModalsStore
+                .getState()
+                .handleStatusDeleted({ statusId: 's1', accountSessionId: 'acct-1' }, detailEntryId);
+
+            // Specific entry removed, profile remains
+            expect(useModalsStore.getState().stack).toHaveLength(1);
+            expect(useModalsStore.getState().stack[0].type).toBe('profile');
+            // Event pushed because ProfileModal consumer exists for acct-1
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
+        });
+
+        it('with originStackEntryId: no event when no matching profile consumer', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-2');
+
+            const stack = useModalsStore.getState().stack;
+            const detailEntryId = stack[0].id;
+
+            useModalsStore
+                .getState()
+                .handleStatusDeleted({ statusId: 's1', accountSessionId: 'acct-1' }, detailEntryId);
+
+            expect(useModalsStore.getState().stack).toHaveLength(1);
+            // No consumer for acct-1 (profile is acct-2), so no event
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(0);
+        });
     });
 
     describe('integration: delete flow via event queue', () => {

@@ -108,21 +108,14 @@ export function ModalHost({
             await deleteStatus(client, confirmData.status.id);
             removeStatusForAccountStreams(confirmData.accountId, confirmData.status.id);
 
-            // Notify ProfileModal to remove deleted status from local list
-            store.pushDeletedStatusEvent({
-                statusId: confirmData.status.id,
-                accountSessionId: confirmData.accountId,
-            });
-
-            // Remove stack entry — prefer direct entry id when available for navigated status accuracy
-            if (confirmData.originStackEntryId) {
-                useModalsStore.getState().removeStackEntryById(confirmData.originStackEntryId);
-            } else {
-                useModalsStore.getState().removeStatusFromStack({
+            // Atomic: remove stack entry and only push event if a ProfileModal consumer exists
+            useModalsStore.getState().handleStatusDeleted(
+                {
                     statusId: confirmData.status.id,
                     accountSessionId: confirmData.accountId,
-                });
-            }
+                },
+                confirmData.originStackEntryId
+            );
         } catch (err) {
             store.setConfirmError((err as Error).message);
         } finally {

@@ -151,7 +151,7 @@ interface ModalsState {
     setConfirmError: (error: string | null) => void;
     pushDeletedStatusEvent: (ref: StatusRef) => void;
     pruneDeletedStatusEvents: (eventIds: string[]) => void;
-    handleStatusDeleted: (ref: StatusRef) => void;
+    handleStatusDeleted: (ref: StatusRef, originStackEntryId?: string) => void;
 }
 
 /** Auto-incrementing counters for stable ids and viewer keys */
@@ -449,10 +449,13 @@ export const useModalsStore = create<ModalsState>()((set) => ({
         }));
     },
 
-    /** Atomic delete: remove statusDetail entries and only push event if a ProfileModal consumer exists */
-    handleStatusDeleted: (ref: StatusRef) => {
+    /** Atomic delete: remove matching entry/statusDetail and only push event if a ProfileModal consumer exists */
+    handleStatusDeleted: (ref: StatusRef, originStackEntryId?: string) => {
         set((state) => {
-            const stack = state.stack.filter((entry) => !statusDetailMatches(entry, ref));
+            const stack = originStackEntryId
+                ? state.stack.filter((entry) => entry.id !== originStackEntryId)
+                : state.stack.filter((entry) => !statusDetailMatches(entry, ref));
+
             const hasConsumer = stack.some(
                 (entry) =>
                     entry.type === 'profile' && entry.accountSessionId === ref.accountSessionId
@@ -463,7 +466,9 @@ export const useModalsStore = create<ModalsState>()((set) => ({
                     ? [...state.deletedStatusEvents, { ...ref, eventId: crypto.randomUUID() }]
                     : stack.length === 0
                       ? []
-                      : state.deletedStatusEvents,
+                      : state.deletedStatusEvents.filter(
+                            (e) => e.accountSessionId !== ref.accountSessionId
+                        ),
             };
         });
     },
