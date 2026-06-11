@@ -253,16 +253,24 @@ export const useModalsStore = create<ModalsState>()((set) => ({
 
     /** Remove all statusDetail entries matching the given StatusRef (direct or reblog) */
     removeStatusFromStack: (ref: StatusRef) => {
-        set((state) => ({
-            stack: state.stack.filter((entry) => !statusDetailMatches(entry, ref)),
-        }));
+        set((state) => {
+            const stack = state.stack.filter((entry) => !statusDetailMatches(entry, ref));
+            return {
+                stack,
+                deletedStatusEvents: stack.length === 0 ? [] : state.deletedStatusEvents,
+            };
+        });
     },
 
     /** Remove a specific stack entry by its id */
     removeStackEntryById: (entryId: string) => {
-        set((state) => ({
-            stack: state.stack.filter((entry) => entry.id !== entryId),
-        }));
+        set((state) => {
+            const stack = state.stack.filter((entry) => entry.id !== entryId);
+            return {
+                stack,
+                deletedStatusEvents: stack.length === 0 ? [] : state.deletedStatusEvents,
+            };
+        });
     },
 
     goBack: () => {

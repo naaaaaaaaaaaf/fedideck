@@ -250,9 +250,7 @@ export function ModalHost({
                             );
                         }
                     }}
-                    onStatusDelete={(status, accountId) =>
-                        onStatusDeleteRequest(status, accountId, entry.id)
-                    }
+                    onStatusDelete={(status, accountId) => onStatusDeleteRequest(status, accountId)}
                     onStatusEdit={onStatusEditRequest}
                     deletedStatusEvents={deletedStatusEvents}
                     onDeletedStatusConsumed={(ids) =>

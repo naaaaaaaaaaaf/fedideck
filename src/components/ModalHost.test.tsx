@@ -29,14 +29,28 @@ vi.mock('./StatusDetailModal', () => ({
 }));
 
 vi.mock('./ProfileModal', () => ({
-    ProfileModal: ({ isOpen, isActive, zIndex }: any) => (
-        <div
-            data-testid="profile-modal"
-            data-open={String(isOpen)}
-            data-active={String(isActive)}
-            data-zindex={zIndex}
-        />
-    ),
+    ProfileModal: ({ isOpen, isActive, zIndex, onStatusDelete }: any) =>
+        isOpen ? (
+            <div
+                data-testid="profile-modal"
+                data-open={String(isOpen)}
+                data-active={String(isActive)}
+                data-zindex={zIndex}
+            >
+                <button
+                    data-testid="profile-delete-btn"
+                    onClick={() => onStatusDelete?.({ id: 's1' }, 'acct-1')}
+                />
+            </div>
+        ) : (
+            <div
+                data-testid="profile-modal"
+                data-open={String(isOpen)}
+                data-active={String(isActive)}
+                data-zindex={zIndex}
+                style={{ visibility: 'hidden' }}
+            />
+        ),
 }));
 
 vi.mock('./ComposeModal', () => ({
@@ -248,5 +262,20 @@ describe('ModalHost', () => {
         expect(callArgs[0]).toEqual({ id: 's1' }); // status
         expect(callArgs[1]).toBe('acct-1'); // accountId
         expect(callArgs[2]).toMatch(/^stack-\d+$/); // originStackEntryId
+    });
+
+    it('does not pass originStackEntryId when delete is requested from profile modal', () => {
+        useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
+
+        render(<ModalHost {...defaultProps} />);
+
+        const deleteBtn = screen.getByTestId('profile-delete-btn');
+        deleteBtn.click();
+
+        expect(defaultProps.onStatusDeleteRequest).toHaveBeenCalledTimes(1);
+        const callArgs = defaultProps.onStatusDeleteRequest.mock.calls[0];
+        expect(callArgs[0]).toEqual({ id: 's1' }); // status
+        expect(callArgs[1]).toBe('acct-1'); // accountId
+        expect(callArgs[2]).toBeUndefined(); // no originStackEntryId
     });
 });

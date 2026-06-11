@@ -74,6 +74,10 @@ function App() {
             onDelete: (accountId, statusId) => {
                 // Remove from all streams for this account
                 removeStatusForAccountStreams(accountId, statusId);
+                // Also remove from modal stack and notify ProfileModal
+                const modalsStore = useModalsStore.getState();
+                modalsStore.removeStatusFromStack({ statusId, accountSessionId: accountId });
+                modalsStore.pushDeletedStatusEvent({ statusId, accountSessionId: accountId });
             },
             onNotification: (accountId, notification) => {
                 const notifKey = getStreamKey(accountId, 'notifications');
@@ -82,6 +86,13 @@ function App() {
             onStatusUpdate: (accountId, status) => {
                 const homeKey = getStreamKey(accountId, 'home');
                 updateStatus(homeKey, status);
+                // Also update modal stack
+                useModalsStore
+                    .getState()
+                    .updateStackStatus(
+                        { statusId: status.id, accountSessionId: accountId },
+                        status
+                    );
             },
             onConnect: (accountId) => {
                 console.log(`✅ Streaming connected for ${accountId}`);

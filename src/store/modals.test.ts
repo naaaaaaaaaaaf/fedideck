@@ -362,6 +362,36 @@ describe('useModalsStore', () => {
             }
         });
 
+        it('removeStatusFromStack prunes deletedStatusEvents when stack becomes empty', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore
+                .getState()
+                .pushDeletedStatusEvent({ statusId: 's1', accountSessionId: 'acct-1' });
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
+
+            useModalsStore
+                .getState()
+                .removeStatusFromStack({ statusId: 's1', accountSessionId: 'acct-1' });
+
+            expect(useModalsStore.getState().stack).toHaveLength(0);
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(0);
+        });
+
+        it('removeStatusFromStack preserves events when stack is not empty', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
+            useModalsStore
+                .getState()
+                .pushDeletedStatusEvent({ statusId: 's1', accountSessionId: 'acct-1' });
+
+            useModalsStore
+                .getState()
+                .removeStatusFromStack({ statusId: 's1', accountSessionId: 'acct-1' });
+
+            expect(useModalsStore.getState().stack).toHaveLength(1);
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
+        });
+
         it('removeStackEntryById removes a specific entry by its id', () => {
             useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
             useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
@@ -384,6 +414,34 @@ describe('useModalsStore', () => {
 
             useModalsStore.getState().removeStackEntryById('nonexistent');
             expect(useModalsStore.getState().stack).toHaveLength(1);
+        });
+
+        it('removeStackEntryById prunes deletedStatusEvents when stack becomes empty', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore
+                .getState()
+                .pushDeletedStatusEvent({ statusId: 's1', accountSessionId: 'acct-1' });
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
+
+            const stack = useModalsStore.getState().stack;
+            useModalsStore.getState().removeStackEntryById(stack[0].id);
+
+            expect(useModalsStore.getState().stack).toHaveLength(0);
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(0);
+        });
+
+        it('removeStackEntryById preserves events when stack is not empty', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
+            useModalsStore
+                .getState()
+                .pushDeletedStatusEvent({ statusId: 's1', accountSessionId: 'acct-1' });
+
+            const stack = useModalsStore.getState().stack;
+            useModalsStore.getState().removeStackEntryById(stack[0].id);
+
+            expect(useModalsStore.getState().stack).toHaveLength(1);
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
         });
     });
 
