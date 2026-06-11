@@ -527,12 +527,20 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     },
 
     pushUpdatedStatusEvent: (accountSessionId, status) => {
-        set((state) => ({
-            updatedStatusEvents: [
-                ...state.updatedStatusEvents,
-                { eventId: crypto.randomUUID(), accountSessionId, status },
-            ],
-        }));
+        set((state) => {
+            // Skip when no stack entry can consume this event (prevents unbounded growth)
+            const hasConsumer = state.stack.some(
+                (entry) => entry.accountSessionId === accountSessionId
+            );
+            if (!hasConsumer) return state;
+
+            return {
+                updatedStatusEvents: [
+                    ...state.updatedStatusEvents,
+                    { eventId: crypto.randomUUID(), accountSessionId, status },
+                ],
+            };
+        });
     },
 
     pruneUpdatedStatusEvents: (eventIds) => {

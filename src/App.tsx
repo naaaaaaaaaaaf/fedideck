@@ -188,12 +188,12 @@ function App() {
         (updatedStatus: mastodon.v1.Status, accountSessionId?: string) => {
             updateStatusGlobal(updatedStatus);
             if (accountSessionId) {
-                useModalsStore
-                    .getState()
-                    .updateStackStatus(
-                        { statusId: updatedStatus.id, accountSessionId },
-                        updatedStatus
-                    );
+                const store = useModalsStore.getState();
+                store.updateStackStatus(
+                    { statusId: updatedStatus.id, accountSessionId },
+                    updatedStatus
+                );
+                store.pushUpdatedStatusEvent(accountSessionId, updatedStatus);
             }
         },
         [updateStatusGlobal]

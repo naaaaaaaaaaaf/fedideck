@@ -938,7 +938,8 @@ describe('useModalsStore', () => {
     // ── Updated Status Events ──────────────────────────────────────────────
 
     describe('updatedStatusEvents', () => {
-        it('pushUpdatedStatusEvent adds event', () => {
+        it('pushUpdatedStatusEvent adds event when consumer exists in stack', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s0'), 'acct-1');
             useModalsStore.getState().pushUpdatedStatusEvent('acct-1', mockStatus('s1'));
             const events = useModalsStore.getState().updatedStatusEvents;
             expect(events).toHaveLength(1);
@@ -946,7 +947,13 @@ describe('useModalsStore', () => {
             expect(events[0].status.id).toBe('s1');
         });
 
+        it('pushUpdatedStatusEvent skips when no consumer exists', () => {
+            useModalsStore.getState().pushUpdatedStatusEvent('acct-1', mockStatus('s1'));
+            expect(useModalsStore.getState().updatedStatusEvents).toHaveLength(0);
+        });
+
         it('pruneUpdatedStatusEvents removes by eventId', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s0'), 'acct-1');
             useModalsStore.getState().pushUpdatedStatusEvent('acct-1', mockStatus('s1'));
             useModalsStore.getState().pushUpdatedStatusEvent('acct-1', mockStatus('s2'));
             const [first] = useModalsStore.getState().updatedStatusEvents;
@@ -957,6 +964,7 @@ describe('useModalsStore', () => {
         });
 
         it('clearStack clears updatedStatusEvents', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s0'), 'acct-1');
             useModalsStore.getState().pushUpdatedStatusEvent('acct-1', mockStatus('s1'));
             useModalsStore.getState().clearStack();
             expect(useModalsStore.getState().updatedStatusEvents).toHaveLength(0);
