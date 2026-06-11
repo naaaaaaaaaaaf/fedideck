@@ -97,11 +97,17 @@ describe('StatusDetailModal', () => {
     });
 
     describe('rendering', () => {
-        it('should not render when isOpen is false', () => {
+        it('should render hidden (not null) when isOpen is false', () => {
             const status = createMockStatus();
-            render(<StatusDetailModal isOpen={false} onClose={() => {}} status={status} />);
+            const { container } = render(
+                <StatusDetailModal isOpen={false} onClose={() => {}} status={status} />
+            );
 
-            expect(screen.queryByText('投稿の詳細')).not.toBeInTheDocument();
+            // Modal stays mounted but hidden to preserve state for back-navigation
+            expect(container.firstChild).not.toBe(null);
+            const wrapper = container.firstChild as HTMLElement;
+            expect(wrapper.style.visibility).toBe('hidden');
+            expect(wrapper.style.pointerEvents).toBe('none');
         });
 
         it('should not render when status is null', () => {
@@ -1957,9 +1963,13 @@ describe('StatusDetailModal', () => {
             );
         });
 
-        it('should reset navigation state when modal is closed and reopened', async () => {
+        it('should reset navigation state when status id changes', async () => {
             const user = userEvent.setup();
             const status = createMockStatus({ content: '<p>Original main content</p>' });
+            const differentStatus = createMockStatus({
+                id: 'different-1',
+                content: '<p>Different status content</p>',
+            });
             const accountSession = createMockAccountSession();
             const ancestor = createAncestorStatus();
 
@@ -1969,16 +1979,19 @@ describe('StatusDetailModal', () => {
             });
 
             const TestWrapper = () => {
-                const [isOpen, setIsOpen] = useState(true);
+                const [currentStatus, setCurrentStatus] = useState(status);
                 return (
                     <>
-                        <button data-testid="toggle" onClick={() => setIsOpen((prev) => !prev)}>
-                            Toggle
+                        <button
+                            data-testid="switch"
+                            onClick={() => setCurrentStatus(differentStatus)}
+                        >
+                            Switch
                         </button>
                         <StatusDetailModal
-                            isOpen={isOpen}
-                            onClose={() => setIsOpen(false)}
-                            status={status}
+                            isOpen={true}
+                            onClose={() => {}}
+                            status={currentStatus}
                             accountSession={accountSession}
                         />
                     </>
@@ -2007,21 +2020,18 @@ describe('StatusDetailModal', () => {
                 );
             });
 
-            // Close and reopen
-            const closeButton = screen.getByRole('button', { name: '閉じる' });
-            await user.click(closeButton);
-
+            // Switch to a different status — should reset navigation
             vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
-                ancestors: [ancestor],
+                ancestors: [],
                 descendants: [],
             });
 
-            const toggleButton = screen.getByTestId('toggle');
-            await user.click(toggleButton);
+            const switchButton = screen.getByTestId('switch');
+            await user.click(switchButton);
 
-            // Should show original content again
+            // Should show the different status content (navigation was reset)
             await waitFor(() => {
-                expect(screen.getByText('Original main content')).toBeInTheDocument();
+                expect(screen.getByText('Different status content')).toBeInTheDocument();
             });
         });
 

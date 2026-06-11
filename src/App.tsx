@@ -3,35 +3,18 @@ import type { mastodon } from 'masto';
 import './index.css';
 import { Sidebar } from './components/Sidebar';
 import { ColumnContainer } from './deck/ColumnContainer';
-import { LoginModal } from './components/LoginModal';
-import { AddColumnModal } from './components/AddColumnModal';
-import { ComposeModal } from './components/ComposeModal';
-import { StatusDetailModal } from './components/StatusDetailModal';
-import { ProfileModal } from './components/ProfileModal';
-import { ImageViewer } from './components/ImageViewer';
-import { VideoViewer } from './components/VideoViewer';
-import { AudioPlayer } from './components/AudioPlayer';
-import { ConfirmModal } from './components/ConfirmModal';
-import type { ImageViewerImage } from './components/ImageViewer';
+import { ModalHost } from './components/ModalHost';
+import type { ImageViewerImage } from './types/image';
 import type { VideoViewerVideo } from './types/video';
 import type { AudioViewerTrack } from './types/audio';
 import { useAccountsStore } from './store/accounts';
-import { getClient, deleteStatus } from './api/mastoClient';
 import { useColumnsStore } from './store/columns';
 import { useStreamsStore, getStreamKey } from './store/streams';
-import { useModalsStore, type StackEntry } from './store/modals';
+import { useModalsStore } from './store/modals';
 import { initStreamManager } from './streaming/streamManager';
 
 // NSFW cache size limit for LRU eviction
 const MAX_NSFW_CACHE_SIZE = 100;
-
-// Z-index constants for modal layers
-const Z_INDEX = {
-    stackBase: 50,
-    overlay: 70,
-    confirm: 75,
-    utility: 80,
-} as const;
 
 function App() {
     // NSFW revealed status IDs (for syncing between StatusCard and StatusDetailModal)
@@ -71,19 +54,6 @@ function App() {
     const updateStatusGlobal = useStreamsStore((s) => s.updateStatusGlobal);
     const updatePollGlobal = useStreamsStore((s) => s.updatePollGlobal);
     const prependNotification = useStreamsStore((s) => s.prependNotification);
-
-    // Modal store — data selectors only (actions via getState() to avoid full-store subscription)
-    const stack = useModalsStore((s) => s.stack);
-    const compose = useModalsStore((s) => s.compose);
-    const confirm = useModalsStore((s) => s.confirm);
-    const imageViewer = useModalsStore((s) => s.imageViewer);
-    const videoViewer = useModalsStore((s) => s.videoViewer);
-    const audioPlayer = useModalsStore((s) => s.audioPlayer);
-    const isLoginOpen = useModalsStore((s) => s.isLoginOpen);
-    const isAddColumnOpen = useModalsStore((s) => s.isAddColumnOpen);
-    const confirmLoading = useModalsStore((s) => s.confirmLoading);
-    const confirmError = useModalsStore((s) => s.confirmError);
-    const deletedStatusRef = useModalsStore((s) => s.deletedStatusRef);
 
     // Ref to track if default columns have been added
     const hasAddedDefaultColumns = useRef(false);
@@ -143,9 +113,10 @@ function App() {
     }, [accounts, columns.length, addColumn]);
 
     // Derive login modal open state - show when no accounts exist or user explicitly opens it
+    const isLoginOpen = useModalsStore((s) => s.isLoginOpen);
     const shouldShowLoginModal = isLoginOpen || accounts.length === 0;
 
-    // ── Handlers ──────────────────────────────────────────────────────────
+    // ── Handlers (shared with ColumnContainer and ModalHost) ─────────────
 
     const handleReply = useCallback((status: mastodon.v1.Status, accountId: string) => {
         const account = status.account;
@@ -236,61 +207,8 @@ function App() {
         []
     );
 
-    // Handle confirmed delete
-    const handleStatusDeleteConfirm = async () => {
-        const state = useModalsStore.getState();
-        if (!state.confirm || state.confirmLoading) return;
-        const { confirm: confirmData } = state;
-
-        const session = accounts.find((a) => a.id === confirmData.accountId);
-        if (!session) {
-            useModalsStore
-                .getState()
-                .setConfirmError(
-                    'アカウントセッションが見つかりません。再度ログインしてください。'
-                );
-            return;
-        }
-
-        const store = useModalsStore.getState();
-        store.setConfirmLoading(true);
-        store.setConfirmError(null);
-
-        try {
-            const client = getClient(session);
-            await deleteStatus(client, confirmData.status.id);
-            removeStatusForAccountStreams(confirmData.accountId, confirmData.status.id);
-
-            // Notify ProfileModal to remove deleted status from local list
-            store.setDeletedStatusRef({
-                statusId: confirmData.status.id,
-                accountSessionId: confirmData.accountId,
-            });
-
-            // Safety-clear the ref after a render tick so it never persists
-            // indefinitely if no open ProfileModal consumes it
-            queueMicrotask(() => {
-                useModalsStore.getState().setDeletedStatusRef(undefined);
-            });
-
-            // Remove all stack entries referencing the deleted status (scoped by account)
-            useModalsStore.getState().removeStatusFromStack({
-                statusId: confirmData.status.id,
-                accountSessionId: confirmData.accountId,
-            });
-        } catch (err) {
-            store.setConfirmError((err as Error).message);
-        } finally {
-            // Must reset loading BEFORE closing — closeConfirm is a no-op while loading
-            useModalsStore.getState().setConfirmLoading(false);
-            if (!useModalsStore.getState().confirmError) {
-                useModalsStore.getState().closeConfirm();
-            }
-        }
-    };
-
     // Unified status update handler — updates global streams only.
-    // Stack updates are scoped by account and done inline in renderStackEntry.
+    // Stack updates are scoped by account and done inline in ModalHost.
     const handleStatusUpdateGlobal = useCallback(
         (updatedStatus: mastodon.v1.Status) => {
             updateStatusGlobal(updatedStatus);
@@ -299,142 +217,13 @@ function App() {
     );
 
     // Handle poll updates - update global store only.
-    // Stack updates are scoped by account and done inline in renderStackEntry.
+    // Stack updates are scoped by account and done inline in ModalHost.
     const handlePollUpdateGlobal = useCallback(
         (statusId: string, poll: mastodon.v1.Poll) => {
             updatePollGlobal(statusId, poll);
         },
         [updatePollGlobal]
     );
-
-    // ── Render helpers ────────────────────────────────────────────────────
-
-    // Whether any overlay is blocking the navigation stack
-    const hasBlockingOverlay =
-        !!compose ||
-        !!confirm ||
-        !!imageViewer ||
-        !!videoViewer ||
-        !!audioPlayer ||
-        shouldShowLoginModal ||
-        isAddColumnOpen;
-
-    // Only the topmost overlay should have aria-modal and focus trap active.
-    // Overlay slots are mutually exclusive in the store, so at most one is open.
-    // Priority: utility > confirm > viewers > compose.
-    const activeOverlay = isAddColumnOpen
-        ? 'addColumn'
-        : shouldShowLoginModal
-          ? 'login'
-          : confirm
-            ? 'confirm'
-            : audioPlayer
-              ? 'audio'
-              : videoViewer
-                ? 'video'
-                : imageViewer
-                  ? 'image'
-                  : compose
-                    ? 'compose'
-                    : null;
-
-    const renderStackEntry = (entry: StackEntry, index: number) => {
-        const zIndex = Z_INDEX.stackBase + index;
-        const isStackTop = index === stack.length - 1;
-        const isActive = isStackTop && !hasBlockingOverlay;
-
-        if (entry.type === 'statusDetail') {
-            const accountSession = accounts.find((a) => a.id === entry.accountSessionId);
-            return (
-                <StatusDetailModal
-                    key={entry.id}
-                    isOpen={isStackTop}
-                    isActive={isActive}
-                    onClose={useModalsStore.getState().goBack}
-                    status={entry.status}
-                    accountSession={accountSession}
-                    onReply={(status) => {
-                        if (accountSession) handleReply(status, accountSession.id);
-                    }}
-                    onQuote={(status) => {
-                        if (accountSession) handleQuote(status, accountSession.id);
-                    }}
-                    onStatusUpdate={(updatedStatus) => {
-                        handleStatusUpdateGlobal(updatedStatus);
-                        useModalsStore.getState().updateStackStatus(
-                            {
-                                statusId: updatedStatus.id,
-                                accountSessionId: entry.accountSessionId,
-                            },
-                            updatedStatus
-                        );
-                    }}
-                    onPollUpdate={(statusId, poll) => {
-                        handlePollUpdateGlobal(statusId, poll);
-                        useModalsStore
-                            .getState()
-                            .updateStackPoll(
-                                { statusId, accountSessionId: entry.accountSessionId },
-                                poll
-                            );
-                    }}
-                    onStatusDelete={handleStatusDeleteRequest}
-                    onStatusEdit={handleStatusEditRequest}
-                    onImageClick={handleImageClick}
-                    onVideoClick={handleVideoClick}
-                    onAudioClick={handleAudioClick}
-                    onAccountClick={handleAccountClick}
-                    nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
-                    onNsfwReveal={addNsfwRevealedStatusId}
-                    zIndex={zIndex}
-                />
-            );
-        }
-
-        if (entry.type === 'profile') {
-            const accountSession = accounts.find((a) => a.id === entry.accountSessionId);
-            return (
-                <ProfileModal
-                    key={entry.id}
-                    isOpen={isStackTop}
-                    isActive={isActive}
-                    onClose={useModalsStore.getState().goBack}
-                    account={entry.account}
-                    accountSession={accountSession}
-                    onReply={handleReply}
-                    onQuote={handleQuote}
-                    onStatusClick={handleStatusClick}
-                    onImageClick={handleImageClick}
-                    onVideoClick={handleVideoClick}
-                    onAudioClick={handleAudioClick}
-                    onAccountClick={handleAccountClick}
-                    onNsfwReveal={addNsfwRevealedStatusId}
-                    nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
-                    onStatusUpdate={(updatedStatus) => {
-                        handleStatusUpdateGlobal(updatedStatus);
-                        if (entry.accountSessionId) {
-                            useModalsStore.getState().updateStackStatus(
-                                {
-                                    statusId: updatedStatus.id,
-                                    accountSessionId: entry.accountSessionId,
-                                },
-                                updatedStatus
-                            );
-                        }
-                    }}
-                    onStatusDelete={handleStatusDeleteRequest}
-                    onStatusEdit={handleStatusEditRequest}
-                    deletedStatusRef={deletedStatusRef}
-                    onDeletedStatusConsumed={() =>
-                        useModalsStore.getState().setDeletedStatusRef(undefined)
-                    }
-                    zIndex={zIndex}
-                />
-            );
-        }
-
-        return null;
-    };
 
     return (
         <div className="h-screen flex overflow-hidden">
@@ -460,88 +249,22 @@ function App() {
                 />
             </main>
 
-            {/* Navigation stack */}
-            {stack.map(renderStackEntry)}
-
-            {/* Overlay: Compose */}
-            <ComposeModal
-                isOpen={!!compose}
-                isActive={activeOverlay === 'compose'}
-                onClose={() => useModalsStore.getState().closeCompose()}
-                replyToStatus={compose?.mode === 'reply' ? compose.replyToStatus : undefined}
-                quoteToStatus={compose?.mode === 'quote' ? compose.quoteToStatus : undefined}
-                accountId={compose?.accountId}
-                editTarget={compose?.mode === 'edit' ? compose.editTarget : undefined}
-                onStatusEdited={(updatedStatus) =>
-                    handleStatusEdited(updatedStatus, compose?.accountId)
-                }
-                zIndex={Z_INDEX.overlay}
-            />
-
-            {/* Overlay: Confirm */}
-            <ConfirmModal
-                isOpen={!!confirm}
-                isActive={activeOverlay === 'confirm'}
-                onClose={() => useModalsStore.getState().closeConfirm()}
-                onConfirm={handleStatusDeleteConfirm}
-                title="投稿を削除"
-                message="この投稿を削除してもよろしいですか？この操作は取り消せません。"
-                confirmLabel="削除"
-                variant="danger"
-                isLoading={confirmLoading}
-                error={confirmError}
-                zIndex={Z_INDEX.confirm}
-            />
-
-            {/* Viewers */}
-            {imageViewer && (
-                <ImageViewer
-                    key={`image-viewer-${imageViewer.key}`}
-                    isOpen={true}
-                    isActive={activeOverlay === 'image'}
-                    onClose={() => useModalsStore.getState().closeImageViewer()}
-                    images={imageViewer.images}
-                    initialIndex={imageViewer.initialIndex}
-                    zIndex={Z_INDEX.overlay}
-                />
-            )}
-            {videoViewer && (
-                <VideoViewer
-                    key={`video-viewer-${videoViewer.key}`}
-                    isOpen={true}
-                    isActive={activeOverlay === 'video'}
-                    onClose={() => useModalsStore.getState().closeVideoViewer()}
-                    videos={videoViewer.videos}
-                    initialIndex={videoViewer.initialIndex}
-                    zIndex={Z_INDEX.overlay}
-                />
-            )}
-            {audioPlayer && (
-                <AudioPlayer
-                    key={`audio-player-${audioPlayer.key}`}
-                    isOpen={true}
-                    isActive={activeOverlay === 'audio'}
-                    onClose={() => useModalsStore.getState().closeAudioPlayer()}
-                    tracks={audioPlayer.tracks}
-                    initialIndex={audioPlayer.initialIndex}
-                    zIndex={Z_INDEX.overlay}
-                />
-            )}
-
-            {/* Utility modals */}
-            <LoginModal
-                isOpen={shouldShowLoginModal}
-                isActive={activeOverlay === 'login'}
-                onClose={() => useModalsStore.getState().closeLogin()}
-                canClose={accounts.length > 0}
-                zIndex={Z_INDEX.utility}
-            />
-            <AddColumnModal
-                key={isAddColumnOpen ? 'open' : 'closed'}
-                isOpen={isAddColumnOpen}
-                isActive={activeOverlay === 'addColumn'}
-                onClose={() => useModalsStore.getState().closeAddColumn()}
-                zIndex={Z_INDEX.utility}
+            <ModalHost
+                onReply={handleReply}
+                onQuote={handleQuote}
+                onStatusClick={handleStatusClick}
+                onImageClick={handleImageClick}
+                onVideoClick={handleVideoClick}
+                onAudioClick={handleAudioClick}
+                onAccountClick={handleAccountClick}
+                onStatusDeleteRequest={handleStatusDeleteRequest}
+                onStatusEditRequest={handleStatusEditRequest}
+                onStatusUpdateGlobal={handleStatusUpdateGlobal}
+                onPollUpdateGlobal={handlePollUpdateGlobal}
+                onStatusEdited={handleStatusEdited}
+                nsfwRevealedStatusIdSet={nsfwRevealedStatusIdSet}
+                addNsfwRevealedStatusId={addNsfwRevealedStatusId}
+                shouldShowLoginModal={shouldShowLoginModal}
             />
         </div>
     );

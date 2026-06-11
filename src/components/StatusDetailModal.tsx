@@ -350,13 +350,14 @@ export function StatusDetailModal({
         canClose: isActive,
     });
 
-    // Reset navigation and context state when modal closes or the base status changes
+    // Reset navigation and context state when the base status changes.
+    // State persists when isOpen changes (back-navigation preserves loaded data).
     useEffect(() => {
         setNavigatedStatus(null);
         setContext(null);
         setContextError(null);
         setIsLoadingContext(false);
-    }, [status?.id, isOpen]);
+    }, [status?.id]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
@@ -530,7 +531,7 @@ export function StatusDetailModal({
         onStatusEdit?.(displayStatus, accountSession.id);
     }, [displayStatus, accountSession, canEdit, onStatusEdit]);
 
-    if (!isOpen || !status || !displayStatus) return null;
+    if (!status || !displayStatus) return null;
 
     const reblogger = navigatedStatus ? null : status.reblog ? status.account : null;
     const account = displayStatus.account;
@@ -565,7 +566,10 @@ export function StatusDetailModal({
     return (
         <div
             className="fixed inset-0 flex items-center justify-center"
-            style={zIndex != null ? { zIndex } : undefined}
+            style={{
+                ...(zIndex != null ? { zIndex } : undefined),
+                ...(!isOpen ? { visibility: 'hidden', pointerEvents: 'none' } : undefined),
+            }}
             onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}

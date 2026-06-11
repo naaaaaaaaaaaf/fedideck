@@ -57,10 +57,10 @@ interface ProfileModalProps {
     onStatusDelete?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onStatusEdit?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     supportsQuotes?: boolean;
-    /** Reference to a deleted status (scoped by account) to remove from local list */
-    deletedStatusRef?: { statusId: string; accountSessionId: string };
-    /** Called when this modal has consumed the deleted status ref */
-    onDeletedStatusConsumed?: () => void;
+    /** Events for deleted statuses to remove from local list */
+    deletedStatusEvents?: { statusId: string; accountSessionId: string; eventId: string }[];
+    /** Called when this modal has consumed the specified deleted status events */
+    onDeletedStatusConsumed?: (eventIds: string[]) => void;
     /** Whether this modal is the active (top-most) modal that should capture focus and handle Escape */
     isActive?: boolean;
     zIndex?: number;
@@ -84,7 +84,7 @@ export function ProfileModal({
     onStatusDelete,
     onStatusEdit,
     supportsQuotes = false,
-    deletedStatusRef,
+    deletedStatusEvents,
     onDeletedStatusConsumed,
     isActive = true,
     zIndex,
@@ -494,43 +494,15 @@ export function ProfileModal({
         [activeTab, handleTabChange]
     );
 
-    // Reset state when modal closes or account changes, then fetch if available
+    // Reset state and fetch when account changes.
+    // State persists when isOpen changes (back-navigation preserves loaded data).
     useEffect(() => {
         // Invalidate any pending requests
         statusesRequestIdRef.current += 1;
         followersRequestIdRef.current += 1;
         followingListRequestIdRef.current += 1;
 
-        // Reset state when modal closes
-        if (!isOpen) {
-            setFullAccount(null);
-            setHasError(false);
-            setIsLoading(false);
-            setStatuses([]);
-            statusesRef.current = [];
-            setHasMoreStatuses(true);
-            setStatusesError(null);
-            setIsLoadingStatuses(false);
-            // Reset tab state
-            setActiveTab('posts');
-            // Reset followers state
-            setFollowers([]);
-            followersRef.current = [];
-            setHasMoreFollowers(true);
-            setFollowersError(null);
-            setIsLoadingFollowers(false);
-            setFollowersLoaded(false);
-            // Reset following list state
-            setFollowingList([]);
-            followingListRef.current = [];
-            setHasMoreFollowingList(true);
-            setFollowingListError(null);
-            setIsLoadingFollowingList(false);
-            setFollowingListLoaded(false);
-            return;
-        }
-
-        // Reset state when account changes (modal stays open but different account)
+        // Reset state when account changes
         setFullAccount(null);
         setHasError(false);
         setStatuses([]);
@@ -590,7 +562,7 @@ export function ProfileModal({
         return () => {
             cancelled = true;
         };
-    }, [isOpen, accountId, accountSession, loadStatuses]);
+    }, [accountId, accountSession, loadStatuses]);
 
     // IntersectionObserver for infinite scroll (posts)
     useEffect(() => {
@@ -694,26 +666,32 @@ export function ProfileModal({
         loadMoreFollowingList,
     ]);
 
-    // Remove deleted status from local list when deletion succeeds
-    // All modals in the stack update their local state, but only the open
-    // (top) modal consumes the ref to prevent hidden modals from clearing
-    // it before the visible one processes it.
+    // Remove deleted statuses from local list when deletion succeeds.
+    // All mounted modals in the stack update their local state, but only the
+    // open (top) modal prunes the events to prevent hidden modals from clearing
+    // them before the visible one processes them.
     useEffect(() => {
-        if (!deletedStatusRef || !accountSession) return;
-        if (deletedStatusRef.accountSessionId !== accountSession.id) return;
+        if (!deletedStatusEvents || deletedStatusEvents.length === 0 || !accountSession) return;
 
+        const matching = deletedStatusEvents.filter(
+            (e) => e.accountSessionId === accountSession.id
+        );
+        if (matching.length === 0) return;
+
+        const matchingIds = matching.map((e) => e.statusId);
         setStatuses((prev) => {
-            const newStatuses = prev.filter((s) => s.id !== deletedStatusRef.statusId);
+            const newStatuses = prev.filter((s) => !matchingIds.includes(s.id));
             statusesRef.current = newStatuses;
             return newStatuses;
         });
-        // Only the open modal clears the ref so lower-stack modals can also apply
-        if (isOpen) {
-            onDeletedStatusConsumed?.();
-        }
-    }, [isOpen, deletedStatusRef, accountSession?.id, onDeletedStatusConsumed]);
 
-    if (!isOpen || !account) {
+        // Only the open modal prunes events so lower-stack modals can also apply
+        if (isOpen) {
+            onDeletedStatusConsumed?.(matching.map((e) => e.eventId));
+        }
+    }, [isOpen, deletedStatusEvents, accountSession?.id, onDeletedStatusConsumed]);
+
+    if (!account) {
         return null;
     }
 
@@ -722,7 +700,10 @@ export function ProfileModal({
     return (
         <div
             className="fixed inset-0 flex items-center justify-center"
-            style={zIndex != null ? { zIndex } : undefined}
+            style={{
+                ...(zIndex != null ? { zIndex } : undefined),
+                ...(!isOpen ? { visibility: 'hidden', pointerEvents: 'none' } : undefined),
+            }}
             onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
             aria-modal={isActive ? 'true' : undefined}

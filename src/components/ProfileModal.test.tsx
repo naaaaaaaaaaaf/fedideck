@@ -170,7 +170,7 @@ describe('ProfileModal', () => {
         }
     });
 
-    it('does not render when isOpen is false', () => {
+    it('renders hidden (not null) when isOpen is false', () => {
         const { container } = render(
             <ProfileModal
                 isOpen={false}
@@ -180,7 +180,11 @@ describe('ProfileModal', () => {
             />
         );
 
-        expect(container.firstChild).toBe(null);
+        // Modal stays mounted but hidden to preserve state for back-navigation
+        expect(container.firstChild).not.toBe(null);
+        const wrapper = container.firstChild as HTMLElement;
+        expect(wrapper.style.visibility).toBe('hidden');
+        expect(wrapper.style.pointerEvents).toBe('none');
     });
 
     it('renders basic account information', async () => {
@@ -1272,7 +1276,7 @@ describe('ProfileModal', () => {
             expect(retryButton).toBeInTheDocument();
         });
 
-        it('resets to posts tab when modal reopens', async () => {
+        it('preserves tab state when modal becomes hidden and visible again', async () => {
             mockFetchAccountStatuses.mockResolvedValue([]);
             mockFetchAccountFollowers.mockResolvedValue([]);
 
@@ -1291,7 +1295,7 @@ describe('ProfileModal', () => {
 
             expect(followersTab).toHaveAttribute('aria-selected', 'true');
 
-            // Close modal
+            // Hide modal (back-navigation: not top of stack)
             rerender(
                 <ProfileModal
                     isOpen={false}
@@ -1301,7 +1305,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            // Reopen modal
+            // Show modal again (navigated back)
             rerender(
                 <ProfileModal
                     isOpen={true}
@@ -1311,9 +1315,8 @@ describe('ProfileModal', () => {
                 />
             );
 
-            // Posts tab should be selected again
-            const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
-            expect(postsTab).toHaveAttribute('aria-selected', 'true');
+            // Followers tab should still be selected (state preserved)
+            expect(followersTab).toHaveAttribute('aria-selected', 'true');
         });
 
         describe('Keyboard navigation', () => {

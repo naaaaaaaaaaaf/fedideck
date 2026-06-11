@@ -31,6 +31,10 @@ export interface StatusRef {
     accountSessionId: string;
 }
 
+export interface DeletedStatusEvent extends StatusRef {
+    eventId: string;
+}
+
 // ---------------------------------------------------------------------------
 // Overlay / Viewer Data Types
 // ---------------------------------------------------------------------------
@@ -110,7 +114,7 @@ interface ModalsState {
     // Delete confirmation sub-state (moved from App.tsx)
     confirmLoading: boolean;
     confirmError: string | null;
-    deletedStatusRef: StatusRef | undefined;
+    deletedStatusEvents: DeletedStatusEvent[];
 
     // Actions – Navigation stack
     pushStatusDetail: (status: mastodon.v1.Status, accountSessionId: string) => void;
@@ -142,7 +146,8 @@ interface ModalsState {
     // Actions – Confirm sub-state
     setConfirmLoading: (loading: boolean) => void;
     setConfirmError: (error: string | null) => void;
-    setDeletedStatusRef: (ref: StatusRef | undefined) => void;
+    pushDeletedStatusEvent: (ref: StatusRef) => void;
+    pruneDeletedStatusEvents: (eventIds: string[]) => void;
 }
 
 /** Auto-incrementing counters for stable ids and viewer keys */
@@ -189,7 +194,7 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     // Confirm sub-state
     confirmLoading: false,
     confirmError: null,
-    deletedStatusRef: undefined,
+    deletedStatusEvents: [],
 
     // ── Navigation stack ──────────────────────────────────────────────────
 
@@ -241,12 +246,16 @@ export const useModalsStore = create<ModalsState>()((set) => ({
         set((state) => {
             const stack = [...state.stack];
             stack.pop();
-            return { stack };
+            return {
+                stack,
+                // Prune events when stack is fully closed
+                deletedStatusEvents: stack.length === 0 ? [] : state.deletedStatusEvents,
+            };
         });
     },
 
     clearStack: () => {
-        set({ stack: [] });
+        set({ stack: [], deletedStatusEvents: [] });
     },
 
     /** Update a status inside stack entries (scoped by account to prevent cross-account leaks) */
@@ -315,14 +324,17 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     },
 
     openConfirm: (data) => {
-        set({
-            confirm: data,
-            confirmLoading: false,
-            confirmError: null,
-            compose: null,
-            imageViewer: null,
-            videoViewer: null,
-            audioPlayer: null,
+        set((state) => {
+            if (state.confirmLoading) return state; // don't interrupt in-flight confirm
+            return {
+                confirm: data,
+                confirmLoading: false,
+                confirmError: null,
+                compose: null,
+                imageViewer: null,
+                videoViewer: null,
+                audioPlayer: null,
+            };
         });
     },
 
@@ -390,7 +402,17 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     // ── Utility (mutually exclusive with each other) ───────────────────────
 
     openLogin: () => {
-        set({ isLoginOpen: true, isAddColumnOpen: false });
+        set({
+            isLoginOpen: true,
+            isAddColumnOpen: false,
+            compose: null,
+            confirm: null,
+            confirmLoading: false,
+            confirmError: null,
+            imageViewer: null,
+            videoViewer: null,
+            audioPlayer: null,
+        });
     },
 
     closeLogin: () => {
@@ -398,7 +420,17 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     },
 
     openAddColumn: () => {
-        set({ isAddColumnOpen: true, isLoginOpen: false });
+        set({
+            isAddColumnOpen: true,
+            isLoginOpen: false,
+            compose: null,
+            confirm: null,
+            confirmLoading: false,
+            confirmError: null,
+            imageViewer: null,
+            videoViewer: null,
+            audioPlayer: null,
+        });
     },
 
     closeAddColumn: () => {
@@ -415,7 +447,19 @@ export const useModalsStore = create<ModalsState>()((set) => ({
         set({ confirmError: error });
     },
 
-    setDeletedStatusRef: (ref) => {
-        set({ deletedStatusRef: ref });
+    pushDeletedStatusEvent: (ref) => {
+        set((state) => ({
+            deletedStatusEvents: [
+                ...state.deletedStatusEvents,
+                { ...ref, eventId: crypto.randomUUID() },
+            ],
+        }));
+    },
+
+    pruneDeletedStatusEvents: (eventIds) => {
+        const ids = new Set(eventIds);
+        set((state) => ({
+            deletedStatusEvents: state.deletedStatusEvents.filter((e) => !ids.has(e.eventId)),
+        }));
     },
 }));

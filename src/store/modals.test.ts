@@ -23,7 +23,7 @@ describe('useModalsStore', () => {
             isAddColumnOpen: false,
             confirmLoading: false,
             confirmError: null,
-            deletedStatusRef: undefined,
+            deletedStatusEvents: [],
         });
     });
 
@@ -111,13 +111,45 @@ describe('useModalsStore', () => {
             expect(useModalsStore.getState().stack).toHaveLength(0);
         });
 
-        it('clearStack removes all entries', () => {
+        it('clearStack removes all entries and events', () => {
             useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
             useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
+            useModalsStore.getState().pushDeletedStatusEvent({
+                statusId: 's1',
+                accountSessionId: 'acct-1',
+            });
 
             useModalsStore.getState().clearStack();
 
             expect(useModalsStore.getState().stack).toHaveLength(0);
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(0);
+        });
+
+        it('goBack clears events when stack becomes empty', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushDeletedStatusEvent({
+                statusId: 's2',
+                accountSessionId: 'acct-1',
+            });
+
+            useModalsStore.getState().goBack();
+
+            expect(useModalsStore.getState().stack).toHaveLength(0);
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(0);
+        });
+
+        it('goBack preserves events when stack is not empty', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushStatusDetail(mockStatus('s2'), 'acct-1');
+            useModalsStore.getState().pushDeletedStatusEvent({
+                statusId: 's3',
+                accountSessionId: 'acct-1',
+            });
+
+            useModalsStore.getState().goBack();
+
+            expect(useModalsStore.getState().stack).toHaveLength(1);
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
         });
 
         it('caps stack at MAX_STACK_DEPTH (6)', () => {
@@ -344,9 +376,8 @@ describe('useModalsStore', () => {
     });
 
     describe('confirm overlay', () => {
-        it('opens with loading/error reset and closes', () => {
+        it('opens with error reset and closes', () => {
             const status = mockStatus('s1');
-            useModalsStore.getState().setConfirmLoading(true);
             useModalsStore.getState().setConfirmError('err');
 
             useModalsStore.getState().openConfirm({ status, accountId: 'acct-1' });
@@ -475,35 +506,92 @@ describe('useModalsStore', () => {
             useModalsStore.getState().closeAddColumn();
             expect(useModalsStore.getState().isAddColumnOpen).toBe(false);
         });
+
+        it('openLogin clears all overlay slots', () => {
+            const status = mockStatus('s1');
+            useModalsStore.getState().openCompose({ mode: 'new', accountId: 'acct-1' });
+            useModalsStore.getState().openConfirm({ status, accountId: 'acct-1' });
+            useModalsStore.getState().openImageViewer([{ url: 'http://example.com/img.png' }], 0);
+
+            useModalsStore.getState().openLogin();
+
+            const state = useModalsStore.getState();
+            expect(state.isLoginOpen).toBe(true);
+            expect(state.compose).toBeNull();
+            expect(state.confirm).toBeNull();
+            expect(state.imageViewer).toBeNull();
+        });
+
+        it('openAddColumn clears all overlay slots', () => {
+            const status = mockStatus('s1');
+            useModalsStore.getState().openCompose({ mode: 'new', accountId: 'acct-1' });
+            useModalsStore.getState().openConfirm({ status, accountId: 'acct-1' });
+            useModalsStore.getState().openImageViewer([{ url: 'http://example.com/img.png' }], 0);
+
+            useModalsStore.getState().openAddColumn();
+
+            const state = useModalsStore.getState();
+            expect(state.isAddColumnOpen).toBe(true);
+            expect(state.compose).toBeNull();
+            expect(state.confirm).toBeNull();
+            expect(state.imageViewer).toBeNull();
+        });
     });
 
     // ── Confirm sub-state ─────────────────────────────────────────────────
 
     describe('confirm sub-state', () => {
-        it('manages deletedStatusRef', () => {
-            useModalsStore
-                .getState()
-                .setDeletedStatusRef({ statusId: 's1', accountSessionId: 'acct-1' });
-            expect(useModalsStore.getState().deletedStatusRef).toEqual({
+        it('pushDeletedStatusEvent adds event with unique eventId', () => {
+            useModalsStore.getState().pushDeletedStatusEvent({
                 statusId: 's1',
                 accountSessionId: 'acct-1',
             });
-
-            useModalsStore.getState().setDeletedStatusRef(undefined);
-            expect(useModalsStore.getState().deletedStatusRef).toBeUndefined();
+            const events = useModalsStore.getState().deletedStatusEvents;
+            expect(events).toHaveLength(1);
+            expect(events[0].statusId).toBe('s1');
+            expect(events[0].accountSessionId).toBe('acct-1');
+            expect(events[0].eventId).toBeTruthy();
         });
 
-        it('overwrites previous deletedStatusRef', () => {
-            useModalsStore
-                .getState()
-                .setDeletedStatusRef({ statusId: 's1', accountSessionId: 'acct-1' });
-            useModalsStore
-                .getState()
-                .setDeletedStatusRef({ statusId: 's2', accountSessionId: 'acct-2' });
-            expect(useModalsStore.getState().deletedStatusRef).toEqual({
-                statusId: 's2',
-                accountSessionId: 'acct-2',
+        it('pushDeletedStatusEvent accumulates multiple events', () => {
+            useModalsStore.getState().pushDeletedStatusEvent({
+                statusId: 's1',
+                accountSessionId: 'acct-1',
             });
+            useModalsStore.getState().pushDeletedStatusEvent({
+                statusId: 's2',
+                accountSessionId: 'acct-1',
+            });
+            const events = useModalsStore.getState().deletedStatusEvents;
+            expect(events).toHaveLength(2);
+            expect(events[0].statusId).toBe('s1');
+            expect(events[1].statusId).toBe('s2');
+            expect(events[0].eventId).not.toBe(events[1].eventId);
+        });
+
+        it('pruneDeletedStatusEvents removes specified events by eventId', () => {
+            useModalsStore.getState().pushDeletedStatusEvent({
+                statusId: 's1',
+                accountSessionId: 'acct-1',
+            });
+            useModalsStore.getState().pushDeletedStatusEvent({
+                statusId: 's2',
+                accountSessionId: 'acct-1',
+            });
+            const [first] = useModalsStore.getState().deletedStatusEvents;
+            useModalsStore.getState().pruneDeletedStatusEvents([first.eventId]);
+            const remaining = useModalsStore.getState().deletedStatusEvents;
+            expect(remaining).toHaveLength(1);
+            expect(remaining[0].statusId).toBe('s2');
+        });
+
+        it('pruneDeletedStatusEvents leaves non-matching events', () => {
+            useModalsStore.getState().pushDeletedStatusEvent({
+                statusId: 's1',
+                accountSessionId: 'acct-1',
+            });
+            useModalsStore.getState().pruneDeletedStatusEvents(['nonexistent-id']);
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
         });
 
         it('allows confirmLoading to block closeConfirm', () => {
@@ -521,10 +609,9 @@ describe('useModalsStore', () => {
             expect(useModalsStore.getState().confirm).toBeNull();
         });
 
-        it('resets confirmLoading and confirmError on openConfirm', () => {
+        it('resets confirmLoading and confirmError on openConfirm when not loading', () => {
             const status1 = mockStatus('s1');
             useModalsStore.getState().openConfirm({ status: status1, accountId: 'acct-1' });
-            useModalsStore.getState().setConfirmLoading(true);
             useModalsStore.getState().setConfirmError('some error');
 
             const status2 = mockStatus('s2');
@@ -532,6 +619,53 @@ describe('useModalsStore', () => {
             expect(useModalsStore.getState().confirmLoading).toBe(false);
             expect(useModalsStore.getState().confirmError).toBeNull();
             expect(useModalsStore.getState().confirm!.status.id).toBe('s2');
+        });
+
+        it('does not overwrite confirm while confirmLoading is true', () => {
+            const status1 = mockStatus('s1');
+            useModalsStore.getState().openConfirm({ status: status1, accountId: 'acct-1' });
+            useModalsStore.getState().setConfirmLoading(true);
+            useModalsStore.getState().setConfirmError('some error');
+
+            const status2 = mockStatus('s2');
+            useModalsStore.getState().openConfirm({ status: status2, accountId: 'acct-2' });
+            // Confirm should remain unchanged because loading was in progress
+            expect(useModalsStore.getState().confirm!.status.id).toBe('s1');
+            expect(useModalsStore.getState().confirmLoading).toBe(true);
+            expect(useModalsStore.getState().confirmError).toBe('some error');
+        });
+    });
+
+    // ── Integration Scenarios ────────────────────────────────────────────
+
+    describe('integration: delete flow via event queue', () => {
+        it('end-to-end: push event + remove stack + prune', () => {
+            // Setup: push a statusDetail and a profile into the stack
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
+            expect(useModalsStore.getState().stack).toHaveLength(2);
+
+            // Simulate deletion: push event and remove status from stack
+            useModalsStore.getState().pushDeletedStatusEvent({
+                statusId: 's1',
+                accountSessionId: 'acct-1',
+            });
+            useModalsStore.getState().removeStatusFromStack({
+                statusId: 's1',
+                accountSessionId: 'acct-1',
+            });
+
+            // Stack should have only the profile
+            expect(useModalsStore.getState().stack).toHaveLength(1);
+            expect(useModalsStore.getState().stack[0].type).toBe('profile');
+
+            // Event should still exist (not yet consumed)
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
+
+            // Consume the event
+            const [event] = useModalsStore.getState().deletedStatusEvents;
+            useModalsStore.getState().pruneDeletedStatusEvents([event.eventId]);
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(0);
         });
     });
 });
