@@ -1468,4 +1468,95 @@ describe('ProfileModal', () => {
             });
         });
     });
+
+    describe('deletedStatusEvents: reblog wrapper removal', () => {
+        const mockSession = {
+            id: 'acct-1',
+            instanceUrl: new URL('https://mastodon.social'),
+            accessToken: 'token',
+            account: mockAccount,
+        } as unknown as AccountSession;
+
+        it('removes reblog wrapper when deletion event matches reblog.id', async () => {
+            const originalStatus = {
+                id: 's1',
+                content: '<p>Original status</p>',
+                createdAt: '2026-01-01T00:00:00.000Z',
+                account: mockAccount,
+                visibility: 'public',
+                uri: 'https://mastodon.social/@testuser/s1',
+                url: 'https://mastodon.social/@testuser/s1',
+                reblog: null,
+                inReplyToId: null,
+                inReplyToAccountId: null,
+                reblogsCount: 0,
+                favouritesCount: 0,
+                repliesCount: 0,
+                reblogged: false,
+                favourited: false,
+                bookmarked: false,
+                muted: false,
+                sensitive: false,
+                spoilerText: '',
+                language: 'en',
+                mentions: [],
+                tags: [],
+                emojis: [],
+                mediaAttachments: [],
+                application: null,
+                card: null,
+                poll: null,
+                filtered: [],
+            } as unknown as mastodon.v1.Status;
+
+            const wrapperStatus = {
+                ...originalStatus,
+                id: 'wrapper-1',
+                content: '',
+                reblog: originalStatus,
+            } as unknown as mastodon.v1.Status;
+
+            mockFetchAccountStatuses.mockResolvedValueOnce([wrapperStatus]);
+
+            const { rerender } = render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                    deletedStatusEvents={[]}
+                    onDeletedStatusConsumed={vi.fn()}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('status-card-wrapper-1')).toBeInTheDocument();
+            });
+
+            // Simulate deletion event for the original status inside the reblog wrapper
+            const deleteEvents = [
+                {
+                    statusId: 's1',
+                    accountSessionId: 'acct-1',
+                    eventId: 'evt-1',
+                },
+            ];
+
+            rerender(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                    deletedStatusEvents={deleteEvents}
+                    onDeletedStatusConsumed={vi.fn()}
+                />
+            );
+
+            // The wrapper should be removed because s1 matches reblog.id
+            await waitFor(() => {
+                expect(screen.queryByTestId('status-card-wrapper-1')).not.toBeInTheDocument();
+            });
+        });
+    });
 });

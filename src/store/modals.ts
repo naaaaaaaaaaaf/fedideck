@@ -151,6 +151,7 @@ interface ModalsState {
     setConfirmError: (error: string | null) => void;
     pushDeletedStatusEvent: (ref: StatusRef) => void;
     pruneDeletedStatusEvents: (eventIds: string[]) => void;
+    handleStatusDeleted: (ref: StatusRef) => void;
 }
 
 /** Auto-incrementing counters for stable ids and viewer keys */
@@ -446,6 +447,25 @@ export const useModalsStore = create<ModalsState>()((set) => ({
                 { ...ref, eventId: crypto.randomUUID() },
             ],
         }));
+    },
+
+    /** Atomic delete: remove statusDetail entries and only push event if a ProfileModal consumer exists */
+    handleStatusDeleted: (ref: StatusRef) => {
+        set((state) => {
+            const stack = state.stack.filter((entry) => !statusDetailMatches(entry, ref));
+            const hasConsumer = stack.some(
+                (entry) =>
+                    entry.type === 'profile' && entry.accountSessionId === ref.accountSessionId
+            );
+            return {
+                stack,
+                deletedStatusEvents: hasConsumer
+                    ? [...state.deletedStatusEvents, { ...ref, eventId: crypto.randomUUID() }]
+                    : stack.length === 0
+                      ? []
+                      : state.deletedStatusEvents,
+            };
+        });
     },
 
     pruneDeletedStatusEvents: (eventIds) => {

@@ -803,6 +803,72 @@ describe('useModalsStore', () => {
 
     // ── Integration Scenarios ────────────────────────────────────────────
 
+    describe('handleStatusDeleted (atomic action)', () => {
+        it('pushes event when a ProfileModal consumer exists in stack', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
+
+            useModalsStore.getState().handleStatusDeleted({
+                statusId: 's1',
+                accountSessionId: 'acct-1',
+            });
+
+            // statusDetail removed, profile remains
+            const stack = useModalsStore.getState().stack;
+            expect(stack).toHaveLength(1);
+            expect(stack[0].type).toBe('profile');
+            // Event was pushed because ProfileModal consumer exists
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
+            expect(useModalsStore.getState().deletedStatusEvents[0].statusId).toBe('s1');
+        });
+
+        it('does not push event when no ProfileModal consumer exists', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+
+            useModalsStore.getState().handleStatusDeleted({
+                statusId: 's1',
+                accountSessionId: 'acct-1',
+            });
+
+            expect(useModalsStore.getState().stack).toHaveLength(0);
+            // No event because no ProfileModal to consume it
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(0);
+        });
+
+        it('prunes existing events when stack becomes empty', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            // Pre-populate an event
+            useModalsStore
+                .getState()
+                .pushDeletedStatusEvent({ statusId: 's1', accountSessionId: 'acct-1' });
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
+
+            useModalsStore.getState().handleStatusDeleted({
+                statusId: 's1',
+                accountSessionId: 'acct-1',
+            });
+
+            expect(useModalsStore.getState().stack).toHaveLength(0);
+            // Pre-existing event pruned + no new event added
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(0);
+        });
+
+        it('preserves events for different account when other profile remains', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-2');
+
+            useModalsStore.getState().handleStatusDeleted({
+                statusId: 's1',
+                accountSessionId: 'acct-1',
+            });
+
+            const stack = useModalsStore.getState().stack;
+            expect(stack).toHaveLength(1);
+            // Profile is for acct-2, not acct-1, so no consumer → no event
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(0);
+        });
+    });
+
     describe('integration: delete flow via event queue', () => {
         it('end-to-end: push event + remove stack + prune', () => {
             // Setup: push a statusDetail and a profile into the stack

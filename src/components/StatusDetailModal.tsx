@@ -231,6 +231,38 @@ export function StatusDetailModal({
     // Get the display status (navigated > original reblog > original)
     const displayStatus = navigatedStatus ?? status?.reblog ?? status;
 
+    // Wrap onStatusUpdate to also sync navigatedStatus and context entries
+    const handleStatusUpdateSync = useCallback(
+        (updatedStatus: mastodon.v1.Status) => {
+            // Update navigatedStatus if it matches the updated status
+            setNavigatedStatus((prev) => (prev?.id === updatedStatus.id ? updatedStatus : prev));
+            // Update context entries if they match
+            setContext((prev) => {
+                if (!prev) return prev;
+                let changed = false;
+                const newContext = {
+                    ancestors: prev.ancestors.map((s) => {
+                        if (s.id === updatedStatus.id) {
+                            changed = true;
+                            return updatedStatus;
+                        }
+                        return s;
+                    }),
+                    descendants: prev.descendants.map((s) => {
+                        if (s.id === updatedStatus.id) {
+                            changed = true;
+                            return updatedStatus;
+                        }
+                        return s;
+                    }),
+                };
+                return changed ? newContext : prev;
+            });
+            onStatusUpdate?.(updatedStatus);
+        },
+        [onStatusUpdate]
+    );
+
     // Status actions (favourite/reblog/bookmark) with optimistic UI
     const {
         favourited,
@@ -246,7 +278,7 @@ export function StatusDetailModal({
     } = useStatusActions({
         status: displayStatus,
         accountSession,
-        onStatusUpdate,
+        onStatusUpdate: handleStatusUpdateSync,
     });
 
     // NSFW state with controlled/uncontrolled mode
@@ -272,7 +304,11 @@ export function StatusDetailModal({
         poll: displayStatus?.poll ?? null,
         statusId: displayStatus?.id ?? '',
         accountSession: accountSession ?? null,
-        onPollUpdate,
+        onPollUpdate: (statusId, poll) => {
+            // Update navigatedStatus poll if it matches
+            setNavigatedStatus((prev) => (prev?.id === statusId ? { ...prev, poll } : prev));
+            onPollUpdate?.(statusId, poll);
+        },
         autoRefreshOnExpiry: true,
     });
 
@@ -358,6 +394,34 @@ export function StatusDetailModal({
         setContextError(null);
         setIsLoadingContext(false);
     }, [status?.id]);
+
+    // Sync navigatedStatus and context entries when the base status prop is
+    // updated externally (streaming update, edit success, etc.).
+    useEffect(() => {
+        if (!status) return;
+        setNavigatedStatus((prev) => (prev?.id === status.id ? status : prev));
+        setContext((prev) => {
+            if (!prev) return prev;
+            let changed = false;
+            const newContext = {
+                ancestors: prev.ancestors.map((s) => {
+                    if (s.id === status.id) {
+                        changed = true;
+                        return status;
+                    }
+                    return s;
+                }),
+                descendants: prev.descendants.map((s) => {
+                    if (s.id === status.id) {
+                        changed = true;
+                        return status;
+                    }
+                    return s;
+                }),
+            };
+            return changed ? newContext : prev;
+        });
+    }, [status]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;

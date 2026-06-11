@@ -74,10 +74,11 @@ function App() {
             onDelete: (accountId, statusId) => {
                 // Remove from all streams for this account
                 removeStatusForAccountStreams(accountId, statusId);
-                // Also remove from modal stack and notify ProfileModal
-                const modalsStore = useModalsStore.getState();
-                modalsStore.removeStatusFromStack({ statusId, accountSessionId: accountId });
-                modalsStore.pushDeletedStatusEvent({ statusId, accountSessionId: accountId });
+                // Atomic: remove from modal stack and only push event if a ProfileModal consumer exists
+                useModalsStore.getState().handleStatusDeleted({
+                    statusId,
+                    accountSessionId: accountId,
+                });
             },
             onNotification: (accountId, notification) => {
                 const notifKey = getStreamKey(accountId, 'notifications');

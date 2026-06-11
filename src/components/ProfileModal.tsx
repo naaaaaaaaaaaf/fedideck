@@ -678,9 +678,11 @@ export function ProfileModal({
         );
         if (matching.length === 0) return;
 
-        const matchingIds = matching.map((e) => e.statusId);
+        const matchingIds = new Set(matching.map((e) => e.statusId));
         setStatuses((prev) => {
-            const newStatuses = prev.filter((s) => !matchingIds.includes(s.id));
+            const newStatuses = prev.filter(
+                (s) => !matchingIds.has(s.id) && !matchingIds.has(s.reblog?.id ?? '')
+            );
             statusesRef.current = newStatuses;
             return newStatuses;
         });
