@@ -82,6 +82,7 @@ export function ModalHost({
     const confirmLoading = useModalsStore((s) => s.confirmLoading);
     const confirmError = useModalsStore((s) => s.confirmError);
     const deletedStatusEvents = useModalsStore((s) => s.deletedStatusEvents);
+    const updatedStatusEvents = useModalsStore((s) => s.updatedStatusEvents);
 
     // Handle confirmed delete
     const handleStatusDeleteConfirm = useCallback(async () => {
@@ -207,6 +208,10 @@ export function ModalHost({
                     onAccountClick={onAccountClick}
                     nsfwRevealedStatusIds={nsfwRevealedStatusIdSet}
                     onNsfwReveal={addNsfwRevealedStatusId}
+                    updatedStatusEvents={updatedStatusEvents}
+                    onUpdatedStatusConsumed={(ids) =>
+                        useModalsStore.getState().pruneUpdatedStatusEvents(ids)
+                    }
                     zIndex={zIndex}
                 />
             );
@@ -248,6 +253,10 @@ export function ModalHost({
                     deletedStatusEvents={deletedStatusEvents}
                     onDeletedStatusConsumed={(ids) =>
                         useModalsStore.getState().pruneDeletedStatusEvents(ids)
+                    }
+                    updatedStatusEvents={updatedStatusEvents}
+                    onUpdatedStatusConsumed={(ids) =>
+                        useModalsStore.getState().pruneUpdatedStatusEvents(ids)
                     }
                     zIndex={zIndex}
                 />

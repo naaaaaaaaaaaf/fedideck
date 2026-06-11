@@ -35,6 +35,12 @@ export interface DeletedStatusEvent extends StatusRef {
     eventId: string;
 }
 
+export interface UpdatedStatusEvent {
+    eventId: string;
+    accountSessionId: string;
+    status: mastodon.v1.Status;
+}
+
 // ---------------------------------------------------------------------------
 // Overlay / Viewer Data Types
 // ---------------------------------------------------------------------------
@@ -117,6 +123,7 @@ interface ModalsState {
     confirmLoading: boolean;
     confirmError: string | null;
     deletedStatusEvents: DeletedStatusEvent[];
+    updatedStatusEvents: UpdatedStatusEvent[];
 
     // Actions – Navigation stack
     pushStatusDetail: (status: mastodon.v1.Status, accountSessionId: string) => void;
@@ -152,12 +159,25 @@ interface ModalsState {
     pushDeletedStatusEvent: (ref: StatusRef) => void;
     pruneDeletedStatusEvents: (eventIds: string[]) => void;
     handleStatusDeleted: (ref: StatusRef, originStackEntryId?: string) => void;
+    pushUpdatedStatusEvent: (accountSessionId: string, status: mastodon.v1.Status) => void;
+    pruneUpdatedStatusEvents: (eventIds: string[]) => void;
 }
 
 /** Auto-incrementing counters for stable ids and viewer keys */
 let stackIdCounter = 0;
 function nextStackId(): string {
     return `stack-${++stackIdCounter}`;
+}
+
+/** Prune events whose consumers (ProfileModal entries) no longer exist in the stack */
+function pruneEventsForStack<T extends { accountSessionId: string }>(
+    events: T[],
+    stack: StackEntry[]
+): T[] {
+    const consumerSessions = new Set(
+        stack.filter((entry) => entry.type === 'profile').map((entry) => entry.accountSessionId)
+    );
+    return events.filter((event) => consumerSessions.has(event.accountSessionId));
 }
 
 let viewerKeyCounter = 0;
@@ -212,17 +232,25 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     confirmLoading: false,
     confirmError: null,
     deletedStatusEvents: [],
+    updatedStatusEvents: [],
 
     // ── Navigation stack ──────────────────────────────────────────────────
 
     pushStatusDetail: (status, accountSessionId) => {
         set((state) => {
             const stack = [...state.stack];
-            if (stack.length >= MAX_STACK_DEPTH) {
+            const evicted = stack.length >= MAX_STACK_DEPTH;
+            if (evicted) {
                 stack.shift(); // drop oldest
             }
             stack.push({ id: nextStackId(), type: 'statusDetail', status, accountSessionId });
-            return { stack };
+            return evicted
+                ? {
+                      stack,
+                      deletedStatusEvents: pruneEventsForStack(state.deletedStatusEvents, stack),
+                      updatedStatusEvents: pruneEventsForStack(state.updatedStatusEvents, stack),
+                  }
+                : { stack };
         });
     },
 
@@ -242,13 +270,27 @@ export const useModalsStore = create<ModalsState>()((set) => ({
                     account,
                     accountSessionId,
                 };
+                return { stack };
             } else {
-                if (stack.length >= MAX_STACK_DEPTH) {
+                const evicted = stack.length >= MAX_STACK_DEPTH;
+                if (evicted) {
                     stack.shift();
                 }
                 stack.push({ id: nextStackId(), type: 'profile', account, accountSessionId });
+                return evicted
+                    ? {
+                          stack,
+                          deletedStatusEvents: pruneEventsForStack(
+                              state.deletedStatusEvents,
+                              stack
+                          ),
+                          updatedStatusEvents: pruneEventsForStack(
+                              state.updatedStatusEvents,
+                              stack
+                          ),
+                      }
+                    : { stack };
             }
-            return { stack };
         });
     },
 
@@ -259,6 +301,7 @@ export const useModalsStore = create<ModalsState>()((set) => ({
             return {
                 stack,
                 deletedStatusEvents: stack.length === 0 ? [] : state.deletedStatusEvents,
+                updatedStatusEvents: stack.length === 0 ? [] : state.updatedStatusEvents,
             };
         });
     },
@@ -270,6 +313,7 @@ export const useModalsStore = create<ModalsState>()((set) => ({
             return {
                 stack,
                 deletedStatusEvents: stack.length === 0 ? [] : state.deletedStatusEvents,
+                updatedStatusEvents: stack.length === 0 ? [] : state.updatedStatusEvents,
             };
         });
     },
@@ -282,12 +326,13 @@ export const useModalsStore = create<ModalsState>()((set) => ({
                 stack,
                 // Prune events when stack is fully closed
                 deletedStatusEvents: stack.length === 0 ? [] : state.deletedStatusEvents,
+                updatedStatusEvents: stack.length === 0 ? [] : state.updatedStatusEvents,
             };
         });
     },
 
     clearStack: () => {
-        set({ stack: [], deletedStatusEvents: [] });
+        set({ stack: [], deletedStatusEvents: [], updatedStatusEvents: [] });
     },
 
     /** Update a status inside stack entries (scoped by account to prevent cross-account leaks) */
@@ -469,6 +514,7 @@ export const useModalsStore = create<ModalsState>()((set) => ({
                       : state.deletedStatusEvents.filter(
                             (e) => e.accountSessionId !== ref.accountSessionId
                         ),
+                updatedStatusEvents: stack.length === 0 ? [] : state.updatedStatusEvents,
             };
         });
     },
@@ -477,6 +523,22 @@ export const useModalsStore = create<ModalsState>()((set) => ({
         const ids = new Set(eventIds);
         set((state) => ({
             deletedStatusEvents: state.deletedStatusEvents.filter((e) => !ids.has(e.eventId)),
+        }));
+    },
+
+    pushUpdatedStatusEvent: (accountSessionId, status) => {
+        set((state) => ({
+            updatedStatusEvents: [
+                ...state.updatedStatusEvents,
+                { eventId: crypto.randomUUID(), accountSessionId, status },
+            ],
+        }));
+    },
+
+    pruneUpdatedStatusEvents: (eventIds) => {
+        const ids = new Set(eventIds);
+        set((state) => ({
+            updatedStatusEvents: state.updatedStatusEvents.filter((e) => !ids.has(e.eventId)),
         }));
     },
 }));

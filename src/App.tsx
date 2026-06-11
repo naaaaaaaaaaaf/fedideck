@@ -87,13 +87,13 @@ function App() {
             onStatusUpdate: (accountId, status) => {
                 const homeKey = getStreamKey(accountId, 'home');
                 updateStatus(homeKey, status);
-                // Also update modal stack
-                useModalsStore
-                    .getState()
-                    .updateStackStatus(
-                        { statusId: status.id, accountSessionId: accountId },
-                        status
-                    );
+                // Also update modal stack and push event for local state sync
+                const modalsStore = useModalsStore.getState();
+                modalsStore.updateStackStatus(
+                    { statusId: status.id, accountSessionId: accountId },
+                    status
+                );
+                modalsStore.pushUpdatedStatusEvent(accountId, status);
             },
             onConnect: (accountId) => {
                 console.log(`✅ Streaming connected for ${accountId}`);

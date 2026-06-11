@@ -57,6 +57,13 @@ interface StatusDetailModalProps {
     isActive?: boolean;
     zIndex?: number;
     onAccountClick?: (account: mastodon.v1.Account, accountSessionId?: string) => void;
+    // Streaming update events for syncing navigatedStatus and context
+    updatedStatusEvents?: {
+        eventId: string;
+        accountSessionId: string;
+        status: mastodon.v1.Status;
+    }[];
+    onUpdatedStatusConsumed?: (eventIds: string[]) => void;
 }
 
 // Compact status display for thread ancestors/descendants
@@ -224,6 +231,8 @@ export function StatusDetailModal({
     isActive = true,
     zIndex,
     onAccountClick,
+    updatedStatusEvents,
+    onUpdatedStatusConsumed,
 }: StatusDetailModalProps) {
     // Thread navigation state
     const [navigatedStatus, setNavigatedStatus] = useState<mastodon.v1.Status | null>(null);
@@ -425,6 +434,46 @@ export function StatusDetailModal({
             return changed ? newContext : prev;
         });
     }, [status]);
+
+    // Consume streaming updatedStatusEvents to sync navigatedStatus and context
+    useEffect(() => {
+        if (!updatedStatusEvents || updatedStatusEvents.length === 0 || !accountSession) return;
+
+        const matching = updatedStatusEvents.filter(
+            (e) => e.accountSessionId === accountSession.id
+        );
+        if (matching.length === 0) return;
+
+        for (const event of matching) {
+            const updated = event.status;
+            setNavigatedStatus((prev) => (prev?.id === updated.id ? updated : prev));
+            setContext((prev) => {
+                if (!prev) return prev;
+                let changed = false;
+                const newContext = {
+                    ancestors: prev.ancestors.map((s) => {
+                        if (s.id === updated.id) {
+                            changed = true;
+                            return updated;
+                        }
+                        return s;
+                    }),
+                    descendants: prev.descendants.map((s) => {
+                        if (s.id === updated.id) {
+                            changed = true;
+                            return updated;
+                        }
+                        return s;
+                    }),
+                };
+                return changed ? newContext : prev;
+            });
+        }
+
+        if (isOpen) {
+            onUpdatedStatusConsumed?.(matching.map((e) => e.eventId));
+        }
+    }, [isOpen, updatedStatusEvents, accountSession?.id, onUpdatedStatusConsumed]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;

@@ -24,6 +24,7 @@ describe('useModalsStore', () => {
             confirmLoading: false,
             confirmError: null,
             deletedStatusEvents: [],
+            updatedStatusEvents: [],
         });
     });
 
@@ -931,6 +932,88 @@ describe('useModalsStore', () => {
             const [event] = useModalsStore.getState().deletedStatusEvents;
             useModalsStore.getState().pruneDeletedStatusEvents([event.eventId]);
             expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(0);
+        });
+    });
+
+    // ── Updated Status Events ──────────────────────────────────────────────
+
+    describe('updatedStatusEvents', () => {
+        it('pushUpdatedStatusEvent adds event', () => {
+            useModalsStore.getState().pushUpdatedStatusEvent('acct-1', mockStatus('s1'));
+            const events = useModalsStore.getState().updatedStatusEvents;
+            expect(events).toHaveLength(1);
+            expect(events[0].accountSessionId).toBe('acct-1');
+            expect(events[0].status.id).toBe('s1');
+        });
+
+        it('pruneUpdatedStatusEvents removes by eventId', () => {
+            useModalsStore.getState().pushUpdatedStatusEvent('acct-1', mockStatus('s1'));
+            useModalsStore.getState().pushUpdatedStatusEvent('acct-1', mockStatus('s2'));
+            const [first] = useModalsStore.getState().updatedStatusEvents;
+            useModalsStore.getState().pruneUpdatedStatusEvents([first.eventId]);
+            const remaining = useModalsStore.getState().updatedStatusEvents;
+            expect(remaining).toHaveLength(1);
+            expect(remaining[0].status.id).toBe('s2');
+        });
+
+        it('clearStack clears updatedStatusEvents', () => {
+            useModalsStore.getState().pushUpdatedStatusEvent('acct-1', mockStatus('s1'));
+            useModalsStore.getState().clearStack();
+            expect(useModalsStore.getState().updatedStatusEvents).toHaveLength(0);
+        });
+
+        it('goBack prunes updatedStatusEvents when stack becomes empty', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushUpdatedStatusEvent('acct-1', mockStatus('s1'));
+            useModalsStore.getState().goBack();
+            expect(useModalsStore.getState().updatedStatusEvents).toHaveLength(0);
+        });
+    });
+
+    // ── Evict Pruning ──────────────────────────────────────────────────────
+
+    describe('stack evict pruning', () => {
+        it('prunes deletedStatusEvents when evicting a ProfileModal consumer', () => {
+            // Fill stack to max
+            for (let i = 0; i < 6; i++) {
+                useModalsStore.getState().pushProfile(mockAccount(`a${i}`), `acct-${i}`);
+            }
+            // Push an event for acct-0 (the oldest entry about to be evicted)
+            useModalsStore
+                .getState()
+                .pushDeletedStatusEvent({ statusId: 's1', accountSessionId: 'acct-0' });
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
+
+            // Push one more to trigger evict
+            useModalsStore.getState().pushStatusDetail(mockStatus('new'), 'acct-5');
+            // acct-0 profile was evicted, so its event should be pruned
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(0);
+        });
+
+        it('prunes updatedStatusEvents when evicting a ProfileModal consumer', () => {
+            for (let i = 0; i < 6; i++) {
+                useModalsStore.getState().pushProfile(mockAccount(`a${i}`), `acct-${i}`);
+            }
+            useModalsStore.getState().pushUpdatedStatusEvent('acct-0', mockStatus('s1'));
+            expect(useModalsStore.getState().updatedStatusEvents).toHaveLength(1);
+
+            useModalsStore.getState().pushStatusDetail(mockStatus('new'), 'acct-5');
+            expect(useModalsStore.getState().updatedStatusEvents).toHaveLength(0);
+        });
+
+        it('preserves events for non-evicted consumers', () => {
+            useModalsStore.getState().pushProfile(mockAccount('a0'), 'acct-0');
+            useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
+            useModalsStore
+                .getState()
+                .pushDeletedStatusEvent({ statusId: 's1', accountSessionId: 'acct-1' });
+
+            // Fill to max to evict a0
+            for (let i = 2; i <= 6; i++) {
+                useModalsStore.getState().pushProfile(mockAccount(`a${i}`), `acct-${i}`);
+            }
+            // acct-1 event should remain since acct-1 profile is still in stack
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
         });
     });
 });

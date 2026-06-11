@@ -61,6 +61,14 @@ interface ProfileModalProps {
     deletedStatusEvents?: { statusId: string; accountSessionId: string; eventId: string }[];
     /** Called when this modal has consumed the specified deleted status events */
     onDeletedStatusConsumed?: (eventIds: string[]) => void;
+    /** Events for updated statuses to sync local list */
+    updatedStatusEvents?: {
+        eventId: string;
+        accountSessionId: string;
+        status: mastodon.v1.Status;
+    }[];
+    /** Called when this modal has consumed the specified updated status events */
+    onUpdatedStatusConsumed?: (eventIds: string[]) => void;
     /** Whether this modal is the active (top-most) modal that should capture focus and handle Escape */
     isActive?: boolean;
     zIndex?: number;
@@ -86,6 +94,8 @@ export function ProfileModal({
     supportsQuotes = false,
     deletedStatusEvents,
     onDeletedStatusConsumed,
+    updatedStatusEvents,
+    onUpdatedStatusConsumed,
     isActive = true,
     zIndex,
 }: ProfileModalProps) {
@@ -166,6 +176,17 @@ export function ProfileModal({
 
     // Unique IDs for stacked modal instances
     const titleId = useId();
+    const idBase = useId();
+    const tabIds = {
+        posts: `${idBase}-tab-posts`,
+        followers: `${idBase}-tab-followers`,
+        following: `${idBase}-tab-following`,
+    };
+    const panelIds = {
+        posts: `${idBase}-tabpanel-posts`,
+        followers: `${idBase}-tabpanel-followers`,
+        following: `${idBase}-tabpanel-following`,
+    };
 
     // Relationship actions hook for follow/unfollow functionality
     const {
@@ -696,6 +717,38 @@ export function ProfileModal({
         }
     }, [isOpen, deletedStatusEvents, accountSession?.id, onDeletedStatusConsumed]);
 
+    // Consume streaming updatedStatusEvents to sync local status list
+    useEffect(() => {
+        if (!updatedStatusEvents || updatedStatusEvents.length === 0 || !accountSession) return;
+
+        const matching = updatedStatusEvents.filter(
+            (e) => e.accountSessionId === accountSession.id
+        );
+        if (matching.length === 0) return;
+
+        setStatuses((prev) => {
+            let changed = false;
+            const newList = prev.map((s) => {
+                for (const event of matching) {
+                    if (s.id === event.status.id) {
+                        changed = true;
+                        return event.status;
+                    }
+                    if (s.reblog?.id === event.status.id) {
+                        changed = true;
+                        return { ...s, reblog: event.status };
+                    }
+                }
+                return s;
+            });
+            return changed ? newList : prev;
+        });
+
+        if (isOpen) {
+            onUpdatedStatusConsumed?.(matching.map((e) => e.eventId));
+        }
+    }, [isOpen, updatedStatusEvents, accountSession?.id, onUpdatedStatusConsumed]);
+
     if (!account) {
         return null;
     }
@@ -885,11 +938,11 @@ export function ProfileModal({
                             >
                                 <button
                                     ref={tabPostsRef}
-                                    id="tab-posts"
+                                    id={tabIds.posts}
                                     type="button"
                                     role="tab"
                                     aria-selected={activeTab === 'posts'}
-                                    aria-controls="tabpanel-posts"
+                                    aria-controls={panelIds.posts}
                                     tabIndex={activeTab === 'posts' ? 0 : -1}
                                     onClick={() => handleTabChange('posts')}
                                     className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${
@@ -906,11 +959,11 @@ export function ProfileModal({
                                 </button>
                                 <button
                                     ref={tabFollowersRef}
-                                    id="tab-followers"
+                                    id={tabIds.followers}
                                     type="button"
                                     role="tab"
                                     aria-selected={activeTab === 'followers'}
-                                    aria-controls="tabpanel-followers"
+                                    aria-controls={panelIds.followers}
                                     tabIndex={activeTab === 'followers' ? 0 : -1}
                                     onClick={() => handleTabChange('followers')}
                                     className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${
@@ -927,11 +980,11 @@ export function ProfileModal({
                                 </button>
                                 <button
                                     ref={tabFollowingRef}
-                                    id="tab-following"
+                                    id={tabIds.following}
                                     type="button"
                                     role="tab"
                                     aria-selected={activeTab === 'following'}
-                                    aria-controls="tabpanel-following"
+                                    aria-controls={panelIds.following}
                                     tabIndex={activeTab === 'following' ? 0 : -1}
                                     onClick={() => handleTabChange('following')}
                                     className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${
@@ -954,9 +1007,9 @@ export function ProfileModal({
                     <div className="mt-6 border-t border-slate-700/50 pt-4">
                         {/* Posts tab panel */}
                         <div
-                            id="tabpanel-posts"
+                            id={panelIds.posts}
                             role="tabpanel"
-                            aria-labelledby="tab-posts"
+                            aria-labelledby={tabIds.posts}
                             hidden={activeTab !== 'posts'}
                         >
                             {/* Statuses loading indicator */}
@@ -1066,9 +1119,9 @@ export function ProfileModal({
 
                         {/* Followers tab panel */}
                         <div
-                            id="tabpanel-followers"
+                            id={panelIds.followers}
                             role="tabpanel"
-                            aria-labelledby="tab-followers"
+                            aria-labelledby={tabIds.followers}
                             hidden={activeTab !== 'followers'}
                         >
                             {/* Followers loading indicator */}
@@ -1165,9 +1218,9 @@ export function ProfileModal({
 
                         {/* Following tab panel */}
                         <div
-                            id="tabpanel-following"
+                            id={panelIds.following}
                             role="tabpanel"
-                            aria-labelledby="tab-following"
+                            aria-labelledby={tabIds.following}
                             hidden={activeTab !== 'following'}
                         >
                             {/* Following loading indicator */}
