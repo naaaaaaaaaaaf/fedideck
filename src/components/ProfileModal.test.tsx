@@ -758,7 +758,9 @@ describe('ProfileModal', () => {
                 expect(screen.getByText('First status')).toBeInTheDocument();
             });
 
-            expect(mockObserve).toHaveBeenCalled();
+            await waitFor(() => {
+                expect(mockObserve).toHaveBeenCalled();
+            });
         });
 
         it('disconnects observer on unmount', async () => {

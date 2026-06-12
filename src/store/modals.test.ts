@@ -1009,6 +1009,20 @@ describe('useModalsStore', () => {
             expect(useModalsStore.getState().updatedStatusEvents).toHaveLength(0);
         });
 
+        it('preserves updatedStatusEvents for remaining statusDetail consumers', () => {
+            useModalsStore.getState().pushProfile(mockAccount('a0'), 'acct-0');
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushUpdatedStatusEvent('acct-1', mockStatus('s1'));
+
+            for (let i = 2; i <= 6; i++) {
+                useModalsStore.getState().pushProfile(mockAccount(`a${i}`), `acct-${i}`);
+            }
+
+            const events = useModalsStore.getState().updatedStatusEvents;
+            expect(events).toHaveLength(1);
+            expect(events[0].accountSessionId).toBe('acct-1');
+        });
+
         it('preserves events for non-evicted consumers', () => {
             useModalsStore.getState().pushProfile(mockAccount('a0'), 'acct-0');
             useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');

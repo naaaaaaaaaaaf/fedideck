@@ -169,14 +169,23 @@ function nextStackId(): string {
     return `stack-${++stackIdCounter}`;
 }
 
-/** Prune events whose consumers (ProfileModal entries) no longer exist in the stack */
-function pruneEventsForStack<T extends { accountSessionId: string }>(
+/** Prune delete events whose consumers (ProfileModal entries) no longer exist in the stack */
+function pruneDeletedEventsForStack<T extends { accountSessionId: string }>(
     events: T[],
     stack: StackEntry[]
 ): T[] {
     const consumerSessions = new Set(
         stack.filter((entry) => entry.type === 'profile').map((entry) => entry.accountSessionId)
     );
+    return events.filter((event) => consumerSessions.has(event.accountSessionId));
+}
+
+/** Prune update events whose consumers (any mounted stack entry) no longer exist in the stack */
+function pruneUpdatedEventsForStack<T extends { accountSessionId: string }>(
+    events: T[],
+    stack: StackEntry[]
+): T[] {
+    const consumerSessions = new Set(stack.map((entry) => entry.accountSessionId));
     return events.filter((event) => consumerSessions.has(event.accountSessionId));
 }
 
@@ -247,8 +256,14 @@ export const useModalsStore = create<ModalsState>()((set) => ({
             return evicted
                 ? {
                       stack,
-                      deletedStatusEvents: pruneEventsForStack(state.deletedStatusEvents, stack),
-                      updatedStatusEvents: pruneEventsForStack(state.updatedStatusEvents, stack),
+                      deletedStatusEvents: pruneDeletedEventsForStack(
+                          state.deletedStatusEvents,
+                          stack
+                      ),
+                      updatedStatusEvents: pruneUpdatedEventsForStack(
+                          state.updatedStatusEvents,
+                          stack
+                      ),
                   }
                 : { stack };
         });
@@ -280,11 +295,11 @@ export const useModalsStore = create<ModalsState>()((set) => ({
                 return evicted
                     ? {
                           stack,
-                          deletedStatusEvents: pruneEventsForStack(
+                          deletedStatusEvents: pruneDeletedEventsForStack(
                               state.deletedStatusEvents,
                               stack
                           ),
-                          updatedStatusEvents: pruneEventsForStack(
+                          updatedStatusEvents: pruneUpdatedEventsForStack(
                               state.updatedStatusEvents,
                               stack
                           ),
