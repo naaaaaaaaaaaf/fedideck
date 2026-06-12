@@ -515,6 +515,7 @@ export function ProfileModal({
             // Move focus to the newly selected tab (ARIA best practice)
             tabRefs[TAB_ORDER[next]].current?.focus();
         },
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- tabRefs is a stable ref map, not a reactive value
         [activeTab, handleTabChange]
     );
 
@@ -713,6 +714,7 @@ export function ProfileModal({
         });
 
         onDeletedStatusConsumed?.(matching.map((e) => e.eventId));
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- only accountSession.id is used, not the full object
     }, [deletedStatusEvents, accountSession?.id, onDeletedStatusConsumed]);
 
     // Consume streaming updatedStatusEvents to sync local status list
@@ -743,6 +745,7 @@ export function ProfileModal({
         });
 
         onUpdatedStatusConsumed?.(matching.map((e) => e.eventId));
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- only accountSession.id is used, not the full object
     }, [updatedStatusEvents, accountSession?.id, onUpdatedStatusConsumed]);
 
     if (!account) {

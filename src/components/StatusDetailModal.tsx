@@ -471,6 +471,7 @@ export function StatusDetailModal({
         }
 
         onUpdatedStatusConsumed?.(matching.map((e) => e.eventId));
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- only accountSession.id is used, not the full object
     }, [updatedStatusEvents, accountSession?.id, onUpdatedStatusConsumed]);
 
     // Extract status ID for dependency array
