@@ -887,6 +887,27 @@ describe('useModalsStore', () => {
             expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
         });
 
+        it('with originStackEntryId: removes other matching statusDetail entries too', () => {
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
+            useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-1');
+
+            const stack = useModalsStore.getState().stack;
+            const topDetailEntryId = stack[1].id;
+
+            useModalsStore
+                .getState()
+                .handleStatusDeleted(
+                    { statusId: 's1', accountSessionId: 'acct-1' },
+                    topDetailEntryId
+                );
+
+            const remainingStack = useModalsStore.getState().stack;
+            expect(remainingStack).toHaveLength(1);
+            expect(remainingStack[0].type).toBe('profile');
+            expect(useModalsStore.getState().deletedStatusEvents).toHaveLength(1);
+        });
+
         it('with originStackEntryId: no event when no matching profile consumer', () => {
             useModalsStore.getState().pushStatusDetail(mockStatus('s1'), 'acct-1');
             useModalsStore.getState().pushProfile(mockAccount('a1'), 'acct-2');

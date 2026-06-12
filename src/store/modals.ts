@@ -512,9 +512,9 @@ export const useModalsStore = create<ModalsState>()((set) => ({
     /** Atomic delete: remove matching entry/statusDetail and only push event if a ProfileModal consumer exists */
     handleStatusDeleted: (ref: StatusRef, originStackEntryId?: string) => {
         set((state) => {
-            const stack = originStackEntryId
-                ? state.stack.filter((entry) => entry.id !== originStackEntryId)
-                : state.stack.filter((entry) => !statusDetailMatches(entry, ref));
+            const stack = state.stack.filter(
+                (entry) => entry.id !== originStackEntryId && !statusDetailMatches(entry, ref)
+            );
 
             const hasConsumer = stack.some(
                 (entry) =>
