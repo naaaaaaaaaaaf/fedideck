@@ -1560,5 +1560,78 @@ describe('ProfileModal', () => {
                 expect(screen.queryByTestId('status-card-wrapper-1')).not.toBeInTheDocument();
             });
         });
+
+        it('acknowledges deleted status events while hidden', async () => {
+            const status = {
+                id: 's-hidden',
+                content: '<p>Hidden status</p>',
+                createdAt: '2026-01-01T00:00:00.000Z',
+                account: mockAccount,
+                visibility: 'public',
+                uri: 'https://mastodon.social/@testuser/s-hidden',
+                url: 'https://mastodon.social/@testuser/s-hidden',
+                reblog: null,
+                inReplyToId: null,
+                inReplyToAccountId: null,
+                reblogsCount: 0,
+                favouritesCount: 0,
+                repliesCount: 0,
+                reblogged: false,
+                favourited: false,
+                bookmarked: false,
+                muted: false,
+                sensitive: false,
+                spoilerText: '',
+                language: 'en',
+                mentions: [],
+                tags: [],
+                emojis: [],
+                mediaAttachments: [],
+                application: null,
+                card: null,
+                poll: null,
+                filtered: [],
+            } as unknown as mastodon.v1.Status;
+            const onDeletedStatusConsumed = vi.fn();
+
+            mockFetchAccountStatuses.mockResolvedValueOnce([status]);
+
+            const { rerender } = render(
+                <ProfileModal
+                    isOpen={false}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                    deletedStatusEvents={[]}
+                    onDeletedStatusConsumed={onDeletedStatusConsumed}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('status-card-s-hidden')).toBeInTheDocument();
+            });
+
+            rerender(
+                <ProfileModal
+                    isOpen={false}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                    deletedStatusEvents={[
+                        {
+                            statusId: 's-hidden',
+                            accountSessionId: 'acct-1',
+                            eventId: 'evt-hidden-delete',
+                        },
+                    ]}
+                    onDeletedStatusConsumed={onDeletedStatusConsumed}
+                />
+            );
+
+            await waitFor(() => {
+                expect(onDeletedStatusConsumed).toHaveBeenCalledWith(['evt-hidden-delete']);
+            });
+            expect(screen.queryByTestId('status-card-s-hidden')).not.toBeInTheDocument();
+        });
     });
 });

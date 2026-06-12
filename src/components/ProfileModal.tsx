@@ -691,9 +691,10 @@ export function ProfileModal({
     ]);
 
     // Remove deleted statuses from local list when deletion succeeds.
-    // All mounted modals in the stack update their local state, but only the
-    // open (top) modal prunes the events to prevent hidden modals from clearing
-    // them before the visible one processes them.
+    // All mounted modals in the stack update their local state and acknowledge
+    // consumed events. React flushes passive effects for the current commit
+    // before processing the resulting store update, so siblings still see the
+    // same event payload from that commit.
     useEffect(() => {
         if (!deletedStatusEvents || deletedStatusEvents.length === 0 || !accountSession) return;
 
@@ -711,11 +712,8 @@ export function ProfileModal({
             return newStatuses;
         });
 
-        // Only the open modal prunes events so lower-stack modals can also apply
-        if (isOpen) {
-            onDeletedStatusConsumed?.(matching.map((e) => e.eventId));
-        }
-    }, [isOpen, deletedStatusEvents, accountSession?.id, onDeletedStatusConsumed]);
+        onDeletedStatusConsumed?.(matching.map((e) => e.eventId));
+    }, [deletedStatusEvents, accountSession?.id, onDeletedStatusConsumed]);
 
     // Consume streaming updatedStatusEvents to sync local status list
     useEffect(() => {
@@ -744,10 +742,8 @@ export function ProfileModal({
             return changed ? newList : prev;
         });
 
-        if (isOpen) {
-            onUpdatedStatusConsumed?.(matching.map((e) => e.eventId));
-        }
-    }, [isOpen, updatedStatusEvents, accountSession?.id, onUpdatedStatusConsumed]);
+        onUpdatedStatusConsumed?.(matching.map((e) => e.eventId));
+    }, [updatedStatusEvents, accountSession?.id, onUpdatedStatusConsumed]);
 
     if (!account) {
         return null;

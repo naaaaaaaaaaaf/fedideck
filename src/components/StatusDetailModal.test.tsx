@@ -110,6 +110,33 @@ describe('StatusDetailModal', () => {
             expect(wrapper.style.pointerEvents).toBe('none');
         });
 
+        it('should acknowledge updated status events while hidden', async () => {
+            const status = createMockStatus({ id: 'hidden-status' });
+            const accountSession = createMockAccountSession();
+            const onUpdatedStatusConsumed = vi.fn();
+
+            render(
+                <StatusDetailModal
+                    isOpen={false}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                    updatedStatusEvents={[
+                        {
+                            eventId: 'evt-hidden-update',
+                            accountSessionId: accountSession.id,
+                            status: createMockStatus({ id: 'hidden-status' }),
+                        },
+                    ]}
+                    onUpdatedStatusConsumed={onUpdatedStatusConsumed}
+                />
+            );
+
+            await waitFor(() => {
+                expect(onUpdatedStatusConsumed).toHaveBeenCalledWith(['evt-hidden-update']);
+            });
+        });
+
         it('should not render when status is null', () => {
             render(<StatusDetailModal isOpen={true} onClose={() => {}} status={null} />);
 

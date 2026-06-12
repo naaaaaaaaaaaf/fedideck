@@ -470,10 +470,8 @@ export function StatusDetailModal({
             });
         }
 
-        if (isOpen) {
-            onUpdatedStatusConsumed?.(matching.map((e) => e.eventId));
-        }
-    }, [isOpen, updatedStatusEvents, accountSession?.id, onUpdatedStatusConsumed]);
+        onUpdatedStatusConsumed?.(matching.map((e) => e.eventId));
+    }, [updatedStatusEvents, accountSession?.id, onUpdatedStatusConsumed]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
