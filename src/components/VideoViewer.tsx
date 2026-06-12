@@ -18,9 +18,19 @@ export interface VideoViewerProps {
     onClose: () => void;
     videos: VideoViewerVideo[];
     initialIndex?: number;
+    /** Whether this modal is the active (top-most) overlay */
+    isActive?: boolean;
+    zIndex?: number;
 }
 
-export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: VideoViewerProps) {
+export function VideoViewer({
+    isOpen,
+    onClose,
+    videos,
+    initialIndex = 0,
+    isActive = true,
+    zIndex,
+}: VideoViewerProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -42,7 +52,7 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
     const videoRef = useRef<HTMLVideoElement>(null);
 
     const { handleKeyDown: baseHandleKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,
@@ -466,10 +476,13 @@ export function VideoViewer({ isOpen, onClose, videos, initialIndex = 0 }: Video
 
     return (
         <div
-            className="fixed inset-0 z-[60] flex items-center justify-center"
-            onKeyDown={handleKeyDown}
+            className="fixed inset-0 flex items-center justify-center"
+            style={zIndex != null ? { zIndex } : undefined}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
             aria-label="動画ビューアー"
         >
             {/* Backdrop */}

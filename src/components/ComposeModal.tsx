@@ -51,6 +51,9 @@ interface ComposeModalProps {
     accountId?: string; // If provided (reply/quote), lock to this account; otherwise allow switching
     editTarget?: EditTarget;
     onStatusEdited?: (status: mastodon.v1.Status) => void;
+    /** Whether this modal is the active (top-most) overlay */
+    isActive?: boolean;
+    zIndex?: number;
 }
 
 const MAX_POLL_OPTIONS = 4;
@@ -84,6 +87,8 @@ export function ComposeModal({
     accountId,
     editTarget,
     onStatusEdited,
+    isActive = true,
+    zIndex,
 }: ComposeModalProps) {
     const [content, setContent] = useState('');
     const [visibility, setVisibility] = useState<Visibility>('public');
@@ -249,7 +254,7 @@ export function ComposeModal({
     const canCloseModal = !isSubmitting && !isUploading && !isLoadingEditSource;
 
     const { handleKeyDown: handleModalKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,
@@ -366,10 +371,13 @@ export function ComposeModal({
 
     return (
         <div
-            className="fixed inset-0 z-[65] flex items-center justify-center"
-            onKeyDown={handleModalKeyDown}
+            className="fixed inset-0 flex items-center justify-center"
+            style={zIndex != null ? { zIndex } : undefined}
+            onKeyDown={isActive ? handleModalKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
             aria-labelledby="compose-modal-title"
         >
             {/* Backdrop */}

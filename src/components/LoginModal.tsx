@@ -10,11 +10,20 @@ interface LoginModalProps {
     isOpen: boolean;
     onClose: () => void;
     canClose?: boolean;
+    /** Whether this modal is the active (top-most) overlay */
+    isActive?: boolean;
+    zIndex?: number;
 }
 
 type Step = 'instance' | 'authorize' | 'code';
 
-export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps) {
+export function LoginModal({
+    isOpen,
+    onClose,
+    canClose = true,
+    isActive = true,
+    zIndex,
+}: LoginModalProps) {
     const [step, setStep] = useState<Step>('instance');
     const [instanceUrl, setInstanceUrl] = useState('');
     const [authUrl, setAuthUrl] = useState('');
@@ -28,7 +37,7 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
     const addAccount = useAccountsStore((state) => state.addAccount);
 
     const { handleKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,
@@ -109,10 +118,13 @@ export function LoginModal({ isOpen, onClose, canClose = true }: LoginModalProps
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            onKeyDown={handleKeyDown}
+            className="fixed inset-0 flex items-center justify-center p-4"
+            style={zIndex != null ? { zIndex } : undefined}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
             aria-labelledby="login-modal-title"
         >
             {/* Backdrop */}

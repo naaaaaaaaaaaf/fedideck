@@ -8,13 +8,23 @@ export interface AudioPlayerProps {
     onClose: () => void;
     tracks: AudioViewerTrack[];
     initialIndex?: number;
+    /** Whether this modal is the active (top-most) overlay */
+    isActive?: boolean;
+    zIndex?: number;
 }
 
 /**
  * Audio player modal component for audio attachments.
  * Provides playback controls, artwork display, and multi-track navigation.
  */
-export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: AudioPlayerProps) {
+export function AudioPlayer({
+    isOpen,
+    onClose,
+    tracks,
+    initialIndex = 0,
+    isActive = true,
+    zIndex,
+}: AudioPlayerProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -30,7 +40,7 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
     const wasPlayingRef = useRef(false);
 
     const { handleKeyDown: baseHandleKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,
@@ -323,10 +333,13 @@ export function AudioPlayer({ isOpen, onClose, tracks, initialIndex = 0 }: Audio
 
     return (
         <div
-            className="fixed inset-0 z-[60] flex items-center justify-center"
-            onKeyDown={handleKeyDown}
+            className="fixed inset-0 flex items-center justify-center"
+            style={zIndex != null ? { zIndex } : undefined}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
             aria-label="オーディオプレーヤー"
         >
             {/* Backdrop */}

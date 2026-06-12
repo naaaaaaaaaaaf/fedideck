@@ -170,7 +170,7 @@ describe('ProfileModal', () => {
         }
     });
 
-    it('does not render when isOpen is false', () => {
+    it('renders hidden (not null) when isOpen is false', () => {
         const { container } = render(
             <ProfileModal
                 isOpen={false}
@@ -180,7 +180,11 @@ describe('ProfileModal', () => {
             />
         );
 
-        expect(container.firstChild).toBe(null);
+        // Modal stays mounted but hidden to preserve state for back-navigation
+        expect(container.firstChild).not.toBe(null);
+        const wrapper = container.firstChild as HTMLElement;
+        expect(wrapper.style.visibility).toBe('hidden');
+        expect(wrapper.style.pointerEvents).toBe('none');
     });
 
     it('renders basic account information', async () => {
@@ -754,7 +758,9 @@ describe('ProfileModal', () => {
                 expect(screen.getByText('First status')).toBeInTheDocument();
             });
 
-            expect(mockObserve).toHaveBeenCalled();
+            await waitFor(() => {
+                expect(mockObserve).toHaveBeenCalled();
+            });
         });
 
         it('disconnects observer on unmount', async () => {
@@ -1272,7 +1278,7 @@ describe('ProfileModal', () => {
             expect(retryButton).toBeInTheDocument();
         });
 
-        it('resets to posts tab when modal reopens', async () => {
+        it('preserves tab state when modal becomes hidden and visible again', async () => {
             mockFetchAccountStatuses.mockResolvedValue([]);
             mockFetchAccountFollowers.mockResolvedValue([]);
 
@@ -1291,7 +1297,7 @@ describe('ProfileModal', () => {
 
             expect(followersTab).toHaveAttribute('aria-selected', 'true');
 
-            // Close modal
+            // Hide modal (back-navigation: not top of stack)
             rerender(
                 <ProfileModal
                     isOpen={false}
@@ -1301,7 +1307,7 @@ describe('ProfileModal', () => {
                 />
             );
 
-            // Reopen modal
+            // Show modal again (navigated back)
             rerender(
                 <ProfileModal
                     isOpen={true}
@@ -1311,9 +1317,8 @@ describe('ProfileModal', () => {
                 />
             );
 
-            // Posts tab should be selected again
-            const postsTab = screen.getByRole('tab', { name: /200.*投稿/ });
-            expect(postsTab).toHaveAttribute('aria-selected', 'true');
+            // Followers tab should still be selected (state preserved)
+            expect(followersTab).toHaveAttribute('aria-selected', 'true');
         });
 
         describe('Keyboard navigation', () => {
@@ -1463,6 +1468,170 @@ describe('ProfileModal', () => {
                 // Should NOT have fetched again
                 expect(mockFetchAccountFollowers).toHaveBeenCalledTimes(1);
             });
+        });
+    });
+
+    describe('deletedStatusEvents: reblog wrapper removal', () => {
+        const mockSession = {
+            id: 'acct-1',
+            instanceUrl: new URL('https://mastodon.social'),
+            accessToken: 'token',
+            account: mockAccount,
+        } as unknown as AccountSession;
+
+        it('removes reblog wrapper when deletion event matches reblog.id', async () => {
+            const originalStatus = {
+                id: 's1',
+                content: '<p>Original status</p>',
+                createdAt: '2026-01-01T00:00:00.000Z',
+                account: mockAccount,
+                visibility: 'public',
+                uri: 'https://mastodon.social/@testuser/s1',
+                url: 'https://mastodon.social/@testuser/s1',
+                reblog: null,
+                inReplyToId: null,
+                inReplyToAccountId: null,
+                reblogsCount: 0,
+                favouritesCount: 0,
+                repliesCount: 0,
+                reblogged: false,
+                favourited: false,
+                bookmarked: false,
+                muted: false,
+                sensitive: false,
+                spoilerText: '',
+                language: 'en',
+                mentions: [],
+                tags: [],
+                emojis: [],
+                mediaAttachments: [],
+                application: null,
+                card: null,
+                poll: null,
+                filtered: [],
+            } as unknown as mastodon.v1.Status;
+
+            const wrapperStatus = {
+                ...originalStatus,
+                id: 'wrapper-1',
+                content: '',
+                reblog: originalStatus,
+            } as unknown as mastodon.v1.Status;
+
+            mockFetchAccountStatuses.mockResolvedValueOnce([wrapperStatus]);
+
+            const { rerender } = render(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                    deletedStatusEvents={[]}
+                    onDeletedStatusConsumed={vi.fn()}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('status-card-wrapper-1')).toBeInTheDocument();
+            });
+
+            // Simulate deletion event for the original status inside the reblog wrapper
+            const deleteEvents = [
+                {
+                    statusId: 's1',
+                    accountSessionId: 'acct-1',
+                    eventId: 'evt-1',
+                },
+            ];
+
+            rerender(
+                <ProfileModal
+                    isOpen={true}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                    deletedStatusEvents={deleteEvents}
+                    onDeletedStatusConsumed={vi.fn()}
+                />
+            );
+
+            // The wrapper should be removed because s1 matches reblog.id
+            await waitFor(() => {
+                expect(screen.queryByTestId('status-card-wrapper-1')).not.toBeInTheDocument();
+            });
+        });
+
+        it('acknowledges deleted status events while hidden', async () => {
+            const status = {
+                id: 's-hidden',
+                content: '<p>Hidden status</p>',
+                createdAt: '2026-01-01T00:00:00.000Z',
+                account: mockAccount,
+                visibility: 'public',
+                uri: 'https://mastodon.social/@testuser/s-hidden',
+                url: 'https://mastodon.social/@testuser/s-hidden',
+                reblog: null,
+                inReplyToId: null,
+                inReplyToAccountId: null,
+                reblogsCount: 0,
+                favouritesCount: 0,
+                repliesCount: 0,
+                reblogged: false,
+                favourited: false,
+                bookmarked: false,
+                muted: false,
+                sensitive: false,
+                spoilerText: '',
+                language: 'en',
+                mentions: [],
+                tags: [],
+                emojis: [],
+                mediaAttachments: [],
+                application: null,
+                card: null,
+                poll: null,
+                filtered: [],
+            } as unknown as mastodon.v1.Status;
+            const onDeletedStatusConsumed = vi.fn();
+
+            mockFetchAccountStatuses.mockResolvedValueOnce([status]);
+
+            const { rerender } = render(
+                <ProfileModal
+                    isOpen={false}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                    deletedStatusEvents={[]}
+                    onDeletedStatusConsumed={onDeletedStatusConsumed}
+                />
+            );
+
+            await waitFor(() => {
+                expect(screen.getByTestId('status-card-s-hidden')).toBeInTheDocument();
+            });
+
+            rerender(
+                <ProfileModal
+                    isOpen={false}
+                    onClose={onClose}
+                    account={mockAccount}
+                    accountSession={mockSession}
+                    deletedStatusEvents={[
+                        {
+                            statusId: 's-hidden',
+                            accountSessionId: 'acct-1',
+                            eventId: 'evt-hidden-delete',
+                        },
+                    ]}
+                    onDeletedStatusConsumed={onDeletedStatusConsumed}
+                />
+            );
+
+            await waitFor(() => {
+                expect(onDeletedStatusConsumed).toHaveBeenCalledWith(['evt-hidden-delete']);
+            });
+            expect(screen.queryByTestId('status-card-s-hidden')).not.toBeInTheDocument();
         });
     });
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react';
 import type { mastodon } from 'masto';
 import {
     LuX,
@@ -22,6 +22,7 @@ import {
 } from '../api/mastoClient';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { useRelationshipActions } from '../hooks/useRelationshipActions';
+import { useInstanceConfig } from '../hooks/useInstanceConfig';
 import { replaceEmojisWithImages } from '../utils/emoji';
 import { DisplayName } from './DisplayName';
 import { StatusCard } from './StatusCard';
@@ -56,8 +57,21 @@ interface ProfileModalProps {
     onStatusDelete?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     onStatusEdit?: (status: mastodon.v1.Status, accountSessionId: string) => void;
     supportsQuotes?: boolean;
-    /** ID of status that was just deleted, used to remove from local list */
-    deletedStatusId?: string;
+    /** Events for deleted statuses to remove from local list */
+    deletedStatusEvents?: { statusId: string; accountSessionId: string; eventId: string }[];
+    /** Called when this modal has consumed the specified deleted status events */
+    onDeletedStatusConsumed?: (eventIds: string[]) => void;
+    /** Events for updated statuses to sync local list */
+    updatedStatusEvents?: {
+        eventId: string;
+        accountSessionId: string;
+        status: mastodon.v1.Status;
+    }[];
+    /** Called when this modal has consumed the specified updated status events */
+    onUpdatedStatusConsumed?: (eventIds: string[]) => void;
+    /** Whether this modal is the active (top-most) modal that should capture focus and handle Escape */
+    isActive?: boolean;
+    zIndex?: number;
 }
 
 export function ProfileModal({
@@ -78,8 +92,20 @@ export function ProfileModal({
     onStatusDelete,
     onStatusEdit,
     supportsQuotes = false,
-    deletedStatusId,
+    deletedStatusEvents,
+    onDeletedStatusConsumed,
+    updatedStatusEvents,
+    onUpdatedStatusConsumed,
+    isActive = true,
+    zIndex,
 }: ProfileModalProps) {
+    // Instance config for supportsQuotes — resolves internally instead of requiring prop
+    const { instanceConfig: profileInstanceConfig } = useInstanceConfig({
+        accountSession,
+        isOpen,
+    });
+    const resolvedSupportsQuotes = supportsQuotes || profileInstanceConfig?.supportsQuotes === true;
+
     const [fullAccount, setFullAccount] = useState<mastodon.v1.Account | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [hasError, setHasError] = useState(false);
@@ -135,10 +161,11 @@ export function ProfileModal({
     } as const;
 
     const { handleKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,
+        canClose: isActive,
     });
 
     // Extract stable ID for useEffect dependencies
@@ -146,6 +173,20 @@ export function ProfileModal({
 
     // Stable account session ID for callbacks
     const accountSessionId = accountSession?.id;
+
+    // Unique IDs for stacked modal instances
+    const titleId = useId();
+    const idBase = useId();
+    const tabIds = {
+        posts: `${idBase}-tab-posts`,
+        followers: `${idBase}-tab-followers`,
+        following: `${idBase}-tab-following`,
+    };
+    const panelIds = {
+        posts: `${idBase}-tabpanel-posts`,
+        followers: `${idBase}-tabpanel-followers`,
+        following: `${idBase}-tabpanel-following`,
+    };
 
     // Relationship actions hook for follow/unfollow functionality
     const {
@@ -477,43 +518,15 @@ export function ProfileModal({
         [activeTab, handleTabChange]
     );
 
-    // Reset state when modal closes or account changes, then fetch if available
+    // Reset state and fetch when account changes.
+    // State persists when isOpen changes (back-navigation preserves loaded data).
     useEffect(() => {
         // Invalidate any pending requests
         statusesRequestIdRef.current += 1;
         followersRequestIdRef.current += 1;
         followingListRequestIdRef.current += 1;
 
-        // Reset state when modal closes
-        if (!isOpen) {
-            setFullAccount(null);
-            setHasError(false);
-            setIsLoading(false);
-            setStatuses([]);
-            statusesRef.current = [];
-            setHasMoreStatuses(true);
-            setStatusesError(null);
-            setIsLoadingStatuses(false);
-            // Reset tab state
-            setActiveTab('posts');
-            // Reset followers state
-            setFollowers([]);
-            followersRef.current = [];
-            setHasMoreFollowers(true);
-            setFollowersError(null);
-            setIsLoadingFollowers(false);
-            setFollowersLoaded(false);
-            // Reset following list state
-            setFollowingList([]);
-            followingListRef.current = [];
-            setHasMoreFollowingList(true);
-            setFollowingListError(null);
-            setIsLoadingFollowingList(false);
-            setFollowingListLoaded(false);
-            return;
-        }
-
-        // Reset state when account changes (modal stays open but different account)
+        // Reset state when account changes
         setFullAccount(null);
         setHasError(false);
         setStatuses([]);
@@ -573,7 +586,7 @@ export function ProfileModal({
         return () => {
             cancelled = true;
         };
-    }, [isOpen, accountId, accountSession, loadStatuses]);
+    }, [accountId, accountSession, loadStatuses]);
 
     // IntersectionObserver for infinite scroll (posts)
     useEffect(() => {
@@ -677,18 +690,62 @@ export function ProfileModal({
         loadMoreFollowingList,
     ]);
 
-    // Remove deleted status from local list when deletion succeeds
+    // Remove deleted statuses from local list when deletion succeeds.
+    // All mounted modals in the stack update their local state and acknowledge
+    // consumed events. React flushes passive effects for the current commit
+    // before processing the resulting store update, so siblings still see the
+    // same event payload from that commit.
     useEffect(() => {
-        if (deletedStatusId) {
-            setStatuses((prev) => {
-                const newStatuses = prev.filter((s) => s.id !== deletedStatusId);
-                statusesRef.current = newStatuses;
-                return newStatuses;
-            });
-        }
-    }, [deletedStatusId]);
+        if (!deletedStatusEvents || deletedStatusEvents.length === 0 || !accountSession) return;
 
-    if (!isOpen || !account) {
+        const matching = deletedStatusEvents.filter(
+            (e) => e.accountSessionId === accountSession.id
+        );
+        if (matching.length === 0) return;
+
+        const matchingIds = new Set(matching.map((e) => e.statusId));
+        setStatuses((prev) => {
+            const newStatuses = prev.filter(
+                (s) => !matchingIds.has(s.id) && !matchingIds.has(s.reblog?.id ?? '')
+            );
+            statusesRef.current = newStatuses;
+            return newStatuses;
+        });
+
+        onDeletedStatusConsumed?.(matching.map((e) => e.eventId));
+    }, [deletedStatusEvents, accountSession?.id, onDeletedStatusConsumed]);
+
+    // Consume streaming updatedStatusEvents to sync local status list
+    useEffect(() => {
+        if (!updatedStatusEvents || updatedStatusEvents.length === 0 || !accountSession) return;
+
+        const matching = updatedStatusEvents.filter(
+            (e) => e.accountSessionId === accountSession.id
+        );
+        if (matching.length === 0) return;
+
+        setStatuses((prev) => {
+            let changed = false;
+            const newList = prev.map((s) => {
+                for (const event of matching) {
+                    if (s.id === event.status.id) {
+                        changed = true;
+                        return event.status;
+                    }
+                    if (s.reblog?.id === event.status.id) {
+                        changed = true;
+                        return { ...s, reblog: event.status };
+                    }
+                }
+                return s;
+            });
+            return changed ? newList : prev;
+        });
+
+        onUpdatedStatusConsumed?.(matching.map((e) => e.eventId));
+    }, [updatedStatusEvents, accountSession?.id, onUpdatedStatusConsumed]);
+
+    if (!account) {
         return null;
     }
 
@@ -696,11 +753,17 @@ export function ProfileModal({
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center"
-            onKeyDown={handleKeyDown}
+            className="fixed inset-0 flex items-center justify-center"
+            style={{
+                ...(zIndex != null ? { zIndex } : undefined),
+                ...(!isOpen ? { visibility: 'hidden', pointerEvents: 'none' } : undefined),
+            }}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
-            aria-labelledby="profile-modal-title"
+            aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
+            aria-labelledby={titleId}
         >
             {/* Backdrop */}
             <div
@@ -716,7 +779,7 @@ export function ProfileModal({
             >
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
-                    <h2 id="profile-modal-title" className="text-lg font-semibold text-slate-100">
+                    <h2 id={titleId} className="text-lg font-semibold text-slate-100">
                         プロフィール
                     </h2>
                     <button
@@ -871,11 +934,11 @@ export function ProfileModal({
                             >
                                 <button
                                     ref={tabPostsRef}
-                                    id="tab-posts"
+                                    id={tabIds.posts}
                                     type="button"
                                     role="tab"
                                     aria-selected={activeTab === 'posts'}
-                                    aria-controls="tabpanel-posts"
+                                    aria-controls={panelIds.posts}
                                     tabIndex={activeTab === 'posts' ? 0 : -1}
                                     onClick={() => handleTabChange('posts')}
                                     className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${
@@ -892,11 +955,11 @@ export function ProfileModal({
                                 </button>
                                 <button
                                     ref={tabFollowersRef}
-                                    id="tab-followers"
+                                    id={tabIds.followers}
                                     type="button"
                                     role="tab"
                                     aria-selected={activeTab === 'followers'}
-                                    aria-controls="tabpanel-followers"
+                                    aria-controls={panelIds.followers}
                                     tabIndex={activeTab === 'followers' ? 0 : -1}
                                     onClick={() => handleTabChange('followers')}
                                     className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${
@@ -913,11 +976,11 @@ export function ProfileModal({
                                 </button>
                                 <button
                                     ref={tabFollowingRef}
-                                    id="tab-following"
+                                    id={tabIds.following}
                                     type="button"
                                     role="tab"
                                     aria-selected={activeTab === 'following'}
-                                    aria-controls="tabpanel-following"
+                                    aria-controls={panelIds.following}
                                     tabIndex={activeTab === 'following' ? 0 : -1}
                                     onClick={() => handleTabChange('following')}
                                     className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors whitespace-nowrap ${
@@ -940,9 +1003,9 @@ export function ProfileModal({
                     <div className="mt-6 border-t border-slate-700/50 pt-4">
                         {/* Posts tab panel */}
                         <div
-                            id="tabpanel-posts"
+                            id={panelIds.posts}
                             role="tabpanel"
-                            aria-labelledby="tab-posts"
+                            aria-labelledby={tabIds.posts}
                             hidden={activeTab !== 'posts'}
                         >
                             {/* Statuses loading indicator */}
@@ -990,7 +1053,7 @@ export function ProfileModal({
                                             onStatusUpdate={handleStatusUpdate}
                                             onReply={handleReply}
                                             onQuote={handleQuote}
-                                            supportsQuotes={supportsQuotes}
+                                            supportsQuotes={resolvedSupportsQuotes}
                                             onStatusClick={handleStatusClick}
                                             onImageClick={onImageClick}
                                             onVideoClick={onVideoClick}
@@ -1052,9 +1115,9 @@ export function ProfileModal({
 
                         {/* Followers tab panel */}
                         <div
-                            id="tabpanel-followers"
+                            id={panelIds.followers}
                             role="tabpanel"
-                            aria-labelledby="tab-followers"
+                            aria-labelledby={tabIds.followers}
                             hidden={activeTab !== 'followers'}
                         >
                             {/* Followers loading indicator */}
@@ -1151,9 +1214,9 @@ export function ProfileModal({
 
                         {/* Following tab panel */}
                         <div
-                            id="tabpanel-following"
+                            id={panelIds.following}
                             role="tabpanel"
-                            aria-labelledby="tab-following"
+                            aria-labelledby={tabIds.following}
                             hidden={activeTab !== 'following'}
                         >
                             {/* Following loading indicator */}
