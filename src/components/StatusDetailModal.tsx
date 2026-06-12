@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, useId } from 'react';
 import type { mastodon } from 'masto';
 import { LuX, LuTriangleAlert, LuLoader, LuRefreshCw } from 'react-icons/lu';
 import {
@@ -53,6 +53,17 @@ interface StatusDetailModalProps {
     // NSFW blur state from parent (optional - for syncing with StatusCard)
     nsfwRevealedStatusIds?: Set<string>;
     onNsfwReveal?: (statusId: string) => void;
+    /** Whether this modal is the active (top-most) modal that should capture focus and handle Escape */
+    isActive?: boolean;
+    zIndex?: number;
+    onAccountClick?: (account: mastodon.v1.Account, accountSessionId?: string) => void;
+    // Streaming update events for syncing navigatedStatus and context
+    updatedStatusEvents?: {
+        eventId: string;
+        accountSessionId: string;
+        status: mastodon.v1.Status;
+    }[];
+    onUpdatedStatusConsumed?: (eventIds: string[]) => void;
 }
 
 // Compact status display for thread ancestors/descendants
@@ -217,12 +228,52 @@ export function StatusDetailModal({
     onAudioClick,
     nsfwRevealedStatusIds,
     onNsfwReveal,
+    isActive = true,
+    zIndex,
+    onAccountClick,
+    updatedStatusEvents,
+    onUpdatedStatusConsumed,
 }: StatusDetailModalProps) {
     // Thread navigation state
     const [navigatedStatus, setNavigatedStatus] = useState<mastodon.v1.Status | null>(null);
 
+    // Unique IDs for stacked modal instances
+    const titleId = useId();
+
     // Get the display status (navigated > original reblog > original)
     const displayStatus = navigatedStatus ?? status?.reblog ?? status;
+
+    // Wrap onStatusUpdate to also sync navigatedStatus and context entries
+    const handleStatusUpdateSync = useCallback(
+        (updatedStatus: mastodon.v1.Status) => {
+            // Update navigatedStatus if it matches the updated status
+            setNavigatedStatus((prev) => (prev?.id === updatedStatus.id ? updatedStatus : prev));
+            // Update context entries if they match
+            setContext((prev) => {
+                if (!prev) return prev;
+                let changed = false;
+                const newContext = {
+                    ancestors: prev.ancestors.map((s) => {
+                        if (s.id === updatedStatus.id) {
+                            changed = true;
+                            return updatedStatus;
+                        }
+                        return s;
+                    }),
+                    descendants: prev.descendants.map((s) => {
+                        if (s.id === updatedStatus.id) {
+                            changed = true;
+                            return updatedStatus;
+                        }
+                        return s;
+                    }),
+                };
+                return changed ? newContext : prev;
+            });
+            onStatusUpdate?.(updatedStatus);
+        },
+        [onStatusUpdate]
+    );
 
     // Status actions (favourite/reblog/bookmark) with optimistic UI
     const {
@@ -239,7 +290,7 @@ export function StatusDetailModal({
     } = useStatusActions({
         status: displayStatus,
         accountSession,
-        onStatusUpdate,
+        onStatusUpdate: handleStatusUpdateSync,
     });
 
     // NSFW state with controlled/uncontrolled mode
@@ -265,7 +316,11 @@ export function StatusDetailModal({
         poll: displayStatus?.poll ?? null,
         statusId: displayStatus?.id ?? '',
         accountSession: accountSession ?? null,
-        onPollUpdate,
+        onPollUpdate: (statusId, poll) => {
+            // Update navigatedStatus poll if it matches
+            setNavigatedStatus((prev) => (prev?.id === statusId ? { ...prev, poll } : prev));
+            onPollUpdate?.(statusId, poll);
+        },
         autoRefreshOnExpiry: true,
     });
 
@@ -336,19 +391,88 @@ export function StatusDetailModal({
     const mainStatusRef = useRef<HTMLDivElement>(null);
 
     const { handleKeyDown, handleBackdropClick } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,
+        canClose: isActive,
     });
 
-    // Reset navigation and context state when modal closes or the base status changes
+    // Reset navigation and context state when the base status changes.
+    // State persists when isOpen changes (back-navigation preserves loaded data).
     useEffect(() => {
         setNavigatedStatus(null);
         setContext(null);
         setContextError(null);
         setIsLoadingContext(false);
-    }, [status?.id, isOpen]);
+    }, [status?.id]);
+
+    // Sync navigatedStatus and context entries when the base status prop is
+    // updated externally (streaming update, edit success, etc.).
+    useEffect(() => {
+        if (!status) return;
+        setNavigatedStatus((prev) => (prev?.id === status.id ? status : prev));
+        setContext((prev) => {
+            if (!prev) return prev;
+            let changed = false;
+            const newContext = {
+                ancestors: prev.ancestors.map((s) => {
+                    if (s.id === status.id) {
+                        changed = true;
+                        return status;
+                    }
+                    return s;
+                }),
+                descendants: prev.descendants.map((s) => {
+                    if (s.id === status.id) {
+                        changed = true;
+                        return status;
+                    }
+                    return s;
+                }),
+            };
+            return changed ? newContext : prev;
+        });
+    }, [status]);
+
+    // Consume streaming updatedStatusEvents to sync navigatedStatus and context
+    useEffect(() => {
+        if (!updatedStatusEvents || updatedStatusEvents.length === 0 || !accountSession) return;
+
+        const matching = updatedStatusEvents.filter(
+            (e) => e.accountSessionId === accountSession.id
+        );
+        if (matching.length === 0) return;
+
+        for (const event of matching) {
+            const updated = event.status;
+            setNavigatedStatus((prev) => (prev?.id === updated.id ? updated : prev));
+            setContext((prev) => {
+                if (!prev) return prev;
+                let changed = false;
+                const newContext = {
+                    ancestors: prev.ancestors.map((s) => {
+                        if (s.id === updated.id) {
+                            changed = true;
+                            return updated;
+                        }
+                        return s;
+                    }),
+                    descendants: prev.descendants.map((s) => {
+                        if (s.id === updated.id) {
+                            changed = true;
+                            return updated;
+                        }
+                        return s;
+                    }),
+                };
+                return changed ? newContext : prev;
+            });
+        }
+
+        onUpdatedStatusConsumed?.(matching.map((e) => e.eventId));
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- only accountSession.id is used, not the full object
+    }, [updatedStatusEvents, accountSession?.id, onUpdatedStatusConsumed]);
 
     // Extract status ID for dependency array
     const statusId = displayStatus?.id;
@@ -410,14 +534,16 @@ export function StatusDetailModal({
         };
     }, [isOpen, accountSession, navigatedStatusId, navigatedShallowQuoteId]);
 
-    // Fetch thread context when modal opens
+    // Fetch thread context when modal is active
     useEffect(() => {
-        if (!isOpen || !statusId || !accountSession) {
+        if (!statusId || !accountSession) {
             setContext(null);
             setContextError(null);
             setIsLoadingContext(false);
             return;
         }
+
+        if (!isOpen) return; // hidden stack entry: keep cached context
 
         let cancelled = false;
 
@@ -514,17 +640,15 @@ export function StatusDetailModal({
     const handleStatusDelete = useCallback(() => {
         if (!displayStatus || !accountSession || !canDelete) return;
         onStatusDelete?.(displayStatus, accountSession.id);
-        onClose();
-    }, [displayStatus, accountSession, canDelete, onStatusDelete, onClose]);
+    }, [displayStatus, accountSession, canDelete, onStatusDelete]);
 
     // Handle status edit (must be before early return due to useCallback)
     const handleStatusEdit = useCallback(() => {
         if (!displayStatus || !accountSession || !canEdit) return;
         onStatusEdit?.(displayStatus, accountSession.id);
-        onClose();
-    }, [displayStatus, accountSession, canEdit, onStatusEdit, onClose]);
+    }, [displayStatus, accountSession, canEdit, onStatusEdit]);
 
-    if (!isOpen || !status || !displayStatus) return null;
+    if (!status || !displayStatus) return null;
 
     const reblogger = navigatedStatus ? null : status.reblog ? status.account : null;
     const account = displayStatus.account;
@@ -542,12 +666,10 @@ export function StatusDetailModal({
 
     const handleReply = () => {
         onReply?.(displayStatus);
-        onClose();
     };
 
     const handleQuote = () => {
         onQuote?.(displayStatus);
-        onClose();
     };
 
     // Handle quote card click - navigate within modal
@@ -560,11 +682,17 @@ export function StatusDetailModal({
 
     return (
         <div
-            className="fixed inset-0 z-[60] flex items-center justify-center"
-            onKeyDown={handleKeyDown}
+            className="fixed inset-0 flex items-center justify-center"
+            style={{
+                ...(zIndex != null ? { zIndex } : undefined),
+                ...(!isOpen ? { visibility: 'hidden', pointerEvents: 'none' } : undefined),
+            }}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
-            aria-labelledby="status-detail-title"
+            aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
+            aria-labelledby={titleId}
         >
             {/* Backdrop */}
             <div
@@ -580,7 +708,7 @@ export function StatusDetailModal({
             >
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
-                    <h2 id="status-detail-title" className="text-lg font-semibold text-slate-100">
+                    <h2 id={titleId} className="text-lg font-semibold text-slate-100">
                         投稿の詳細
                     </h2>
                     <button
@@ -639,31 +767,63 @@ export function StatusDetailModal({
 
                         {/* Author info */}
                         <div className="flex items-start gap-3 mb-4">
-                            <a
-                                href={account.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="shrink-0"
-                            >
-                                <img
-                                    src={account.avatar}
-                                    alt={account.displayName || account.username}
-                                    className="w-14 h-14 rounded-xl hover:opacity-80 transition-opacity"
-                                />
-                            </a>
-                            <div className="min-w-0 flex-1">
+                            {onAccountClick ? (
+                                <button
+                                    type="button"
+                                    onClick={() => onAccountClick(account, accountSession?.id)}
+                                    className="shrink-0"
+                                >
+                                    <img
+                                        src={account.avatar}
+                                        alt={account.displayName || account.username}
+                                        className="w-14 h-14 rounded-xl hover:opacity-80 transition-opacity"
+                                    />
+                                </button>
+                            ) : (
                                 <a
                                     href={account.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="hover:underline"
+                                    className="shrink-0"
                                 >
-                                    <DisplayName
-                                        account={account}
-                                        className="font-semibold text-lg text-slate-100 block"
+                                    <img
+                                        src={account.avatar}
+                                        alt={account.displayName || account.username}
+                                        className="w-14 h-14 rounded-xl hover:opacity-80 transition-opacity"
                                     />
-                                    <span className="text-slate-400 block">@{account.acct}</span>
                                 </a>
+                            )}
+                            <div className="min-w-0 flex-1">
+                                {onAccountClick ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => onAccountClick(account, accountSession?.id)}
+                                        className="text-left hover:underline"
+                                    >
+                                        <DisplayName
+                                            account={account}
+                                            className="font-semibold text-lg text-slate-100 block"
+                                        />
+                                        <span className="text-slate-400 block">
+                                            @{account.acct}
+                                        </span>
+                                    </button>
+                                ) : (
+                                    <a
+                                        href={account.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:underline"
+                                    >
+                                        <DisplayName
+                                            account={account}
+                                            className="font-semibold text-lg text-slate-100 block"
+                                        />
+                                        <span className="text-slate-400 block">
+                                            @{account.acct}
+                                        </span>
+                                    </a>
+                                )}
                             </div>
                         </div>
 

@@ -9,6 +9,7 @@ globalThis.indexedDB = fakeIndexedDB;
 // Provide a base IntersectionObserver mock that can be overridden by vi.stubGlobal
 // This prevents "IntersectionObserver is not defined" errors in jsdom
 const baseIntersectionObserver = class IntersectionObserver {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) {}
     observe() {}
     unobserve() {}

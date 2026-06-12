@@ -9,6 +9,9 @@ import { formatAccountHandle } from '../utils/accountHandle';
 interface AddColumnModalProps {
     isOpen: boolean;
     onClose: () => void;
+    /** Whether this modal is the active (top-most) overlay */
+    isActive?: boolean;
+    zIndex?: number;
 }
 
 const COLUMN_TYPES: { type: StreamType; icon: ReactNode; label: string; description: string }[] = [
@@ -38,7 +41,7 @@ const COLUMN_TYPES: { type: StreamType; icon: ReactNode; label: string; descript
     },
 ];
 
-export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
+export function AddColumnModal({ isOpen, onClose, isActive = true, zIndex }: AddColumnModalProps) {
     const accounts = useAccountsStore((state) => state.accounts);
     const activeAccountId = useAccountsStore((state) => state.activeAccountId);
     const addColumn = useColumnsStore((state) => state.addColumn);
@@ -56,7 +59,7 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
     const listboxRef = useRef<HTMLDivElement>(null);
 
     const { handleKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,
@@ -86,10 +89,13 @@ export function AddColumnModal({ isOpen, onClose }: AddColumnModalProps) {
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            onKeyDown={handleKeyDown}
+            className="fixed inset-0 flex items-center justify-center p-4"
+            style={zIndex != null ? { zIndex } : undefined}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
             aria-labelledby="add-column-modal-title"
         >
             {/* Backdrop */}

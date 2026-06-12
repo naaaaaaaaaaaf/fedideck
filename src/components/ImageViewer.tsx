@@ -2,27 +2,34 @@ import { useState, useRef, useCallback } from 'react';
 import { LuX, LuChevronLeft, LuChevronRight } from 'react-icons/lu';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
 
-export interface ImageViewerImage {
-    url: string;
-    previewUrl?: string;
-    description?: string;
-}
+export type { ImageViewerImage } from '../types/image';
+import type { ImageViewerImage } from '../types/image';
 
 export interface ImageViewerProps {
     isOpen: boolean;
     onClose: () => void;
     images: ImageViewerImage[];
     initialIndex?: number;
+    /** Whether this modal is the active (top-most) overlay */
+    isActive?: boolean;
+    zIndex?: number;
 }
 
-export function ImageViewer({ isOpen, onClose, images, initialIndex = 0 }: ImageViewerProps) {
+export function ImageViewer({
+    isOpen,
+    onClose,
+    images,
+    initialIndex = 0,
+    isActive = true,
+    zIndex,
+}: ImageViewerProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const imageContainerRef = useRef<HTMLDivElement>(null);
 
     const { handleKeyDown: baseHandleKeyDown } = useModalAccessibility({
-        isOpen,
+        isOpen: isOpen && isActive,
         onClose,
         closeButtonRef,
         modalRef,
@@ -94,10 +101,13 @@ export function ImageViewer({ isOpen, onClose, images, initialIndex = 0 }: Image
 
     return (
         <div
-            className="fixed inset-0 z-[60] flex items-center justify-center"
-            onKeyDown={handleKeyDown}
+            className="fixed inset-0 flex items-center justify-center"
+            style={zIndex != null ? { zIndex } : undefined}
+            onKeyDown={isActive ? handleKeyDown : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isActive ? 'true' : undefined}
+            aria-hidden={!isActive ? true : undefined}
+            inert={!isActive ? true : undefined}
             aria-label="画像ビューアー"
         >
             {/* Backdrop */}

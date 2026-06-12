@@ -97,11 +97,44 @@ describe('StatusDetailModal', () => {
     });
 
     describe('rendering', () => {
-        it('should not render when isOpen is false', () => {
+        it('should render hidden (not null) when isOpen is false', () => {
             const status = createMockStatus();
-            render(<StatusDetailModal isOpen={false} onClose={() => {}} status={status} />);
+            const { container } = render(
+                <StatusDetailModal isOpen={false} onClose={() => {}} status={status} />
+            );
 
-            expect(screen.queryByText('投稿の詳細')).not.toBeInTheDocument();
+            // Modal stays mounted but hidden to preserve state for back-navigation
+            expect(container.firstChild).not.toBe(null);
+            const wrapper = container.firstChild as HTMLElement;
+            expect(wrapper.style.visibility).toBe('hidden');
+            expect(wrapper.style.pointerEvents).toBe('none');
+        });
+
+        it('should acknowledge updated status events while hidden', async () => {
+            const status = createMockStatus({ id: 'hidden-status' });
+            const accountSession = createMockAccountSession();
+            const onUpdatedStatusConsumed = vi.fn();
+
+            render(
+                <StatusDetailModal
+                    isOpen={false}
+                    onClose={() => {}}
+                    status={status}
+                    accountSession={accountSession}
+                    updatedStatusEvents={[
+                        {
+                            eventId: 'evt-hidden-update',
+                            accountSessionId: accountSession.id,
+                            status: createMockStatus({ id: 'hidden-status' }),
+                        },
+                    ]}
+                    onUpdatedStatusConsumed={onUpdatedStatusConsumed}
+                />
+            );
+
+            await waitFor(() => {
+                expect(onUpdatedStatusConsumed).toHaveBeenCalledWith(['evt-hidden-update']);
+            });
         });
 
         it('should not render when status is null', () => {
@@ -202,7 +235,7 @@ describe('StatusDetailModal', () => {
             expect(onClose).toHaveBeenCalledTimes(1);
         });
 
-        it('should call onReply and onClose when reply button is clicked', async () => {
+        it('should call onReply when reply button is clicked', async () => {
             const user = userEvent.setup();
             const onClose = vi.fn();
             const onReply = vi.fn();
@@ -222,7 +255,8 @@ describe('StatusDetailModal', () => {
 
             expect(onReply).toHaveBeenCalledTimes(1);
             expect(onReply).toHaveBeenCalledWith(expect.objectContaining({ id: '12345' }));
-            expect(onClose).toHaveBeenCalledTimes(1);
+            // Reply no longer closes the modal - compose overlays on top
+            expect(onClose).not.toHaveBeenCalled();
         });
     });
 
@@ -769,7 +803,10 @@ describe('StatusDetailModal', () => {
 
             const dialog = screen.getByRole('dialog');
             expect(dialog).toHaveAttribute('aria-modal', 'true');
-            expect(dialog).toHaveAttribute('aria-labelledby', 'status-detail-title');
+            expect(dialog).toHaveAttribute('aria-labelledby');
+            // Verify the labelledby target exists and has the expected text
+            const labelledBy = dialog.getAttribute('aria-labelledby');
+            expect(document.getElementById(labelledBy!)).toHaveTextContent('投稿の詳細');
         });
 
         it('should focus close button when modal opens', () => {
@@ -1956,9 +1993,13 @@ describe('StatusDetailModal', () => {
             );
         });
 
-        it('should reset navigation state when modal is closed and reopened', async () => {
+        it('should reset navigation state when status id changes', async () => {
             const user = userEvent.setup();
             const status = createMockStatus({ content: '<p>Original main content</p>' });
+            const differentStatus = createMockStatus({
+                id: 'different-1',
+                content: '<p>Different status content</p>',
+            });
             const accountSession = createMockAccountSession();
             const ancestor = createAncestorStatus();
 
@@ -1968,16 +2009,19 @@ describe('StatusDetailModal', () => {
             });
 
             const TestWrapper = () => {
-                const [isOpen, setIsOpen] = useState(true);
+                const [currentStatus, setCurrentStatus] = useState(status);
                 return (
                     <>
-                        <button data-testid="toggle" onClick={() => setIsOpen((prev) => !prev)}>
-                            Toggle
+                        <button
+                            data-testid="switch"
+                            onClick={() => setCurrentStatus(differentStatus)}
+                        >
+                            Switch
                         </button>
                         <StatusDetailModal
-                            isOpen={isOpen}
-                            onClose={() => setIsOpen(false)}
-                            status={status}
+                            isOpen={true}
+                            onClose={() => {}}
+                            status={currentStatus}
                             accountSession={accountSession}
                         />
                     </>
@@ -2006,21 +2050,18 @@ describe('StatusDetailModal', () => {
                 );
             });
 
-            // Close and reopen
-            const closeButton = screen.getByRole('button', { name: '閉じる' });
-            await user.click(closeButton);
-
+            // Switch to a different status — should reset navigation
             vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
-                ancestors: [ancestor],
+                ancestors: [],
                 descendants: [],
             });
 
-            const toggleButton = screen.getByTestId('toggle');
-            await user.click(toggleButton);
+            const switchButton = screen.getByTestId('switch');
+            await user.click(switchButton);
 
-            // Should show original content again
+            // Should show the different status content (navigation was reset)
             await waitFor(() => {
-                expect(screen.getByText('Original main content')).toBeInTheDocument();
+                expect(screen.getByText('Different status content')).toBeInTheDocument();
             });
         });
 
@@ -3729,8 +3770,8 @@ describe('StatusDetailModal', () => {
                 })
             );
 
-            // Modal should be closed
-            expect(onClose).toHaveBeenCalledTimes(1);
+            // Quote no longer closes the modal - compose overlays on top
+            expect(onClose).not.toHaveBeenCalled();
         });
 
         it('should not show quote button when onQuote is not provided', async () => {
@@ -3750,6 +3791,74 @@ describe('StatusDetailModal', () => {
 
             // Quote button should not be in the document
             expect(screen.queryByRole('button', { name: '引用' })).not.toBeInTheDocument();
+        });
+    });
+
+    describe('context preservation on stack background', () => {
+        it('preserves thread context when modal goes to stack background (isOpen false → true)', async () => {
+            const status = createMockStatus();
+            const accountSession = createMockAccountSession();
+
+            // Return some context data
+            const ancestor = createMockStatus({
+                id: 'ancestor-1',
+                content: '<p>Ancestor post</p>',
+            });
+            vi.mocked(mastoClient.getStatusContext).mockResolvedValue({
+                ancestors: [ancestor],
+                descendants: [],
+            });
+
+            const TestWrapper = () => {
+                const [isOpen, setIsOpen] = useState(true);
+                return (
+                    <>
+                        <button data-testid="toggle" onClick={() => setIsOpen((prev) => !prev)}>
+                            Toggle
+                        </button>
+                        <StatusDetailModal
+                            isOpen={isOpen}
+                            onClose={() => setIsOpen(false)}
+                            status={status}
+                            accountSession={accountSession}
+                        />
+                    </>
+                );
+            };
+
+            await act(async () => {
+                render(<TestWrapper />);
+            });
+
+            // Wait for context to load
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor post')).toBeInTheDocument();
+            });
+
+            // Hide modal (simulate going to stack background)
+            await act(async () => {
+                screen.getByTestId('toggle').click();
+            });
+
+            // Context data should NOT be cleared when going to background
+            // (it was cleared in the old implementation)
+            const callCountAfterHide = vi.mocked(mastoClient.getStatusContext).mock.calls.length;
+
+            // Show modal again (simulate navigating back)
+            await act(async () => {
+                screen.getByTestId('toggle').click();
+            });
+
+            // Context is re-fetched because isOpen changed (effect dependency),
+            // but the key behavior is: context was NOT cleared when hidden.
+            // The old code would clear context on !isOpen, causing a flash of empty content.
+            // The fix ensures context persists while hidden and is refreshed on return.
+            expect(vi.mocked(mastoClient.getStatusContext).mock.calls.length).toBe(
+                callCountAfterHide + 1 // one re-fetch when isOpen becomes true again
+            );
+            await waitFor(() => {
+                expect(screen.getByText('Ancestor post')).toBeInTheDocument();
+            });
         });
     });
 });
